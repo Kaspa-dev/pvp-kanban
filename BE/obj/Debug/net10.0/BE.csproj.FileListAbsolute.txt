@@ -35,3 +35,40 @@ C:\3 Kursas\PVP\Project\pvp-kanban\BE\obj\Debug\net10.0\refint\BE.dll
 C:\3 Kursas\PVP\Project\pvp-kanban\BE\obj\Debug\net10.0\BE.pdb
 C:\3 Kursas\PVP\Project\pvp-kanban\BE\obj\Debug\net10.0\BE.genruntimeconfig.cache
 C:\3 Kursas\PVP\Project\pvp-kanban\BE\obj\Debug\net10.0\ref\BE.dll
+C:\Users\User\Desktop\PVP\BE\bin\Debug\net10.0\appsettings.Development.json
+C:\Users\User\Desktop\PVP\BE\bin\Debug\net10.0\appsettings.json
+C:\Users\User\Desktop\PVP\BE\bin\Debug\net10.0\BE.staticwebassets.endpoints.json
+C:\Users\User\Desktop\PVP\BE\bin\Debug\net10.0\BE.exe
+C:\Users\User\Desktop\PVP\BE\bin\Debug\net10.0\BE.deps.json
+C:\Users\User\Desktop\PVP\BE\bin\Debug\net10.0\BE.runtimeconfig.json
+C:\Users\User\Desktop\PVP\BE\bin\Debug\net10.0\BE.dll
+C:\Users\User\Desktop\PVP\BE\bin\Debug\net10.0\BE.pdb
+C:\Users\User\Desktop\PVP\BE\bin\Debug\net10.0\Microsoft.AspNetCore.OpenApi.dll
+C:\Users\User\Desktop\PVP\BE\bin\Debug\net10.0\Microsoft.OpenApi.dll
+C:\Users\User\Desktop\PVP\BE\bin\Debug\net10.0\Swashbuckle.AspNetCore.Swagger.dll
+C:\Users\User\Desktop\PVP\BE\bin\Debug\net10.0\Swashbuckle.AspNetCore.SwaggerGen.dll
+C:\Users\User\Desktop\PVP\BE\bin\Debug\net10.0\Swashbuckle.AspNetCore.SwaggerUI.dll
+C:\Users\User\Desktop\PVP\BE\obj\Debug\net10.0\BE.csproj.AssemblyReference.cache
+C:\Users\User\Desktop\PVP\BE\obj\Debug\net10.0\rpswa.dswa.cache.json
+C:\Users\User\Desktop\PVP\BE\obj\Debug\net10.0\BE.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\User\Desktop\PVP\BE\obj\Debug\net10.0\BE.AssemblyInfoInputs.cache
+C:\Users\User\Desktop\PVP\BE\obj\Debug\net10.0\BE.AssemblyInfo.cs
+C:\Users\User\Desktop\PVP\BE\obj\Debug\net10.0\BE.csproj.CoreCompileInputs.cache
+C:\Users\User\Desktop\PVP\BE\obj\Debug\net10.0\BE.MvcApplicationPartsAssemblyInfo.cs
+C:\Users\User\Desktop\PVP\BE\obj\Debug\net10.0\BE.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\User\Desktop\PVP\BE\obj\Debug\net10.0\BE.sourcelink.json
+C:\Users\User\Desktop\PVP\BE\obj\Debug\net10.0\rjimswa.dswa.cache.json
+C:\Users\User\Desktop\PVP\BE\obj\Debug\net10.0\rjsmrazor.dswa.cache.json
+C:\Users\User\Desktop\PVP\BE\obj\Debug\net10.0\rjsmcshtml.dswa.cache.json
+C:\Users\User\Desktop\PVP\BE\obj\Debug\net10.0\scopedcss\bundle\BE.styles.css
+C:\Users\User\Desktop\PVP\BE\obj\Debug\net10.0\staticwebassets.build.json
+C:\Users\User\Desktop\PVP\BE\obj\Debug\net10.0\staticwebassets.build.json.cache
+C:\Users\User\Desktop\PVP\BE\obj\Debug\net10.0\staticwebassets.development.json
+C:\Users\User\Desktop\PVP\BE\obj\Debug\net10.0\staticwebassets.build.endpoints.json
+C:\Users\User\Desktop\PVP\BE\obj\Debug\net10.0\swae.build.ex.cache
+C:\Users\User\Desktop\PVP\BE\obj\Debug\net10.0\BE.csproj.Up2Date
+C:\Users\User\Desktop\PVP\BE\obj\Debug\net10.0\BE.dll
+C:\Users\User\Desktop\PVP\BE\obj\Debug\net10.0\refint\BE.dll
+C:\Users\User\Desktop\PVP\BE\obj\Debug\net10.0\BE.pdb
+C:\Users\User\Desktop\PVP\BE\obj\Debug\net10.0\BE.genruntimeconfig.cache
+C:\Users\User\Desktop\PVP\BE\obj\Debug\net10.0\ref\BE.dll

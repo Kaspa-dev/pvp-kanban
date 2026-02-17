@@ -498,23 +498,23 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\arman\\.nuget\\packages\\": {},
+    "C:\\Users\\User\\.nuget\\packages\\": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\3 Kursas\\PVP\\Project\\pvp-kanban\\BE\\BE.csproj",
+      "projectUniqueName": "C:\\Users\\User\\Desktop\\PVP\\BE\\BE.csproj",
       "projectName": "BE",
-      "projectPath": "C:\\3 Kursas\\PVP\\Project\\pvp-kanban\\BE\\BE.csproj",
-      "packagesPath": "C:\\Users\\arman\\.nuget\\packages\\",
-      "outputPath": "C:\\3 Kursas\\PVP\\Project\\pvp-kanban\\BE\\obj\\",
+      "projectPath": "C:\\Users\\User\\Desktop\\PVP\\BE\\BE.csproj",
+      "packagesPath": "C:\\Users\\User\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\User\\Desktop\\PVP\\BE\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\arman\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\User\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
