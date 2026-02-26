@@ -4,6 +4,37 @@
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - [Docker](https://www.docker.com/get-started)
+- [Node.js](https://nodejs.org/) v18+ (for the frontend)
+
+## Running the Frontend
+
+The frontend is a React + TypeScript app built with Vite (located in the `FE/` directory).
+
+1. Navigate to the frontend directory:
+   ```bash
+   cd FE
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+   The app will be available at [http://localhost:5173](http://localhost:5173).
+
+4. Build for production:
+   ```bash
+   npm run build
+   ```
+
+5. Preview the production build:
+   ```bash
+   npm run preview
+   ```
 
 ## Database Setup
 
