@@ -13,4 +13,8 @@ public class User
 
     public ICollection<OrganizationalUnitMember> Memberships { get; set; } = new List<OrganizationalUnitMember>();
     public ICollection<OrganizationalUnit> OwnedUnits { get; set; } = new List<OrganizationalUnit>();
+    public ICollection<Board> Boards { get; set; } = new List<Board>();
+    public ICollection<Models.Task> AssignedTasks { get; set; } = new List<Models.Task>();
+    public ICollection<Models.Task> CreatedTasks { get; set; } = new List<Models.Task>();
+    public ICollection<Comment> Comments { get; set; } = new List<Comment>();
 }

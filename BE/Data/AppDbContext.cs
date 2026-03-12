@@ -7,9 +7,12 @@ public class AppDbContext : DbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
+    // User & OU tables
     public DbSet<User> Users => Set<User>();
     public DbSet<OrganizationalUnit> OrganizationalUnits => Set<OrganizationalUnit>();
     public DbSet<OrganizationalUnitMember> OrganizationalUnitMembers => Set<OrganizationalUnitMember>();
+
+    //Board & Task tables
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
