@@ -12,12 +12,21 @@ public class AppDbContext : DbContext
     public DbSet<OrganizationalUnit> OrganizationalUnits => Set<OrganizationalUnit>();
     public DbSet<OrganizationalUnitMember> OrganizationalUnitMembers => Set<OrganizationalUnitMember>();
 
-    //Board & Task tables
+    // Board & Task related tables
+    public DbSet<Board> Boards => Set<Board>();
+    public DbSet<BE.Models.Task> Tasks => Set<BE.Models.Task>();
+    public DbSet<Sprint> Sprints => Set<Sprint>();
+    public DbSet<BE.Models.TaskStatus> TaskStatuses => Set<BE.Models.TaskStatus>();
+    public DbSet<Label> Labels => Set<Label>();
+    public DbSet<LabeledTask> LabeledTasks => Set<LabeledTask>();
+    public DbSet<Comment> Comments => Set<Comment>();
+    public DbSet<Attachment> Attachments => Set<Attachment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
+        // User & OU tables
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -46,6 +55,11 @@ public class AppDbContext : DbContext
                 .WithMany(u => u.OwnedUnits)
                 .HasForeignKey(e => e.OwnerId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Board)
+                .WithMany(b => b.Teams)
+                .HasForeignKey(e => e.BoardId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<OrganizationalUnitMember>(entity =>
@@ -69,6 +83,134 @@ public class AppDbContext : DbContext
             entity.HasOne(e => e.User)
                 .WithMany(u => u.Memberships)
                 .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Board & Task related tables
+        modelBuilder.Entity<Board>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(32);
+
+            entity.HasOne(e => e.Creator)
+                .WithMany(u => u.Boards)
+                .HasForeignKey(e => e.CreatorId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Sprint>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(32);
+
+            entity.HasOne(e => e.Board)
+                .WithMany(b => b.Sprints)
+                .HasForeignKey(e => e.BoardId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<BE.Models.TaskStatus>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(32);
+
+            entity.HasOne(e => e.Board)
+                .WithMany(b => b.TaskStatuses)
+                .HasForeignKey(e => e.BoardId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Label>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(32);
+
+            entity.HasOne(e => e.Board)
+                .WithMany(b => b.Labels)
+                .HasForeignKey(e => e.BoardId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<BE.Models.Task>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(32);
+            entity.Property(e => e.Description).HasMaxLength(255);
+            entity.Property(e => e.StoryPoints);
+            entity.Property(e => e.Priority)
+                .HasConversion<string>()
+                .HasMaxLength(10);
+            entity.Property(e => e.Type)
+                .HasConversion<string>()
+                .HasMaxLength(10);
+
+            entity.HasOne(e => e.Status)
+                .WithMany(ts => ts.Tasks)
+                .HasForeignKey(e => e.StatusId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Assignee)
+                .WithMany(u => u.AssignedTasks)
+                .HasForeignKey(e => e.AssigneeId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            entity.HasOne(e => e.Reporter)
+                .WithMany(u => u.CreatedTasks)
+                .HasForeignKey(e => e.ReporterId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            entity.HasOne(e => e.Sprint)
+                .WithMany(s => s.Tasks)
+                .HasForeignKey(e => e.SprintId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            entity.HasOne(e => e.AssignedTeam)
+                .WithMany(ou => ou.AssignedTasks)
+                .HasForeignKey(e => e.TeamId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<LabeledTask>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.HasIndex(e => new { e.LabelId, e.TaskId }).IsUnique();
+
+            entity.HasOne(e => e.Label)
+                .WithMany(l => l.LabeledTasks)
+                .HasForeignKey(e => e.LabelId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Task)
+                .WithMany(t => t.LabeledTasks)
+                .HasForeignKey(e => e.TaskId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Comment>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Content).IsRequired().HasMaxLength(255);
+
+            entity.HasOne(e => e.Creator)
+                .WithMany(u => u.Comments)
+                .HasForeignKey(e => e.CreatorId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Task)
+                .WithMany(t => t.Comments)
+                .HasForeignKey(e => e.TaskId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Attachment>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Content).IsRequired().HasMaxLength(255);
+
+            entity.HasOne(e => e.Comment)
+                .WithMany(c => c.Attachments)
+                .HasForeignKey(e => e.CommentId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

@@ -7,5 +7,5 @@ public class Label
     public int BoardId { get; set; }
     
     public Board Board { get; set; } = null!;
-    public ICollection<Models.Task> Tasks { get; set; } = new List<Models.Task>();
+    public ICollection<LabeledTask> LabeledTasks { get; set; } = new List<LabeledTask>();
 }

@@ -21,7 +21,7 @@ public class Task
     public OrganizationalUnit? AssignedTeam { get; set; } = null;
     public Priority? Priority { get; set; } = null;
     public Type? Type { get; set; } = null;
-    public ICollection<Label> Labels { get; set; } = new List<Label>();
+    public ICollection<LabeledTasks> LabeledTasks { get; set; } = new List<LabeledTasks>();
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
 }
 
