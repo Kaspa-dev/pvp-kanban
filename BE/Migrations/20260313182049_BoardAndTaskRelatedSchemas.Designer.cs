@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BE.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260313082956_BoardAndTaskRelatedSchemas")]
+    [Migration("20260313182049_BoardAndTaskRelatedSchemas")]
     partial class BoardAndTaskRelatedSchemas
     {
         /// <inheritdoc />
@@ -224,6 +224,12 @@ namespace BE.Migrations
 
                     b.Property<int>("BoardId")
                         .HasColumnType("int");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("Title")
                         .IsRequired()

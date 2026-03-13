@@ -134,6 +134,8 @@ public static class DbSeeder
             var sprint1 = new Sprint
             {
                 Title = "Sprint1",
+                StartDate = DateTime.UtcNow,
+                EndDate = DateTime.UtcNow.AddDays(14),
                 BoardId = board1.Id
             };
 
