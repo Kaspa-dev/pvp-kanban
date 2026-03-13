@@ -26,7 +26,7 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        // User & OU tables
+        // User & OU tables (and Board table)
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -38,6 +38,17 @@ public class AppDbContext : DbContext
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.HasIndex(e => e.Username).IsUnique();
             entity.HasIndex(e => e.Email).IsUnique();
+        });
+
+        modelBuilder.Entity<Board>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(32);
+
+            entity.HasOne(e => e.Creator)
+                .WithMany(u => u.Boards)
+                .HasForeignKey(e => e.CreatorId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<OrganizationalUnit>(entity =>
@@ -86,18 +97,7 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // Board & Task related tables
-        modelBuilder.Entity<Board>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Title).IsRequired().HasMaxLength(32);
-
-            entity.HasOne(e => e.Creator)
-                .WithMany(u => u.Boards)
-                .HasForeignKey(e => e.CreatorId)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
-
+        // Board & Task related tables (except for Board)
         modelBuilder.Entity<Sprint>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -143,6 +143,11 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Type)
                 .HasConversion<string>()
                 .HasMaxLength(10);
+
+            entity.HasOne(e => e.Board)
+                .WithMany(b => b.Backlog)
+                .HasForeignKey(e => e.BoardId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasOne(e => e.Status)
                 .WithMany(ts => ts.Tasks)
