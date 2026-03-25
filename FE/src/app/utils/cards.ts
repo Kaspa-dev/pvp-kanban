@@ -59,9 +59,13 @@ function migrateCard(card: any): Card {
   };
 }
 
+function getCardsStorageKey(boardId: string): string {
+  return `banban_cards_${boardId}`;
+}
+
 // Get cards for a specific board
 export function getBoardCards(boardId: string): Cards {
-  const cardsData = localStorage.getItem(`banban_cards_${boardId}`);
+  const cardsData = localStorage.getItem(getCardsStorageKey(boardId));
   if (!cardsData) {
     return {
       todo: [],
@@ -94,7 +98,27 @@ export function getBoardCards(boardId: string): Cards {
 
 // Save cards for a specific board
 export function saveBoardCards(boardId: string, cards: Cards): void {
-  localStorage.setItem(`banban_cards_${boardId}`, JSON.stringify(cards));
+  localStorage.setItem(getCardsStorageKey(boardId), JSON.stringify(cards));
+}
+
+export function migrateBoardCardsStorage(fromBoardId: string, toBoardId: string): void {
+  if (fromBoardId === toBoardId) {
+    return;
+  }
+
+  const targetKey = getCardsStorageKey(toBoardId);
+  if (localStorage.getItem(targetKey)) {
+    return;
+  }
+
+  const sourceKey = getCardsStorageKey(fromBoardId);
+  const sourceData = localStorage.getItem(sourceKey);
+  if (!sourceData) {
+    return;
+  }
+
+  localStorage.setItem(targetKey, sourceData);
+  localStorage.removeItem(sourceKey);
 }
 
 // Create default demo cards for a new board

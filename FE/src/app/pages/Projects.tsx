@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme, getThemeColors } from '../contexts/ThemeContext';
-import { getUserBoards, createDefaultBoards, Board, updateBoard, deleteBoard, BoardMember } from '../utils/boards';
+import { getUserBoards, createDefaultBoards, Board, updateBoard, deleteBoard, BoardMember, SHARED_DEMO_BOARD_ID } from '../utils/boards';
 import { Plus, Folder, Calendar, CheckSquare, ArrowRight, Settings, LogOut, Edit3, Users, Trash2 } from 'lucide-react';
 import { CreateBoardModal } from '../components/CreateBoardModal';
 import { EditProjectModal } from '../components/EditProjectModal';
@@ -78,7 +78,7 @@ export function Projects() {
   if (!user) return null;
 
   return (
-    <div className={`min-h-screen relative overflow-hidden ${currentTheme.bgSecondary}`}>
+    <div className={`min-h-screen relative overflow-hidden ${currentTheme.bgSecondary} flex flex-col`}>
       {/* Animated Background Shapes */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {/* Subtle gradient orbs */}
@@ -134,7 +134,8 @@ export function Projects() {
       </header>
 
       {/* Main Content */}
-      <main className="relative z-10 max-w-7xl mx-auto px-6 py-12">
+      <main className="relative z-10 flex-1 w-full">
+        <div className="max-w-7xl mx-auto px-6 py-12">
         {/* Welcome Header with gradient background */}
         <div className={`${currentTheme.cardBg} rounded-3xl border ${currentTheme.border} p-10 mb-10 relative overflow-hidden shadow-lg`}>
           {/* Decorative gradient background */}
@@ -227,36 +228,43 @@ export function Projects() {
                 key={board.id}
                 className={`relative ${currentTheme.cardBg} rounded-2xl border-2 ${currentTheme.border} p-6 hover:${currentTheme.primaryBorder} hover:shadow-xl hover:-translate-y-1 transition-all duration-300 text-left group`}
               >
-                {/* Edit Button - Top Right */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEditBoard(board);
-                  }}
-                  className={`absolute top-4 right-4 p-2 ${currentTheme.bgSecondary} rounded-lg hover:${currentTheme.bgTertiary} opacity-0 group-hover:opacity-100 transition-all duration-200 z-10`}
-                  title="Edit Project"
-                >
-                  <Edit3 className={`w-4 h-4 ${currentTheme.textSecondary} hover:${currentTheme.primaryText}`} />
-                </button>
+                {board.id !== SHARED_DEMO_BOARD_ID ? (
+                  <>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditBoard(board);
+                      }}
+                      className={`absolute top-4 right-4 p-2 ${currentTheme.bgSecondary} rounded-lg hover:${currentTheme.bgTertiary} opacity-0 group-hover:opacity-100 transition-all duration-200 z-10`}
+                      title="Edit Project"
+                    >
+                      <Edit3 className={`w-4 h-4 ${currentTheme.textSecondary} hover:${currentTheme.primaryText}`} />
+                    </button>
 
-                {/* Delete Button - Top Right */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setBoardToDelete(board);
-                    setIsDeleteDialogOpen(true);
-                  }}
-                  className={`absolute top-4 right-14 p-2 ${currentTheme.bgSecondary} rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 hover:bg-red-50 dark:hover:bg-red-950/30`}
-                  title="Delete Project"
-                >
-                  <Trash2 className={`w-4 h-4 ${currentTheme.textSecondary} hover:text-red-500 transition-colors`} />
-                </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setBoardToDelete(board);
+                        setIsDeleteDialogOpen(true);
+                      }}
+                      className={`absolute top-4 right-14 p-2 ${currentTheme.bgSecondary} rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 hover:bg-red-50 dark:hover:bg-red-950/30`}
+                      title="Delete Project"
+                    >
+                      <Trash2 className={`w-4 h-4 ${currentTheme.textSecondary} hover:text-red-500 transition-colors`} />
+                    </button>
+                  </>
+                ) : null}
 
                 {/* Click area for selecting project */}
                 <button
                   onClick={() => handleSelectBoard(board.id)}
                   className="w-full text-left"
                 >
+                  {board.id === SHARED_DEMO_BOARD_ID && (
+                    <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold mb-4 bg-gradient-to-r ${currentTheme.primarySoft} ${currentTheme.primaryText} border ${currentTheme.primaryBorder}`}>
+                      Shared live demo
+                    </div>
+                  )}
                   {/* Board Icon/Header */}
                   <div className="flex items-start justify-between mb-4">
                     <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${currentTheme.primary} flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300`}>
@@ -313,6 +321,7 @@ export function Projects() {
             ))}
           </div>
         )}
+        </div>
       </main>
 
       {/* Create Board Modal */}
