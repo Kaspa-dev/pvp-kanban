@@ -1,7 +1,7 @@
-import { X, User, Zap, AlertCircle, Bug, HelpCircle } from "lucide-react";
+import { X, User, Zap, CalendarDays, HelpCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
-import { STORY_POINTS_OPTIONS, STORY_POINTS_MIN, STORY_POINTS_MAX } from "../utils/gamification";
+import { STORY_POINTS_OPTIONS } from "../utils/gamification";
 import { LabelSelector } from "./LabelSelector";
 import { Label } from "../utils/labels";
 import { Priority, TaskType } from "../utils/cards";
@@ -21,6 +21,7 @@ interface AddCardModalProps {
       color: string;
     };
     storyPoints?: number;
+    dueDate?: string | null;
     priority?: Priority;
     taskType?: TaskType;
   }) => void;
@@ -29,13 +30,13 @@ interface AddCardModalProps {
   availableAssignees: { name: string; color: string }[];
 }
 
-export function AddCardModal({ 
-  isOpen, 
-  onClose, 
-  onAdd, 
-  availableLabels, 
+export function AddCardModal({
+  isOpen,
+  onClose,
+  onAdd,
+  availableLabels,
   onCreateLabel,
-  availableAssignees 
+  availableAssignees,
 }: AddCardModalProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
@@ -46,6 +47,7 @@ export function AddCardModal({
   const [selectedAssignee, setSelectedAssignee] = useState(availableAssignees[0]);
   const [showError, setShowError] = useState(false);
   const [storyPoints, setStoryPoints] = useState<number | undefined>(undefined);
+  const [dueDate, setDueDate] = useState("");
   const [priority, setPriority] = useState<Priority | undefined>(undefined);
   const [taskType, setTaskType] = useState<TaskType | undefined>(undefined);
 
@@ -58,7 +60,6 @@ export function AddCardModal({
 
     if (isOpen) {
       document.addEventListener("keydown", handleEscape);
-      // Prevent body scroll when modal is open
       document.body.style.overflow = "hidden";
     }
 
@@ -71,9 +72,21 @@ export function AddCardModal({
 
   if (!isOpen) return null;
 
+  const resetForm = () => {
+    setTitle("");
+    setDescription("");
+    setSelectedLabelIds([]);
+    setSelectedAssignee(availableAssignees[0]);
+    setShowError(false);
+    setStoryPoints(undefined);
+    setDueDate("");
+    setPriority(undefined);
+    setTaskType(undefined);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!title.trim()) {
       setShowError(true);
       return;
@@ -86,24 +99,13 @@ export function AddCardModal({
       labelIds: selectedLabelIds,
       assignee: selectedAssignee,
       storyPoints,
+      dueDate: dueDate || null,
       priority,
       taskType,
     });
 
-    // Reset form
     resetForm();
     onClose();
-  };
-
-  const resetForm = () => {
-    setTitle("");
-    setDescription("");
-    setSelectedLabelIds([]);
-    setSelectedAssignee(availableAssignees[0]);
-    setShowError(false);
-    setStoryPoints(undefined);
-    setPriority(undefined);
-    setTaskType(undefined);
   };
 
   const handleCancel = () => {
@@ -116,16 +118,14 @@ export function AddCardModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center animate-in fade-in duration-200">
-      {/* Overlay */}
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={handleCancel}
       />
 
-      {/* Modal */}
       <div className={`relative ${currentTheme.cardBg} rounded-3xl shadow-2xl w-full max-w-lg p-8 mx-4 border-2 ${currentTheme.border} animate-in zoom-in-95 duration-200`}>
         <div className="flex items-center justify-between mb-6">
-          <h2 className={`text-2xl font-bold ${currentTheme.text}`}>Add new task ✨</h2>
+          <h2 className={`text-2xl font-bold ${currentTheme.text}`}>Add new task</h2>
           <button
             onClick={handleCancel}
             className={`${currentTheme.textMuted} hover:${currentTheme.textSecondary} transition-colors hover:${currentTheme.bgSecondary} rounded-full p-2`}
@@ -135,7 +135,6 @@ export function AddCardModal({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Task title */}
           <div>
             <label htmlFor="title" className={`block text-sm font-semibold ${currentTheme.textSecondary} mb-2`}>
               Task title <span className="text-red-500">*</span>
@@ -161,7 +160,6 @@ export function AddCardModal({
             )}
           </div>
 
-          {/* Description */}
           <div>
             <label htmlFor="description" className={`block text-sm font-semibold ${currentTheme.textSecondary} mb-2`}>
               Description <span className={`${currentTheme.textMuted} font-normal`}>(optional)</span>
@@ -176,7 +174,6 @@ export function AddCardModal({
             />
           </div>
 
-          {/* Labels */}
           <LabelSelector
             availableLabels={availableLabels}
             selectedLabelIds={selectedLabelIds}
@@ -184,7 +181,6 @@ export function AddCardModal({
             onCreateLabel={onCreateLabel}
           />
 
-          {/* Assignee */}
           <div>
             <label htmlFor="assignee" className={`block text-sm font-semibold ${currentTheme.textSecondary} mb-2`}>
               Assignee
@@ -209,13 +205,39 @@ export function AddCardModal({
             </div>
           </div>
 
-          {/* Story Points */}
+          <div>
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <label htmlFor="dueDate" className={`text-sm font-semibold ${currentTheme.textSecondary}`}>
+                Due date
+              </label>
+              {dueDate && (
+                <button
+                  type="button"
+                  onClick={() => setDueDate("")}
+                  className={`text-xs font-medium ${currentTheme.primaryText} hover:underline`}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <div className="relative">
+              <CalendarDays className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${currentTheme.textMuted}`} />
+              <input
+                id="dueDate"
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className={`w-full pl-10 pr-4 py-3 border-2 ${currentTheme.inputBorder} ${currentTheme.inputBg} ${currentTheme.text} rounded-xl focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent transition-all`}
+              />
+            </div>
+          </div>
+
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <label className="text-sm font-semibold text-gray-700">
+              <label className="text-sm font-semibold text-gray-700 dark:text-gray-200">
                 Story Points
               </label>
-              <Tooltip content="Estimate the complexity of the task (1-100). Higher points = more complex work.">
+              <Tooltip content="Estimate the complexity of the task. Higher points mean more complex work.">
                 <HelpCircle className="w-3.5 h-3.5 text-gray-400 cursor-help" />
               </Tooltip>
             </div>
@@ -230,7 +252,7 @@ export function AddCardModal({
                     className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                       isSelected
                         ? `bg-gradient-to-r ${currentTheme.primary} text-white shadow-md`
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
                     }`}
                   >
                     {points}
@@ -240,7 +262,6 @@ export function AddCardModal({
             </div>
           </div>
 
-          {/* Priority */}
           <div>
             <div className="flex items-center gap-2 mb-2">
               <label className={`text-sm font-semibold ${currentTheme.textSecondary}`}>
@@ -251,26 +272,26 @@ export function AddCardModal({
               </Tooltip>
             </div>
             <div className="flex flex-wrap gap-2">
-              {priorityOptions.map((p) => {
-                const isSelected = priority === p;
-                const priorityConfig = PRIORITY_COLORS[p];
-                // For critical priority, text should be white in light mode, black in dark mode
-                const textColor = isSelected && p === 'critical' 
-                  ? (isDarkMode ? 'text-gray-900' : 'text-white')
-                  : isSelected 
-                    ? 'text-white'
-                    : '';
+              {priorityOptions.map((value) => {
+                const isSelected = priority === value;
+                const priorityConfig = PRIORITY_COLORS[value];
+                const textColor = isSelected && value === "critical"
+                  ? (isDarkMode ? "text-gray-900" : "text-white")
+                  : isSelected
+                    ? "text-white"
+                    : "";
+
                 return (
                   <button
-                    key={p}
+                    key={value}
                     type="button"
-                    onClick={() => setPriority(isSelected ? undefined : p)}
+                    onClick={() => setPriority(isSelected ? undefined : value)}
                     className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
                       isSelected
                         ? `${textColor} shadow-md`
-                        : `${isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-700'} hover:${isDarkMode ? 'bg-gray-600' : 'bg-gray-200'}`
+                        : `${isDarkMode ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`
                     }`}
-                    style={isSelected ? { backgroundColor: getPriorityColor(p, isDarkMode) } : undefined}
+                    style={isSelected ? { backgroundColor: getPriorityColor(value, isDarkMode) } : undefined}
                   >
                     <span>{priorityConfig.emoji}</span>
                     <span>{priorityConfig.label}</span>
@@ -280,38 +301,37 @@ export function AddCardModal({
             </div>
           </div>
 
-          {/* Task Type */}
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <label className="text-sm font-semibold text-gray-700">
+              <label className="text-sm font-semibold text-gray-700 dark:text-gray-200">
                 Task Type
               </label>
-              <Tooltip content="Defines the nature of the work: Story (feature), Task (work item), Bug (fix), or Spike (research).">
+              <Tooltip content="Defines the nature of the work: Story, Task, Bug, or Spike.">
                 <HelpCircle className="w-3.5 h-3.5 text-gray-400 cursor-help" />
               </Tooltip>
             </div>
             <div className="flex flex-wrap gap-2">
-              {taskTypeOptions.map((t) => {
-                const isSelected = taskType === t;
+              {taskTypeOptions.map((value) => {
+                const isSelected = taskType === value;
+
                 return (
                   <button
-                    key={t}
+                    key={value}
                     type="button"
-                    onClick={() => setTaskType(isSelected ? undefined : t)}
+                    onClick={() => setTaskType(isSelected ? undefined : value)}
                     className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                       isSelected
                         ? `bg-gradient-to-r ${currentTheme.primary} text-white shadow-md`
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
                     }`}
                   >
-                    {t}
+                    {value.charAt(0).toUpperCase() + value.slice(1)}
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Actions */}
           <div className="flex gap-3 pt-3">
             <button
               type="button"
@@ -322,7 +342,7 @@ export function AddCardModal({
             </button>
             <button
               type="submit"
-              className={`flex-1 px-5 py-3 bg-gradient-to-r ${currentTheme.primary} text-white font-semibold rounded-xl hover:${currentTheme.primaryHover} transition-all hover:scale-105 shadow-lg`}
+              className={`flex-1 px-5 py-3 bg-gradient-to-r ${currentTheme.primary} text-white font-semibold rounded-xl transition-all hover:scale-105 shadow-lg`}
             >
               Create task
             </button>

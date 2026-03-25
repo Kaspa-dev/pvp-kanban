@@ -87,6 +87,7 @@ export function KanbanColumn({
                   availableAssignees={availableAssignees}
                   labels={labels}
                   storyPoints={card.storyPoints}
+                  dueDate={card.dueDate}
                   priority={card.priority}
                   taskType={card.taskType}
                 />

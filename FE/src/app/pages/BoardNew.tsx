@@ -10,10 +10,13 @@ import { ListView } from "../components/ListView";
 import { BacklogView2 } from "../components/BacklogView2";
 import { HistoryView } from "../components/HistoryView";
 import { SprintPlanningModal } from "../components/SprintPlanningModal";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "../components/ui/sheet";
+import { useIsMobile } from "../components/ui/use-mobile";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
+import { endOfWeek, isWithinInterval, parseISO, startOfWeek } from "date-fns";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { 
@@ -34,14 +37,11 @@ import {
   deleteLabel,
   createDefaultLabels 
 } from "../utils/labels";
-import { 
-  Sprint, 
-  getActiveSprint, 
+import {
+  Sprint,
+  getActiveSprint,
   getPlannedSprint,
-  getCompletedSprints,
-  createSprint as createSprintUtil,
   startSprint as startSprintUtil,
-  completeSprint
 } from "../utils/sprints";
 import { Play, Calendar, Target } from "lucide-react";
 
@@ -51,12 +51,14 @@ export function Board() {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const { boardId } = useParams<{ boardId: string }>();
+  const isMobile = useIsMobile();
   
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isSprintPlanningOpen, setIsSprintPlanningOpen] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Card | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; cardId: string; title: string }>({
     isOpen: false,
@@ -197,47 +199,70 @@ export function Board() {
     ];
   }, [cards]);
 
-  // Get backlog cards (no sprint assigned)
-  const backlogCards = useMemo(() => {
-    return allCards.filter(card => !card.sprintId);
-  }, [allCards]);
+  const matchesCardFilters = (card: Card) => {
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      const matchesSearch =
+        card.title.toLowerCase().includes(query) ||
+        (card.labelIds || []).some((labelId) => {
+          const label = labels.find((item) => item.id === labelId);
+          return label?.name.toLowerCase().includes(query);
+        });
 
-  // Get planned sprint cards
+      if (!matchesSearch) {
+        return false;
+      }
+    }
+
+    if (selectedLabelIds.length > 0) {
+      const matchesLabels = (card.labelIds || []).some((labelId) => selectedLabelIds.includes(labelId));
+      if (!matchesLabels) {
+        return false;
+      }
+    }
+
+    if (activeFilter === "assigned" && card.assignee?.name !== userProgress.username) {
+      return false;
+    }
+
+    if (activeFilter === "due") {
+      if (!card.dueDate) {
+        return false;
+      }
+
+      const dueDate = parseISO(card.dueDate);
+      const weekInterval = {
+        start: startOfWeek(new Date(), { weekStartsOn: 1 }),
+        end: endOfWeek(new Date(), { weekStartsOn: 1 }),
+      };
+
+      if (!isWithinInterval(dueDate, weekInterval)) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const filteredAllCards = useMemo(() => {
+    return allCards.filter(matchesCardFilters);
+  }, [allCards, searchQuery, selectedLabelIds, activeFilter, userProgress.username, labels]);
+
+  const backlogCards = useMemo(() => {
+    return filteredAllCards.filter(card => !card.sprintId);
+  }, [filteredAllCards]);
+
   const plannedSprintCards = useMemo(() => {
     if (!plannedSprint) return [];
-    return allCards.filter(card => card.sprintId === plannedSprint.id);
-  }, [allCards, plannedSprint]);
+    return filteredAllCards.filter(card => card.sprintId === plannedSprint.id);
+  }, [filteredAllCards, plannedSprint]);
 
-  // Get active sprint cards (for Board and List views)
   const activeSprintCards = useMemo(() => {
     if (!activeSprint) {
       return { todo: [], inProgress: [], inReview: [], done: [] };
     }
-    
-    let sprintCards = allCards.filter(card => card.sprintId === activeSprint.id);
 
-    // Apply filters
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      sprintCards = sprintCards.filter(
-        (card) =>
-          card.title.toLowerCase().includes(query) ||
-          (card.labelIds || []).some((labelId) => {
-            const label = labels.find(l => l.id === labelId);
-            return label?.name.toLowerCase().includes(query);
-          })
-      );
-    }
-
-    if (selectedLabelIds.length > 0) {
-      sprintCards = sprintCards.filter((card) =>
-        (card.labelIds || []).some((labelId) => selectedLabelIds.includes(labelId))
-      );
-    }
-
-    if (activeFilter === "assigned") {
-      sprintCards = sprintCards.filter((card) => card.assignee.name === userProgress.username);
-    }
+    const sprintCards = filteredAllCards.filter(card => card.sprintId === activeSprint.id);
 
     return {
       todo: sprintCards.filter((c) => c.status === "todo"),
@@ -245,7 +270,7 @@ export function Board() {
       inReview: sprintCards.filter((c) => c.status === "inReview"),
       done: sprintCards.filter((c) => c.status === "done"),
     };
-  }, [allCards, activeSprint, searchQuery, selectedLabelIds, activeFilter, userProgress.username, labels]);
+  }, [filteredAllCards, activeSprint]);
 
   // Card drag and drop handler
   const handleCardDrop = (cardId: string, fromColumnId: string, toColumnId: string) => {
@@ -300,6 +325,7 @@ export function Board() {
     storyPoints?: number;
     priority?: Priority;
     taskType?: TaskType;
+    dueDate?: string | null;
   }) => {
     const card: Card = {
       id: Date.now().toString(),
@@ -311,6 +337,7 @@ export function Board() {
       storyPoints: newCard.storyPoints,
       priority: newCard.priority,
       taskType: newCard.taskType,
+      dueDate: newCard.dueDate || null,
       sprintId: null, // New tasks go to backlog by default
     };
 
@@ -394,6 +421,7 @@ export function Board() {
     storyPoints?: number;
     priority?: Priority;
     taskType?: TaskType;
+    dueDate?: string | null;
   }) => {
     setCards((prevCards) => {
       const newCards = { ...prevCards };
@@ -583,23 +611,70 @@ export function Board() {
   return (
     <DndProvider backend={HTML5Backend}>
       <div className={`size-full flex ${isDarkMode ? 'bg-[#16181d]' : 'bg-gray-50'}`}>
-        {/* Left Sidebar */}
-        <Sidebar 
-          activeFilter={activeFilter} 
-          onFilterChange={setActiveFilter}
-          onCreateTask={() => setIsModalOpen(true)}
-          selectedLabels={selectedLabelIds}
-          onLabelsChange={setSelectedLabelIds}
-          onProfileClick={() => setIsProfileOpen(true)}
-          onLogout={() => {
-            logout();
-            navigate('/login');
-          }}
-          onBack={() => navigate('/app')}
-          boardName={currentBoard?.name}
-          userProgress={userProgress}
-          labels={labels}
-        />
+        {!isMobile && (
+          <Sidebar 
+            activeFilter={activeFilter} 
+            onFilterChange={setActiveFilter}
+            onCreateTask={() => setIsModalOpen(true)}
+            selectedLabels={selectedLabelIds}
+            onLabelsChange={setSelectedLabelIds}
+            onProfileClick={() => setIsProfileOpen(true)}
+            onLogout={() => {
+              logout();
+              navigate('/login');
+            }}
+            onBack={() => navigate('/app')}
+            boardName={currentBoard?.name}
+            userProgress={userProgress}
+            labels={labels}
+          />
+        )}
+
+        {isMobile && (
+          <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
+            <SheetContent
+              side="left"
+              className={`w-full max-w-none p-0 ${currentTheme.cardBg} ${currentTheme.border}`}
+            >
+              <SheetHeader className="sr-only">
+                <SheetTitle>Board menu</SheetTitle>
+                <SheetDescription>
+                  Open quick filters, labels, and account actions.
+                </SheetDescription>
+              </SheetHeader>
+              <Sidebar 
+                activeFilter={activeFilter} 
+                onFilterChange={(filter) => {
+                  setActiveFilter(filter);
+                  setIsMobileSidebarOpen(false);
+                }}
+                onCreateTask={() => {
+                  setIsMobileSidebarOpen(false);
+                  setIsModalOpen(true);
+                }}
+                selectedLabels={selectedLabelIds}
+                onLabelsChange={setSelectedLabelIds}
+                onProfileClick={() => {
+                  setIsMobileSidebarOpen(false);
+                  setIsProfileOpen(true);
+                }}
+                onLogout={() => {
+                  setIsMobileSidebarOpen(false);
+                  logout();
+                  navigate('/login');
+                }}
+                onBack={() => {
+                  setIsMobileSidebarOpen(false);
+                  navigate('/app');
+                }}
+                boardName={currentBoard?.name}
+                userProgress={userProgress}
+                labels={labels}
+                className="w-full min-h-full border-r-0"
+              />
+            </SheetContent>
+          </Sheet>
+        )}
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col min-w-0">
@@ -611,6 +686,8 @@ export function Board() {
             onSearchChange={setSearchQuery}
             onOpenSettings={() => setIsSettingsOpen(true)}
             onProfileClick={() => setIsProfileOpen(true)}
+            onOpenMenu={() => setIsMobileSidebarOpen(true)}
+            showMenuButton={isMobile}
             userProgress={userProgress}
           />
 
@@ -623,7 +700,7 @@ export function Board() {
                   <div className={`${currentTheme.bgSecondary} border-b ${currentTheme.border} px-8 py-4`}>
                     <div className="flex items-center justify-between max-w-[2000px] mx-auto">
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                        <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${currentTheme.primary} flex items-center justify-center`}>
                           <Play className="w-5 h-5 text-white" />
                         </div>
                         <div>
@@ -700,8 +777,8 @@ export function Board() {
               ) : (
                 <div className={`flex-1 flex items-center justify-center ${currentTheme.bgSecondary}`}>
                   <div className="text-center max-w-md px-6">
-                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 opacity-20 flex items-center justify-center mx-auto mb-6">
-                      <Play className="w-10 h-10 text-purple-500" />
+                    <div className={`w-20 h-20 rounded-2xl ${currentTheme.primarySoftStrong} flex items-center justify-center mx-auto mb-6`}>
+                      <Play className={`w-10 h-10 ${currentTheme.primaryText}`} />
                     </div>
                     <h2 className={`text-2xl font-bold ${currentTheme.text} mb-3`}>No Active Sprint</h2>
                     <p className={`text-base ${currentTheme.textMuted} mb-8`}>
@@ -709,7 +786,7 @@ export function Board() {
                     </p>
                     <button
                       onClick={() => setView('backlog')}
-                      className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-lg hover:scale-[1.02] hover:shadow-lg transition-all"
+                      className={`px-6 py-3 bg-gradient-to-r ${currentTheme.primary} text-white font-bold rounded-lg hover:scale-[1.02] hover:shadow-lg transition-all`}
                     >
                       Go to Backlog
                     </button>
@@ -734,8 +811,8 @@ export function Board() {
               ) : (
                 <div className={`flex-1 flex items-center justify-center ${currentTheme.bgSecondary}`}>
                   <div className="text-center max-w-md px-6">
-                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 opacity-20 flex items-center justify-center mx-auto mb-6">
-                      <Play className="w-10 h-10 text-purple-500" />
+                    <div className={`w-20 h-20 rounded-2xl ${currentTheme.primarySoftStrong} flex items-center justify-center mx-auto mb-6`}>
+                      <Play className={`w-10 h-10 ${currentTheme.primaryText}`} />
                     </div>
                     <h2 className={`text-2xl font-bold ${currentTheme.text} mb-3`}>No Active Sprint</h2>
                     <p className={`text-base ${currentTheme.textMuted} mb-8`}>
@@ -743,7 +820,7 @@ export function Board() {
                     </p>
                     <button
                       onClick={() => setView('backlog')}
-                      className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-lg hover:scale-[1.02] hover:shadow-lg transition-all"
+                      className={`px-6 py-3 bg-gradient-to-r ${currentTheme.primary} text-white font-bold rounded-lg hover:scale-[1.02] hover:shadow-lg transition-all`}
                     >
                       Go to Backlog
                     </button>
@@ -776,7 +853,7 @@ export function Board() {
           {/* History View */}
           {view === "history" && (
             <HistoryView
-              cards={allCards}
+              cards={filteredAllCards}
               onAssigneeChange={handleAssigneeChange}
               onDelete={handleDeleteRequest}
               onEdit={handleEditTask}

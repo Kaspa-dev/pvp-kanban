@@ -78,7 +78,7 @@ export function Register() {
       } else {
         setErrors({ general: result.error || 'Registration failed' });
       }
-    } catch (error) {
+    } catch {
       setErrors({ general: 'An unexpected error occurred' });
     } finally {
       setIsLoading(false);
@@ -88,7 +88,6 @@ export function Register() {
   return (
     <div className={`min-h-screen ${t.bgSecondary} flex items-center justify-center px-6 py-12`}>
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="flex justify-center mb-8">
           <Link to="/">
             <BanBanLogo size="lg" />
@@ -96,7 +95,6 @@ export function Register() {
         </div>
         <p className={`${t.textSecondary} text-center mb-8`}>Create your account and start leveling up.</p>
 
-        {/* Register Form */}
         <div className={`${t.cardBg} rounded-2xl border-2 ${t.border} shadow-lg p-8`}>
           {errors.general && (
             <div className={`mb-6 p-4 ${t.isDark ? 'bg-red-950/30' : 'bg-red-50'} border-2 ${t.isDark ? 'border-red-800' : 'border-red-200'} rounded-xl flex items-start gap-3`}>
@@ -106,7 +104,6 @@ export function Register() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Name */}
             <div>
               <label htmlFor="name" className={`block text-sm font-semibold ${t.text} mb-2`}>
                 Name
@@ -129,7 +126,6 @@ export function Register() {
               )}
             </div>
 
-            {/* Email */}
             <div>
               <label htmlFor="email" className={`block text-sm font-semibold ${t.text} mb-2`}>
                 Email
@@ -152,7 +148,6 @@ export function Register() {
               )}
             </div>
 
-            {/* Password */}
             <div>
               <label htmlFor="password" className={`block text-sm font-semibold ${t.text} mb-2`}>
                 Password
@@ -167,7 +162,7 @@ export function Register() {
                   className={`w-full pl-11 pr-4 py-3 border-2 ${
                     errors.password ? 'border-red-300' : t.border
                   } ${t.inputBg} ${t.text} rounded-xl focus:outline-none focus:ring-2 ${t.ring} focus:border-transparent transition-all`}
-                  placeholder="••••••••"
+                  placeholder="Create a password"
                 />
               </div>
               {errors.password && (
@@ -175,7 +170,6 @@ export function Register() {
               )}
             </div>
 
-            {/* Confirm Password */}
             <div>
               <label htmlFor="confirmPassword" className={`block text-sm font-semibold ${t.text} mb-2`}>
                 Confirm Password
@@ -190,7 +184,7 @@ export function Register() {
                   className={`w-full pl-11 pr-4 py-3 border-2 ${
                     errors.confirmPassword ? 'border-red-300' : t.border
                   } ${t.inputBg} ${t.text} rounded-xl focus:outline-none focus:ring-2 ${t.ring} focus:border-transparent transition-all`}
-                  placeholder="••••••••"
+                  placeholder="Confirm your password"
                 />
               </div>
               {errors.confirmPassword && (
@@ -198,7 +192,6 @@ export function Register() {
               )}
             </div>
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
@@ -208,7 +201,6 @@ export function Register() {
             </button>
           </form>
 
-          {/* Login link */}
           <div className="mt-6 text-center">
             <p className={`${t.textSecondary} text-sm`}>
               Already have an account?{' '}
@@ -222,10 +214,9 @@ export function Register() {
           </div>
         </div>
 
-        {/* Back to home */}
         <div className="mt-6 text-center">
           <Link to="/" className={`text-sm ${t.textSecondary} hover:${t.text} transition-colors`}>
-            ← Back to home
+            Back to home
           </Link>
         </div>
       </div>

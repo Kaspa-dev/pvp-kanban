@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { useTheme, getThemeColors } from '../contexts/ThemeContext';
 import { BanBanLogo } from '../components/BanBanLogo';
-import { Mail, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Mail, CheckCircle2 } from 'lucide-react';
 
 export function ForgotPassword() {
   const { theme, isDarkMode } = useTheme();
@@ -32,7 +32,6 @@ export function ForgotPassword() {
       return;
     }
 
-    // Mock submission - in real app would send reset email
     setIsSubmitted(true);
   };
 
@@ -40,14 +39,12 @@ export function ForgotPassword() {
     return (
       <div className={`min-h-screen ${t.bgSecondary} flex items-center justify-center px-6 py-12`}>
         <div className="w-full max-w-md">
-          {/* Logo */}
           <div className="flex justify-center mb-8">
             <Link to="/">
               <BanBanLogo size="lg" />
             </Link>
           </div>
 
-          {/* Success Message */}
           <div className={`${t.cardBg} rounded-2xl border-2 ${t.border} shadow-lg p-8 text-center`}>
             <div className={`w-16 h-16 bg-gradient-to-r ${t.primary} rounded-full flex items-center justify-center mx-auto mb-6`}>
               <CheckCircle2 className="w-8 h-8 text-white" />
@@ -74,7 +71,6 @@ export function ForgotPassword() {
   return (
     <div className={`min-h-screen ${t.bgSecondary} flex items-center justify-center px-6 py-12`}>
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <Link to="/" className="mb-2">
             <BanBanLogo size="lg" />
@@ -82,14 +78,12 @@ export function ForgotPassword() {
           <p className={`${t.textSecondary} text-center`}>Reset your password</p>
         </div>
 
-        {/* Forgot Password Form */}
         <div className={`${t.cardBg} rounded-2xl border-2 ${t.border} shadow-lg p-8`}>
           <p className={`${t.textSecondary} text-sm mb-6`}>
             Enter your email address and we'll send you instructions to reset your password.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Email */}
             <div>
               <label htmlFor="email" className={`block text-sm font-semibold ${t.text} mb-2`}>
                 Email
@@ -112,7 +106,6 @@ export function ForgotPassword() {
               )}
             </div>
 
-            {/* Submit Button */}
             <button
               type="submit"
               className={`w-full py-3 bg-gradient-to-r ${t.primary} text-white font-bold rounded-xl hover:scale-105 transition-all shadow-lg`}
@@ -121,21 +114,19 @@ export function ForgotPassword() {
             </button>
           </form>
 
-          {/* Back to login */}
           <div className="mt-6 text-center">
             <Link
               to="/login"
               className={`text-sm font-medium ${t.primaryText} hover:underline`}
             >
-              ← Back to login
+              Back to login
             </Link>
           </div>
         </div>
 
-        {/* Back to home */}
         <div className="mt-6 text-center">
           <Link to="/" className={`text-sm ${t.textSecondary} hover:${t.text} transition-colors`}>
-            ← Back to home
+            Back to home
           </Link>
         </div>
       </div>

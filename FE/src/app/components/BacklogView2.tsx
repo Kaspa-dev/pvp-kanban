@@ -46,14 +46,12 @@ export function BacklogView2({
   return (
     <div className={`${currentTheme.bgSecondary} h-full overflow-auto`}>
       <div className="w-full max-w-[1400px] mx-auto px-6 py-8 space-y-8">
-        
-        {/* Page Header */}
         <div>
           <div className="flex items-center justify-between mb-2">
             <h1 className={`text-3xl font-bold ${currentTheme.text}`}>Backlog</h1>
             <button
               onClick={onCreateTask}
-              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-lg hover:scale-[1.02] hover:shadow-lg transition-all"
+              className={`flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r ${currentTheme.primary} text-white font-semibold rounded-lg hover:scale-[1.02] hover:shadow-lg transition-all`}
             >
               <Plus className="w-5 h-5" />
               New Task
@@ -64,32 +62,30 @@ export function BacklogView2({
           </p>
         </div>
 
-        {/* Sprint Planning Section */}
         {!activeSprint && (
           <div
             className={`${currentTheme.cardBg} rounded-xl border-2 ${
-              plannedSprint ? 'border-purple-400 dark:border-purple-600' : currentTheme.border
+              plannedSprint ? currentTheme.primaryBorder : currentTheme.border
             } overflow-hidden`}
           >
-            {/* Sprint Header */}
             <div className={`px-6 py-4 border-b ${currentTheme.border} ${
-              plannedSprint ? 'bg-gradient-to-r from-purple-50/50 to-pink-50/50 dark:from-purple-950/30 dark:to-pink-950/30' : currentTheme.bgSecondary
+              plannedSprint ? `bg-gradient-to-r ${currentTheme.primarySoft}` : currentTheme.bgSecondary
             }`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-lg ${
-                    plannedSprint ? 'bg-gradient-to-br from-purple-500 to-pink-500' : currentTheme.bgTertiary
+                    plannedSprint ? `bg-gradient-to-br ${currentTheme.primary}` : currentTheme.bgTertiary
                   } flex items-center justify-center`}>
                     <Target className={`w-5 h-5 ${plannedSprint ? 'text-white' : currentTheme.textMuted}`} />
                   </div>
                   <div>
                     <h2 className={`text-lg font-bold ${currentTheme.text}`}>
-                      {plannedSprint ? plannedSprint.name : 'Sprint Planning'}
+                      {plannedSprint ? plannedSprint.name : "Sprint Planning"}
                     </h2>
                     <p className={`text-sm ${currentTheme.textMuted}`}>
                       {plannedSprint
-                        ? `${sprintCards.length} tasks · ${sprintPoints} story points`
-                        : 'No sprint created yet'}
+                        ? `${sprintCards.length} tasks - ${sprintPoints} story points`
+                        : "No sprint created yet"}
                     </p>
                   </div>
                 </div>
@@ -97,7 +93,7 @@ export function BacklogView2({
                   <button
                     onClick={onStartSprint}
                     disabled={sprintCards.length === 0}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-lg hover:scale-[1.02] hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className={`flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r ${currentTheme.primary} text-white font-bold rounded-lg hover:scale-[1.02] hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
                     <Play className="w-5 h-5" />
                     Start Sprint
@@ -105,7 +101,7 @@ export function BacklogView2({
                 ) : (
                   <button
                     onClick={onCreateSprint}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-lg hover:scale-[1.02] hover:shadow-lg transition-all"
+                    className={`flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r ${currentTheme.primary} text-white font-bold rounded-lg hover:scale-[1.02] hover:shadow-lg transition-all`}
                   >
                     <Plus className="w-5 h-5" />
                     Create Sprint
@@ -114,22 +110,21 @@ export function BacklogView2({
               </div>
             </div>
 
-            {/* Sprint Details */}
             {plannedSprint && (
               <div className={`px-6 py-4 border-b ${currentTheme.border} ${currentTheme.bgSecondary}`}>
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-6 flex-wrap">
                   <div className="flex items-center gap-2">
                     <Calendar className={`w-4 h-4 ${currentTheme.textMuted}`} />
                     <span className={`text-sm ${currentTheme.textSecondary}`}>
-                      {new Date(plannedSprint.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      {' - '}
-                      {new Date(plannedSprint.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {new Date(plannedSprint.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      {" - "}
+                      {new Date(plannedSprint.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckSquare className={`w-4 h-4 ${currentTheme.textMuted}`} />
                     <span className={`text-sm ${currentTheme.textSecondary}`}>
-                      {sprintCards.length} {sprintCards.length === 1 ? 'task' : 'tasks'}
+                      {sprintCards.length} {sprintCards.length === 1 ? "task" : "tasks"}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -142,7 +137,6 @@ export function BacklogView2({
               </div>
             )}
 
-            {/* Sprint Cards */}
             {plannedSprint && (
               <div className="p-6">
                 {sprintCards.length === 0 ? (
@@ -171,6 +165,7 @@ export function BacklogView2({
                           availableAssignees={availableAssignees}
                           labels={labels}
                           storyPoints={card.storyPoints}
+                          dueDate={card.dueDate}
                           priority={card.priority}
                           taskType={card.taskType}
                         />
@@ -189,11 +184,10 @@ export function BacklogView2({
           </div>
         )}
 
-        {/* Active Sprint Notice */}
         {activeSprint && (
           <div className={`${currentTheme.cardBg} rounded-xl border ${currentTheme.border} p-6`}>
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+              <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${currentTheme.primary} flex items-center justify-center`}>
                 <Play className="w-6 h-6 text-white" />
               </div>
               <div className="flex-1">
@@ -208,7 +202,6 @@ export function BacklogView2({
           </div>
         )}
 
-        {/* Backlog Section */}
         <div className={`${currentTheme.cardBg} rounded-xl border ${currentTheme.border} overflow-hidden`}>
           <div className={`px-6 py-4 border-b ${currentTheme.border} ${currentTheme.bgSecondary}`}>
             <div className="flex items-center justify-between">
@@ -219,7 +212,7 @@ export function BacklogView2({
                 <div>
                   <h2 className={`text-lg font-bold ${currentTheme.text}`}>Backlog</h2>
                   <p className={`text-sm ${currentTheme.textMuted}`}>
-                    {backlogCards.length} unscheduled {backlogCards.length === 1 ? 'task' : 'tasks'}
+                    {backlogCards.length} unscheduled {backlogCards.length === 1 ? "task" : "tasks"}
                   </p>
                 </div>
               </div>
@@ -238,7 +231,7 @@ export function BacklogView2({
                 </p>
                 <button
                   onClick={onCreateTask}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-lg hover:scale-[1.02] hover:shadow-lg transition-all"
+                  className={`inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r ${currentTheme.primary} text-white font-bold rounded-lg hover:scale-[1.02] hover:shadow-lg transition-all`}
                 >
                   <Plus className="w-5 h-5" />
                   Create First Task
@@ -260,13 +253,14 @@ export function BacklogView2({
                       availableAssignees={availableAssignees}
                       labels={labels}
                       storyPoints={card.storyPoints}
+                      dueDate={card.dueDate}
                       priority={card.priority}
                       taskType={card.taskType}
                     />
                     {plannedSprint && !activeSprint && (
                       <button
                         onClick={() => onAddToSprint(card.id)}
-                        className={`absolute -right-2 -top-2 px-3 py-1.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:shadow-lg hover:scale-105`}
+                        className={`absolute -right-2 -top-2 px-3 py-1.5 bg-gradient-to-r ${currentTheme.primary} text-white rounded-lg text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:shadow-lg hover:scale-105`}
                       >
                         Add to Sprint
                       </button>
