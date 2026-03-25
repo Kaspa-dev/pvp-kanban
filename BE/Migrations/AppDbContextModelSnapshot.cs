@@ -19,10 +19,129 @@ namespace BE.Migrations
                 .HasAnnotation("ProductVersion", "10.0.3")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
+            modelBuilder.Entity("BE.Models.Attachment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<int>("CommentId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<int?>("TaskStatusId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CommentId");
+
+                    b.HasIndex("TaskStatusId");
+
+                    b.ToTable("Attachments");
+                });
+
+            modelBuilder.Entity("BE.Models.Board", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<int>("CreatorId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatorId");
+
+                    b.ToTable("Boards");
+                });
+
+            modelBuilder.Entity("BE.Models.Comment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<int>("CreatorId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TaskId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatorId");
+
+                    b.HasIndex("TaskId");
+
+                    b.ToTable("Comments");
+                });
+
+            modelBuilder.Entity("BE.Models.Label", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<int>("BoardId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BoardId");
+
+                    b.ToTable("Labels");
+                });
+
+            modelBuilder.Entity("BE.Models.LabeledTask", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<int>("LabelId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TaskId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TaskId");
+
+                    b.HasIndex("LabelId", "TaskId")
+                        .IsUnique();
+
+                    b.ToTable("LabeledTasks");
+                });
+
             modelBuilder.Entity("BE.Models.OrganizationalUnit", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<int>("BoardId")
                         .HasColumnType("int");
 
                     b.Property<string>("Code")
@@ -42,6 +161,8 @@ namespace BE.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BoardId");
 
                     b.HasIndex("Code")
                         .IsUnique();
@@ -92,6 +213,116 @@ namespace BE.Migrations
                     b.ToTable("OrganizationalUnitMembers");
                 });
 
+            modelBuilder.Entity("BE.Models.Sprint", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<int>("BoardId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BoardId");
+
+                    b.ToTable("Sprints");
+                });
+
+            modelBuilder.Entity("BE.Models.Task", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<int?>("AssigneeId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BoardId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Priority")
+                        .HasMaxLength(10)
+                        .HasColumnType("varchar(10)");
+
+                    b.Property<int>("ReporterId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SprintId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StatusId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("StoryPoints")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TeamId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<string>("Type")
+                        .HasMaxLength(10)
+                        .HasColumnType("varchar(10)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssigneeId");
+
+                    b.HasIndex("BoardId");
+
+                    b.HasIndex("ReporterId");
+
+                    b.HasIndex("SprintId");
+
+                    b.HasIndex("StatusId");
+
+                    b.HasIndex("TeamId");
+
+                    b.ToTable("Tasks");
+                });
+
+            modelBuilder.Entity("BE.Models.TaskStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<int>("BoardId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BoardId");
+
+                    b.ToTable("TaskStatuses");
+                });
+
             modelBuilder.Entity("BE.Models.User", b =>
                 {
                     b.Property<int>("Id")
@@ -140,13 +371,96 @@ namespace BE.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("BE.Models.Attachment", b =>
+                {
+                    b.HasOne("BE.Models.Comment", "Comment")
+                        .WithMany("Attachments")
+                        .HasForeignKey("CommentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("BE.Models.TaskStatus", null)
+                        .WithMany("Attachments")
+                        .HasForeignKey("TaskStatusId");
+
+                    b.Navigation("Comment");
+                });
+
+            modelBuilder.Entity("BE.Models.Board", b =>
+                {
+                    b.HasOne("BE.Models.User", "Creator")
+                        .WithMany("Boards")
+                        .HasForeignKey("CreatorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Creator");
+                });
+
+            modelBuilder.Entity("BE.Models.Comment", b =>
+                {
+                    b.HasOne("BE.Models.User", "Creator")
+                        .WithMany("Comments")
+                        .HasForeignKey("CreatorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("BE.Models.Task", "Task")
+                        .WithMany("Comments")
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Creator");
+
+                    b.Navigation("Task");
+                });
+
+            modelBuilder.Entity("BE.Models.Label", b =>
+                {
+                    b.HasOne("BE.Models.Board", "Board")
+                        .WithMany("Labels")
+                        .HasForeignKey("BoardId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Board");
+                });
+
+            modelBuilder.Entity("BE.Models.LabeledTask", b =>
+                {
+                    b.HasOne("BE.Models.Label", "Label")
+                        .WithMany("LabeledTasks")
+                        .HasForeignKey("LabelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("BE.Models.Task", "Task")
+                        .WithMany("LabeledTasks")
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Label");
+
+                    b.Navigation("Task");
+                });
+
             modelBuilder.Entity("BE.Models.OrganizationalUnit", b =>
                 {
+                    b.HasOne("BE.Models.Board", "Board")
+                        .WithMany("Teams")
+                        .HasForeignKey("BoardId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("BE.Models.User", "Owner")
                         .WithMany("OwnedUnits")
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Board");
 
                     b.Navigation("Owner");
                 });
@@ -170,13 +484,135 @@ namespace BE.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("BE.Models.Sprint", b =>
+                {
+                    b.HasOne("BE.Models.Board", "Board")
+                        .WithMany("Sprints")
+                        .HasForeignKey("BoardId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Board");
+                });
+
+            modelBuilder.Entity("BE.Models.Task", b =>
+                {
+                    b.HasOne("BE.Models.User", "Assignee")
+                        .WithMany("AssignedTasks")
+                        .HasForeignKey("AssigneeId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("BE.Models.Board", "Board")
+                        .WithMany("Backlog")
+                        .HasForeignKey("BoardId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("BE.Models.User", "Reporter")
+                        .WithMany("CreatedTasks")
+                        .HasForeignKey("ReporterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("BE.Models.Sprint", "Sprint")
+                        .WithMany("Tasks")
+                        .HasForeignKey("SprintId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("BE.Models.TaskStatus", "Status")
+                        .WithMany("Tasks")
+                        .HasForeignKey("StatusId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("BE.Models.OrganizationalUnit", "AssignedTeam")
+                        .WithMany("AssignedTasks")
+                        .HasForeignKey("TeamId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("AssignedTeam");
+
+                    b.Navigation("Assignee");
+
+                    b.Navigation("Board");
+
+                    b.Navigation("Reporter");
+
+                    b.Navigation("Sprint");
+
+                    b.Navigation("Status");
+                });
+
+            modelBuilder.Entity("BE.Models.TaskStatus", b =>
+                {
+                    b.HasOne("BE.Models.Board", "Board")
+                        .WithMany("TaskStatuses")
+                        .HasForeignKey("BoardId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Board");
+                });
+
+            modelBuilder.Entity("BE.Models.Board", b =>
+                {
+                    b.Navigation("Backlog");
+
+                    b.Navigation("Labels");
+
+                    b.Navigation("Sprints");
+
+                    b.Navigation("TaskStatuses");
+
+                    b.Navigation("Teams");
+                });
+
+            modelBuilder.Entity("BE.Models.Comment", b =>
+                {
+                    b.Navigation("Attachments");
+                });
+
+            modelBuilder.Entity("BE.Models.Label", b =>
+                {
+                    b.Navigation("LabeledTasks");
+                });
+
             modelBuilder.Entity("BE.Models.OrganizationalUnit", b =>
                 {
+                    b.Navigation("AssignedTasks");
+
                     b.Navigation("Members");
+                });
+
+            modelBuilder.Entity("BE.Models.Sprint", b =>
+                {
+                    b.Navigation("Tasks");
+                });
+
+            modelBuilder.Entity("BE.Models.Task", b =>
+                {
+                    b.Navigation("Comments");
+
+                    b.Navigation("LabeledTasks");
+                });
+
+            modelBuilder.Entity("BE.Models.TaskStatus", b =>
+                {
+                    b.Navigation("Attachments");
+
+                    b.Navigation("Tasks");
                 });
 
             modelBuilder.Entity("BE.Models.User", b =>
                 {
+                    b.Navigation("AssignedTasks");
+
+                    b.Navigation("Boards");
+
+                    b.Navigation("Comments");
+
+                    b.Navigation("CreatedTasks");
+
                     b.Navigation("Memberships");
 
                     b.Navigation("OwnedUnits");
