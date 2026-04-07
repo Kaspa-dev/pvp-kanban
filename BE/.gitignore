@@ -211,3 +211,6 @@ MANIFEST
 
 # Visual Studio Code
 .vscode/
+
+# Local .NET CLI state
+.dotnet/
