@@ -62,8 +62,8 @@ export function Login() {
   return (
     <div className={`min-h-screen ${t.bg} flex`}>
       <div className={`hidden lg:flex lg:w-1/2 ${t.bgSecondary} flex-col justify-center px-12 relative overflow-hidden`}>
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-blue-500/20 to-purple-500/20 rounded-full blur-3xl" />
+        <div className={`absolute top-0 right-0 w-96 h-96 bg-gradient-to-br ${t.primarySoftStrong} rounded-full blur-3xl`} />
+        <div className={`absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr ${t.primarySoft} rounded-full blur-3xl`} />
 
         <div className="relative z-10">
           <Link to="/" className="inline-block mb-4">
@@ -92,7 +92,7 @@ export function Login() {
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${t.primary} flex items-center justify-center flex-shrink-0`}>
                 <TrendingUp className="w-5 h-5 text-white" strokeWidth={2} />
               </div>
               <div>
@@ -125,8 +125,8 @@ export function Login() {
               </div>
               <div className={`${t.bgTertiary} rounded-lg p-3 space-y-2`}>
                 <div className={`h-2 ${t.border} rounded`} />
-                <div className="bg-purple-400/50 rounded p-2 h-12" />
-                <div className="bg-pink-400/50 rounded p-2 h-12" />
+                <div className={`${t.primaryBg} rounded p-2 h-12 opacity-70`} />
+                <div className={`${t.primaryBg} rounded p-2 h-12 opacity-45`} />
               </div>
             </div>
           </div>

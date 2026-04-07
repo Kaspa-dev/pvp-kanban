@@ -3,18 +3,29 @@ import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme, getThemeColors } from '../contexts/ThemeContext';
 import { getUserBoards, Board, updateBoard, deleteBoard, isBoardOwner } from '../utils/boards';
-import { Plus, Folder, Calendar, CheckSquare, ArrowRight, Settings, LogOut, Edit3, Users, Trash2 } from 'lucide-react';
+import { getBoardCards, flattenCards } from '../utils/cards';
+import { fetchCurrentUserProgress } from '../utils/gamification';
+import { getBoardSprints } from '../utils/sprints';
+import { Plus, Folder, Calendar, ArrowRight, Settings, LogOut, Edit3, Users, Trash2, Flag, ListTodo, Clock3, CheckCircle2, CheckSquare } from 'lucide-react';
 import { CreateBoardModal } from '../components/CreateBoardModal';
 import { EditProjectModal } from '../components/EditProjectModal';
 import { SettingsModal } from '../components/SettingsModal';
 import { ConfirmDeleteProjectDialog } from '../components/ConfirmDeleteProjectDialog';
 import { BanBanLogo } from '../components/BanBanLogo';
 
+const EMPTY_DASHBOARD_METRICS = {
+  activeSprints: 0,
+  assignedTasks: 0,
+  openTasks: 0,
+  completedTasks: 0,
+};
+
 export function Projects() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const currentUserId = Number(user?.id ?? 0);
 
   const [boards, setBoards] = useState<Board[]>([]);
   const [isLoadingBoards, setIsLoadingBoards] = useState(true);
@@ -25,6 +36,8 @@ export function Projects() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [boardToDelete, setBoardToDelete] = useState<Board | null>(null);
+  const [dashboardMetrics, setDashboardMetrics] = useState(EMPTY_DASHBOARD_METRICS);
+  const [isLoadingDashboardMetrics, setIsLoadingDashboardMetrics] = useState(true);
 
   useEffect(() => {
     let isActive = true;
@@ -61,6 +74,102 @@ export function Projects() {
       isActive = false;
     };
   }, [user]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadDashboardMetrics = async () => {
+      if (!user) {
+        return;
+      }
+
+      try {
+        setIsLoadingDashboardMetrics(true);
+
+        const [boardActivityResults, progress] = await Promise.all([
+          Promise.allSettled(
+            boards.map(async (board) => {
+              const [boardCards, boardSprints] = await Promise.all([
+                getBoardCards(board.id),
+                getBoardSprints(board.id),
+              ]);
+
+              return {
+                cards: flattenCards(boardCards),
+                sprints: boardSprints,
+              };
+            }),
+          ),
+          fetchCurrentUserProgress().catch(() => null),
+        ]);
+
+        if (!isActive) {
+          return;
+        }
+
+        const fulfilledBoardActivity = boardActivityResults
+          .filter((result): result is PromiseFulfilledResult<{ cards: ReturnType<typeof flattenCards>; sprints: Awaited<ReturnType<typeof getBoardSprints>> }> => result.status === 'fulfilled')
+          .map((result) => result.value);
+
+        const allCards = fulfilledBoardActivity.flatMap((result) => result.cards);
+        const activeSprints = fulfilledBoardActivity.reduce(
+          (count, result) => count + result.sprints.filter((sprint) => sprint.status === 'active').length,
+          0,
+        );
+        const assignedTasks = allCards.filter((card) => card.assigneeUserId === currentUserId).length;
+        const openTasks = allCards.filter(
+          (card) => card.assigneeUserId === currentUserId && card.status !== 'done',
+        ).length;
+
+        setDashboardMetrics({
+          activeSprints,
+          assignedTasks,
+          openTasks,
+          completedTasks:
+            progress?.tasksCompleted ??
+            allCards.filter((card) => card.assigneeUserId === currentUserId && card.status === 'done').length,
+        });
+      } finally {
+        if (isActive) {
+          setIsLoadingDashboardMetrics(false);
+        }
+      }
+    };
+
+    void loadDashboardMetrics();
+
+    return () => {
+      isActive = false;
+    };
+  }, [boards, currentUserId, user]);
+
+  const dashboardIndicators = [
+    {
+      label: 'Active Projects',
+      value: boards.length,
+      icon: Folder,
+    },
+    {
+      label: 'Active Sprints',
+      value: dashboardMetrics.activeSprints,
+      icon: Flag,
+    },
+    {
+      label: 'Assigned to You',
+      value: dashboardMetrics.assignedTasks,
+      icon: ListTodo,
+    },
+    {
+      label: 'Open Right Now',
+      value: dashboardMetrics.openTasks,
+      icon: Clock3,
+    },
+    {
+      label: 'Completed by You',
+      value: dashboardMetrics.completedTasks,
+      icon: CheckCircle2,
+    },
+  ];
 
   const handleBoardCreated = (newBoard: Board) => {
     setBoards((prevBoards) => [newBoard, ...prevBoards]);
@@ -183,37 +292,25 @@ export function Projects() {
             </button>
           </div>
 
-          <div className="relative z-10 mt-8 pt-6 border-t border-purple-200/20 dark:border-purple-800/20">
-            <div className="grid grid-cols-3 gap-6">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-lg ${currentTheme.bgSecondary} flex items-center justify-center`}>
-                  <Folder className={`w-5 h-5 ${currentTheme.primaryText}`} />
-                </div>
-                <div>
-                  <p className={`text-2xl font-bold ${currentTheme.text}`}>{boards.length}</p>
-                  <p className={`text-xs ${currentTheme.textMuted}`}>Active Projects</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-lg ${currentTheme.bgSecondary} flex items-center justify-center`}>
-                  <Users className={`w-5 h-5 ${currentTheme.primaryText}`} />
-                </div>
-                <div>
-                  <p className={`text-2xl font-bold ${currentTheme.text}`}>
-                    {boards.reduce((acc, board) => acc + board.members.length, 0)}
-                  </p>
-                  <p className={`text-xs ${currentTheme.textMuted}`}>Team Members</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-lg ${currentTheme.bgSecondary} flex items-center justify-center`}>
-                  <CheckSquare className={`w-5 h-5 ${currentTheme.primaryText}`} />
-                </div>
-                <div>
-                  <p className={`text-2xl font-bold ${currentTheme.text}`}>Active</p>
-                  <p className={`text-xs ${currentTheme.textMuted}`}>System Status</p>
-                </div>
-              </div>
+          <div className={`relative z-10 mt-8 pt-6 border-t ${currentTheme.accentDivider}`}>
+            <div className="grid grid-cols-2 gap-6 xl:grid-cols-5">
+              {dashboardIndicators.map((indicator) => {
+                const Icon = indicator.icon;
+
+                return (
+                  <div key={indicator.label} className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg ${currentTheme.bgSecondary} flex items-center justify-center`}>
+                      <Icon className={`w-5 h-5 ${currentTheme.primaryText}`} />
+                    </div>
+                    <div>
+                      <p className={`text-2xl font-bold ${currentTheme.text}`}>
+                        {indicator.label === 'Active Projects' || !isLoadingDashboardMetrics ? indicator.value : '...'}
+                      </p>
+                      <p className={`text-xs ${currentTheme.textMuted}`}>{indicator.label}</p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -258,10 +355,10 @@ export function Projects() {
                           e.stopPropagation();
                           handleEditBoard(board);
                         }}
-                        className={`absolute top-4 right-4 p-2 ${currentTheme.bgSecondary} rounded-lg hover:${currentTheme.bgTertiary} opacity-0 group-hover:opacity-100 transition-all duration-200 z-10`}
+                        className={`absolute top-4 right-4 p-2 ${currentTheme.bgSecondary} ${currentTheme.textSecondary} rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 hover:shadow-sm ${currentTheme.accentIconButtonHover}`}
                         title="Edit Project"
                       >
-                        <Edit3 className={`w-4 h-4 ${currentTheme.textSecondary} hover:${currentTheme.primaryText}`} />
+                        <Edit3 className="w-4 h-4" />
                       </button>
 
                       <button
@@ -270,10 +367,10 @@ export function Projects() {
                           setBoardToDelete(board);
                           setIsDeleteDialogOpen(true);
                         }}
-                        className={`absolute top-4 right-14 p-2 ${currentTheme.bgSecondary} rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 hover:bg-red-50 dark:hover:bg-red-950/30`}
+                        className={`absolute top-4 right-14 p-2 ${currentTheme.bgSecondary} ${currentTheme.textSecondary} rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 hover:shadow-sm ${currentTheme.accentIconButtonHover}`}
                         title="Delete Project"
                       >
-                        <Trash2 className={`w-4 h-4 ${currentTheme.textSecondary} hover:text-red-500 transition-colors`} />
+                        <Trash2 className="w-4 h-4 transition-colors" />
                       </button>
                     </>
                   )}
@@ -316,7 +413,7 @@ export function Projects() {
                       {board.members.slice(0, 4).map((member) => (
                         <div
                           key={member.userId}
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ${isDarkMode ? 'ring-gray-800' : 'ring-white'} group-hover:ring-purple-200 dark:group-hover:ring-purple-800 transition-all duration-300`}
+                          className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ${isDarkMode ? 'ring-gray-800' : 'ring-white'} ${currentTheme.accentHoverRing} transition-all duration-300`}
                           style={{ backgroundColor: member.color }}
                           title={member.name}
                         >
@@ -324,7 +421,7 @@ export function Projects() {
                         </div>
                       ))}
                       {board.members.length > 4 && (
-                        <div className={`w-8 h-8 rounded-full ${currentTheme.bgTertiary} flex items-center justify-center ${currentTheme.textSecondary} text-xs font-bold ring-2 ${isDarkMode ? 'ring-gray-800' : 'ring-white'} group-hover:ring-purple-200 dark:group-hover:ring-purple-800 transition-all duration-300`}>
+                        <div className={`w-8 h-8 rounded-full ${currentTheme.bgTertiary} flex items-center justify-center ${currentTheme.textSecondary} text-xs font-bold ring-2 ${isDarkMode ? 'ring-gray-800' : 'ring-white'} ${currentTheme.accentHoverRing} transition-all duration-300`}>
                           +{board.members.length - 4}
                         </div>
                       )}

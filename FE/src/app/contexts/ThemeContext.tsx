@@ -97,6 +97,11 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       primaryBorder: "border-purple-500",
       ring: isDarkMode ? "ring-purple-500" : "ring-purple-400",
       focus: isDarkMode ? "focus:ring-purple-500" : "focus:ring-purple-400",
+      accentDivider: "border-purple-200/20 dark:border-purple-800/20",
+      accentHoverRing: "group-hover:ring-purple-200 dark:group-hover:ring-purple-800",
+      accentIconButtonHover: isDarkMode
+        ? "hover:bg-purple-950/50 hover:text-purple-400"
+        : "hover:bg-purple-100 hover:text-purple-600",
     },
     ocean: {
       name: "Ocean Blue",
@@ -111,6 +116,11 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       primaryBorder: "border-blue-500",
       ring: isDarkMode ? "ring-blue-500" : "ring-blue-400",
       focus: isDarkMode ? "focus:ring-blue-500" : "focus:ring-blue-400",
+      accentDivider: "border-blue-200/20 dark:border-blue-800/20",
+      accentHoverRing: "group-hover:ring-blue-200 dark:group-hover:ring-blue-800",
+      accentIconButtonHover: isDarkMode
+        ? "hover:bg-blue-950/50 hover:text-blue-400"
+        : "hover:bg-blue-100 hover:text-blue-600",
     },
     sunset: {
       name: "Sunset Orange",
@@ -125,6 +135,11 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       primaryBorder: "border-orange-500",
       ring: isDarkMode ? "ring-orange-500" : "ring-orange-400",
       focus: isDarkMode ? "focus:ring-orange-500" : "focus:ring-orange-400",
+      accentDivider: "border-orange-200/20 dark:border-orange-800/20",
+      accentHoverRing: "group-hover:ring-orange-200 dark:group-hover:ring-orange-800",
+      accentIconButtonHover: isDarkMode
+        ? "hover:bg-orange-950/50 hover:text-orange-400"
+        : "hover:bg-orange-100 hover:text-orange-600",
     },
     forest: {
       name: "Forest Green",
@@ -139,6 +154,11 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       primaryBorder: "border-green-600",
       ring: isDarkMode ? "ring-green-500" : "ring-green-400",
       focus: isDarkMode ? "focus:ring-green-500" : "focus:ring-green-400",
+      accentDivider: "border-green-200/20 dark:border-green-800/20",
+      accentHoverRing: "group-hover:ring-green-200 dark:group-hover:ring-green-800",
+      accentIconButtonHover: isDarkMode
+        ? "hover:bg-green-950/50 hover:text-green-400"
+        : "hover:bg-green-100 hover:text-green-600",
     },
     mono: {
       name: "Mono Gray",
@@ -153,6 +173,11 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       primaryBorder: "border-gray-700",
       ring: isDarkMode ? "ring-gray-500" : "ring-gray-400",
       focus: isDarkMode ? "focus:ring-gray-500" : "focus:ring-gray-400",
+      accentDivider: "border-gray-300/40 dark:border-gray-700/50",
+      accentHoverRing: "group-hover:ring-gray-300 dark:group-hover:ring-gray-600",
+      accentIconButtonHover: isDarkMode
+        ? "hover:bg-gray-800 hover:text-gray-300"
+        : "hover:bg-gray-200 hover:text-gray-700",
     },
   };
 
