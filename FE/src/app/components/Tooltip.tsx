@@ -1,5 +1,5 @@
 import { ReactNode, useState } from "react";
-import { useTheme, getThemeColors } from "../contexts/ThemeContext";
+import { useTheme } from "../contexts/ThemeContext";
 
 interface TooltipProps {
   content: string;
@@ -9,8 +9,7 @@ interface TooltipProps {
 }
 
 export function Tooltip({ content, children, delay = 500, position = "top" }: TooltipProps) {
-  const { theme, isDarkMode } = useTheme();
-  const currentTheme = getThemeColors(theme, isDarkMode);
+  const { isDarkMode } = useTheme();
   const [isVisible, setIsVisible] = useState(false);
   const [timeoutId, setTimeoutId] = useState<ReturnType<typeof setTimeout> | null>(null);
 

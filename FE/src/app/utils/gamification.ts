@@ -1,3 +1,5 @@
+import { apiJson } from "./auth";
+
 // XP and Level System
 
 export interface UserProgress {
@@ -94,30 +96,12 @@ export function getXPRemainingForNextLevel(xp: number, level: number): number {
   return xpNeeded - xpInCurrentLevel;
 }
 
-// LocalStorage helpers
-function getUserProgressKey(userId: string): string {
-  return `banban_user_progress_${userId}`;
-}
-
-export function saveUserProgress(userId: string, progress: UserProgress): void {
-  localStorage.setItem(getUserProgressKey(userId), JSON.stringify(progress));
-}
-
-export function loadUserProgress(userId: string): UserProgress | null {
-  const saved = localStorage.getItem(getUserProgressKey(userId));
-  if (saved) {
-    try {
-      const progress = JSON.parse(saved);
-      // Ensure tasksCompleted field exists (backward compatibility)
-      if (progress.tasksCompleted === undefined) {
-        progress.tasksCompleted = 0;
-      }
-      return progress;
-    } catch {
-      return null;
-    }
-  }
-  return null;
+export async function fetchCurrentUserProgress(): Promise<Pick<UserProgress, "xp" | "level" | "tasksCompleted">> {
+  return apiJson<Pick<UserProgress, "xp" | "level" | "tasksCompleted">>(
+    "/api/users/me/progress",
+    { method: "GET" },
+    "Unable to load your progress right now.",
+  );
 }
 
 export function getDefaultUserProgress(): UserProgress {

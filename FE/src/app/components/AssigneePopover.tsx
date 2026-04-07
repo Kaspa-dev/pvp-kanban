@@ -1,16 +1,12 @@
 import * as Popover from "@radix-ui/react-popover";
 import { X } from "lucide-react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
-
-interface Assignee {
-  name: string;
-  color: string;
-}
+import { TaskAssignee } from "../utils/cards";
 
 interface AssigneePopoverProps {
-  currentAssignee: Assignee;
-  onAssigneeChange: (assignee: Assignee | null) => void;
-  availableAssignees: Assignee[];
+  currentAssignee: TaskAssignee;
+  onAssigneeChange: (assignee: TaskAssignee | null) => void;
+  availableAssignees: TaskAssignee[];
 }
 
 export function AssigneePopover({ 

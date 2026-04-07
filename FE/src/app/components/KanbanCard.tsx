@@ -4,26 +4,21 @@ import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { AssigneePopover } from "./AssigneePopover";
 import { Label } from "../utils/labels";
 import { useState } from "react";
-import { Priority, TaskType } from "../utils/cards";
+import { Priority, TaskAssignee, TaskType } from "../utils/cards";
 import { Tooltip } from "./Tooltip";
 import { getPriorityColor, getPriorityIndicator } from "../utils/priorityColors";
 import { format, parseISO } from "date-fns";
 
-interface Assignee {
-  name: string;
-  color: string;
-}
-
 interface KanbanCardProps {
-  id: string;
+  id: number;
   title: string;
-  labelIds: string[];
-  assignee: Assignee;
+  labelIds: number[];
+  assignee: TaskAssignee;
   columnId: string;
-  onAssigneeChange: (cardId: string, assignee: Assignee | null) => void;
-  onDelete: (cardId: string, title: string) => void;
-  onEdit?: (cardId: string) => void;
-  availableAssignees: Assignee[];
+  onAssigneeChange: (cardId: number, assignee: TaskAssignee | null) => void;
+  onDelete: (cardId: number, title: string) => void;
+  onEdit?: (cardId: number) => void;
+  availableAssignees: TaskAssignee[];
   labels: Label[];
   storyPoints?: number;
   dueDate?: string | null;

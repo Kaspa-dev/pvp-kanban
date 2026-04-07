@@ -1,10 +1,10 @@
-import { X, User, Zap, CalendarDays, HelpCircle } from "lucide-react";
-import { useState, useEffect } from "react";
+import { X, User, CalendarDays, HelpCircle } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { STORY_POINTS_OPTIONS } from "../utils/gamification";
 import { LabelSelector } from "./LabelSelector";
 import { Label } from "../utils/labels";
-import { Priority, TaskType } from "../utils/cards";
+import { Priority, TaskAssignee, TaskType } from "../utils/cards";
 import { Tooltip } from "./Tooltip";
 import { getPriorityColor, PRIORITY_COLORS } from "../utils/priorityColors";
 
@@ -15,19 +15,16 @@ interface AddCardModalProps {
     title: string;
     description: string;
     status: "todo" | "inProgress" | "inReview" | "done" | "backlog";
-    labelIds: string[];
-    assignee: {
-      name: string;
-      color: string;
-    };
+    labelIds: number[];
+    assignee: TaskAssignee | null;
     storyPoints?: number;
     dueDate?: string | null;
     priority?: Priority;
     taskType?: TaskType;
-  }) => void;
+  }) => Promise<void>;
   availableLabels: Label[];
-  onCreateLabel: (name: string, color: string) => void;
-  availableAssignees: { name: string; color: string }[];
+  onCreateLabel: (name: string, color: string) => Promise<void>;
+  availableAssignees: TaskAssignee[];
 }
 
 export function AddCardModal({
@@ -43,18 +40,33 @@ export function AddCardModal({
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
-  const [selectedAssignee, setSelectedAssignee] = useState(availableAssignees[0]);
+  const [selectedLabelIds, setSelectedLabelIds] = useState<number[]>([]);
+  const [selectedAssignee, setSelectedAssignee] = useState<TaskAssignee | null>(availableAssignees[0] ?? null);
   const [showError, setShowError] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [storyPoints, setStoryPoints] = useState<number | undefined>(undefined);
   const [dueDate, setDueDate] = useState("");
   const [priority, setPriority] = useState<Priority | undefined>(undefined);
   const [taskType, setTaskType] = useState<TaskType | undefined>(undefined);
+  const selectedAssigneeOption =
+    selectedAssignee && availableAssignees.some((assignee) => assignee.userId === selectedAssignee.userId)
+      ? selectedAssignee
+      : null;
 
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) {
-        handleCancel();
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && isOpen) {
+        setTitle("");
+        setDescription("");
+        setSelectedLabelIds([]);
+        setSelectedAssignee(availableAssignees[0] ?? null);
+        setShowError(false);
+        setSubmitError("");
+        setStoryPoints(undefined);
+        setDueDate("");
+        setPriority(undefined);
+        setTaskType(undefined);
+        onClose();
       }
     };
 
@@ -67,8 +79,7 @@ export function AddCardModal({
       document.removeEventListener("keydown", handleEscape);
       document.body.style.overflow = "unset";
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [availableAssignees, isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -76,41 +87,47 @@ export function AddCardModal({
     setTitle("");
     setDescription("");
     setSelectedLabelIds([]);
-    setSelectedAssignee(availableAssignees[0]);
+    setSelectedAssignee(availableAssignees[0] ?? null);
     setShowError(false);
+    setSubmitError("");
     setStoryPoints(undefined);
     setDueDate("");
     setPriority(undefined);
     setTaskType(undefined);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCancel = () => {
+    resetForm();
+    onClose();
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
 
     if (!title.trim()) {
       setShowError(true);
       return;
     }
 
-    onAdd({
-      title,
-      description,
-      status: "backlog",
-      labelIds: selectedLabelIds,
-      assignee: selectedAssignee,
-      storyPoints,
-      dueDate: dueDate || null,
-      priority,
-      taskType,
-    });
+    try {
+      setSubmitError("");
+      await onAdd({
+        title: title.trim(),
+        description: description.trim(),
+        status: "backlog",
+        labelIds: selectedLabelIds,
+        assignee: selectedAssigneeOption,
+        storyPoints,
+        dueDate: dueDate || null,
+        priority,
+        taskType,
+      });
 
-    resetForm();
-    onClose();
-  };
-
-  const handleCancel = () => {
-    resetForm();
-    onClose();
+      resetForm();
+      onClose();
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Unable to create the task right now.");
+    }
   };
 
   const priorityOptions: Priority[] = ["low", "medium", "high", "critical"];
@@ -143,9 +160,9 @@ export function AddCardModal({
               id="title"
               type="text"
               value={title}
-              onChange={(e) => {
-                setTitle(e.target.value);
-                if (showError && e.target.value.trim()) {
+              onChange={(event) => {
+                setTitle(event.target.value);
+                if (showError && event.target.value.trim()) {
                   setShowError(false);
                 }
               }}
@@ -167,7 +184,7 @@ export function AddCardModal({
             <textarea
               id="description"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(event) => setDescription(event.target.value)}
               placeholder="Describe the task in detail... (supports multiple lines)"
               rows={6}
               className={`w-full px-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent resize-y transition-all ${currentTheme.inputBg} ${currentTheme.text}`}
@@ -189,15 +206,18 @@ export function AddCardModal({
               <User className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${currentTheme.textMuted}`} />
               <select
                 id="assignee"
-                value={selectedAssignee.name}
-                onChange={(e) => {
-                  const assignee = availableAssignees.find((a) => a.name === e.target.value);
-                  if (assignee) setSelectedAssignee(assignee);
+                value={selectedAssigneeOption?.userId ?? ""}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  const assignee =
+                    availableAssignees.find((candidate) => candidate.userId === Number(value)) ?? null;
+                  setSelectedAssignee(assignee);
                 }}
                 className={`w-full pl-10 pr-4 py-3 border-2 ${currentTheme.inputBorder} ${currentTheme.inputBg} ${currentTheme.text} rounded-xl focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent transition-all font-medium appearance-none`}
               >
+                <option value="">Unassigned</option>
                 {availableAssignees.map((assignee) => (
-                  <option key={assignee.name} value={assignee.name}>
+                  <option key={assignee.userId} value={assignee.userId}>
                     {assignee.name}
                   </option>
                 ))}
@@ -226,7 +246,7 @@ export function AddCardModal({
                 id="dueDate"
                 type="date"
                 value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
+                onChange={(event) => setDueDate(event.target.value)}
                 className={`w-full pl-10 pr-4 py-3 border-2 ${currentTheme.inputBorder} ${currentTheme.inputBg} ${currentTheme.text} rounded-xl focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent transition-all`}
               />
             </div>
@@ -289,7 +309,7 @@ export function AddCardModal({
                     className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
                       isSelected
                         ? `${textColor} shadow-md`
-                        : `${isDarkMode ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`
+                        : `${isDarkMode ? "bg-gray-700 text-gray-200 hover:bg-gray-600" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`
                     }`}
                     style={isSelected ? { backgroundColor: getPriorityColor(value, isDarkMode) } : undefined}
                   >
@@ -331,6 +351,12 @@ export function AddCardModal({
               })}
             </div>
           </div>
+
+          {submitError && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {submitError}
+            </div>
+          )}
 
           <div className="flex gap-3 pt-3">
             <button

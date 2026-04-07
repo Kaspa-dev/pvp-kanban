@@ -194,7 +194,7 @@ export function ProfileModal({ isOpen, onClose, user, userProgress, tasksComplet
 
           <div className={`p-4 rounded-2xl border ${currentTheme.border} ${currentTheme.bgSecondary}`}>
             <p className={`text-sm ${currentTheme.textSecondary}`}>
-              Current board progress is tracked locally for this authenticated account.
+              Progress is derived from backend tasks completed by this authenticated account.
             </p>
             <p className={`text-xs ${currentTheme.textMuted} mt-2`}>
               Stored display name: {userProgress.username || user.displayName}

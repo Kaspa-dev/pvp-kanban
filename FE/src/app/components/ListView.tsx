@@ -4,7 +4,7 @@ import { AssigneePopover } from "./AssigneePopover";
 import { Label } from "../utils/labels";
 import { Tooltip } from "./Tooltip";
 import { getPriorityColor, getPriorityIndicator } from "../utils/priorityColors";
-import { Card, Priority, TaskType } from "../utils/cards";
+import { Card, Priority, TaskAssignee, TaskType } from "../utils/cards";
 import { format, parseISO } from "date-fns";
 
 type ListCard = Card & {
@@ -14,10 +14,10 @@ type ListCard = Card & {
 
 interface ListViewProps {
   cards: ListCard[];
-  onAssigneeChange: (cardId: string, assignee: { name: string; color: string } | null) => void;
-  onDelete: (cardId: string, title: string) => void;
-  onEdit?: (cardId: string) => void;
-  availableAssignees: { name: string; color: string }[];
+  onAssigneeChange: (cardId: number, assignee: TaskAssignee | null) => void;
+  onDelete: (cardId: number, title: string) => void;
+  onEdit?: (cardId: number) => void;
+  availableAssignees: TaskAssignee[];
   labels: Label[];
 }
 
@@ -43,7 +43,7 @@ export function ListView({ cards, onAssigneeChange, onDelete, onEdit, availableA
     );
   };
 
-  const getCardLabels = (labelIds: string[]) => {
+  const getCardLabels = (labelIds: number[]) => {
     return labelIds
       .map((labelId) => labels.find((label) => label.id === labelId))
       .filter((label): label is Label => label !== undefined);

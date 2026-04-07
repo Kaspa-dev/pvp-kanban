@@ -1,120 +1,155 @@
-// Board/Project management utilities
+import { ApiError, apiJson, apiVoid } from "./auth";
 
-export interface BoardMember {
-  name: string;
+export type BoardRole = "owner" | "member";
+
+interface ApiBoardMember {
+  userId: number;
+  username: string;
+  displayName: string;
+  email: string;
   color: string;
+  role: BoardRole;
 }
 
-export interface Board {
-  id: string;
+interface ApiBoard {
+  id: number;
   name: string;
   description: string;
   createdAt: string;
-  createdBy: string;
+  creatorUserId: number;
+  members: ApiBoardMember[];
+}
+
+export interface BoardMember {
+  userId: number;
+  username: string;
+  displayName: string;
+  email: string;
+  color: string;
+  role: BoardRole;
+  name: string;
+}
+
+export interface Board {
+  id: number;
+  name: string;
+  description: string;
+  createdAt: string;
+  creatorUserId: number;
   members: BoardMember[];
-  theme?: string;
-  sprint?: {
-    name: string;
-    startDate: string;
-    endDate: string;
+}
+
+export type BoardFetchResult =
+  | { status: "success"; board: Board }
+  | { status: "forbidden" }
+  | { status: "notFound" }
+  | { status: "error"; error: string };
+
+function normalizeMember(member: ApiBoardMember): BoardMember {
+  return {
+    ...member,
+    name: member.displayName,
   };
 }
 
-const BOARDS_STORAGE_KEY = 'banban_boards';
-
-// Get all boards for a user
-export function getUserBoards(userId: string): Board[] {
-  const boardsData = localStorage.getItem(`${BOARDS_STORAGE_KEY}_${userId}`);
-  if (!boardsData) {
-    return [];
-  }
-  try {
-    return JSON.parse(boardsData);
-  } catch {
-    return [];
-  }
-}
-
-// Save boards for a user
-export function saveUserBoards(userId: string, boards: Board[]): void {
-  localStorage.setItem(`${BOARDS_STORAGE_KEY}_${userId}`, JSON.stringify(boards));
-}
-
-// Create a new board
-export function createBoard(
-  userId: string,
-  name: string,
-  description: string,
-  members: BoardMember[]
-): Board {
-  const newBoard: Board = {
-    id: `board_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    name,
-    description,
-    createdAt: new Date().toISOString(),
-    createdBy: userId,
-    members,
+function normalizeBoard(board: ApiBoard): Board {
+  return {
+    id: board.id,
+    name: board.name,
+    description: board.description,
+    createdAt: board.createdAt,
+    creatorUserId: board.creatorUserId,
+    members: board.members.map(normalizeMember),
   };
-
-  const boards = getUserBoards(userId);
-  boards.push(newBoard);
-  saveUserBoards(userId, boards);
-
-  return newBoard;
 }
 
-// Get a specific board
-export function getBoard(userId: string, boardId: string): Board | null {
-  const boards = getUserBoards(userId);
-  return boards.find(b => b.id === boardId) || null;
+export function isBoardOwner(board: Board, userId: string | number): boolean {
+  return board.members.some(
+    (member) => member.userId === Number(userId) && member.role === "owner",
+  );
 }
 
-// Update a board
-export function updateBoard(userId: string, boardId: string, updates: Partial<Board>): boolean {
-  const boards = getUserBoards(userId);
-  const index = boards.findIndex(b => b.id === boardId);
-  
-  if (index === -1) {
-    return false;
-  }
-
-  boards[index] = { ...boards[index], ...updates };
-  saveUserBoards(userId, boards);
-  return true;
-}
-
-// Delete a board
-export function deleteBoard(userId: string, boardId: string): boolean {
-  const boards = getUserBoards(userId);
-  const filtered = boards.filter(b => b.id !== boardId);
-  
-  if (filtered.length === boards.length) {
-    return false; // Board not found
-  }
-
-  saveUserBoards(userId, filtered);
-  
-  // Also delete board's cards
-  localStorage.removeItem(`banban_cards_${boardId}`);
-  
-  return true;
-}
-
-// Create default demo boards for new users
-export function createDefaultBoards(userId: string, userName: string): Board[] {
-  const defaultMembers: BoardMember[] = [
-    { name: userName, color: "#3b82f6" },
-    { name: "Jonas", color: "#10b981" },
-    { name: "Marius", color: "#8b5cf6" },
-    { name: "Laura", color: "#f59e0b" },
-  ];
-
-  const board1 = createBoard(
-    userId,
-    "My First Project",
-    "Welcome to BanBan! This is your first project board.",
-    defaultMembers
+export async function getUserBoards(): Promise<Board[]> {
+  const boards = await apiJson<ApiBoard[]>(
+    "/api/boards",
+    { method: "GET" },
+    "Unable to load projects right now.",
   );
 
-  return [board1];
+  return boards.map(normalizeBoard);
+}
+
+export async function createBoard(
+  name: string,
+  description: string,
+  memberUserIds: number[],
+): Promise<Board> {
+  const board = await apiJson<ApiBoard>(
+    "/api/boards",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        name,
+        description,
+        memberUserIds,
+      }),
+    },
+    "Unable to create the project right now.",
+  );
+
+  return normalizeBoard(board);
+}
+
+export async function getBoard(boardId: number | string): Promise<BoardFetchResult> {
+  try {
+    const board = await apiJson<ApiBoard>(
+      `/api/boards/${Number(boardId)}`,
+      { method: "GET" },
+      "Unable to load this project right now.",
+    );
+
+    return {
+      status: "success",
+      board: normalizeBoard(board),
+    };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      if (error.status === 403) {
+        return { status: "forbidden" };
+      }
+
+      if (error.status === 404) {
+        return { status: "notFound" };
+      }
+    }
+
+    return {
+      status: "error",
+      error: error instanceof Error ? error.message : "Unable to load this project right now.",
+    };
+  }
+}
+
+export async function updateBoard(
+  boardId: number | string,
+  updates: { name: string; description: string; memberUserIds: number[] },
+): Promise<Board> {
+  const board = await apiJson<ApiBoard>(
+    `/api/boards/${Number(boardId)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(updates),
+    },
+    "Unable to save project changes right now.",
+  );
+
+  return normalizeBoard(board);
+}
+
+export async function deleteBoard(boardId: number | string): Promise<void> {
+  await apiVoid(
+    `/api/boards/${Number(boardId)}`,
+    { method: "DELETE" },
+    "Unable to delete the project right now.",
+  );
 }

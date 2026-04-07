@@ -1,3 +1,9 @@
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router";
+import { endOfWeek, isWithinInterval, parseISO, startOfWeek } from "date-fns";
+import { DndProvider } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
+import { Play, Calendar, Target } from "lucide-react";
 import { KanbanColumn } from "../components/KanbanColumn";
 import { AddCardModal } from "../components/AddCardModal";
 import { EditTaskModal } from "../components/EditTaskModal";
@@ -12,38 +18,43 @@ import { HistoryView } from "../components/HistoryView";
 import { SprintPlanningModal } from "../components/SprintPlanningModal";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "../components/ui/sheet";
 import { useIsMobile } from "../components/ui/use-mobile";
-import { DndProvider } from "react-dnd";
-import { HTML5Backend } from "react-dnd-html5-backend";
-import { useState, useMemo, useEffect } from "react";
-import { useNavigate, useParams } from "react-router";
-import { endOfWeek, isWithinInterval, parseISO, startOfWeek } from "date-fns";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
-import { 
-  UserProgress, 
-  loadUserProgress, 
-  saveUserProgress, 
+import {
+  UserProgress,
+  fetchCurrentUserProgress,
   getDefaultUserProgress,
-  calculateLevel,
-  getXPForStoryPoints
 } from "../utils/gamification";
 import { getBoard, Board as BoardType } from "../utils/boards";
-import { Card, Cards, getBoardCards, saveBoardCards, createDefaultCards, Priority, TaskType } from "../utils/cards";
-import { 
-  Label, 
-  getBoardLabels, 
-  createLabel, 
-  updateLabel, 
-  deleteLabel,
-  createDefaultLabels 
+import {
+  Card,
+  Cards,
+  createBoardTask,
+  createEmptyCards,
+  deleteBoardTask,
+  getBoardCards,
+  Priority,
+  TaskAssignee,
+  TaskStatus,
+  TaskType,
+  flattenCards,
+  groupCards,
+  updateBoardTask,
+} from "../utils/cards";
+import {
+  Label,
+  getBoardLabels,
+  createLabel,
 } from "../utils/labels";
 import {
   Sprint,
+  completeSprint,
+  createSprint,
   getActiveSprint,
+  getBoardSprints,
   getPlannedSprint,
-  startSprint as startSprintUtil,
+  startSprint,
 } from "../utils/sprints";
-import { Play, Calendar, Target } from "lucide-react";
 
 export function Board() {
   const navigate = useNavigate();
@@ -52,222 +63,311 @@ export function Board() {
   const currentTheme = getThemeColors(theme, isDarkMode);
   const { boardId } = useParams<{ boardId: string }>();
   const isMobile = useIsMobile();
-  
-  // Modal states
+  const numericBoardId = boardId ? Number(boardId) : NaN;
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isSprintPlanningOpen, setIsSprintPlanningOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Card | null>(null);
-  const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; cardId: string; title: string }>({
+  const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; cardId: number | null; title: string }>({
     isOpen: false,
-    cardId: "",
+    cardId: null,
     title: "",
   });
-  
-  // View and filter states
+
   const [activeFilter, setActiveFilter] = useState("all");
   const [view, setView] = useState<"board" | "list" | "backlog" | "history">("board");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
-  
-  // Data states
+  const [selectedLabelIds, setSelectedLabelIds] = useState<number[]>([]);
+
   const [labels, setLabels] = useState<Label[]>([]);
-  const [cards, setCards] = useState<Cards>({
-    todo: [],
-    inProgress: [],
-    inReview: [],
-    done: [],
-    backlog: [],
-  });
+  const [cards, setCards] = useState<Cards>(createEmptyCards());
   const [currentBoard, setCurrentBoard] = useState<BoardType | null>(null);
-  
-  // Sprint states
   const [activeSprint, setActiveSprint] = useState<Sprint | null>(null);
   const [plannedSprint, setPlannedSprint] = useState<Sprint | null>(null);
-  
-  // User progress state
+  const [isLoadingBoard, setIsLoadingBoard] = useState(true);
+  const [boardAccessState, setBoardAccessState] = useState<"available" | "forbidden" | "notFound">("available");
+  const [loadError, setLoadError] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [workspaceReloadCount, setWorkspaceReloadCount] = useState(0);
+
   const [userProgress, setUserProgress] = useState<UserProgress>(() => {
     if (!user) {
       return getDefaultUserProgress();
     }
 
-    const savedProgress = loadUserProgress(user.id) || getDefaultUserProgress();
     return {
-      ...savedProgress,
+      ...getDefaultUserProgress(),
       username: user.displayName,
       email: user.email,
     };
   });
-  const currentUserDisplayName = user?.displayName || userProgress.username;
 
-  // Load board, labels, cards, and sprints on mount
-  useEffect(() => {
-    if (boardId && user) {
-      const board = getBoard(user.id, boardId);
-      if (board) {
-        setCurrentBoard(board);
-        
-        // Load sprints
-        setActiveSprint(getActiveSprint(boardId));
-        setPlannedSprint(getPlannedSprint(boardId));
-        
-        // Get or create labels
-        let boardLabels = getBoardLabels(boardId);
-        if (boardLabels.length === 0) {
-          boardLabels = createDefaultLabels(boardId);
-          setLabels(boardLabels);
-          
-          const labelMap: { [key: string]: string } = {};
-          boardLabels.forEach(label => {
-            labelMap[label.name] = label.id;
-          });
-          
-          const defaultCards = createDefaultCards(user.displayName, labelMap);
-          setCards(defaultCards);
-        } else {
-          setLabels(boardLabels);
-          setCards(getBoardCards(boardId));
-        }
-      } else {
-        navigate('/app');
-      }
-    }
-  }, [boardId, user, navigate]);
-
-  // Save cards to localStorage whenever they change
-  useEffect(() => {
-    if (boardId && cards) {
-      saveBoardCards(boardId, cards);
-    }
-  }, [cards, boardId]);
-
-  // Sync user progress with actual task data
-  useEffect(() => {
-    const allTasksList = [
-      ...cards.todo,
-      ...cards.inProgress,
-      ...cards.inReview,
-      ...cards.done,
-      ...cards.backlog,
-    ];
-    
-    const userCompletedTasks = allTasksList.filter(
-      (card) => card.status === "done" && card.assignee?.name === currentUserDisplayName
-    );
-    
-    const calculatedXP = userCompletedTasks.reduce(
-      (sum, card) => sum + (card.storyPoints ? getXPForStoryPoints(card.storyPoints) : 0),
-      0
-    );
-    
-    const calculatedLevel = calculateLevel(calculatedXP);
-    const calculatedTasksCompleted = userCompletedTasks.length;
-    
-    if (
-      userProgress.xp !== calculatedXP ||
-      userProgress.level !== calculatedLevel ||
-      userProgress.tasksCompleted !== calculatedTasksCompleted
-    ) {
-      setUserProgress((prev) => ({
-        ...prev,
-        xp: calculatedXP,
-        level: calculatedLevel,
-        tasksCompleted: calculatedTasksCompleted,
-      }));
-    }
-  }, [cards, currentUserDisplayName, userProgress.level, userProgress.tasksCompleted, userProgress.xp]);
-
-  // Save user progress to localStorage
   useEffect(() => {
     if (!user) {
       return;
     }
 
-    saveUserProgress(user.id, {
-      ...userProgress,
+    setUserProgress((prev) => ({
+      ...prev,
       username: user.displayName,
       email: user.email,
-    });
-  }, [user, userProgress]);
+    }));
+  }, [user]);
 
-  const availableAssignees = [
-    { name: user?.displayName || "Player", color: "#3b82f6" },
-    { name: "Jonas", color: "#10b981" },
-    { name: "Marius", color: "#8b5cf6" },
-    { name: "Laura", color: "#f59e0b" },
-    { name: "Petras", color: "#06b6d4" },
-    { name: "Ieva", color: "#ec4899" },
-  ];
+  useEffect(() => {
+    let isActive = true;
 
-  // Get all cards as flat list
-  const allCards = useMemo(() => {
-    return [
-      ...cards.todo,
-      ...cards.inProgress,
-      ...cards.inReview,
-      ...cards.done,
-      ...cards.backlog,
-    ];
-  }, [cards]);
+    const loadBoardWorkspace = async () => {
+      if (!user) {
+        return;
+      }
 
-  const matchesCardFilters = (card: Card) => {
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      const matchesSearch =
-        card.title.toLowerCase().includes(query) ||
-        (card.labelIds || []).some((labelId) => {
-          const label = labels.find((item) => item.id === labelId);
-          return label?.name.toLowerCase().includes(query);
+      if (!Number.isFinite(numericBoardId)) {
+        setCurrentBoard(null);
+        setLabels([]);
+        setCards(createEmptyCards());
+        setActiveSprint(null);
+        setPlannedSprint(null);
+        setBoardAccessState("notFound");
+        setLoadError("");
+        setActionError("");
+        setIsLoadingBoard(false);
+        return;
+      }
+
+      try {
+        setIsLoadingBoard(true);
+        setCurrentBoard(null);
+        setLabels([]);
+        setCards(createEmptyCards());
+        setActiveSprint(null);
+        setPlannedSprint(null);
+        setBoardAccessState("available");
+        setLoadError("");
+        setActionError("");
+
+        const boardResult = await getBoard(numericBoardId);
+
+        if (!isActive) {
+          return;
+        }
+
+        if (boardResult.status === "forbidden" || boardResult.status === "notFound") {
+          setBoardAccessState(boardResult.status);
+          return;
+        }
+
+        if (boardResult.status === "error") {
+          setLoadError(boardResult.error);
+          return;
+        }
+
+        const [boardLabels, boardCards, sprints, progress] = await Promise.all([
+          getBoardLabels(numericBoardId),
+          getBoardCards(numericBoardId),
+          getBoardSprints(numericBoardId),
+          fetchCurrentUserProgress(),
+        ]);
+
+        if (!isActive) {
+          return;
+        }
+
+        setBoardAccessState("available");
+        setCurrentBoard(boardResult.board);
+        setLabels(boardLabels);
+        setCards(boardCards);
+        setActiveSprint(getActiveSprint(sprints));
+        setPlannedSprint(getPlannedSprint(sprints));
+        setUserProgress({
+          username: user.displayName,
+          email: user.email,
+          xp: progress.xp,
+          level: progress.level,
+          tasksCompleted: progress.tasksCompleted,
         });
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
 
-      if (!matchesSearch) {
-        return false;
+        const message = error instanceof Error ? error.message : "Unable to load this board right now.";
+        setLoadError(message);
+        setCurrentBoard(null);
+      } finally {
+        if (isActive) {
+          setIsLoadingBoard(false);
+        }
       }
+    };
+
+    void loadBoardWorkspace();
+
+    return () => {
+      isActive = false;
+    };
+  }, [numericBoardId, user, workspaceReloadCount]);
+
+  const availableAssignees: TaskAssignee[] = useMemo(
+    () =>
+      currentBoard?.members.map((member) => ({
+        ...member,
+        name: member.displayName,
+      })) ?? [],
+    [currentBoard],
+  );
+
+  const allCards = useMemo(() => flattenCards(cards), [cards]);
+  const currentUserId = user ? Number(user.id) : null;
+
+  const setTaskInState = (task: Card) => {
+    setCards((prevCards) => {
+      const remainingTasks = flattenCards(prevCards).filter((existingTask) => existingTask.id !== task.id);
+      return groupCards([task, ...remainingTasks]);
+    });
+  };
+
+  const removeTaskFromState = (taskId: number) => {
+    setCards((prevCards) => groupCards(flattenCards(prevCards).filter((task) => task.id !== taskId)));
+  };
+
+  const refreshWorkspace = () => {
+    setWorkspaceReloadCount((prevCount) => prevCount + 1);
+  };
+
+  const refreshProgress = async () => {
+    if (!user) {
+      return;
     }
 
-    if (selectedLabelIds.length > 0) {
-      const matchesLabels = (card.labelIds || []).some((labelId) => selectedLabelIds.includes(labelId));
-      if (!matchesLabels) {
-        return false;
-      }
+    try {
+      const progress = await fetchCurrentUserProgress();
+      setUserProgress({
+        username: user.displayName,
+        email: user.email,
+        xp: progress.xp,
+        level: progress.level,
+        tasksCompleted: progress.tasksCompleted,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to refresh your progress.";
+      setActionError(message);
+    }
+  };
+
+  const saveTask = async (
+    taskId: number,
+    updates: {
+      title?: string;
+      description?: string;
+      status?: TaskStatus;
+      labelIds?: number[];
+      assignee?: TaskAssignee | null;
+      storyPoints?: number;
+      dueDate?: string | null;
+      priority?: Priority;
+      taskType?: TaskType;
+      sprintId?: number | null;
+    },
+  ) => {
+    if (!Number.isFinite(numericBoardId)) {
+      return;
     }
 
-    if (activeFilter === "assigned" && card.assignee?.name !== currentUserDisplayName) {
-      return false;
+    const existingTask = allCards.find((card) => card.id === taskId);
+    if (!existingTask) {
+      return;
     }
 
-    if (activeFilter === "due") {
-      if (!card.dueDate) {
-        return false;
-      }
+    const updatedTask = await updateBoardTask(numericBoardId, taskId, {
+      title: updates.title ?? existingTask.title,
+      description: updates.description ?? existingTask.description ?? "",
+      status: updates.status ?? existingTask.status,
+      labelIds: updates.labelIds ?? existingTask.labelIds,
+      assigneeUserId:
+        updates.assignee === undefined
+          ? existingTask.assigneeUserId
+          : updates.assignee?.userId || null,
+      storyPoints: updates.storyPoints ?? existingTask.storyPoints,
+      dueDate:
+        updates.dueDate === undefined
+          ? existingTask.dueDate ?? null
+          : updates.dueDate,
+      priority:
+        updates.priority === undefined
+          ? existingTask.priority
+          : updates.priority,
+      taskType:
+        updates.taskType === undefined
+          ? existingTask.taskType
+          : updates.taskType,
+      sprintId:
+        updates.sprintId === undefined
+          ? existingTask.sprintId ?? null
+          : updates.sprintId,
+    });
 
-      const dueDate = parseISO(card.dueDate);
-      const weekInterval = {
-        start: startOfWeek(new Date(), { weekStartsOn: 1 }),
-        end: endOfWeek(new Date(), { weekStartsOn: 1 }),
-      };
-
-      if (!isWithinInterval(dueDate, weekInterval)) {
-        return false;
-      }
-    }
-
-    return true;
+    setTaskInState(updatedTask);
+    await refreshProgress();
   };
 
   const filteredAllCards = useMemo(() => {
-    return allCards.filter(matchesCardFilters);
-  }, [allCards, searchQuery, selectedLabelIds, activeFilter, currentUserDisplayName, labels]);
+    return allCards.filter((card) => {
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        const matchesSearch =
+          card.title.toLowerCase().includes(query) ||
+          card.labelIds.some((labelId) => {
+            const label = labels.find((item) => item.id === labelId);
+            return label?.name.toLowerCase().includes(query);
+          });
+
+        if (!matchesSearch) {
+          return false;
+        }
+      }
+
+      if (selectedLabelIds.length > 0) {
+        const matchesLabels = card.labelIds.some((labelId) => selectedLabelIds.includes(labelId));
+        if (!matchesLabels) {
+          return false;
+        }
+      }
+
+      if (activeFilter === "assigned" && card.assigneeUserId !== currentUserId) {
+        return false;
+      }
+
+      if (activeFilter === "due") {
+        if (!card.dueDate) {
+          return false;
+        }
+
+        const dueDate = parseISO(card.dueDate);
+        const weekInterval = {
+          start: startOfWeek(new Date(), { weekStartsOn: 1 }),
+          end: endOfWeek(new Date(), { weekStartsOn: 1 }),
+        };
+
+        if (!isWithinInterval(dueDate, weekInterval)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [activeFilter, allCards, currentUserId, labels, searchQuery, selectedLabelIds]);
 
   const backlogCards = useMemo(() => {
-    return filteredAllCards.filter(card => !card.sprintId);
+    return filteredAllCards.filter((card) => !card.sprintId);
   }, [filteredAllCards]);
 
   const plannedSprintCards = useMemo(() => {
     if (!plannedSprint) return [];
-    return filteredAllCards.filter(card => card.sprintId === plannedSprint.id);
+    return filteredAllCards.filter((card) => card.sprintId === plannedSprint.id);
   }, [filteredAllCards, plannedSprint]);
 
   const activeSprintCards = useMemo(() => {
@@ -275,337 +375,194 @@ export function Board() {
       return { todo: [], inProgress: [], inReview: [], done: [] };
     }
 
-    const sprintCards = filteredAllCards.filter(card => card.sprintId === activeSprint.id);
+    const sprintCards = filteredAllCards.filter((card) => card.sprintId === activeSprint.id);
 
     return {
-      todo: sprintCards.filter((c) => c.status === "todo"),
-      inProgress: sprintCards.filter((c) => c.status === "inProgress"),
-      inReview: sprintCards.filter((c) => c.status === "inReview"),
-      done: sprintCards.filter((c) => c.status === "done"),
+      todo: sprintCards.filter((card) => card.status === "todo"),
+      inProgress: sprintCards.filter((card) => card.status === "inProgress"),
+      inReview: sprintCards.filter((card) => card.status === "inReview"),
+      done: sprintCards.filter((card) => card.status === "done"),
     };
   }, [filteredAllCards, activeSprint]);
 
-  // Card drag and drop handler
-  const handleCardDrop = (cardId: string, fromColumnId: string, toColumnId: string) => {
-    setCards((prevCards) => {
-      const newCards = { ...prevCards };
-      const fromColumn = fromColumnId as keyof Cards;
-      const toColumn = toColumnId as keyof Cards;
-
-      const cardIndex = newCards[fromColumn].findIndex((card) => card.id === cardId);
-      if (cardIndex === -1) return prevCards;
-
-      const [movedCard] = newCards[fromColumn].splice(cardIndex, 1);
-      movedCard.status = toColumn;
-
-      // Handle XP changes
-      if (fromColumn === "done" && toColumn !== "done" && movedCard.storyPoints && movedCard.assignee?.name === currentUserDisplayName) {
-        const xpLost = getXPForStoryPoints(movedCard.storyPoints);
-        const newXP = Math.max(0, userProgress.xp - xpLost);
-        const newLevel = calculateLevel(newXP);
-        
-        setUserProgress((prev) => ({
-          ...prev,
-          xp: newXP,
-          level: newLevel,
-          tasksCompleted: Math.max(0, prev.tasksCompleted - 1),
-        }));
-      } else if (toColumn === "done" && fromColumn !== "done" && movedCard.storyPoints && movedCard.assignee?.name === currentUserDisplayName) {
-        const xpEarned = getXPForStoryPoints(movedCard.storyPoints);
-        const newXP = userProgress.xp + xpEarned;
-        const newLevel = calculateLevel(newXP);
-        
-        setUserProgress((prev) => ({
-          ...prev,
-          xp: newXP,
-          level: newLevel,
-          tasksCompleted: prev.tasksCompleted + 1,
-        }));
-      }
-
-      newCards[toColumn] = [movedCard, ...newCards[toColumn]];
-      return newCards;
-    });
+  const handleCardDrop = async (cardId: number, _fromColumnId: string, toColumnId: string) => {
+    try {
+      setActionError("");
+      await saveTask(cardId, { status: toColumnId as TaskStatus });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to move the task right now.";
+      setActionError(message);
+    }
   };
 
-  // Add new card
-  const handleAddCard = (newCard: {
+  const handleAddCard = async (newCard: {
     title: string;
     description: string;
     status: "todo" | "inProgress" | "inReview" | "done" | "backlog";
-    labelIds: string[];
-    assignee: { name: string; color: string };
+    labelIds: number[];
+    assignee: TaskAssignee | null;
     storyPoints?: number;
     priority?: Priority;
     taskType?: TaskType;
     dueDate?: string | null;
   }) => {
-    const card: Card = {
-      id: Date.now().toString(),
-      title: newCard.title,
-      description: newCard.description,
-      labelIds: newCard.labelIds,
-      assignee: newCard.assignee,
-      status: newCard.status,
-      storyPoints: newCard.storyPoints,
-      priority: newCard.priority,
-      taskType: newCard.taskType,
-      dueDate: newCard.dueDate || null,
-      sprintId: null, // New tasks go to backlog by default
-    };
+    if (!Number.isFinite(numericBoardId)) {
+      return;
+    }
 
-    setCards((prevCards) => ({
-      ...prevCards,
-      [newCard.status]: [card, ...prevCards[newCard.status]],
-    }));
+    try {
+      setActionError("");
+      const createdTask = await createBoardTask(numericBoardId, {
+        title: newCard.title,
+        description: newCard.description,
+        status: newCard.status,
+        labelIds: newCard.labelIds,
+        assigneeUserId: newCard.assignee?.userId || null,
+        storyPoints: newCard.storyPoints,
+        priority: newCard.priority,
+        taskType: newCard.taskType,
+        dueDate: newCard.dueDate || null,
+        sprintId: null,
+      });
 
-    if (newCard.status === "done" && newCard.storyPoints && newCard.assignee?.name === currentUserDisplayName) {
-      const xpEarned = getXPForStoryPoints(newCard.storyPoints);
-      const newXP = userProgress.xp + xpEarned;
-      const newLevel = calculateLevel(newXP);
-      
-      setUserProgress((prev) => ({
-        ...prev,
-        xp: newXP,
-        level: newLevel,
-        tasksCompleted: prev.tasksCompleted + 1,
-      }));
+      setTaskInState(createdTask);
+      await refreshProgress();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to create the task right now.";
+      setActionError(message);
+      throw new Error(message);
     }
   };
 
-  // Change card assignee
-  const handleAssigneeChange = (cardId: string, newAssignee: { name: string; color: string } | null) => {
-    setCards((prevCards) => {
-      const newCards = { ...prevCards };
-      
-      for (const column of Object.keys(newCards) as (keyof Cards)[]) {
-        const cardIndex = newCards[column].findIndex((card) => card.id === cardId);
-        if (cardIndex !== -1) {
-          newCards[column][cardIndex] = {
-            ...newCards[column][cardIndex],
-            assignee: newAssignee || { name: "Unassigned", color: "#9ca3af" },
-          };
-          break;
-        }
-      }
-      
-      return newCards;
-    });
+  const handleAssigneeChange = async (cardId: number, newAssignee: TaskAssignee | null) => {
+    try {
+      setActionError("");
+      await saveTask(cardId, { assignee: newAssignee });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to update the assignee right now.";
+      setActionError(message);
+    }
   };
 
-  // Delete card handlers
-  const handleDeleteRequest = (cardId: string, title: string) => {
+  const handleDeleteRequest = (cardId: number, title: string) => {
     setDeleteDialog({ isOpen: true, cardId, title });
   };
 
-  const handleDeleteConfirm = () => {
-    const { cardId } = deleteDialog;
-    
-    setCards((prevCards) => {
-      const newCards = { ...prevCards };
-      
-      for (const column of Object.keys(newCards) as (keyof Cards)[]) {
-        newCards[column] = newCards[column].filter((card) => card.id !== cardId);
-      }
-      
-      return newCards;
-    });
+  const handleDeleteConfirm = async () => {
+    if (!Number.isFinite(numericBoardId) || deleteDialog.cardId === null) {
+      return;
+    }
 
-    setDeleteDialog({ isOpen: false, cardId: "", title: "" });
-  };
-
-  // Edit task handlers
-  const handleEditTask = (cardId: string) => {
-    for (const column of Object.keys(cards) as (keyof Cards)[]) {
-      const card = cards[column].find((c) => c.id === cardId);
-      if (card) {
-        setEditingTask(card);
-        return;
-      }
+    try {
+      setActionError("");
+      await deleteBoardTask(numericBoardId, deleteDialog.cardId);
+      removeTaskFromState(deleteDialog.cardId);
+      setDeleteDialog({ isOpen: false, cardId: null, title: "" });
+      await refreshProgress();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to delete the task right now.";
+      setActionError(message);
     }
   };
 
-  const handleSaveEdit = (cardId: string, updates: {
+  const handleEditTask = (cardId: number) => {
+    const card = allCards.find((item) => item.id === cardId) ?? null;
+    setEditingTask(card);
+  };
+
+  const handleSaveEdit = async (cardId: number, updates: {
     title: string;
     description: string;
     status: "todo" | "inProgress" | "inReview" | "done" | "backlog";
-    labelIds: string[];
-    assignee: { name: string; color: string } | null;
+    labelIds: number[];
+    assignee: TaskAssignee | null;
     storyPoints?: number;
     priority?: Priority;
     taskType?: TaskType;
     dueDate?: string | null;
   }) => {
-    setCards((prevCards) => {
-      const newCards = { ...prevCards };
-      
-      for (const column of Object.keys(newCards) as (keyof Cards)[]) {
-        const cardIndex = newCards[column].findIndex((card) => card.id === cardId);
-        if (cardIndex !== -1) {
-          const oldStatus = newCards[column][cardIndex].status;
-          const newStatus = updates.status;
-          
-          const updatedCard: Card = {
-            ...newCards[column][cardIndex],
-            ...updates,
-            assignee: updates.assignee || { name: "Unassigned", color: "#9ca3af" },
-          };
-          
-          if (oldStatus !== newStatus) {
-            newCards[column].splice(cardIndex, 1);
-            newCards[newStatus] = [updatedCard, ...newCards[newStatus]];
-            
-            // Handle XP changes
-            if (oldStatus === "done" && newStatus !== "done" && updatedCard.storyPoints && updatedCard.assignee?.name === currentUserDisplayName) {
-              const xpLost = getXPForStoryPoints(updatedCard.storyPoints);
-              const newXP = Math.max(0, userProgress.xp - xpLost);
-              const newLevel = calculateLevel(newXP);
-              
-              setUserProgress((prev) => ({
-                ...prev,
-                xp: newXP,
-                level: newLevel,
-                tasksCompleted: Math.max(0, prev.tasksCompleted - 1),
-              }));
-            } else if (newStatus === "done" && oldStatus !== "done" && updatedCard.storyPoints && updatedCard.assignee?.name === currentUserDisplayName) {
-              const xpEarned = getXPForStoryPoints(updatedCard.storyPoints);
-              const newXP = userProgress.xp + xpEarned;
-              const newLevel = calculateLevel(newXP);
-              
-              setUserProgress((prev) => ({
-                ...prev,
-                xp: newXP,
-                level: newLevel,
-                tasksCompleted: prev.tasksCompleted + 1,
-              }));
-            }
-          } else {
-            newCards[column][cardIndex] = updatedCard;
-          }
-          
-          break;
-        }
-      }
-      
-      return newCards;
-    });
-  };
-
-  // Sprint management handlers
-  const handleAddToSprint = (cardId: string) => {
-    if (!plannedSprint) return;
-    
-    setCards(prevCards => {
-      const newCards = { ...prevCards };
-      
-      for (const column of Object.keys(newCards) as (keyof Cards)[]) {
-        const cardIndex = newCards[column].findIndex(c => c.id === cardId);
-        if (cardIndex !== -1) {
-          newCards[column][cardIndex] = {
-            ...newCards[column][cardIndex],
-            sprintId: plannedSprint.id
-          };
-          break;
-        }
-      }
-      
-      return newCards;
-    });
-  };
-
-  const handleRemoveFromSprint = (cardId: string) => {
-    setCards(prevCards => {
-      const newCards = { ...prevCards };
-      
-      for (const column of Object.keys(newCards) as (keyof Cards)[]) {
-        const cardIndex = newCards[column].findIndex(c => c.id === cardId);
-        if (cardIndex !== -1) {
-          newCards[column][cardIndex] = {
-            ...newCards[column][cardIndex],
-            sprintId: null
-          };
-          break;
-        }
-      }
-      
-      return newCards;
-    });
-  };
-
-  const handleCreateSprint = (sprint: Sprint) => {
-    setPlannedSprint(sprint);
-    setIsSprintPlanningOpen(false);
-  };
-
-  const handleStartSprint = () => {
-    if (!plannedSprint) return;
-    
-    // Start the sprint
-    startSprintUtil(plannedSprint.id);
-    
-    // Update task statuses - move all planned sprint tasks to 'todo' if they're in backlog
-    setCards(prevCards => {
-      const newCards = { ...prevCards };
-      const updatedBacklog: Card[] = [];
-      const updatedTodo: Card[] = [...newCards.todo];
-      
-      // Move tasks from backlog to todo if they're part of the sprint
-      newCards.backlog.forEach(card => {
-        if (card.sprintId === plannedSprint.id) {
-          updatedTodo.push({ ...card, status: 'todo' });
-        } else {
-          updatedBacklog.push(card);
-        }
-      });
-      
-      return {
-        ...newCards,
-        backlog: updatedBacklog,
-        todo: updatedTodo,
-      };
-    });
-    
-    // Update sprint states
-    setActiveSprint(plannedSprint);
-    setPlannedSprint(null);
-    
-    // Navigate to board view
-    setView('board');
-  };
-
-  // Label management handlers
-  const handleCreateLabel = (name: string, color: string) => {
-    if (!boardId) return;
-    const newLabel = createLabel(boardId, name, color);
-    setLabels([...labels, newLabel]);
-  };
-
-  const handleUpdateLabel = (labelId: string, name: string, color: string) => {
-    if (!boardId) return;
-    const success = updateLabel(boardId, labelId, { name, color });
-    if (success) {
-      setLabels(labels.map(l => l.id === labelId ? { ...l, name, color } : l));
+    try {
+      setActionError("");
+      await saveTask(cardId, updates);
+      setEditingTask(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to save the task right now.";
+      setActionError(message);
+      throw new Error(message);
     }
   };
 
-  const handleDeleteLabel = (labelId: string) => {
-    if (!boardId) return;
-    const success = deleteLabel(boardId, labelId);
-    if (success) {
-      setLabels(labels.filter(l => l.id !== labelId));
-      
-      setCards((prevCards) => {
-        const newCards = { ...prevCards };
-        for (const column of Object.keys(newCards) as (keyof Cards)[]) {
-          newCards[column] = newCards[column].map(card => ({
-            ...card,
-            labelIds: card.labelIds?.filter(id => id !== labelId) || []
-          }));
-        }
-        return newCards;
-      });
-      
-      setSelectedLabelIds(selectedLabelIds.filter(id => id !== labelId));
+  const handleAddToSprint = async (cardId: number) => {
+    if (!plannedSprint) return;
+
+    try {
+      setActionError("");
+      await saveTask(cardId, { sprintId: plannedSprint.id });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to add the task to the sprint.";
+      setActionError(message);
+    }
+  };
+
+  const handleRemoveFromSprint = async (cardId: number) => {
+    try {
+      setActionError("");
+      await saveTask(cardId, { sprintId: null });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to remove the task from the sprint.";
+      setActionError(message);
+    }
+  };
+
+  const handleCreateSprint = async (input: { name: string; startDate: string; endDate: string }) => {
+    if (!Number.isFinite(numericBoardId)) {
+      throw new Error("Board not found.");
+    }
+
+    const sprint = await createSprint(numericBoardId, input.name, input.startDate, input.endDate);
+    setPlannedSprint(sprint);
+    setIsSprintPlanningOpen(false);
+    return sprint;
+  };
+
+  const handleStartSprint = async () => {
+    if (!Number.isFinite(numericBoardId) || !plannedSprint) {
+      throw new Error("Sprint not found.");
+    }
+
+    const startedSprint = await startSprint(numericBoardId, plannedSprint.id);
+    refreshWorkspace();
+    setView("board");
+    return startedSprint;
+  };
+
+  const handleCompleteSprint = async () => {
+    if (!Number.isFinite(numericBoardId) || !activeSprint) {
+      return;
+    }
+
+    try {
+      setActionError("");
+      await completeSprint(numericBoardId, activeSprint.id);
+      refreshWorkspace();
+      setView("backlog");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to complete the sprint right now.";
+      setActionError(message);
+    }
+  };
+
+  const handleCreateLabel = async (name: string, color: string) => {
+    if (!Number.isFinite(numericBoardId)) return;
+
+    try {
+      setActionError("");
+      const newLabel = await createLabel(numericBoardId, name, color);
+      setLabels((prevLabels) => [...prevLabels, newLabel]);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to create the label right now.";
+      setActionError(message);
+      throw new Error(message);
     }
   };
 
@@ -613,24 +570,79 @@ export function Board() {
     return null;
   }
 
+  if (isLoadingBoard) {
+    return (
+      <div className={`flex min-h-screen items-center justify-center ${isDarkMode ? 'bg-[#16181d]' : 'bg-gray-50'}`}>
+        <p className={currentTheme.textMuted}>Loading board...</p>
+      </div>
+    );
+  }
+
+  if (boardAccessState !== "available" || loadError) {
+    const stateContent =
+      boardAccessState === "forbidden"
+        ? {
+            title: "You no longer have access to this board",
+            description: "Your membership may have changed, or this board is private to another team.",
+          }
+        : {
+            title: "Board not found",
+            description: "This board may have been deleted, or the link is no longer valid.",
+          };
+
+    return (
+      <div className={`flex min-h-screen items-center justify-center px-6 ${isDarkMode ? 'bg-[#16181d]' : 'bg-gray-50'}`}>
+        <div className={`w-full max-w-xl rounded-3xl border ${currentTheme.border} ${currentTheme.cardBg} p-8 shadow-xl`}>
+          <h1 className={`text-2xl font-bold ${currentTheme.text}`}>
+            {loadError ? "Unable to load this board" : stateContent.title}
+          </h1>
+          <p className={`mt-3 text-sm ${currentTheme.textMuted}`}>
+            {loadError ? loadError : stateContent.description}
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button
+              onClick={() => navigate("/app")}
+              className={`rounded-xl border ${currentTheme.border} px-5 py-3 font-semibold ${currentTheme.bgSecondary} ${currentTheme.text} transition-all hover:${currentTheme.bgTertiary}`}
+            >
+              Back to Projects
+            </button>
+            {loadError && (
+              <button
+                onClick={refreshWorkspace}
+                className={`rounded-xl px-5 py-3 font-semibold text-white bg-gradient-to-r ${currentTheme.primary} transition-all`}
+              >
+                Retry
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentBoard) {
+    return (
+      <div className={`flex min-h-screen items-center justify-center ${isDarkMode ? 'bg-[#16181d]' : 'bg-gray-50'}`}>
+        <p className={currentTheme.textMuted}>Loading board...</p>
+      </div>
+    );
+  }
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div className={`size-full flex ${isDarkMode ? 'bg-[#16181d]' : 'bg-gray-50'}`}>
         {!isMobile && (
-          <Sidebar 
-            activeFilter={activeFilter} 
+          <Sidebar
+            activeFilter={activeFilter}
             onFilterChange={setActiveFilter}
             onCreateTask={() => setIsModalOpen(true)}
             selectedLabels={selectedLabelIds}
             onLabelsChange={setSelectedLabelIds}
-            onProfileClick={() => setIsProfileOpen(true)}
             onLogout={async () => {
               await logout();
               navigate('/login');
             }}
-            onBack={() => navigate('/app')}
-            boardName={currentBoard?.name}
-            userProgress={userProgress}
+            boardName={currentBoard.name}
             labels={labels}
           />
         )}
@@ -647,8 +659,8 @@ export function Board() {
                   Open quick filters, labels, and account actions.
                 </SheetDescription>
               </SheetHeader>
-              <Sidebar 
-                activeFilter={activeFilter} 
+              <Sidebar
+                activeFilter={activeFilter}
                 onFilterChange={(filter) => {
                   setActiveFilter(filter);
                   setIsMobileSidebarOpen(false);
@@ -659,21 +671,12 @@ export function Board() {
                 }}
                 selectedLabels={selectedLabelIds}
                 onLabelsChange={setSelectedLabelIds}
-                onProfileClick={() => {
-                  setIsMobileSidebarOpen(false);
-                  setIsProfileOpen(true);
-                }}
                 onLogout={async () => {
                   setIsMobileSidebarOpen(false);
                   await logout();
                   navigate('/login');
                 }}
-                onBack={() => {
-                  setIsMobileSidebarOpen(false);
-                  navigate('/app');
-                }}
-                boardName={currentBoard?.name}
-                userProgress={userProgress}
+                boardName={currentBoard.name}
                 labels={labels}
                 className="w-full min-h-full border-r-0"
               />
@@ -681,11 +684,9 @@ export function Board() {
           </Sheet>
         )}
 
-        {/* Main Content */}
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Top Toolbar */}
-          <Toolbar 
-            view={view} 
+          <Toolbar
+            view={view}
             onViewChange={setView}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
@@ -696,12 +697,18 @@ export function Board() {
             userProgress={userProgress}
           />
 
-          {/* Content Area - Board View */}
+          {actionError && (
+            <div className="px-6 pt-4">
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+                {actionError}
+              </div>
+            </div>
+          )}
+
           {view === "board" && (
             <>
               {activeSprint ? (
                 <main className={`flex-1 overflow-y-auto ${isDarkMode ? 'bg-[#16181d]' : 'bg-gray-50'}`}>
-                  {/* Sprint Info Header */}
                   <div className={`${currentTheme.bgSecondary} border-b ${currentTheme.border} px-8 py-4`}>
                     <div className="flex items-center justify-between max-w-[2000px] mx-auto">
                       <div className="flex items-center gap-4">
@@ -725,57 +732,12 @@ export function Board() {
                     </div>
                   </div>
 
-                  {/* Kanban Board */}
                   <div className="w-full max-w-[2000px] mx-auto px-8 py-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                      <KanbanColumn
-                        id="todo"
-                        title="To Do"
-                        count={activeSprintCards.todo.length}
-                        cards={activeSprintCards.todo}
-                        onCardDrop={handleCardDrop}
-                        onAssigneeChange={handleAssigneeChange}
-                        onDelete={handleDeleteRequest}
-                        onEdit={handleEditTask}
-                        availableAssignees={availableAssignees}
-                        labels={labels}
-                      />
-                      <KanbanColumn
-                        id="inProgress"
-                        title="In Progress"
-                        count={activeSprintCards.inProgress.length}
-                        cards={activeSprintCards.inProgress}
-                        onCardDrop={handleCardDrop}
-                        onAssigneeChange={handleAssigneeChange}
-                        onDelete={handleDeleteRequest}
-                        onEdit={handleEditTask}
-                        availableAssignees={availableAssignees}
-                        labels={labels}
-                      />
-                      <KanbanColumn
-                        id="inReview"
-                        title="In Review"
-                        count={activeSprintCards.inReview.length}
-                        cards={activeSprintCards.inReview}
-                        onCardDrop={handleCardDrop}
-                        onAssigneeChange={handleAssigneeChange}
-                        onDelete={handleDeleteRequest}
-                        onEdit={handleEditTask}
-                        availableAssignees={availableAssignees}
-                        labels={labels}
-                      />
-                      <KanbanColumn
-                        id="done"
-                        title="Done"
-                        count={activeSprintCards.done.length}
-                        cards={activeSprintCards.done}
-                        onCardDrop={handleCardDrop}
-                        onAssigneeChange={handleAssigneeChange}
-                        onDelete={handleDeleteRequest}
-                        onEdit={handleEditTask}
-                        availableAssignees={availableAssignees}
-                        labels={labels}
-                      />
+                      <KanbanColumn id="todo" title="To Do" count={activeSprintCards.todo.length} cards={activeSprintCards.todo} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} availableAssignees={availableAssignees} labels={labels} />
+                      <KanbanColumn id="inProgress" title="In Progress" count={activeSprintCards.inProgress.length} cards={activeSprintCards.inProgress} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} availableAssignees={availableAssignees} labels={labels} />
+                      <KanbanColumn id="inReview" title="In Review" count={activeSprintCards.inReview.length} cards={activeSprintCards.inReview} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} availableAssignees={availableAssignees} labels={labels} />
+                      <KanbanColumn id="done" title="Done" count={activeSprintCards.done.length} cards={activeSprintCards.done} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} availableAssignees={availableAssignees} labels={labels} />
                     </div>
                   </div>
                 </main>
@@ -801,7 +763,6 @@ export function Board() {
             </>
           )}
 
-          {/* List View */}
           {view === "list" && (
             <>
               {activeSprint ? (
@@ -835,7 +796,6 @@ export function Board() {
             </>
           )}
 
-          {/* Backlog View */}
           {view === "backlog" && (
             <BacklogView2
               backlogCards={backlogCards}
@@ -850,12 +810,12 @@ export function Board() {
               availableAssignees={availableAssignees}
               labels={labels}
               onCreateSprint={() => setIsSprintPlanningOpen(true)}
-              onStartSprint={handleStartSprint}
+              onStartSprint={() => void handleStartSprint()}
+              onCompleteSprint={() => void handleCompleteSprint()}
               onCreateTask={() => setIsModalOpen(true)}
             />
           )}
 
-          {/* History View */}
           {view === "history" && (
             <HistoryView
               cards={filteredAllCards}
@@ -868,7 +828,6 @@ export function Board() {
           )}
         </div>
 
-        {/* Modals */}
         <AddCardModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
@@ -879,6 +838,7 @@ export function Board() {
         />
 
         <EditTaskModal
+          key={editingTask?.id ?? "no-task"}
           isOpen={editingTask !== null}
           onClose={() => setEditingTask(null)}
           onSave={handleSaveEdit}
@@ -888,48 +848,30 @@ export function Board() {
           availableAssignees={availableAssignees}
         />
 
-        <SettingsModal
-          isOpen={isSettingsOpen}
-          onClose={() => setIsSettingsOpen(false)}
-          onOpenProfile={() => setIsProfileOpen(true)}
-        />
+        <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} onOpenProfile={() => setIsProfileOpen(true)} />
 
         <ProfileModal
           isOpen={isProfileOpen}
           onClose={() => setIsProfileOpen(false)}
           user={user}
           userProgress={userProgress}
-          tasksCompleted={
-            allCards.filter(
-              (card) => card.status === "done" && card.assignee?.name === currentUserDisplayName
-            ).length || 0
-          }
-          userTotalXP={
-            allCards
-              .filter(
-                (card) => card.status === "done" && card.assignee?.name === currentUserDisplayName
-              )
-              .reduce((sum, card) => sum + (card.storyPoints ? getXPForStoryPoints(card.storyPoints) : 0), 0) || 0
-          }
+          tasksCompleted={userProgress.tasksCompleted}
+          userTotalXP={userProgress.xp}
         />
 
         <ConfirmDeleteDialog
           isOpen={deleteDialog.isOpen}
-          onClose={() => setDeleteDialog({ isOpen: false, cardId: "", title: "" })}
-          onConfirm={handleDeleteConfirm}
+          onClose={() => setDeleteDialog({ isOpen: false, cardId: null, title: "" })}
+          onConfirm={() => void handleDeleteConfirm()}
           taskTitle={deleteDialog.title}
         />
 
         <SprintPlanningModal
+          key={`${plannedSprint?.id ?? "new"}-${isSprintPlanningOpen ? "open" : "closed"}`}
           isOpen={isSprintPlanningOpen}
           onClose={() => setIsSprintPlanningOpen(false)}
-          boardId={boardId || ''}
-          onSprintCreated={handleCreateSprint}
-          onSprintStarted={(sprint) => {
-            setActiveSprint(sprint);
-            setPlannedSprint(null);
-            setView('board');
-          }}
+          onCreateSprint={handleCreateSprint}
+          onStartSprint={async () => handleStartSprint()}
           existingSprint={plannedSprint}
         />
       </div>

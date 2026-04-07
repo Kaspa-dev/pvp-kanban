@@ -1,5 +1,3 @@
-using System.Reflection.Metadata;
-
 namespace BE.Models;
 
 public class Task
@@ -16,6 +14,7 @@ public class Task
     public int? TeamId { get; set; } = null;
     public Priority? Priority { get; set; } = null;
     public Type? Type { get; set; } = null;
+    public DateTime? DueDate { get; set; } = null;
 
     public Board Board { get; set; } = null!;
     public Models.TaskStatus Status { get; set; } = null!;

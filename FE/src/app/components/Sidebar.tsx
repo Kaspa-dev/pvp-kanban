@@ -9,18 +9,10 @@ interface SidebarProps {
   activeFilter: string;
   onFilterChange: (filter: string) => void;
   onCreateTask: () => void;
-  selectedLabels: string[];
-  onLabelsChange: (labels: string[]) => void;
-  onProfileClick: () => void;
+  selectedLabels: number[];
+  onLabelsChange: (labels: number[]) => void;
   onLogout?: () => void;
-  onBack?: () => void;
   boardName?: string;
-  userProgress: {
-    username: string;
-    email: string;
-    xp: number;
-    level: number;
-  };
   labels: Label[];
   className?: string;
 }
@@ -31,11 +23,8 @@ export function Sidebar({
   onCreateTask, 
   selectedLabels, 
   onLabelsChange,
-  onProfileClick,
   onLogout,
-  onBack,
   boardName,
-  userProgress,
   labels,
   className = "",
 }: SidebarProps) {
@@ -48,7 +37,7 @@ export function Sidebar({
     { id: "due", label: "Due this week", icon: Calendar },
   ];
 
-  const toggleLabel = (labelId: string) => {
+  const toggleLabel = (labelId: number) => {
     if (selectedLabels.includes(labelId)) {
       onLabelsChange(selectedLabels.filter(l => l !== labelId));
     } else {
@@ -56,7 +45,7 @@ export function Sidebar({
     }
   };
 
-  const removeLabel = (labelId: string) => {
+  const removeLabel = (labelId: number) => {
     onLabelsChange(selectedLabels.filter(l => l !== labelId));
   };
 

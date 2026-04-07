@@ -34,7 +34,7 @@ interface ApiUser {
   displayName: string;
 }
 
-const LEGACY_RESET_MARKER_KEY = "banban_real_auth_bootstrapped_v1";
+const LEGACY_RESET_MARKER_KEY = "banban_real_auth_bootstrapped_v2";
 const LEGACY_STORAGE_KEYS = new Set([
   "banban_auth",
   "banban_users",
@@ -45,9 +45,21 @@ const LEGACY_STORAGE_PREFIXES = [
   "banban_boards_",
   "banban_cards_",
   "banban_labels_",
+  "banban_user_progress_",
 ];
 
 let accessToken: string | null = null;
+let refreshPromise: Promise<boolean> | null = null;
+
+export class ApiError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+    this.name = "ApiError";
+  }
+}
 
 function normalizeUser(user: ApiUser): User {
   return {
@@ -71,6 +83,15 @@ function createAuthorizedHeaders(headers: HeadersInit = {}): HeadersInit {
   }
 
   return nextHeaders;
+}
+
+function createRequestHeaders(init: RequestInit): HeadersInit {
+  const headers = new Headers(init.headers ?? {});
+  if (!(init.body instanceof FormData) && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  return createAuthorizedHeaders(headers);
 }
 
 function getErrorMessage(payload: unknown, fallback: string): string {
@@ -157,6 +178,94 @@ function clearLegacyLocalDemoDataOnce() {
   localStorage.setItem(LEGACY_RESET_MARKER_KEY, "true");
 }
 
+async function tryRefreshSession(): Promise<boolean> {
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  refreshPromise = (async () => {
+    const result = await authRequest(
+      "/api/auth/refresh",
+      { method: "POST" },
+      "Unable to restore your session.",
+    );
+
+    if (!result.success) {
+      return false;
+    }
+
+    clearLegacyLocalDemoDataOnce();
+    return true;
+  })();
+
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
+  }
+}
+
+export async function apiFetch(
+  path: string,
+  init: RequestInit = {},
+  allowRefresh = true,
+): Promise<Response> {
+  const response = await fetch(path, {
+    ...init,
+    credentials: "include",
+    headers: createRequestHeaders(init),
+  });
+
+  if (response.status !== 401) {
+    return response;
+  }
+
+  if (!allowRefresh) {
+    setAccessToken(null);
+    return response;
+  }
+
+  const refreshed = await tryRefreshSession();
+  if (!refreshed) {
+    setAccessToken(null);
+    return response;
+  }
+
+  return apiFetch(path, init, false);
+}
+
+export async function apiJson<T>(
+  path: string,
+  init: RequestInit = {},
+  fallbackMessage = "Request failed.",
+): Promise<T> {
+  const response = await apiFetch(path, init);
+  const payload = await parseJson<T | AuthErrorResponse>(response);
+
+  if (!response.ok) {
+    throw new ApiError(response.status, getErrorMessage(payload, fallbackMessage));
+  }
+
+  return payload as T;
+}
+
+export async function apiVoid(
+  path: string,
+  init: RequestInit = {},
+  fallbackMessage = "Request failed.",
+): Promise<void> {
+  const response = await apiFetch(path, init);
+  const payload = await parseJson<AuthErrorResponse>(response);
+
+  if (!response.ok) {
+    throw new ApiError(response.status, getErrorMessage(payload, fallbackMessage));
+  }
+}
+
+export function isApiError(error: unknown): error is ApiError {
+  return error instanceof ApiError;
+}
+
 export function getAccessToken(): string | null {
   return accessToken;
 }
@@ -167,11 +276,9 @@ export async function fetchCurrentUser(): Promise<User | null> {
   }
 
   try {
-    const response = await fetch("/api/auth/me", {
+    const response = await apiFetch("/api/auth/me", {
       method: "GET",
-      credentials: "include",
-      headers: createAuthorizedHeaders(),
-    });
+    }, false);
 
     const payload = await parseJson<ApiUser | AuthErrorResponse>(response);
     if (!response.ok || !payload || !("id" in payload)) {
@@ -188,18 +295,13 @@ export async function fetchCurrentUser(): Promise<User | null> {
 }
 
 export async function bootstrapAuth(): Promise<User | null> {
-  const result = await authRequest(
-    "/api/auth/refresh",
-    { method: "POST" },
-    "Unable to restore your session.",
-  );
-
-  if (!result.success) {
+  const refreshed = await tryRefreshSession();
+  if (!refreshed) {
     return null;
   }
 
   const currentUser = await fetchCurrentUser();
-  return currentUser ?? result.user;
+  return currentUser;
 }
 
 export async function login(

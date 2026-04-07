@@ -1,24 +1,25 @@
 import { KanbanCard } from "./KanbanCard";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
-import { Plus, Play, Calendar, CheckSquare, Target, Archive, Zap } from "lucide-react";
+import { Plus, Play, Calendar, CheckSquare, Target, Archive, Zap, Check } from "lucide-react";
 import { Label } from "../utils/labels";
 import { Sprint } from "../utils/sprints";
-import { Card } from "../utils/cards";
+import { Card, TaskAssignee } from "../utils/cards";
 
 interface BacklogViewProps {
   backlogCards: Card[];
   sprintCards: Card[];
   activeSprint: Sprint | null;
   plannedSprint: Sprint | null;
-  onAssigneeChange: (cardId: string, assignee: { name: string; color: string } | null) => void;
-  onDelete: (cardId: string, title: string) => void;
-  onEdit?: (cardId: string) => void;
-  onAddToSprint: (cardId: string) => void;
-  onRemoveFromSprint: (cardId: string) => void;
-  availableAssignees: { name: string; color: string }[];
+  onAssigneeChange: (cardId: number, assignee: TaskAssignee | null) => void;
+  onDelete: (cardId: number, title: string) => void;
+  onEdit?: (cardId: number) => void;
+  onAddToSprint: (cardId: number) => void;
+  onRemoveFromSprint: (cardId: number) => void;
+  availableAssignees: TaskAssignee[];
   labels: Label[];
   onCreateSprint: () => void;
   onStartSprint: () => void;
+  onCompleteSprint?: () => void;
   onCreateTask: () => void;
 }
 
@@ -36,6 +37,7 @@ export function BacklogView2({
   labels,
   onCreateSprint,
   onStartSprint,
+  onCompleteSprint,
   onCreateTask,
 }: BacklogViewProps) {
   const { theme, isDarkMode } = useTheme();
@@ -198,6 +200,15 @@ export function BacklogView2({
                   View and manage tasks in Board or List view. Create a new sprint after completing the current one.
                 </p>
               </div>
+              {onCompleteSprint && (
+                <button
+                  onClick={onCompleteSprint}
+                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-emerald-700"
+                >
+                  <Check className="h-4 w-4" />
+                  Complete Sprint
+                </button>
+              )}
             </div>
           </div>
         )}

@@ -2,7 +2,7 @@ import { KanbanCard } from "./KanbanCard";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { MoveRight, MoveDown, MoveUp, Zap, Calendar, Edit2, HelpCircle } from "lucide-react";
 import { Label } from "../utils/labels";
-import { Card, Priority, TaskType } from "../utils/cards";
+import { Card, Priority, TaskAssignee, TaskType } from "../utils/cards";
 import { useDrop } from "react-dnd";
 import { Tooltip } from "./Tooltip";
 
@@ -15,13 +15,13 @@ type BacklogCard = Card & {
 
 interface BacklogViewProps {
   cards: BacklogCard[];
-  onAssigneeChange: (cardId: string, assignee: { name: string; color: string } | null) => void;
-  onDelete: (cardId: string, title: string) => void;
-  onEdit?: (cardId: string) => void;
-  onMoveToTodo: (cardId: string) => void;
-  onMoveToSprint: (cardId: string) => void;
-  onMoveToBacklog: (cardId: string) => void;
-  availableAssignees: { name: string; color: string }[];
+  onAssigneeChange: (cardId: number, assignee: TaskAssignee | null) => void;
+  onDelete: (cardId: number, title: string) => void;
+  onEdit?: (cardId: number) => void;
+  onMoveToTodo: (cardId: number) => void;
+  onMoveToSprint: (cardId: number) => void;
+  onMoveToBacklog: (cardId: number) => void;
+  availableAssignees: TaskAssignee[];
   labels: Label[];
   sprint?: {
     name: string;
@@ -57,7 +57,7 @@ export function BacklogView({
   // Drop zone for Sprint section
   const [{ isOverSprint }, dropSprint] = useDrop({
     accept: "CARD",
-    drop: (item: { id: string; columnId: string }) => {
+    drop: (item: { id: number; columnId: string }) => {
       const card = cards.find(c => c.id === item.id);
       if (card && !card.inSprint) {
         onMoveToSprint(item.id);
@@ -71,7 +71,7 @@ export function BacklogView({
   // Drop zone for Backlog section
   const [{ isOverBacklog }, dropBacklog] = useDrop({
     accept: "CARD",
-    drop: (item: { id: string; columnId: string }) => {
+    drop: (item: { id: number; columnId: string }) => {
       const card = cards.find(c => c.id === item.id);
       if (card && card.inSprint) {
         onMoveToBacklog(item.id);

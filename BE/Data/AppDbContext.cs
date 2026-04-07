@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
 
     // Board & Task related tables
     public DbSet<Board> Boards => Set<Board>();
+    public DbSet<BoardMembership> BoardMemberships => Set<BoardMembership>();
     public DbSet<BE.Models.Task> Tasks => Set<BE.Models.Task>();
     public DbSet<Sprint> Sprints => Set<Sprint>();
     public DbSet<BE.Models.TaskStatus> TaskStatuses => Set<BE.Models.TaskStatus>();
@@ -60,11 +61,33 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Board>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Title).IsRequired().HasMaxLength(32);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(128);
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.CreatedAt).IsRequired();
 
             entity.HasOne(e => e.Creator)
                 .WithMany(u => u.Boards)
                 .HasForeignKey(e => e.CreatorId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<BoardMembership>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Role)
+                .HasConversion<string>()
+                .HasMaxLength(20);
+            entity.Property(e => e.Color).IsRequired().HasMaxLength(32);
+            entity.HasIndex(e => new { e.BoardId, e.UserId }).IsUnique();
+
+            entity.HasOne(e => e.Board)
+                .WithMany(b => b.Memberships)
+                .HasForeignKey(e => e.BoardId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.BoardMemberships)
+                .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -118,9 +141,14 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Sprint>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Title).IsRequired().HasMaxLength(32);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(128);
             entity.Property(e => e.StartDate).IsRequired();
             entity.Property(e => e.EndDate).IsRequired();
+            entity.Property(e => e.Status)
+                .HasConversion<string>()
+                .HasMaxLength(20);
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.CompletedAt);
 
             entity.HasOne(e => e.Board)
                 .WithMany(b => b.Sprints)
@@ -132,6 +160,7 @@ public class AppDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Title).IsRequired().HasMaxLength(32);
+            entity.HasIndex(e => new { e.BoardId, e.Title }).IsUnique();
 
             entity.HasOne(e => e.Board)
                 .WithMany(b => b.TaskStatuses)
@@ -142,7 +171,8 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Label>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Title).IsRequired().HasMaxLength(32);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.Color).IsRequired().HasMaxLength(32);
 
             entity.HasOne(e => e.Board)
                 .WithMany(b => b.Labels)
@@ -153,15 +183,16 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<BE.Models.Task>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Title).IsRequired().HasMaxLength(32);
-            entity.Property(e => e.Description).HasMaxLength(255);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(128);
+            entity.Property(e => e.Description).HasMaxLength(2000);
             entity.Property(e => e.StoryPoints);
             entity.Property(e => e.Priority)
                 .HasConversion<string>()
-                .HasMaxLength(10);
+                .HasMaxLength(16);
             entity.Property(e => e.Type)
                 .HasConversion<string>()
-                .HasMaxLength(10);
+                .HasMaxLength(16);
+            entity.Property(e => e.DueDate);
 
             entity.HasOne(e => e.Board)
                 .WithMany(b => b.Backlog)
@@ -176,22 +207,22 @@ public class AppDbContext : DbContext
             entity.HasOne(e => e.Assignee)
                 .WithMany(u => u.AssignedTasks)
                 .HasForeignKey(e => e.AssigneeId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.SetNull);
             
             entity.HasOne(e => e.Reporter)
                 .WithMany(u => u.CreatedTasks)
                 .HasForeignKey(e => e.ReporterId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
             
             entity.HasOne(e => e.Sprint)
                 .WithMany(s => s.Tasks)
                 .HasForeignKey(e => e.SprintId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.SetNull);
             
             entity.HasOne(e => e.AssignedTeam)
                 .WithMany(ou => ou.AssignedTasks)
                 .HasForeignKey(e => e.TeamId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<LabeledTask>(entity =>

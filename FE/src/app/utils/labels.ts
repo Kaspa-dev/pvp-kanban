@@ -1,109 +1,79 @@
-// Labels management utilities - per board
+import { apiJson, apiVoid } from "./auth";
 
-export interface Label {
-  id: string;
+interface ApiLabel {
+  id: number;
   name: string;
   color: string;
 }
 
-// Get labels for a specific board
-export function getBoardLabels(boardId: string): Label[] {
-  const labelsData = localStorage.getItem(`banban_labels_${boardId}`);
-  if (!labelsData) {
-    return [];
-  }
-  try {
-    return JSON.parse(labelsData);
-  } catch {
-    return [];
-  }
+export interface Label {
+  id: number;
+  name: string;
+  color: string;
 }
 
-// Save labels for a specific board
-export function saveBoardLabels(boardId: string, labels: Label[]): void {
-  localStorage.setItem(`banban_labels_${boardId}`, JSON.stringify(labels));
+export async function getBoardLabels(boardId: number | string): Promise<Label[]> {
+  return apiJson<Label[]>(
+    `/api/boards/${Number(boardId)}/labels`,
+    { method: "GET" },
+    "Unable to load labels right now.",
+  );
 }
 
-// Create a new label
-export function createLabel(boardId: string, name: string, color: string): Label {
-  const labels = getBoardLabels(boardId);
-  
-  const newLabel: Label = {
-    id: `label_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    name: name.trim(),
-    color,
-  };
+export async function createLabel(boardId: number | string, name: string, color: string): Promise<Label> {
+  const label = await apiJson<ApiLabel>(
+    `/api/boards/${Number(boardId)}/labels`,
+    {
+      method: "POST",
+      body: JSON.stringify({ name, color }),
+    },
+    "Unable to create the label right now.",
+  );
 
-  labels.push(newLabel);
-  saveBoardLabels(boardId, labels);
-
-  return newLabel;
+  return label;
 }
 
-// Update a label
-export function updateLabel(boardId: string, labelId: string, updates: Partial<Label>): boolean {
-  const labels = getBoardLabels(boardId);
-  const index = labels.findIndex(l => l.id === labelId);
-  
-  if (index === -1) {
-    return false;
-  }
+export async function updateLabel(
+  boardId: number | string,
+  labelId: number | string,
+  updates: Partial<Label>,
+): Promise<Label> {
+  const label = await apiJson<ApiLabel>(
+    `/api/boards/${Number(boardId)}/labels/${Number(labelId)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        name: updates.name,
+        color: updates.color,
+      }),
+    },
+    "Unable to update the label right now.",
+  );
 
-  labels[index] = { ...labels[index], ...updates };
-  saveBoardLabels(boardId, labels);
-  return true;
+  return label;
 }
 
-// Delete a label
-export function deleteLabel(boardId: string, labelId: string): boolean {
-  const labels = getBoardLabels(boardId);
-  const filtered = labels.filter(l => l.id !== labelId);
-  
-  if (filtered.length === labels.length) {
-    return false; // Label not found
-  }
-
-  saveBoardLabels(boardId, filtered);
-  return true;
+export async function deleteLabel(boardId: number | string, labelId: number | string): Promise<void> {
+  await apiVoid(
+    `/api/boards/${Number(boardId)}/labels/${Number(labelId)}`,
+    { method: "DELETE" },
+    "Unable to delete the label right now.",
+  );
 }
 
-// Create default labels for a new board
-export function createDefaultLabels(boardId: string): Label[] {
-  const defaultLabels = [
-    { name: "UI", color: "#8b5cf6" }, // purple
-    { name: "Design", color: "#ec4899" }, // pink
-    { name: "BE", color: "#10b981" }, // green
-    { name: "FE", color: "#06b6d4" }, // cyan
-    { name: "DevOps", color: "#f59e0b" }, // amber
-    { name: "Docs", color: "#3b82f6" }, // blue
-    { name: "Security", color: "#f97316" }, // orange
-    { name: "DB", color: "#6366f1" }, // indigo
-  ];
-
-  const labels = defaultLabels.map(({ name, color }) => ({
-    id: `label_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    name,
-    color,
-  }));
-
-  saveBoardLabels(boardId, labels);
-  return labels;
-}
-
-// Predefined colors for label creation
 export const LABEL_COLORS = [
-  "#ef4444", // red
-  "#f97316", // orange
-  "#f59e0b", // amber
-  "#eab308", // yellow
-  "#84cc16", // lime
-  "#10b981", // green
-  "#06b6d4", // cyan
-  "#3b82f6", // blue
-  "#6366f1", // indigo
-  "#8b5cf6", // purple
-  "#ec4899", // pink
-  "#f43f5e", // rose
-  "#64748b", // slate
-  "#78716c", // stone
+  "#ef4444",
+  "#f97316",
+  "#f59e0b",
+  "#eab308",
+  "#84cc16",
+  "#10b981",
+  "#06b6d4",
+  "#3b82f6",
+  "#6366f1",
+  "#8b5cf6",
+  "#ec4899",
+  "#f43f5e",
+  "#64748b",
+  "#78716c",
 ];

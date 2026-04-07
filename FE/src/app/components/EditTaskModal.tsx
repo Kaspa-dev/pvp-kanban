@@ -1,111 +1,112 @@
 import { X, User, Zap, CalendarDays } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import * as Popover from "@radix-ui/react-popover";
 import { STORY_POINTS_OPTIONS, STORY_POINTS_MIN, STORY_POINTS_MAX } from "../utils/gamification";
 import { LabelSelector } from "./LabelSelector";
 import { Label } from "../utils/labels";
-import { Priority, TaskType } from "../utils/cards";
+import { Priority, TaskAssignee, TaskStatus, TaskType } from "../utils/cards";
 import { getPriorityColor } from "../utils/priorityColors";
 
 interface EditTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (cardId: string, updates: {
+  onSave: (cardId: number, updates: {
     title: string;
     description: string;
-    status: "todo" | "inProgress" | "inReview" | "done" | "backlog";
-    labelIds: string[];
-    assignee: {
-      name: string;
-      color: string;
-    } | null;
+    status: TaskStatus;
+    labelIds: number[];
+    assignee: TaskAssignee | null;
     storyPoints?: number;
     dueDate?: string | null;
     priority?: Priority;
     taskType?: TaskType;
-  }) => void;
+  }) => Promise<void>;
   task: {
-    id: string;
+    id: number;
     title: string;
     description?: string;
-    acceptanceCriteria?: string; // Keep for backward compatibility, but don't show in UI
-    status: "todo" | "inProgress" | "inReview" | "done" | "backlog";
-    labelIds: string[];
-    assignee: {
-      name: string;
-      color: string;
-    };
+    acceptanceCriteria?: string;
+    status: TaskStatus;
+    labelIds: number[];
+    assignee: TaskAssignee | null;
     storyPoints?: number;
     dueDate?: string | null;
     priority?: Priority;
     taskType?: TaskType;
   } | null;
   availableLabels: Label[];
-  onCreateLabel: (name: string, color: string) => void;
-  availableAssignees: { name: string; color: string }[];
+  onCreateLabel: (name: string, color: string) => Promise<void>;
+  availableAssignees: TaskAssignee[];
 }
 
-export function EditTaskModal({ 
-  isOpen, 
-  onClose, 
-  onSave, 
-  task, 
-  availableLabels, 
+function getInitialTaskState(task: EditTaskModalProps["task"]) {
+  return {
+    title: task?.title || "",
+    description: task?.description || "",
+    status: task?.status || "todo",
+    selectedLabelIds: task?.labelIds || [],
+    selectedAssignee: task?.assignee || null,
+    storyPoints: task?.storyPoints,
+    dueDate: task?.dueDate || "",
+    customStoryPoints: task?.storyPoints?.toString() || "",
+    priority: task?.priority,
+    taskType: task?.taskType,
+  };
+}
+
+export function EditTaskModal({
+  isOpen,
+  onClose,
+  onSave,
+  task,
+  availableLabels,
   onCreateLabel,
-  availableAssignees
+  availableAssignees,
 }: EditTaskModalProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const initialState = getInitialTaskState(task);
 
-  const [title, setTitle] = useState(task?.title || "");
-  const [description, setDescription] = useState(task?.description || "");
-  const [status, setStatus] = useState<"todo" | "inProgress" | "inReview" | "done" | "backlog">(task?.status || "todo");
-  const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>(task?.labelIds || []);
-  const [selectedAssignee, setSelectedAssignee] = useState<{ name: string; color: string } | null>(task?.assignee || null);
-  const [storyPoints, setStoryPoints] = useState<number | undefined>(task?.storyPoints);
-  const [dueDate, setDueDate] = useState(task?.dueDate || "");
-  const [customStoryPoints, setCustomStoryPoints] = useState("");
+  const [title, setTitle] = useState(initialState.title);
+  const [description, setDescription] = useState(initialState.description);
+  const [status, setStatus] = useState<TaskStatus>(initialState.status);
+  const [selectedLabelIds, setSelectedLabelIds] = useState<number[]>(initialState.selectedLabelIds);
+  const [selectedAssignee, setSelectedAssignee] = useState<TaskAssignee | null>(initialState.selectedAssignee);
+  const [storyPoints, setStoryPoints] = useState<number | undefined>(initialState.storyPoints);
+  const [dueDate, setDueDate] = useState(initialState.dueDate);
+  const [customStoryPoints, setCustomStoryPoints] = useState(initialState.customStoryPoints);
   const [isAssigneeOpen, setIsAssigneeOpen] = useState(false);
-  const [priority, setPriority] = useState<Priority | undefined>(task?.priority);
-  const [taskType, setTaskType] = useState<TaskType | undefined>(task?.taskType);
-
-  useEffect(() => {
-    if (isOpen && task) {
-      setTitle(task.title || "");
-      setDescription(task.description || "");
-      setStatus(task.status || "todo");
-      setSelectedLabelIds(task.labelIds || []);
-      setSelectedAssignee(task.assignee || null);
-      setStoryPoints(task.storyPoints);
-      setDueDate(task.dueDate || "");
-      setCustomStoryPoints(task.storyPoints?.toString() || "");
-      setPriority(task.priority);
-      setTaskType(task.taskType);
-    }
-  }, [isOpen, task]);
+  const [priority, setPriority] = useState<Priority | undefined>(initialState.priority);
+  const [taskType, setTaskType] = useState<TaskType | undefined>(initialState.taskType);
+  const [submitError, setSubmitError] = useState("");
 
   if (!isOpen || !task) return null;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!title.trim()) {
-      alert("Title is required");
+      setSubmitError("Title is required");
       return;
     }
 
-    onSave(task.id, {
-      title: title.trim(),
-      description: description.trim(),
-      status,
-      labelIds: selectedLabelIds,
-      assignee: selectedAssignee,
-      storyPoints,
-      dueDate: dueDate || null,
-      priority,
-      taskType,
-    });
+    try {
+      setSubmitError("");
+      await onSave(task.id, {
+        title: title.trim(),
+        description: description.trim(),
+        status,
+        labelIds: selectedLabelIds,
+        assignee: selectedAssignee,
+        storyPoints,
+        dueDate: dueDate || null,
+        priority,
+        taskType,
+      });
 
-    onClose();
+      onClose();
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Unable to save the task right now.");
+    }
   };
 
   const handleStoryPointsChange = (value: number) => {
@@ -113,12 +114,12 @@ export function EditTaskModal({
     setCustomStoryPoints(value.toString());
   };
 
-  const handleCustomStoryPointsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
+  const handleCustomStoryPointsChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
     setCustomStoryPoints(value);
-    const num = parseInt(value, 10);
-    if (!isNaN(num) && num >= STORY_POINTS_MIN && num <= STORY_POINTS_MAX) {
-      setStoryPoints(num);
+    const parsedValue = parseInt(value, 10);
+    if (!Number.isNaN(parsedValue) && parsedValue >= STORY_POINTS_MIN && parsedValue <= STORY_POINTS_MAX) {
+      setStoryPoints(parsedValue);
     } else if (value === "") {
       setStoryPoints(undefined);
     }
@@ -129,13 +130,11 @@ export function EditTaskModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center animate-in fade-in duration-200">
-      {/* Overlay */}
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* Modal */}
       <div className={`relative ${currentTheme.cardBg} rounded-3xl shadow-2xl w-full max-w-3xl p-8 mx-4 border-2 ${currentTheme.border} animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto`}>
         <div className="flex items-center justify-between mb-6">
           <h2 className={`text-2xl font-bold ${currentTheme.text}`}>Edit Task</h2>
@@ -148,7 +147,6 @@ export function EditTaskModal({
         </div>
 
         <div className="space-y-6">
-          {/* Title */}
           <div>
             <label htmlFor="title" className={`block text-sm font-semibold ${currentTheme.textSecondary} mb-2`}>
               Title *
@@ -157,13 +155,12 @@ export function EditTaskModal({
               id="title"
               type="text"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(event) => setTitle(event.target.value)}
               className={`w-full px-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent transition-all ${currentTheme.inputBg} ${currentTheme.text}`}
               placeholder="Task title"
             />
           </div>
 
-          {/* Description */}
           <div>
             <label htmlFor="description" className={`block text-sm font-semibold ${currentTheme.textSecondary} mb-2`}>
               Description
@@ -171,14 +168,13 @@ export function EditTaskModal({
             <textarea
               id="description"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(event) => setDescription(event.target.value)}
               rows={6}
               className={`w-full px-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent transition-all resize-y ${currentTheme.inputBg} ${currentTheme.text}`}
               placeholder="Describe the task in detail... (supports multiple lines)"
             />
           </div>
 
-          {/* Status */}
           <div>
             <label htmlFor="status" className={`block text-sm font-semibold ${currentTheme.textSecondary} mb-2`}>
               Status *
@@ -186,7 +182,7 @@ export function EditTaskModal({
             <select
               id="status"
               value={status}
-              onChange={(e) => setStatus(e.target.value as any)}
+              onChange={(event) => setStatus(event.target.value as TaskStatus)}
               className={`w-full px-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent transition-all ${currentTheme.inputBg} ${currentTheme.text}`}
             >
               <option value="backlog">Backlog</option>
@@ -197,7 +193,6 @@ export function EditTaskModal({
             </select>
           </div>
 
-          {/* Labels */}
           <LabelSelector
             availableLabels={availableLabels}
             selectedLabelIds={selectedLabelIds}
@@ -205,7 +200,6 @@ export function EditTaskModal({
             onCreateLabel={onCreateLabel}
           />
 
-          {/* Assignee */}
           <div>
             <label className={`block text-sm font-semibold ${currentTheme.textSecondary} mb-2`}>
               Assignee
@@ -252,13 +246,13 @@ export function EditTaskModal({
                     </button>
                     {availableAssignees.map((assignee) => (
                       <button
-                        key={assignee.name}
+                        key={assignee.userId}
                         onClick={() => {
                           setSelectedAssignee(assignee);
                           setIsAssigneeOpen(false);
                         }}
                         className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-left ${
-                          selectedAssignee?.name === assignee.name
+                          selectedAssignee?.userId === assignee.userId
                             ? `bg-gradient-to-r ${currentTheme.primary} text-white`
                             : `hover:${currentTheme.bgSecondary} ${currentTheme.text}`
                         }`}
@@ -299,19 +293,17 @@ export function EditTaskModal({
                 id="dueDate"
                 type="date"
                 value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
+                onChange={(event) => setDueDate(event.target.value)}
                 className={`w-full pl-10 pr-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent transition-all ${currentTheme.inputBg} ${currentTheme.text}`}
               />
             </div>
           </div>
 
-          {/* Story Points */}
           <div>
             <label className={`block text-sm font-semibold ${currentTheme.textSecondary} mb-2`}>
               Story Points (1-100)
             </label>
-            
-            {/* Quick Pick Chips */}
+
             <div className="flex flex-wrap gap-2 mb-3">
               {STORY_POINTS_OPTIONS.map((points) => (
                 <button
@@ -328,7 +320,6 @@ export function EditTaskModal({
               ))}
             </div>
 
-            {/* Custom Input */}
             <div className="relative">
               <Zap className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${currentTheme.textMuted}`} />
               <input
@@ -343,14 +334,13 @@ export function EditTaskModal({
             </div>
           </div>
 
-          {/* Priority */}
           <div>
             <label className={`block text-sm font-semibold ${currentTheme.textSecondary} mb-2`}>
               Priority
             </label>
             <select
               value={priority}
-              onChange={(e) => setPriority(e.target.value as Priority)}
+              onChange={(event) => setPriority((event.target.value || undefined) as Priority | undefined)}
               className={`w-full px-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent transition-all ${currentTheme.inputBg} ${currentTheme.text}`}
             >
               <option value="">Select priority</option>
@@ -362,14 +352,13 @@ export function EditTaskModal({
             </select>
           </div>
 
-          {/* Task Type */}
           <div>
             <label className={`block text-sm font-semibold ${currentTheme.textSecondary} mb-2`}>
               Task Type
             </label>
             <select
               value={taskType}
-              onChange={(e) => setTaskType(e.target.value as TaskType)}
+              onChange={(event) => setTaskType((event.target.value || undefined) as TaskType | undefined)}
               className={`w-full px-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent transition-all ${currentTheme.inputBg} ${currentTheme.text}`}
             >
               <option value="">Select task type</option>
@@ -381,7 +370,12 @@ export function EditTaskModal({
             </select>
           </div>
 
-          {/* Action Buttons */}
+          {submitError && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {submitError}
+            </div>
+          )}
+
           <div className="flex gap-3 pt-4">
             <button
               onClick={onClose}
@@ -390,7 +384,7 @@ export function EditTaskModal({
               Cancel
             </button>
             <button
-              onClick={handleSave}
+              onClick={() => void handleSave()}
               className={`flex-1 px-5 py-3 bg-gradient-to-r ${currentTheme.primary} text-white font-semibold rounded-xl hover:scale-105 transition-all shadow-lg`}
             >
               Save Changes

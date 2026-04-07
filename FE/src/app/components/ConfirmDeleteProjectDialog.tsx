@@ -5,7 +5,7 @@ import { Board } from "../utils/boards";
 interface ConfirmDeleteProjectDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onBoardDeleted: (boardId: string) => void;
+  onBoardDeleted: (boardId: number) => void | Promise<void>;
   board: Board | null;
 }
 
@@ -20,8 +20,8 @@ export function ConfirmDeleteProjectDialog({
 
   if (!isOpen || !board) return null;
 
-  const handleConfirm = () => {
-    onBoardDeleted(board.id);
+  const handleConfirm = async () => {
+    await onBoardDeleted(board.id);
     onClose();
   };
 
@@ -81,7 +81,7 @@ export function ConfirmDeleteProjectDialog({
               Cancel
             </button>
             <button
-              onClick={handleConfirm}
+              onClick={() => void handleConfirm()}
               className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-bold rounded-xl hover:from-red-600 hover:to-red-700 hover:shadow-lg hover:scale-[1.02] transition-all"
             >
               Delete Project

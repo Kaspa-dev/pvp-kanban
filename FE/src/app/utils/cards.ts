@@ -1,26 +1,52 @@
-import { addDays, endOfWeek, format } from "date-fns";
+import { apiJson, apiVoid } from "./auth";
+import type { BoardMember, BoardRole } from "./boards";
 
-// Card storage utilities - per board
-
+export type TaskStatus = "todo" | "inProgress" | "inReview" | "done" | "backlog";
 export type Priority = "low" | "medium" | "high" | "critical";
 export type TaskType = "story" | "task" | "bug" | "spike";
 
+interface ApiTask {
+  id: number;
+  title: string;
+  description: string;
+  statusKey: TaskStatus;
+  labelIds: number[];
+  assigneeUserId: number | null;
+  assignee: ApiAssignee | null;
+  reporterUserId: number;
+  sprintId: number | null;
+  storyPoints?: number;
+  dueDate?: string | null;
+  priority?: Priority;
+  taskType?: TaskType;
+}
+
+interface ApiAssignee {
+  userId: number;
+  username: string;
+  displayName: string;
+  email: string;
+  color: string;
+  role: BoardRole;
+}
+
+export type TaskAssignee = BoardMember;
+
 export interface Card {
-  id: string;
+  id: number;
   title: string;
   description?: string;
   acceptanceCriteria?: string;
-  labelIds: string[]; // Changed from tags to labelIds
-  assignee: {
-    name: string;
-    color: string;
-  };
-  status: "todo" | "inProgress" | "inReview" | "done" | "backlog";
+  labelIds: number[];
+  assignee: TaskAssignee;
+  assigneeUserId: number | null;
+  status: TaskStatus;
   storyPoints?: number;
   dueDate?: string | null;
-  sprintId?: string | null; // Sprint assignment - null means in backlog
-  priority?: Priority; // New: task priority
-  taskType?: TaskType; // New: task type
+  sprintId?: number | null;
+  priority?: Priority;
+  taskType?: TaskType;
+  reporterUserId?: number;
 }
 
 export interface Cards {
@@ -31,143 +57,171 @@ export interface Cards {
   backlog: Card[];
 }
 
-// Migrate old cards with 'tags' to new 'labelIds' format
-function migrateCard(card: any): Card {
-  const normalizedDueDate = typeof card.dueDate === "string" && card.dueDate.trim()
-    ? card.dueDate
-    : null;
+export const UNASSIGNED_ASSIGNEE: TaskAssignee = {
+  userId: 0,
+  username: "",
+  displayName: "Unassigned",
+  email: "",
+  color: "#9ca3af",
+  role: "member",
+  name: "Unassigned",
+};
 
-  // If card has old 'tags' field, migrate it to empty labelIds
-  if (card.tags && !card.labelIds) {
-    return {
-      ...card,
-      labelIds: [], // Old tags were just strings, not IDs, so start fresh
-      dueDate: normalizedDueDate,
-    };
+function normalizeAssignee(assignee: ApiAssignee | null): TaskAssignee {
+  if (!assignee) {
+    return UNASSIGNED_ASSIGNEE;
   }
-  // If card doesn't have labelIds at all, add empty array
-  if (!card.labelIds) {
-    return {
-      ...card,
-      labelIds: [],
-      dueDate: normalizedDueDate,
-    };
-  }
+
   return {
-    ...card,
-    dueDate: normalizedDueDate,
+    userId: assignee.userId,
+    username: assignee.username,
+    displayName: assignee.displayName,
+    email: assignee.email,
+    color: assignee.color,
+    role: assignee.role,
+    name: assignee.displayName,
   };
 }
 
-// Get cards for a specific board
-export function getBoardCards(boardId: string): Cards {
-  const cardsData = localStorage.getItem(`banban_cards_${boardId}`);
-  if (!cardsData) {
-    return {
-      todo: [],
-      inProgress: [],
-      inReview: [],
-      done: [],
-      backlog: [],
-    };
-  }
-  try {
-    const parsed = JSON.parse(cardsData);
-    // Migrate cards if needed
-    return {
-      todo: parsed.todo?.map(migrateCard) || [],
-      inProgress: parsed.inProgress?.map(migrateCard) || [],
-      inReview: parsed.inReview?.map(migrateCard) || [],
-      done: parsed.done?.map(migrateCard) || [],
-      backlog: parsed.backlog?.map(migrateCard) || [],
-    };
-  } catch {
-    return {
-      todo: [],
-      inProgress: [],
-      inReview: [],
-      done: [],
-      backlog: [],
-    };
-  }
-}
-
-// Save cards for a specific board
-export function saveBoardCards(boardId: string, cards: Cards): void {
-  localStorage.setItem(`banban_cards_${boardId}`, JSON.stringify(cards));
-}
-
-// Create default demo cards for a new board
-// Note: labelIds should be actual label IDs from the board's labels
-export function createDefaultCards(assigneeName: string, labelIds: { [key: string]: string } = {}): Cards {
-  const today = new Date();
-  const thisWeekDueDate = format(endOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd");
-  const nextWeekDueDate = format(addDays(endOfWeek(today, { weekStartsOn: 1 }), 4), "yyyy-MM-dd");
-
+function normalizeTask(task: ApiTask): Card {
   return {
-    todo: [
-      {
-        id: "1",
-        title: "Design new landing page",
-        labelIds: [labelIds["UI"] || "", labelIds["Design"] || ""].filter(Boolean),
-        assignee: { name: assigneeName, color: "#3b82f6" },
-        status: "todo",
-        storyPoints: 5,
-        dueDate: thisWeekDueDate,
-        priority: "high",
-        taskType: "story",
-      },
-      {
-        id: "2",
-        title: "Update user documentation",
-        labelIds: [labelIds["Docs"] || ""].filter(Boolean),
-        assignee: { name: "Jonas", color: "#10b981" },
-        status: "todo",
-        storyPoints: 3,
-        dueDate: nextWeekDueDate,
-        priority: "medium",
-        taskType: "task",
-      },
-    ],
-    inProgress: [
-      {
-        id: "3",
-        title: "Implement authentication",
-        labelIds: [labelIds["BE"] || "", labelIds["Security"] || ""].filter(Boolean),
-        assignee: { name: "Marius", color: "#8b5cf6" },
-        status: "inProgress",
-        storyPoints: 8,
-        dueDate: thisWeekDueDate,
-        priority: "critical",
-        taskType: "story",
-      },
-    ],
+    id: task.id,
+    title: task.title,
+    description: task.description,
+    labelIds: task.labelIds ?? [],
+    assignee: normalizeAssignee(task.assignee),
+    assigneeUserId: task.assigneeUserId,
+    status: task.statusKey,
+    storyPoints: task.storyPoints,
+    dueDate: task.dueDate ?? null,
+    sprintId: task.sprintId ?? null,
+    priority: task.priority,
+    taskType: task.taskType,
+    reporterUserId: task.reporterUserId,
+  };
+}
+
+export function createEmptyCards(): Cards {
+  return {
+    todo: [],
+    inProgress: [],
     inReview: [],
-    done: [
-      {
-        id: "5",
-        title: "Setup project repository",
-        labelIds: [labelIds["DevOps"] || ""].filter(Boolean),
-        assignee: { name: "Laura", color: "#06b6d4" },
-        status: "done",
-        storyPoints: 2,
-        dueDate: null,
-        priority: "medium",
-        taskType: "task",
-      },
-    ],
-    backlog: [
-      {
-        id: "7",
-        title: "Mobile app design mockups",
-        labelIds: [labelIds["Design"] || "", labelIds["UI"] || ""].filter(Boolean),
-        assignee: { name: assigneeName, color: "#3b82f6" },
-        status: "backlog",
-        storyPoints: 8,
-        dueDate: nextWeekDueDate,
-        priority: "low",
-        taskType: "spike",
-      },
-    ],
+    done: [],
+    backlog: [],
   };
+}
+
+export function groupCards(tasks: Card[]): Cards {
+  return tasks.reduce<Cards>((acc, task) => {
+    acc[task.status].push(task);
+    return acc;
+  }, createEmptyCards());
+}
+
+export function flattenCards(cards: Cards): Card[] {
+  return [
+    ...cards.todo,
+    ...cards.inProgress,
+    ...cards.inReview,
+    ...cards.done,
+    ...cards.backlog,
+  ];
+}
+
+export async function getBoardCards(boardId: number | string): Promise<Cards> {
+  const tasks = await apiJson<ApiTask[]>(
+    `/api/boards/${Number(boardId)}/tasks`,
+    { method: "GET" },
+    "Unable to load tasks right now.",
+  );
+
+  return groupCards(tasks.map(normalizeTask));
+}
+
+export async function createBoardTask(
+  boardId: number | string,
+  input: {
+    title: string;
+    description: string;
+    status: TaskStatus;
+    labelIds: number[];
+    assigneeUserId: number | null;
+    storyPoints?: number;
+    dueDate?: string | null;
+    priority?: Priority;
+    taskType?: TaskType;
+    sprintId?: number | null;
+  },
+): Promise<Card> {
+  const task = await apiJson<ApiTask>(
+    `/api/boards/${Number(boardId)}/tasks`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        title: input.title,
+        description: input.description,
+        statusKey: input.status,
+        labelIds: input.labelIds,
+        assigneeUserId: input.assigneeUserId,
+        storyPoints: input.storyPoints,
+        dueDate: input.dueDate ?? null,
+        priority: input.priority,
+        taskType: input.taskType,
+        sprintId: input.sprintId ?? null,
+      }),
+    },
+    "Unable to create the task right now.",
+  );
+
+  return normalizeTask(task);
+}
+
+export async function updateBoardTask(
+  boardId: number | string,
+  taskId: number | string,
+  input: {
+    title: string;
+    description: string;
+    status: TaskStatus;
+    labelIds: number[];
+    assigneeUserId: number | null;
+    storyPoints?: number;
+    dueDate?: string | null;
+    priority?: Priority;
+    taskType?: TaskType;
+    sprintId?: number | null;
+  },
+): Promise<Card> {
+  const task = await apiJson<ApiTask>(
+    `/api/boards/${Number(boardId)}/tasks/${Number(taskId)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        title: input.title,
+        description: input.description,
+        statusKey: input.status,
+        labelIds: input.labelIds,
+        assigneeUserId: input.assigneeUserId,
+        storyPoints: input.storyPoints,
+        dueDate: input.dueDate ?? null,
+        priority: input.priority,
+        taskType: input.taskType,
+        sprintId: input.sprintId ?? null,
+      }),
+    },
+    "Unable to save the task right now.",
+  );
+
+  return normalizeTask(task);
+}
+
+export async function deleteBoardTask(
+  boardId: number | string,
+  taskId: number | string,
+): Promise<void> {
+  await apiVoid(
+    `/api/boards/${Number(boardId)}/tasks/${Number(taskId)}`,
+    { method: "DELETE" },
+    "Unable to delete the task right now.",
+  );
 }

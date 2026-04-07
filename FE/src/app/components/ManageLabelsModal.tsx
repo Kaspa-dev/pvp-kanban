@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { X, Plus, Edit2, Trash2, Check } from 'lucide-react';
 import { useTheme, getThemeColors } from '../contexts/ThemeContext';
 import { Label, LABEL_COLORS } from '../utils/labels';
@@ -8,8 +8,8 @@ interface ManageLabelsModalProps {
   onClose: () => void;
   labels: Label[];
   onCreateLabel: (name: string, color: string) => void;
-  onUpdateLabel: (labelId: string, name: string, color: string) => void;
-  onDeleteLabel: (labelId: string) => void;
+  onUpdateLabel: (labelId: number, name: string, color: string) => void;
+  onDeleteLabel: (labelId: number) => void;
 }
 
 export function ManageLabelsModal({
@@ -25,7 +25,7 @@ export function ManageLabelsModal({
 
   const [newLabelName, setNewLabelName] = useState('');
   const [newLabelColor, setNewLabelColor] = useState(LABEL_COLORS[0]);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
   const [editColor, setEditColor] = useState('');
 
@@ -60,7 +60,7 @@ export function ManageLabelsModal({
     setEditColor('');
   };
 
-  const handleDelete = (labelId: string) => {
+  const handleDelete = (labelId: number) => {
     if (confirm('Delete this label? It will be removed from all tasks.')) {
       onDeleteLabel(labelId);
     }

@@ -1,6 +1,6 @@
 import { X, Calendar, Zap } from "lucide-react";
+import { useState } from "react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
-import { useState, useEffect } from "react";
 
 interface EditSprintModalProps {
   isOpen: boolean;
@@ -13,32 +13,34 @@ interface EditSprintModalProps {
   onSave: (sprint: { name: string; startDate: string; endDate: string }) => void;
 }
 
+function getDefaultSprintDates() {
+  const today = new Date();
+  const startDate = today.toISOString().split("T")[0];
+  const endDate = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+  return { startDate, endDate };
+}
+
+function getInitialSprintDraft(sprint: EditSprintModalProps["sprint"]) {
+  const defaults = getDefaultSprintDates();
+  return {
+    sprintName: sprint?.name ?? "Sprint 1",
+    startDate: sprint?.startDate ?? defaults.startDate,
+    endDate: sprint?.endDate ?? defaults.endDate,
+  };
+}
+
 export function EditSprintModal({ isOpen, onClose, sprint, onSave }: EditSprintModalProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const initialDraft = getInitialSprintDraft(sprint);
 
-  const [sprintName, setSprintName] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [sprintName, setSprintName] = useState(initialDraft.sprintName);
+  const [startDate, setStartDate] = useState(initialDraft.startDate);
+  const [endDate, setEndDate] = useState(initialDraft.endDate);
 
-  useEffect(() => {
-    if (sprint) {
-      setSprintName(sprint.name);
-      setStartDate(sprint.startDate);
-      setEndDate(sprint.endDate);
-    } else {
-      // Default values for new sprint
-      const today = new Date().toISOString().split('T')[0];
-      const twoWeeksFromNow = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      setSprintName("Sprint 1");
-      setStartDate(today);
-      setEndDate(twoWeeksFromNow);
-    }
-  }, [sprint, isOpen]);
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
     if (!sprintName.trim()) {
       alert("Please enter a sprint name");
       return;
@@ -67,13 +69,11 @@ export function EditSprintModal({ isOpen, onClose, sprint, onSave }: EditSprintM
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* Modal */}
       <div className={`relative ${currentTheme.cardBg} rounded-3xl shadow-2xl w-full max-w-lg p-8 border-2 ${currentTheme.border} animate-in zoom-in-95 duration-200`}>
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -94,7 +94,6 @@ export function EditSprintModal({ isOpen, onClose, sprint, onSave }: EditSprintM
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Sprint Name */}
           <div>
             <label className={`block text-sm font-semibold mb-2 ${currentTheme.text}`}>
               Sprint Name *
@@ -102,14 +101,13 @@ export function EditSprintModal({ isOpen, onClose, sprint, onSave }: EditSprintM
             <input
               type="text"
               value={sprintName}
-              onChange={(e) => setSprintName(e.target.value)}
+              onChange={(event) => setSprintName(event.target.value)}
               placeholder="e.g., Sprint 1, Q1 Sprint, Feature Release"
               className={`w-full px-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent transition-all ${currentTheme.inputBg} ${currentTheme.text}`}
               required
             />
           </div>
 
-          {/* Start Date */}
           <div>
             <label className={`block text-sm font-semibold mb-2 ${currentTheme.text}`}>
               <Calendar className="w-4 h-4 inline mr-1" />
@@ -118,13 +116,12 @@ export function EditSprintModal({ isOpen, onClose, sprint, onSave }: EditSprintM
             <input
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={(event) => setStartDate(event.target.value)}
               className={`w-full px-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent transition-all ${currentTheme.inputBg} ${currentTheme.text}`}
               required
             />
           </div>
 
-          {/* End Date */}
           <div>
             <label className={`block text-sm font-semibold mb-2 ${currentTheme.text}`}>
               <Calendar className="w-4 h-4 inline mr-1" />
@@ -133,13 +130,12 @@ export function EditSprintModal({ isOpen, onClose, sprint, onSave }: EditSprintM
             <input
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={(event) => setEndDate(event.target.value)}
               className={`w-full px-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent transition-all ${currentTheme.inputBg} ${currentTheme.text}`}
               required
             />
           </div>
 
-          {/* Sprint Duration Info */}
           {startDate && endDate && new Date(endDate) > new Date(startDate) && (
             <div className={`p-4 rounded-xl ${currentTheme.bgSecondary} ${currentTheme.textSecondary} text-sm`}>
               <p className="font-medium mb-1">Sprint Duration</p>
@@ -150,7 +146,6 @@ export function EditSprintModal({ isOpen, onClose, sprint, onSave }: EditSprintM
             </div>
           )}
 
-          {/* Action Buttons */}
           <div className="flex gap-3 pt-4">
             <button
               type="button"

@@ -3,7 +3,7 @@ import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { CheckCircle2, TrendingUp } from "lucide-react";
 import { Label } from "../utils/labels";
 import { getXPForStoryPoints } from "../utils/gamification";
-import { Card, Priority, TaskType } from "../utils/cards";
+import { Card, Priority, TaskAssignee, TaskType } from "../utils/cards";
 
 type HistoryCard = Card & {
   status: string;
@@ -13,10 +13,10 @@ type HistoryCard = Card & {
 
 interface HistoryViewProps {
   cards: HistoryCard[];
-  onAssigneeChange: (cardId: string, assignee: { name: string; color: string } | null) => void;
-  onDelete: (cardId: string, title: string) => void;
-  onEdit?: (cardId: string) => void;
-  availableAssignees: { name: string; color: string }[];
+  onAssigneeChange: (cardId: number, assignee: TaskAssignee | null) => void;
+  onDelete: (cardId: number, title: string) => void;
+  onEdit?: (cardId: number) => void;
+  availableAssignees: TaskAssignee[];
   labels: Label[];
 }
 

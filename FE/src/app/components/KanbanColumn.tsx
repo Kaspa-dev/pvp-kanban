@@ -2,7 +2,7 @@ import { KanbanCard } from "./KanbanCard";
 import { useDrop } from "react-dnd";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { Label } from "../utils/labels";
-import { Card, Priority, TaskType } from "../utils/cards";
+import { Card, Priority, TaskAssignee, TaskType } from "../utils/cards";
 
 type ColumnCard = Card & {
   priority?: Priority;
@@ -14,11 +14,11 @@ interface KanbanColumnProps {
   title: string;
   count: number;
   cards: ColumnCard[];
-  onCardDrop: (cardId: string, fromColumnId: string, toColumnId: string) => void;
-  onAssigneeChange: (cardId: string, assignee: { name: string; color: string } | null) => void;
-  onDelete: (cardId: string, title: string) => void;
-  onEdit?: (cardId: string) => void;
-  availableAssignees: { name: string; color: string }[];
+  onCardDrop: (cardId: number, fromColumnId: string, toColumnId: string) => void;
+  onAssigneeChange: (cardId: number, assignee: TaskAssignee | null) => void;
+  onDelete: (cardId: number, title: string) => void;
+  onEdit?: (cardId: number) => void;
+  availableAssignees: TaskAssignee[];
   labels: Label[];
 }
 
@@ -39,7 +39,7 @@ export function KanbanColumn({
 
   const [{ isOver }, drop] = useDrop({
     accept: "CARD",
-    drop: (item: { id: string; columnId: string }) => {
+    drop: (item: { id: number; columnId: string }) => {
       if (item.columnId !== id) {
         onCardDrop(item.id, item.columnId, id);
       }
