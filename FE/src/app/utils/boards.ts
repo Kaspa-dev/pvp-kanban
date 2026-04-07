@@ -1,7 +1,4 @@
 // Board/Project management utilities
-import { migrateBoardCardsStorage } from "./cards";
-import { migrateBoardLabelsStorage } from "./labels";
-import { migrateSprintBoardId } from "./sprints";
 
 export interface BoardMember {
   name: string;
@@ -24,68 +21,17 @@ export interface Board {
 }
 
 const BOARDS_STORAGE_KEY = 'banban_boards';
-export const SHARED_DEMO_BOARD_ID = "board_demo_shared";
-const DEFAULT_DEMO_BOARD_NAME = "Shared Demo Board";
-const DEFAULT_DEMO_BOARD_DESCRIPTION = "Shared mock board for realtime collaboration demos.";
-
-function getSharedDemoBoard(): Board {
-  return {
-    id: SHARED_DEMO_BOARD_ID,
-    name: DEFAULT_DEMO_BOARD_NAME,
-    description: DEFAULT_DEMO_BOARD_DESCRIPTION,
-    createdAt: new Date(0).toISOString(),
-    createdBy: "system",
-    members: [
-      { name: "You", color: "#3b82f6" },
-      { name: "Jonas", color: "#10b981" },
-      { name: "Marius", color: "#8b5cf6" },
-      { name: "Laura", color: "#f59e0b" },
-    ],
-  };
-}
-
-function normalizeDefaultBoard(boards: Board[]): { boards: Board[]; changed: boolean } {
-  const legacyDefaultBoard = boards.find((board) =>
-    board.id === SHARED_DEMO_BOARD_ID ||
-    (
-      board.name === "My First Project" &&
-      board.description === "Welcome to BanBan! This is your first project board."
-    )
-  );
-
-  if (!legacyDefaultBoard) {
-    return { boards, changed: false };
-  }
-
-  if (legacyDefaultBoard.id !== SHARED_DEMO_BOARD_ID) {
-    migrateBoardCardsStorage(legacyDefaultBoard.id, SHARED_DEMO_BOARD_ID);
-    migrateBoardLabelsStorage(legacyDefaultBoard.id, SHARED_DEMO_BOARD_ID);
-    migrateSprintBoardId(legacyDefaultBoard.id, SHARED_DEMO_BOARD_ID);
-  }
-
-  return {
-    boards: boards.filter((board) => board.id !== legacyDefaultBoard.id && board.id !== SHARED_DEMO_BOARD_ID),
-    changed: true,
-  };
-}
 
 // Get all boards for a user
 export function getUserBoards(userId: string): Board[] {
   const boardsData = localStorage.getItem(`${BOARDS_STORAGE_KEY}_${userId}`);
   if (!boardsData) {
-    return [getSharedDemoBoard()];
+    return [];
   }
   try {
-    const parsedBoards = JSON.parse(boardsData) as Board[];
-    const normalizedBoards = normalizeDefaultBoard(parsedBoards);
-
-    if (normalizedBoards.changed) {
-      saveUserBoards(userId, normalizedBoards.boards);
-    }
-
-    return [getSharedDemoBoard(), ...normalizedBoards.boards];
+    return JSON.parse(boardsData);
   } catch {
-    return [getSharedDemoBoard()];
+    return [];
   }
 }
 
@@ -119,20 +65,12 @@ export function createBoard(
 
 // Get a specific board
 export function getBoard(userId: string, boardId: string): Board | null {
-  if (boardId === SHARED_DEMO_BOARD_ID) {
-    return getSharedDemoBoard();
-  }
-
   const boards = getUserBoards(userId);
   return boards.find(b => b.id === boardId) || null;
 }
 
 // Update a board
 export function updateBoard(userId: string, boardId: string, updates: Partial<Board>): boolean {
-  if (boardId === SHARED_DEMO_BOARD_ID) {
-    return false;
-  }
-
   const boards = getUserBoards(userId);
   const index = boards.findIndex(b => b.id === boardId);
   
@@ -147,10 +85,6 @@ export function updateBoard(userId: string, boardId: string, updates: Partial<Bo
 
 // Delete a board
 export function deleteBoard(userId: string, boardId: string): boolean {
-  if (boardId === SHARED_DEMO_BOARD_ID) {
-    return false;
-  }
-
   const boards = getUserBoards(userId);
   const filtered = boards.filter(b => b.id !== boardId);
   
@@ -168,9 +102,19 @@ export function deleteBoard(userId: string, boardId: string): boolean {
 
 // Create default demo boards for new users
 export function createDefaultBoards(userId: string, userName: string): Board[] {
-  return getUserBoards(userId);
-}
+  const defaultMembers: BoardMember[] = [
+    { name: userName, color: "#3b82f6" },
+    { name: "Jonas", color: "#10b981" },
+    { name: "Marius", color: "#8b5cf6" },
+    { name: "Laura", color: "#f59e0b" },
+  ];
 
-export function ensureSharedDemoBoard(_userId: string, _userName: string): Board {
-  return getSharedDemoBoard();
+  const board1 = createBoard(
+    userId,
+    "My First Project",
+    "Welcome to BanBan! This is your first project board.",
+    defaultMembers
+  );
+
+  return [board1];
 }

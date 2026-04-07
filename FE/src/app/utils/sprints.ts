@@ -26,31 +26,6 @@ export function getBoardSprints(boardId: string): Sprint[] {
   return allSprints.filter(sprint => sprint.boardId === boardId);
 }
 
-export function migrateSprintBoardId(fromBoardId: string, toBoardId: string): void {
-  if (fromBoardId === toBoardId) {
-    return;
-  }
-
-  const allSprints = getAllSprints();
-  let changed = false;
-
-  const migratedSprints = allSprints.map((sprint) => {
-    if (sprint.boardId !== fromBoardId) {
-      return sprint;
-    }
-
-    changed = true;
-    return {
-      ...sprint,
-      boardId: toBoardId,
-    };
-  });
-
-  if (changed) {
-    localStorage.setItem(SPRINTS_STORAGE_KEY, JSON.stringify(migratedSprints));
-  }
-}
-
 export function getActiveSprint(boardId: string): Sprint | null {
   const sprints = getBoardSprints(boardId);
   return sprints.find(sprint => sprint.status === 'active') || null;

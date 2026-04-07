@@ -19,7 +19,6 @@ import { useNavigate, useParams } from "react-router";
 import { endOfWeek, isWithinInterval, parseISO, startOfWeek } from "date-fns";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
-import { boardRealtimeClient } from "../realtime/boardRealtime";
 import { 
   UserProgress, 
   loadUserProgress, 
@@ -28,7 +27,7 @@ import {
   calculateLevel,
   getXPForStoryPoints
 } from "../utils/gamification";
-import { ensureSharedDemoBoard, getBoard, Board as BoardType, SHARED_DEMO_BOARD_ID } from "../utils/boards";
+import { getBoard, Board as BoardType } from "../utils/boards";
 import { Card, Cards, getBoardCards, saveBoardCards, createDefaultCards, Priority, TaskType } from "../utils/cards";
 import { 
   Label, 
@@ -45,70 +44,6 @@ import {
   startSprint as startSprintUtil,
 } from "../utils/sprints";
 import { Play, Calendar, Target } from "lucide-react";
-
-const BOARD_COLUMN_IDS = ["todo", "inProgress", "inReview", "done", "backlog"] as const;
-
-function isBoardColumnId(value: string): value is keyof Cards {
-  return BOARD_COLUMN_IDS.includes(value as keyof Cards);
-}
-
-function moveCardBetweenColumns(
-  prevCards: Cards,
-  cardId: string,
-  fromColumnId: keyof Cards,
-  toColumnId: keyof Cards
-): Cards {
-  if (fromColumnId === toColumnId) {
-    return prevCards;
-  }
-
-  const nextCards: Cards = {
-    todo: [...prevCards.todo],
-    inProgress: [...prevCards.inProgress],
-    inReview: [...prevCards.inReview],
-    done: [...prevCards.done],
-    backlog: [...prevCards.backlog],
-  };
-
-  let sourceColumn = fromColumnId;
-  let cardIndex = nextCards[sourceColumn].findIndex((card) => card.id === cardId);
-
-  if (cardIndex === -1) {
-    const fallbackColumn = BOARD_COLUMN_IDS.find((columnId) =>
-      nextCards[columnId].some((card) => card.id === cardId)
-    );
-
-    if (!fallbackColumn) {
-      return prevCards;
-    }
-
-    sourceColumn = fallbackColumn;
-    cardIndex = nextCards[sourceColumn].findIndex((card) => card.id === cardId);
-  }
-
-  if (cardIndex === -1) {
-    return prevCards;
-  }
-
-  if (nextCards[toColumnId].some((card) => card.id === cardId)) {
-    return prevCards;
-  }
-
-  const [movedCard] = nextCards[sourceColumn].splice(cardIndex, 1);
-  if (!movedCard) {
-    return prevCards;
-  }
-
-  nextCards[toColumnId] = [
-    {
-      ...movedCard,
-      status: toColumnId,
-    },
-    ...nextCards[toColumnId],
-  ];
-
-  return nextCards;
-}
 
 export function Board() {
   const navigate = useNavigate();
@@ -165,12 +100,7 @@ export function Board() {
   // Load board, labels, cards, and sprints on mount
   useEffect(() => {
     if (boardId && user) {
-      let board = getBoard(user.id, boardId);
-
-      if (!board && boardId === SHARED_DEMO_BOARD_ID) {
-        board = ensureSharedDemoBoard(user.id, user.name);
-      }
-
+      const board = getBoard(user.id, boardId);
       if (board) {
         setCurrentBoard(board);
         
@@ -248,31 +178,6 @@ export function Board() {
   useEffect(() => {
     saveUserProgress(userProgress);
   }, [userProgress]);
-
-  useEffect(() => {
-    if (!boardId) {
-      return;
-    }
-
-    const unsubscribe = boardRealtimeClient.subscribe((move) => {
-      if (
-        move.boardId !== boardId ||
-        !isBoardColumnId(move.fromStatus) ||
-        !isBoardColumnId(move.toStatus)
-      ) {
-        return;
-      }
-
-      setCards((prevCards) => moveCardBetweenColumns(prevCards, move.cardId, move.fromStatus, move.toStatus));
-    });
-
-    void boardRealtimeClient.joinBoard(boardId);
-
-    return () => {
-      unsubscribe();
-      void boardRealtimeClient.leaveBoard(boardId);
-    };
-  }, [boardId]);
 
   const availableAssignees = [
     { name: user?.name || "Anna", color: "#3b82f6" },
@@ -369,23 +274,44 @@ export function Board() {
 
   // Card drag and drop handler
   const handleCardDrop = (cardId: string, fromColumnId: string, toColumnId: string) => {
-    if (!isBoardColumnId(fromColumnId) || !isBoardColumnId(toColumnId)) {
-      return;
-    }
+    setCards((prevCards) => {
+      const newCards = { ...prevCards };
+      const fromColumn = fromColumnId as keyof Cards;
+      const toColumn = toColumnId as keyof Cards;
 
-    setCards((prevCards) => moveCardBetweenColumns(prevCards, cardId, fromColumnId, toColumnId));
+      const cardIndex = newCards[fromColumn].findIndex((card) => card.id === cardId);
+      if (cardIndex === -1) return prevCards;
 
-    if (!boardId || fromColumnId === toColumnId) {
-      return;
-    }
+      const [movedCard] = newCards[fromColumn].splice(cardIndex, 1);
+      movedCard.status = toColumn;
 
-    void boardRealtimeClient.sendMove({
-      boardId,
-      cardId,
-      fromStatus: fromColumnId,
-      toStatus: toColumnId,
-      movedBy: user?.name || userProgress.username,
-      movedAt: new Date().toISOString(),
+      // Handle XP changes
+      if (fromColumn === "done" && toColumn !== "done" && movedCard.storyPoints && movedCard.assignee?.name === userProgress.username) {
+        const xpLost = getXPForStoryPoints(movedCard.storyPoints);
+        const newXP = Math.max(0, userProgress.xp - xpLost);
+        const newLevel = calculateLevel(newXP);
+        
+        setUserProgress((prev) => ({
+          ...prev,
+          xp: newXP,
+          level: newLevel,
+          tasksCompleted: Math.max(0, prev.tasksCompleted - 1),
+        }));
+      } else if (toColumn === "done" && fromColumn !== "done" && movedCard.storyPoints && movedCard.assignee?.name === userProgress.username) {
+        const xpEarned = getXPForStoryPoints(movedCard.storyPoints);
+        const newXP = userProgress.xp + xpEarned;
+        const newLevel = calculateLevel(newXP);
+        
+        setUserProgress((prev) => ({
+          ...prev,
+          xp: newXP,
+          level: newLevel,
+          tasksCompleted: prev.tasksCompleted + 1,
+        }));
+      }
+
+      newCards[toColumn] = [movedCard, ...newCards[toColumn]];
+      return newCards;
     });
   };
 

@@ -106,7 +106,7 @@ export function KanbanCard({
         <button
           onClick={() => onDelete(id, title)}
           onMouseDown={(e) => e.stopPropagation()}
-          className="absolute top-2 right-2 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg flex items-center justify-center transition-all z-10 cursor-pointer"
+          className="absolute -top-2 -right-2 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg flex items-center justify-center transition-all z-10 cursor-pointer"
           title="Delete task"
         >
           <Trash2 className="w-4 h-4" />
