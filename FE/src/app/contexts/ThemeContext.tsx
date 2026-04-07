@@ -48,6 +48,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(getInitialDarkMode);
 
   useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDarkMode);
+    document.documentElement.style.colorScheme = isDarkMode ? 'dark' : 'light';
+  }, [isDarkMode]);
+
+  useEffect(() => {
     try {
       localStorage.setItem('banban-theme', theme);
     } catch (error) {
@@ -83,6 +88,8 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       name: "Purple/Pink",
       primary: "from-purple-500 to-pink-500",
       primaryHover: "from-purple-600 to-pink-600",
+      primarySoft: "from-purple-500/10 to-pink-500/10",
+      primarySoftStrong: "from-purple-500/20 to-pink-500/20",
       primarySolid: "bg-purple-500",
       primaryLight: isDarkMode ? "bg-purple-950/50" : "bg-purple-100",
       primaryBg: isDarkMode ? "bg-purple-950/50" : "bg-purple-100",
@@ -95,6 +102,8 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       name: "Ocean Blue",
       primary: "from-blue-500 to-cyan-500",
       primaryHover: "from-blue-600 to-cyan-600",
+      primarySoft: "from-blue-500/10 to-cyan-500/10",
+      primarySoftStrong: "from-blue-500/20 to-cyan-500/20",
       primarySolid: "bg-blue-500",
       primaryLight: isDarkMode ? "bg-blue-950/50" : "bg-blue-100",
       primaryBg: isDarkMode ? "bg-blue-950/50" : "bg-blue-100",
@@ -107,6 +116,8 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       name: "Sunset Orange",
       primary: "from-orange-500 to-red-500",
       primaryHover: "from-orange-600 to-red-600",
+      primarySoft: "from-orange-500/10 to-red-500/10",
+      primarySoftStrong: "from-orange-500/20 to-red-500/20",
       primarySolid: "bg-orange-500",
       primaryLight: isDarkMode ? "bg-orange-950/50" : "bg-orange-100",
       primaryBg: isDarkMode ? "bg-orange-950/50" : "bg-orange-100",
@@ -119,6 +130,8 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       name: "Forest Green",
       primary: "from-green-600 to-emerald-500",
       primaryHover: "from-green-700 to-emerald-600",
+      primarySoft: "from-green-600/10 to-emerald-500/10",
+      primarySoftStrong: "from-green-600/20 to-emerald-500/20",
       primarySolid: "bg-green-600",
       primaryLight: isDarkMode ? "bg-green-950/50" : "bg-green-100",
       primaryBg: isDarkMode ? "bg-green-950/50" : "bg-green-100",
@@ -131,6 +144,8 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       name: "Mono Gray",
       primary: "from-gray-700 to-gray-900",
       primaryHover: "from-gray-800 to-black",
+      primarySoft: "from-gray-500/10 to-gray-800/10",
+      primarySoftStrong: "from-gray-500/20 to-gray-800/20",
       primarySolid: "bg-gray-700",
       primaryLight: isDarkMode ? "bg-gray-800" : "bg-gray-200",
       primaryBg: isDarkMode ? "bg-gray-800" : "bg-gray-200",

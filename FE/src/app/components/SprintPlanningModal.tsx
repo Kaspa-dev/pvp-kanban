@@ -116,7 +116,7 @@ export function SprintPlanningModal({
               disabled={!!existingSprint}
               className={`w-full px-4 py-3 ${
                 isDarkMode ? 'bg-[#242830] border-gray-700' : 'bg-white border-gray-200'
-              } border rounded-lg ${currentTheme.text} placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
+              } border rounded-lg ${currentTheme.text} placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${currentTheme.focus} ${currentTheme.primaryBorder}`}
             />
           </div>
 
@@ -135,7 +135,7 @@ export function SprintPlanningModal({
                   disabled={!!existingSprint}
                   className={`w-full pl-10 pr-4 py-3 ${
                     isDarkMode ? 'bg-[#242830] border-gray-700' : 'bg-white border-gray-200'
-                  } border rounded-lg ${currentTheme.text} focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
+                  } border rounded-lg ${currentTheme.text} focus:outline-none focus:ring-2 focus:ring-offset-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${currentTheme.focus} ${currentTheme.primaryBorder}`}
                 />
               </div>
             </div>
@@ -153,7 +153,7 @@ export function SprintPlanningModal({
                   disabled={!!existingSprint}
                   className={`w-full pl-10 pr-4 py-3 ${
                     isDarkMode ? 'bg-[#242830] border-gray-700' : 'bg-white border-gray-200'
-                  } border rounded-lg ${currentTheme.text} focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
+                  } border rounded-lg ${currentTheme.text} focus:outline-none focus:ring-2 focus:ring-offset-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${currentTheme.focus} ${currentTheme.primaryBorder}`}
                 />
               </div>
             </div>
@@ -173,8 +173,8 @@ export function SprintPlanningModal({
           </div>
 
           {existingSprint && (
-            <div className={`px-4 py-3 ${isDarkMode ? 'bg-purple-950/30' : 'bg-purple-50'} border ${isDarkMode ? 'border-purple-800/50' : 'border-purple-200'} rounded-lg`}>
-              <p className={`text-sm ${isDarkMode ? 'text-purple-200' : 'text-purple-900'}`}>
+            <div className={`px-4 py-3 bg-gradient-to-r ${currentTheme.primarySoft} border ${currentTheme.primaryBorder} rounded-lg`}>
+              <p className={`text-sm ${currentTheme.text}`}>
                 <strong>Note:</strong> Starting this sprint will make all planned tasks visible in Board and List views.
               </p>
             </div>
@@ -191,7 +191,7 @@ export function SprintPlanningModal({
             </button>
             <button
               type="submit"
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-lg hover:scale-[1.02] hover:shadow-lg transition-all flex items-center justify-center gap-2"
+              className={`flex-1 px-6 py-3 bg-gradient-to-r ${currentTheme.primary} text-white font-bold rounded-lg hover:scale-[1.02] hover:shadow-lg transition-all flex items-center justify-center gap-2`}
             >
               {existingSprint ? (
                 <>

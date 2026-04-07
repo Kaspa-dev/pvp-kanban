@@ -36,7 +36,7 @@ export function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -46,13 +46,13 @@ export function Login() {
 
     try {
       const result = await login(email, password);
-      
+
       if (result.success) {
         navigate('/app');
       } else {
         setErrors({ general: result.error || 'Login failed' });
       }
-    } catch (error) {
+    } catch {
       setErrors({ general: 'An unexpected error occurred' });
     } finally {
       setIsLoading(false);
@@ -61,30 +61,25 @@ export function Login() {
 
   return (
     <div className={`min-h-screen ${t.bg} flex`}>
-      {/* Left Side - Hero Section */}
       <div className={`hidden lg:flex lg:w-1/2 ${t.bgSecondary} flex-col justify-center px-12 relative overflow-hidden`}>
-        {/* Decorative Background Gradient */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-blue-500/20 to-purple-500/20 rounded-full blur-3xl" />
-        
+
         <div className="relative z-10">
-          {/* Logo */}
           <Link to="/" className="inline-block mb-4">
             <BanBanLogo size="xl" />
           </Link>
-          
-          {/* Hero Title */}
+
           <h2 className={`text-3xl font-bold ${t.text} mb-4`}>
             Gamified task management
             <br />
             for Agile teams
           </h2>
-          
+
           <p className={`text-lg ${t.textSecondary} mb-8 max-w-md`}>
             Learn project organization through an engaging Kanban workflow with XP rewards and sprint planning.
           </p>
-          
-          {/* Feature Highlights */}
+
           <div className="space-y-4 mb-8">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center flex-shrink-0">
@@ -95,7 +90,7 @@ export function Login() {
                 <p className={`text-sm ${t.textMuted}`}>Plan, track, and complete sprints</p>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center flex-shrink-0">
                 <TrendingUp className="w-5 h-5 text-white" strokeWidth={2} />
@@ -105,7 +100,7 @@ export function Login() {
                 <p className={`text-sm ${t.textMuted}`}>Earn XP and unlock achievement ranks</p>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0">
                 <Zap className="w-5 h-5 text-white" strokeWidth={2} />
@@ -116,8 +111,7 @@ export function Login() {
               </div>
             </div>
           </div>
-          
-          {/* Visual Preview Placeholder */}
+
           <div className={`${t.cardBg} rounded-xl border-2 ${t.border} p-4 shadow-lg`}>
             <div className="grid grid-cols-3 gap-2">
               <div className={`${t.bgTertiary} rounded-lg p-3 space-y-2`}>
@@ -139,23 +133,19 @@ export function Login() {
         </div>
       </div>
 
-      {/* Right Side - Login Form */}
       <div className={`w-full lg:w-1/2 flex items-center justify-center px-6 py-12 ${t.bg}`}>
         <div className="w-full max-w-md">
-          {/* Mobile Logo */}
           <div className="flex justify-center mb-8 lg:hidden">
             <Link to="/">
               <BanBanLogo size="lg" />
             </Link>
           </div>
 
-          {/* Form Header */}
           <div className="mb-6">
             <h2 className={`text-2xl font-bold ${t.text} mb-2`}>Welcome back</h2>
             <p className={`${t.textSecondary}`}>Log in to your account to continue.</p>
           </div>
 
-          {/* Login Form */}
           <div className={`${t.cardBg} rounded-2xl border ${t.border} shadow-lg p-8`}>
             {errors.general && (
               <div className={`mb-6 p-4 ${t.isDark ? 'bg-red-950/30' : 'bg-red-50'} border-2 ${t.isDark ? 'border-red-800' : 'border-red-200'} rounded-xl flex items-start gap-3`}>
@@ -165,7 +155,6 @@ export function Login() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Email */}
               <div>
                 <label htmlFor="email" className={`block text-sm font-semibold ${t.text} mb-2`}>
                   Email
@@ -188,7 +177,6 @@ export function Login() {
                 )}
               </div>
 
-              {/* Password */}
               <div>
                 <label htmlFor="password" className={`block text-sm font-semibold ${t.text} mb-2`}>
                   Password
@@ -203,7 +191,7 @@ export function Login() {
                     className={`w-full pl-11 pr-4 py-3 border-2 ${
                       errors.password ? 'border-red-300' : t.border
                     } ${t.inputBg} ${t.text} rounded-xl focus:outline-none focus:ring-2 ${t.ring} focus:border-transparent transition-all`}
-                    placeholder="••••••••"
+                    placeholder="Enter your password"
                   />
                 </div>
                 {errors.password && (
@@ -211,7 +199,6 @@ export function Login() {
                 )}
               </div>
 
-              {/* Remember me & Forgot password */}
               <div className="flex items-center justify-between">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -230,7 +217,6 @@ export function Login() {
                 </Link>
               </div>
 
-              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isLoading}
@@ -240,7 +226,6 @@ export function Login() {
               </button>
             </form>
 
-            {/* Sign up link */}
             <div className="mt-6 text-center">
               <p className={`${t.textSecondary} text-sm`}>
                 Don't have an account?{' '}
@@ -254,10 +239,9 @@ export function Login() {
             </div>
           </div>
 
-          {/* Back to home */}
           <div className="mt-6 text-center">
             <Link to="/" className={`text-sm ${t.textSecondary} hover:${t.text} transition-colors`}>
-              ← Back to home
+              Back to home
             </Link>
           </div>
         </div>

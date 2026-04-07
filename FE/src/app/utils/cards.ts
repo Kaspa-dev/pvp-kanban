@@ -1,3 +1,5 @@
+import { addDays, endOfWeek, format } from "date-fns";
+
 // Card storage utilities - per board
 
 export type Priority = "low" | "medium" | "high" | "critical";
@@ -15,6 +17,7 @@ export interface Card {
   };
   status: "todo" | "inProgress" | "inReview" | "done" | "backlog";
   storyPoints?: number;
+  dueDate?: string | null;
   sprintId?: string | null; // Sprint assignment - null means in backlog
   priority?: Priority; // New: task priority
   taskType?: TaskType; // New: task type
@@ -30,11 +33,16 @@ export interface Cards {
 
 // Migrate old cards with 'tags' to new 'labelIds' format
 function migrateCard(card: any): Card {
+  const normalizedDueDate = typeof card.dueDate === "string" && card.dueDate.trim()
+    ? card.dueDate
+    : null;
+
   // If card has old 'tags' field, migrate it to empty labelIds
   if (card.tags && !card.labelIds) {
     return {
       ...card,
       labelIds: [], // Old tags were just strings, not IDs, so start fresh
+      dueDate: normalizedDueDate,
     };
   }
   // If card doesn't have labelIds at all, add empty array
@@ -42,14 +50,22 @@ function migrateCard(card: any): Card {
     return {
       ...card,
       labelIds: [],
+      dueDate: normalizedDueDate,
     };
   }
-  return card;
+  return {
+    ...card,
+    dueDate: normalizedDueDate,
+  };
+}
+
+function getCardsStorageKey(boardId: string): string {
+  return `banban_cards_${boardId}`;
 }
 
 // Get cards for a specific board
 export function getBoardCards(boardId: string): Cards {
-  const cardsData = localStorage.getItem(`banban_cards_${boardId}`);
+  const cardsData = localStorage.getItem(getCardsStorageKey(boardId));
   if (!cardsData) {
     return {
       todo: [],
@@ -82,12 +98,36 @@ export function getBoardCards(boardId: string): Cards {
 
 // Save cards for a specific board
 export function saveBoardCards(boardId: string, cards: Cards): void {
-  localStorage.setItem(`banban_cards_${boardId}`, JSON.stringify(cards));
+  localStorage.setItem(getCardsStorageKey(boardId), JSON.stringify(cards));
+}
+
+export function migrateBoardCardsStorage(fromBoardId: string, toBoardId: string): void {
+  if (fromBoardId === toBoardId) {
+    return;
+  }
+
+  const targetKey = getCardsStorageKey(toBoardId);
+  if (localStorage.getItem(targetKey)) {
+    return;
+  }
+
+  const sourceKey = getCardsStorageKey(fromBoardId);
+  const sourceData = localStorage.getItem(sourceKey);
+  if (!sourceData) {
+    return;
+  }
+
+  localStorage.setItem(targetKey, sourceData);
+  localStorage.removeItem(sourceKey);
 }
 
 // Create default demo cards for a new board
 // Note: labelIds should be actual label IDs from the board's labels
 export function createDefaultCards(assigneeName: string, labelIds: { [key: string]: string } = {}): Cards {
+  const today = new Date();
+  const thisWeekDueDate = format(endOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd");
+  const nextWeekDueDate = format(addDays(endOfWeek(today, { weekStartsOn: 1 }), 4), "yyyy-MM-dd");
+
   return {
     todo: [
       {
@@ -97,6 +137,7 @@ export function createDefaultCards(assigneeName: string, labelIds: { [key: strin
         assignee: { name: assigneeName, color: "#3b82f6" },
         status: "todo",
         storyPoints: 5,
+        dueDate: thisWeekDueDate,
         priority: "high",
         taskType: "story",
       },
@@ -107,6 +148,7 @@ export function createDefaultCards(assigneeName: string, labelIds: { [key: strin
         assignee: { name: "Jonas", color: "#10b981" },
         status: "todo",
         storyPoints: 3,
+        dueDate: nextWeekDueDate,
         priority: "medium",
         taskType: "task",
       },
@@ -119,6 +161,7 @@ export function createDefaultCards(assigneeName: string, labelIds: { [key: strin
         assignee: { name: "Marius", color: "#8b5cf6" },
         status: "inProgress",
         storyPoints: 8,
+        dueDate: thisWeekDueDate,
         priority: "critical",
         taskType: "story",
       },
@@ -132,6 +175,7 @@ export function createDefaultCards(assigneeName: string, labelIds: { [key: strin
         assignee: { name: "Laura", color: "#06b6d4" },
         status: "done",
         storyPoints: 2,
+        dueDate: null,
         priority: "medium",
         taskType: "task",
       },
@@ -144,6 +188,7 @@ export function createDefaultCards(assigneeName: string, labelIds: { [key: strin
         assignee: { name: assigneeName, color: "#3b82f6" },
         status: "backlog",
         storyPoints: 8,
+        dueDate: nextWeekDueDate,
         priority: "low",
         taskType: "spike",
       },

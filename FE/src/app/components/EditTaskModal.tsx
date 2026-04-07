@@ -1,4 +1,4 @@
-import { X, User, Zap, Plus, Minus, HelpCircle } from "lucide-react";
+import { X, User, Zap, CalendarDays } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import * as Popover from "@radix-ui/react-popover";
@@ -6,8 +6,7 @@ import { STORY_POINTS_OPTIONS, STORY_POINTS_MIN, STORY_POINTS_MAX } from "../uti
 import { LabelSelector } from "./LabelSelector";
 import { Label } from "../utils/labels";
 import { Priority, TaskType } from "../utils/cards";
-import { Tooltip } from "./Tooltip";
-import { getPriorityColor, PRIORITY_COLORS } from "../utils/priorityColors";
+import { getPriorityColor } from "../utils/priorityColors";
 
 interface EditTaskModalProps {
   isOpen: boolean;
@@ -22,6 +21,7 @@ interface EditTaskModalProps {
       color: string;
     } | null;
     storyPoints?: number;
+    dueDate?: string | null;
     priority?: Priority;
     taskType?: TaskType;
   }) => void;
@@ -37,6 +37,7 @@ interface EditTaskModalProps {
       color: string;
     };
     storyPoints?: number;
+    dueDate?: string | null;
     priority?: Priority;
     taskType?: TaskType;
   } | null;
@@ -63,6 +64,7 @@ export function EditTaskModal({
   const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>(task?.labelIds || []);
   const [selectedAssignee, setSelectedAssignee] = useState<{ name: string; color: string } | null>(task?.assignee || null);
   const [storyPoints, setStoryPoints] = useState<number | undefined>(task?.storyPoints);
+  const [dueDate, setDueDate] = useState(task?.dueDate || "");
   const [customStoryPoints, setCustomStoryPoints] = useState("");
   const [isAssigneeOpen, setIsAssigneeOpen] = useState(false);
   const [priority, setPriority] = useState<Priority | undefined>(task?.priority);
@@ -76,6 +78,7 @@ export function EditTaskModal({
       setSelectedLabelIds(task.labelIds || []);
       setSelectedAssignee(task.assignee || null);
       setStoryPoints(task.storyPoints);
+      setDueDate(task.dueDate || "");
       setCustomStoryPoints(task.storyPoints?.toString() || "");
       setPriority(task.priority);
       setTaskType(task.taskType);
@@ -97,6 +100,7 @@ export function EditTaskModal({
       labelIds: selectedLabelIds,
       assignee: selectedAssignee,
       storyPoints,
+      dueDate: dueDate || null,
       priority,
       taskType,
     });
@@ -272,6 +276,33 @@ export function EditTaskModal({
                 </Popover.Content>
               </Popover.Portal>
             </Popover.Root>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <label htmlFor="dueDate" className={`text-sm font-semibold ${currentTheme.textSecondary}`}>
+                Due date
+              </label>
+              {dueDate && (
+                <button
+                  type="button"
+                  onClick={() => setDueDate("")}
+                  className={`text-xs font-medium ${currentTheme.primaryText} hover:underline`}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <div className="relative">
+              <CalendarDays className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${currentTheme.textMuted}`} />
+              <input
+                id="dueDate"
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className={`w-full pl-10 pr-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent transition-all ${currentTheme.inputBg} ${currentTheme.text}`}
+              />
+            </div>
           </div>
 
           {/* Story Points */}

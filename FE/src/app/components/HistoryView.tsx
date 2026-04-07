@@ -87,7 +87,7 @@ export function HistoryView({
           {/* Total XP Card */}
           <div className={`${currentTheme.cardBg} rounded-xl border ${currentTheme.border} shadow-sm p-4 hover:shadow-md transition-shadow`}>
             <div className="flex items-center gap-3">
-              <div className={`w-11 h-11 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-lg`}>
+              <div className={`w-11 h-11 rounded-full bg-gradient-to-br ${currentTheme.primary} flex items-center justify-center flex-shrink-0 shadow-lg`}>
                 <TrendingUp className="w-6 h-6 text-white" strokeWidth={2.5} />
               </div>
               <div className="flex-1 min-w-0">
@@ -136,6 +136,7 @@ export function HistoryView({
                         availableAssignees={availableAssignees}
                         labels={labels}
                         storyPoints={card.storyPoints}
+                        dueDate={card.dueDate}
                         priority={card.priority}
                         taskType={card.taskType}
                       />

@@ -1,10 +1,9 @@
-import { User, Inbox, Calendar, Tag, Plus, ChevronDown, X, LogOut, ArrowLeft } from "lucide-react";
+import { User, Inbox, Calendar, Tag, Plus, ChevronDown, X, LogOut } from "lucide-react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { Label } from "../utils/labels";
 import { BanBanLogo } from "./BanBanLogo";
 import { Link } from "react-router";
 import * as Popover from "@radix-ui/react-popover";
-import { Tooltip } from "./Tooltip";
 
 interface SidebarProps {
   activeFilter: string;
@@ -23,6 +22,7 @@ interface SidebarProps {
     level: number;
   };
   labels: Label[];
+  className?: string;
 }
 
 export function Sidebar({ 
@@ -36,7 +36,8 @@ export function Sidebar({
   onBack,
   boardName,
   userProgress,
-  labels
+  labels,
+  className = "",
 }: SidebarProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
@@ -60,7 +61,7 @@ export function Sidebar({
   };
 
   return (
-    <aside className={`w-72 ${isDarkMode ? 'bg-[#1a1d24]' : 'bg-[#fafbfc]'} flex flex-col border-r ${isDarkMode ? 'border-gray-800' : 'border-gray-200'}`}>
+    <aside className={`w-72 ${isDarkMode ? 'bg-[#1a1d24]' : 'bg-[#fafbfc]'} flex flex-col border-r ${isDarkMode ? 'border-gray-800' : 'border-gray-200'} ${className}`}>
       {/* Logo & Project Title */}
       <div className="px-6 pt-6 pb-6 border-b border-gray-200 dark:border-gray-800">
         <Link to="/app" className="inline-block">
@@ -99,7 +100,7 @@ export function Sidebar({
                   isActive
                     ? `bg-gradient-to-r ${currentTheme.primary} text-white shadow-sm`
                     : isDarkMode
-                    ? 'text-gray-300 hover:text-white border border-transparent hover:border-purple-500/50 hover:shadow-sm hover:shadow-purple-500/10'
+                    ? `text-gray-300 hover:text-white border border-transparent hover:${currentTheme.primaryBorder} hover:shadow-sm`
                     : `${currentTheme.textSecondary} hover:bg-gray-100`
                 }`}
               >
@@ -122,8 +123,8 @@ export function Sidebar({
             <button
               className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 ${
                 isDarkMode 
-                  ? 'bg-[#242830] border-gray-700 hover:border-purple-500/50 hover:shadow-sm hover:shadow-purple-500/10' 
-                  : 'bg-white border-gray-200 hover:border-purple-400'
+                  ? `bg-[#242830] border-gray-700 hover:${currentTheme.primaryBorder} hover:shadow-sm` 
+                  : `bg-white border-gray-200 hover:${currentTheme.primaryBorder}`
               } border rounded-lg transition-all text-left mb-4`}
             >
               <div className="flex items-center gap-2">

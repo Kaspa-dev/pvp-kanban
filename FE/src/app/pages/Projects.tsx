@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme, getThemeColors } from '../contexts/ThemeContext';
-import { getUserBoards, createDefaultBoards, Board, updateBoard, deleteBoard, BoardMember } from '../utils/boards';
+import { getUserBoards, createDefaultBoards, Board, updateBoard, deleteBoard, BoardMember, SHARED_DEMO_BOARD_ID } from '../utils/boards';
 import { Plus, Folder, Calendar, CheckSquare, ArrowRight, Settings, LogOut, Edit3, Users, Trash2 } from 'lucide-react';
 import { CreateBoardModal } from '../components/CreateBoardModal';
 import { EditProjectModal } from '../components/EditProjectModal';
@@ -78,13 +78,13 @@ export function Projects() {
   if (!user) return null;
 
   return (
-    <div className={`min-h-screen relative overflow-hidden ${currentTheme.bgSecondary}`}>
+    <div className={`min-h-screen relative overflow-hidden ${currentTheme.bgSecondary} flex flex-col`}>
       {/* Animated Background Shapes */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {/* Subtle gradient orbs */}
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/5 dark:bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '8s' }} />
-        <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-pink-500/5 dark:bg-pink-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '10s', animationDelay: '2s' }} />
-        <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-blue-500/5 dark:bg-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '12s', animationDelay: '4s' }} />
+        <div className={`absolute top-0 left-1/4 w-96 h-96 bg-gradient-to-br ${currentTheme.primarySoft} rounded-full blur-3xl animate-pulse`} style={{ animationDuration: '8s' }} />
+        <div className={`absolute bottom-0 right-1/4 w-80 h-80 bg-gradient-to-tr ${currentTheme.primarySoft} rounded-full blur-3xl animate-pulse`} style={{ animationDuration: '10s', animationDelay: '2s' }} />
+        <div className={`absolute top-1/2 left-1/2 w-72 h-72 bg-gradient-to-br ${currentTheme.primarySoft} rounded-full blur-3xl animate-pulse`} style={{ animationDuration: '12s', animationDelay: '4s' }} />
       </div>
 
       {/* Header */}
@@ -109,9 +109,9 @@ export function Projects() {
               onClick={() => setIsSettingsModalOpen(true)}
               className={`p-3 rounded-xl transition-all cursor-pointer relative z-20 border ${
                 isDarkMode 
-                  ? 'border-transparent hover:border-purple-500/50 text-gray-400 hover:text-gray-200 hover:shadow-sm hover:shadow-purple-500/10' 
+                  ? `border-transparent hover:${currentTheme.primaryBorder} text-gray-400 hover:text-gray-200 hover:shadow-sm` 
                   : 'border-transparent hover:bg-gray-100 text-gray-500 hover:text-gray-900'
-              } focus:outline-none focus:ring-2 focus:ring-purple-500/30`}
+              } focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus}`}
               title="Settings"
               type="button"
             >
@@ -134,12 +134,13 @@ export function Projects() {
       </header>
 
       {/* Main Content */}
-      <main className="relative z-10 max-w-7xl mx-auto px-6 py-12">
+      <main className="relative z-10 flex-1 w-full">
+        <div className="max-w-7xl mx-auto px-6 py-12">
         {/* Welcome Header with gradient background */}
         <div className={`${currentTheme.cardBg} rounded-3xl border ${currentTheme.border} p-10 mb-10 relative overflow-hidden shadow-lg`}>
           {/* Decorative gradient background */}
-          <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '6s' }} />
-          <div className="absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-blue-500/10 to-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '8s', animationDelay: '1s' }} />
+          <div className={`absolute top-0 right-0 w-96 h-96 bg-gradient-to-br ${currentTheme.primarySoftStrong} rounded-full blur-3xl animate-pulse`} style={{ animationDuration: '6s' }} />
+          <div className={`absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr ${currentTheme.primarySoft} rounded-full blur-3xl animate-pulse`} style={{ animationDuration: '8s', animationDelay: '1s' }} />
           
           {/* Subtle grid pattern overlay */}
           <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]" style={{
@@ -163,7 +164,7 @@ export function Projects() {
             </div>
             <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="flex items-center gap-2.5 px-7 py-3.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-xl hover:scale-105 hover:shadow-2xl transition-all shadow-lg group"
+              className={`flex items-center gap-2.5 px-7 py-3.5 bg-gradient-to-r ${currentTheme.primary} text-white font-bold rounded-xl hover:scale-105 hover:shadow-2xl transition-all shadow-lg group`}
             >
               <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
               <span>New Project</span>
@@ -225,38 +226,45 @@ export function Projects() {
             {boards.map((board) => (
               <div
                 key={board.id}
-                className={`relative ${currentTheme.cardBg} rounded-2xl border-2 ${currentTheme.border} p-6 hover:border-purple-400 dark:hover:border-purple-600 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 text-left group`}
+                className={`relative ${currentTheme.cardBg} rounded-2xl border-2 ${currentTheme.border} p-6 hover:${currentTheme.primaryBorder} hover:shadow-xl hover:-translate-y-1 transition-all duration-300 text-left group`}
               >
-                {/* Edit Button - Top Right */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEditBoard(board);
-                  }}
-                  className={`absolute top-4 right-4 p-2 ${currentTheme.bgSecondary} rounded-lg hover:${currentTheme.bgTertiary} opacity-0 group-hover:opacity-100 transition-all duration-200 z-10`}
-                  title="Edit Project"
-                >
-                  <Edit3 className={`w-4 h-4 ${currentTheme.textSecondary} hover:${currentTheme.primaryText}`} />
-                </button>
+                {board.id !== SHARED_DEMO_BOARD_ID ? (
+                  <>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditBoard(board);
+                      }}
+                      className={`absolute top-4 right-4 p-2 ${currentTheme.bgSecondary} rounded-lg hover:${currentTheme.bgTertiary} opacity-0 group-hover:opacity-100 transition-all duration-200 z-10`}
+                      title="Edit Project"
+                    >
+                      <Edit3 className={`w-4 h-4 ${currentTheme.textSecondary} hover:${currentTheme.primaryText}`} />
+                    </button>
 
-                {/* Delete Button - Top Right */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setBoardToDelete(board);
-                    setIsDeleteDialogOpen(true);
-                  }}
-                  className={`absolute top-4 right-14 p-2 ${currentTheme.bgSecondary} rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 hover:bg-red-50 dark:hover:bg-red-950/30`}
-                  title="Delete Project"
-                >
-                  <Trash2 className={`w-4 h-4 ${currentTheme.textSecondary} hover:text-red-500 transition-colors`} />
-                </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setBoardToDelete(board);
+                        setIsDeleteDialogOpen(true);
+                      }}
+                      className={`absolute top-4 right-14 p-2 ${currentTheme.bgSecondary} rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 hover:bg-red-50 dark:hover:bg-red-950/30`}
+                      title="Delete Project"
+                    >
+                      <Trash2 className={`w-4 h-4 ${currentTheme.textSecondary} hover:text-red-500 transition-colors`} />
+                    </button>
+                  </>
+                ) : null}
 
                 {/* Click area for selecting project */}
                 <button
                   onClick={() => handleSelectBoard(board.id)}
                   className="w-full text-left"
                 >
+                  {board.id === SHARED_DEMO_BOARD_ID && (
+                    <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold mb-4 bg-gradient-to-r ${currentTheme.primarySoft} ${currentTheme.primaryText} border ${currentTheme.primaryBorder}`}>
+                      Shared live demo
+                    </div>
+                  )}
                   {/* Board Icon/Header */}
                   <div className="flex items-start justify-between mb-4">
                     <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${currentTheme.primary} flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300`}>
@@ -313,6 +321,7 @@ export function Projects() {
             ))}
           </div>
         )}
+        </div>
       </main>
 
       {/* Create Board Modal */}

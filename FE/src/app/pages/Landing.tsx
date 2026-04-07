@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { LayoutGrid, Zap, Filter, Palette, CheckCircle2, ArrowRight } from 'lucide-react';
+import { LayoutGrid, Zap, Filter, Palette, ArrowRight } from 'lucide-react';
 import { useTheme, getThemeColors } from '../contexts/ThemeContext';
 import { BanBanLogo } from '../components/BanBanLogo';
 
@@ -9,7 +9,6 @@ export function Landing() {
 
   return (
     <div className={`min-h-screen ${t.bg}`}>
-      {/* Header */}
       <header className={`border-b-2 ${t.border}`}>
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <BanBanLogo size="lg" />
@@ -30,7 +29,6 @@ export function Landing() {
         </div>
       </header>
 
-      {/* Hero Section */}
       <section className="py-20 px-6">
         <div className="max-w-5xl mx-auto text-center">
           <h2 className={`text-5xl md:text-6xl font-bold ${t.text} mb-6`}>
@@ -41,7 +39,7 @@ export function Landing() {
             </span>
           </h2>
           <p className={`text-xl ${t.textSecondary} mb-10 max-w-3xl mx-auto`}>
-            BanBan combines powerful kanban boards with XP leveling and story points. 
+            BanBan combines powerful kanban boards with XP leveling and story points.
             Organize tasks, earn rewards, and make productivity fun.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -62,14 +60,12 @@ export function Landing() {
         </div>
       </section>
 
-      {/* Features Section */}
       <section className={`py-20 px-6 ${t.bgSecondary}`}>
         <div className="max-w-6xl mx-auto">
           <h3 className={`text-3xl font-bold text-center ${t.text} mb-12`}>
             Everything you need to stay organized
           </h3>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {/* Feature 1 */}
             <div className={`${t.cardBg} rounded-2xl p-6 border-2 ${t.border} shadow-sm hover:shadow-lg transition-shadow`}>
               <div className={`w-12 h-12 bg-gradient-to-r ${t.primary} rounded-xl flex items-center justify-center mb-4`}>
                 <LayoutGrid className="w-6 h-6 text-white" />
@@ -80,7 +76,6 @@ export function Landing() {
               </p>
             </div>
 
-            {/* Feature 2 */}
             <div className={`${t.cardBg} rounded-2xl p-6 border-2 ${t.border} shadow-sm hover:shadow-lg transition-shadow`}>
               <div className={`w-12 h-12 bg-gradient-to-r ${t.primary} rounded-xl flex items-center justify-center mb-4`}>
                 <Zap className="w-6 h-6 text-white" />
@@ -91,7 +86,6 @@ export function Landing() {
               </p>
             </div>
 
-            {/* Feature 3 */}
             <div className={`${t.cardBg} rounded-2xl p-6 border-2 ${t.border} shadow-sm hover:shadow-lg transition-shadow`}>
               <div className={`w-12 h-12 bg-gradient-to-r ${t.primary} rounded-xl flex items-center justify-center mb-4`}>
                 <Filter className="w-6 h-6 text-white" />
@@ -102,28 +96,25 @@ export function Landing() {
               </p>
             </div>
 
-            {/* Feature 4 */}
             <div className={`${t.cardBg} rounded-2xl p-6 border-2 ${t.border} shadow-sm hover:shadow-lg transition-shadow`}>
               <div className={`w-12 h-12 bg-gradient-to-r ${t.primary} rounded-xl flex items-center justify-center mb-4`}>
                 <Palette className="w-6 h-6 text-white" />
               </div>
               <h4 className={`text-lg font-bold ${t.text} mb-2`}>Beautiful themes</h4>
               <p className={`${t.textSecondary} text-sm`}>
-                Choose from 6 stunning themes to personalize your workspace.
+                Choose from 5 themes to personalize your workspace.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* How it works */}
       <section className="py-20 px-6">
         <div className="max-w-5xl mx-auto">
           <h3 className={`text-3xl font-bold text-center ${t.text} mb-12`}>
             How it works
           </h3>
           <div className="grid md:grid-cols-3 gap-12">
-            {/* Step 1 */}
             <div className="text-center">
               <div className={`w-16 h-16 bg-gradient-to-r ${t.primary} rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4`}>
                 1
@@ -134,7 +125,6 @@ export function Landing() {
               </p>
             </div>
 
-            {/* Step 2 */}
             <div className="text-center">
               <div className={`w-16 h-16 bg-gradient-to-r ${t.primary} rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4`}>
                 2
@@ -145,7 +135,6 @@ export function Landing() {
               </p>
             </div>
 
-            {/* Step 3 */}
             <div className="text-center">
               <div className={`w-16 h-16 bg-gradient-to-r ${t.primary} rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4`}>
                 3
@@ -159,7 +148,6 @@ export function Landing() {
         </div>
       </section>
 
-      {/* CTA Section */}
       <section className={`py-20 px-6 bg-gradient-to-r ${t.primary}`}>
         <div className="max-w-4xl mx-auto text-center">
           <h3 className="text-4xl font-bold text-white mb-6">
@@ -177,7 +165,6 @@ export function Landing() {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className={`border-t-2 ${t.border} py-12 px-6`}>
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
@@ -192,30 +179,30 @@ export function Landing() {
             <div>
               <h5 className={`font-bold ${t.text} mb-3`}>Product</h5>
               <ul className="space-y-2">
-                <li><a href="#" className={`${t.textSecondary} hover:${t.text} text-sm transition-colors`}>Features</a></li>
-                <li><a href="#" className={`${t.textSecondary} hover:${t.text} text-sm transition-colors`}>Pricing</a></li>
-                <li><a href="#" className={`${t.textSecondary} hover:${t.text} text-sm transition-colors`}>FAQ</a></li>
+                <li><span className={`${t.textSecondary} text-sm`}>Features</span></li>
+                <li><span className={`${t.textSecondary} text-sm`}>Pricing</span></li>
+                <li><span className={`${t.textSecondary} text-sm`}>FAQ</span></li>
               </ul>
             </div>
             <div>
               <h5 className={`font-bold ${t.text} mb-3`}>Company</h5>
               <ul className="space-y-2">
-                <li><a href="#" className={`${t.textSecondary} hover:${t.text} text-sm transition-colors`}>About</a></li>
-                <li><a href="#" className={`${t.textSecondary} hover:${t.text} text-sm transition-colors`}>Blog</a></li>
-                <li><a href="#" className={`${t.textSecondary} hover:${t.text} text-sm transition-colors`}>Careers</a></li>
+                <li><span className={`${t.textSecondary} text-sm`}>About</span></li>
+                <li><span className={`${t.textSecondary} text-sm`}>Blog</span></li>
+                <li><span className={`${t.textSecondary} text-sm`}>Careers</span></li>
               </ul>
             </div>
             <div>
               <h5 className={`font-bold ${t.text} mb-3`}>Legal</h5>
               <ul className="space-y-2">
-                <li><a href="#" className={`${t.textSecondary} hover:${t.text} text-sm transition-colors`}>Privacy</a></li>
-                <li><a href="#" className={`${t.textSecondary} hover:${t.text} text-sm transition-colors`}>Terms</a></li>
-                <li><a href="#" className={`${t.textSecondary} hover:${t.text} text-sm transition-colors`}>Security</a></li>
+                <li><span className={`${t.textSecondary} text-sm`}>Privacy</span></li>
+                <li><span className={`${t.textSecondary} text-sm`}>Terms</span></li>
+                <li><span className={`${t.textSecondary} text-sm`}>Security</span></li>
               </ul>
             </div>
           </div>
           <div className={`border-t-2 ${t.border} pt-8 text-center ${t.textSecondary} text-sm`}>
-            © 2026 BanBan. All rights reserved.
+            Copyright 2026 BanBan. All rights reserved.
           </div>
         </div>
       </footer>

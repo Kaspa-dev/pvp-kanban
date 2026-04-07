@@ -6,9 +6,13 @@ export interface Label {
   color: string;
 }
 
+function getLabelsStorageKey(boardId: string): string {
+  return `banban_labels_${boardId}`;
+}
+
 // Get labels for a specific board
 export function getBoardLabels(boardId: string): Label[] {
-  const labelsData = localStorage.getItem(`banban_labels_${boardId}`);
+  const labelsData = localStorage.getItem(getLabelsStorageKey(boardId));
   if (!labelsData) {
     return [];
   }
@@ -21,7 +25,27 @@ export function getBoardLabels(boardId: string): Label[] {
 
 // Save labels for a specific board
 export function saveBoardLabels(boardId: string, labels: Label[]): void {
-  localStorage.setItem(`banban_labels_${boardId}`, JSON.stringify(labels));
+  localStorage.setItem(getLabelsStorageKey(boardId), JSON.stringify(labels));
+}
+
+export function migrateBoardLabelsStorage(fromBoardId: string, toBoardId: string): void {
+  if (fromBoardId === toBoardId) {
+    return;
+  }
+
+  const targetKey = getLabelsStorageKey(toBoardId);
+  if (localStorage.getItem(targetKey)) {
+    return;
+  }
+
+  const sourceKey = getLabelsStorageKey(fromBoardId);
+  const sourceData = localStorage.getItem(sourceKey);
+  if (!sourceData) {
+    return;
+  }
+
+  localStorage.setItem(targetKey, sourceData);
+  localStorage.removeItem(sourceKey);
 }
 
 // Create a new label
