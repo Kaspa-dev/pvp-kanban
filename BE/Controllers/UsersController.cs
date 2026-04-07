@@ -1,10 +1,12 @@
 using BE.Data;
 using BE.DTOs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace BE.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class UsersController : ControllerBase
@@ -28,6 +30,7 @@ public class UsersController : ControllerBase
                 Email = u.Email,
                 FirstName = u.FirstName,
                 LastName = u.LastName,
+                DisplayName = $"{u.FirstName} {u.LastName}".Trim(),
                 CreatedAt = u.CreatedAt,
                 LastLogin = u.LastLogin,
                 Memberships = u.Memberships.Select(m => new MembershipDto
@@ -58,6 +61,7 @@ public class UsersController : ControllerBase
                 Email = u.Email,
                 FirstName = u.FirstName,
                 LastName = u.LastName,
+                DisplayName = $"{u.FirstName} {u.LastName}".Trim(),
                 CreatedAt = u.CreatedAt,
                 LastLogin = u.LastLogin,
                 Memberships = u.Memberships.Select(m => new MembershipDto

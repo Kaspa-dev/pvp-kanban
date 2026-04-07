@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme, getThemeColors } from '../contexts/ThemeContext';
@@ -16,26 +16,24 @@ export function Projects() {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
 
-  const [boards, setBoards] = useState<Board[]>([]);
+  const [boards, setBoards] = useState<Board[]>(() => {
+    if (!user) {
+      return [];
+    }
+
+    let userBoards = getUserBoards(user.id);
+    if (userBoards.length === 0) {
+      userBoards = createDefaultBoards(user.id, user.displayName);
+    }
+
+    return userBoards;
+  });
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedBoard, setSelectedBoard] = useState<Board | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [boardToDelete, setBoardToDelete] = useState<Board | null>(null);
-
-  useEffect(() => {
-    if (!user) return;
-
-    let userBoards = getUserBoards(user.id);
-    
-    // Create default boards if user has none
-    if (userBoards.length === 0) {
-      userBoards = createDefaultBoards(user.id, user.name);
-    }
-
-    setBoards(userBoards);
-  }, [user]);
 
   const handleBoardCreated = (newBoard: Board) => {
     setBoards([...boards, newBoard]);
@@ -45,8 +43,8 @@ export function Projects() {
     navigate(`/app/${boardId}`);
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 
@@ -98,10 +96,10 @@ export function Projects() {
           <div className="flex items-center gap-3">
             <div className={`flex items-center gap-3 px-4 py-2 ${currentTheme.bgSecondary} rounded-xl border ${currentTheme.border}`}>
               <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${currentTheme.primary} flex items-center justify-center text-white font-bold shadow-md`}>
-                {user.name.charAt(0).toUpperCase()}
+                {user.displayName.charAt(0).toUpperCase()}
               </div>
               <div>
-                <p className={`font-semibold ${currentTheme.text} text-sm`}>{user.name}</p>
+                <p className={`font-semibold ${currentTheme.text} text-sm`}>{user.displayName}</p>
                 <p className={`text-xs ${currentTheme.textMuted}`}>{user.email}</p>
               </div>
             </div>
@@ -154,7 +152,7 @@ export function Projects() {
                   <Users className="w-6 h-6 text-white" />
                 </div>
                 <h2 className={`text-4xl font-bold ${currentTheme.text}`}>
-                  Welcome back, {user.name.split(' ')[0]}!
+                  Welcome back, {user.firstName}!
                 </h2>
               </div>
               <p className={`text-lg ${currentTheme.textSecondary} ml-[60px]`}>

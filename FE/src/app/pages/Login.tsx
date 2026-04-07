@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme, getThemeColors } from '../contexts/ThemeContext';
 import { BanBanLogo } from '../components/BanBanLogo';
-import { LayoutGrid, TrendingUp, Zap, Mail, Lock, AlertCircle } from 'lucide-react';
+import { LayoutGrid, TrendingUp, Zap, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 
 export function Login() {
   const navigate = useNavigate();
@@ -13,7 +13,7 @@ export function Login() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
 
@@ -185,36 +185,26 @@ export function Login() {
                   <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${t.textMuted}`} />
                   <input
                     id="password"
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className={`w-full pl-11 pr-4 py-3 border-2 ${
+                    className={`w-full pl-11 pr-12 py-3 border-2 ${
                       errors.password ? 'border-red-300' : t.border
                     } ${t.inputBg} ${t.text} rounded-xl focus:outline-none focus:ring-2 ${t.ring} focus:border-transparent transition-all`}
                     placeholder="Enter your password"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((value) => !value)}
+                    className={`absolute right-3 top-1/2 -translate-y-1/2 ${t.textMuted} cursor-pointer`}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
                 </div>
                 {errors.password && (
                   <p className="mt-1 text-sm text-red-600">{errors.password}</p>
                 )}
-              </div>
-
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className={`w-4 h-4 rounded ${t.border}`}
-                  />
-                  <span className={`text-sm ${t.text}`}>Remember me</span>
-                </label>
-                <Link
-                  to="/forgot-password"
-                  className={`text-sm font-medium ${t.primaryText} hover:underline`}
-                >
-                  Forgot password?
-                </Link>
               </div>
 
               <button

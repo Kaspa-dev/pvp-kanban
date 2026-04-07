@@ -1,40 +1,52 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, getAuthState, saveAuthState, clearAuthState, login as authLogin, register as authRegister, logout as authLogout } from '../utils/auth';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { RegisterInput, User, bootstrapAuth, login as authLogin, register as authRegister, logout as authLogout } from '../utils/auth';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
+  isInitializing: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
-  updateUser: (user: User) => void;
+  register: (input: RegisterInput) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
 }
 
-// Provide default values to prevent context undefined errors during HMR
 const defaultAuthContext: AuthContextType = {
   user: null,
   isAuthenticated: false,
+  isInitializing: true,
   login: async () => ({ success: false, error: 'Auth not initialized' }),
   register: async () => ({ success: false, error: 'Auth not initialized' }),
-  logout: () => {},
-  updateUser: () => {},
+  logout: async () => {},
 };
 
 const AuthContext = createContext<AuthContextType>(defaultAuthContext);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
-    // Load auth state from localStorage on mount
-    const authState = getAuthState();
-    if (authState.user) {
-      setUser(authState.user);
-    }
+    let isActive = true;
+
+    const initializeAuth = async () => {
+      const restoredUser = await bootstrapAuth();
+      if (!isActive) {
+        return;
+      }
+
+      setUser(restoredUser);
+      setIsInitializing(false);
+    };
+
+    void initializeAuth();
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
-    const result = authLogin(email, password);
+    const result = await authLogin(email, password);
     if (result.success && result.user) {
       setUser(result.user);
       return { success: true };
@@ -42,8 +54,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: false, error: result.error };
   };
 
-  const register = async (name: string, email: string, password: string) => {
-    const result = authRegister(name, email, password);
+  const register = async (input: RegisterInput) => {
+    const result = await authRegister(input);
     if (result.success && result.user) {
       setUser(result.user);
       return { success: true };
@@ -51,16 +63,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: false, error: result.error };
   };
 
-  const logout = () => {
-    authLogout();
+  const logout = async () => {
+    await authLogout();
     setUser(null);
-  };
-
-  const updateUser = (updatedUser: User) => {
-    setUser(updatedUser);
-    const authState = getAuthState();
-    authState.user = updatedUser;
-    saveAuthState(authState);
   };
 
   return (
@@ -68,10 +73,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         isAuthenticated: !!user,
+        isInitializing,
         login,
         register,
         logout,
-        updateUser,
       }}
     >
       {children}
@@ -80,7 +85,5 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  // Context now always has a value (default or actual), so just return it
-  return context;
+  return useContext(AuthContext);
 }

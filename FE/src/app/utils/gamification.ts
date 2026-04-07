@@ -95,14 +95,16 @@ export function getXPRemainingForNextLevel(xp: number, level: number): number {
 }
 
 // LocalStorage helpers
-const USER_PROGRESS_KEY = "banban_user_progress";
-
-export function saveUserProgress(progress: UserProgress): void {
-  localStorage.setItem(USER_PROGRESS_KEY, JSON.stringify(progress));
+function getUserProgressKey(userId: string): string {
+  return `banban_user_progress_${userId}`;
 }
 
-export function loadUserProgress(): UserProgress | null {
-  const saved = localStorage.getItem(USER_PROGRESS_KEY);
+export function saveUserProgress(userId: string, progress: UserProgress): void {
+  localStorage.setItem(getUserProgressKey(userId), JSON.stringify(progress));
+}
+
+export function loadUserProgress(userId: string): UserProgress | null {
+  const saved = localStorage.getItem(getUserProgressKey(userId));
   if (saved) {
     try {
       const progress = JSON.parse(saved);
@@ -120,8 +122,8 @@ export function loadUserProgress(): UserProgress | null {
 
 export function getDefaultUserProgress(): UserProgress {
   return {
-    username: "Anna",
-    email: "anna@banban.app",
+    username: "Player",
+    email: "",
     xp: 0,
     level: 1,
     tasksCompleted: 0,

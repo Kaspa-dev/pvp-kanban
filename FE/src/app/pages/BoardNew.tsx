@@ -47,7 +47,7 @@ import { Play, Calendar, Target } from "lucide-react";
 
 export function Board() {
   const navigate = useNavigate();
-  const { user, updateUser, logout } = useAuth();
+  const { user, logout } = useAuth();
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const { boardId } = useParams<{ boardId: string }>();
@@ -89,13 +89,18 @@ export function Board() {
   
   // User progress state
   const [userProgress, setUserProgress] = useState<UserProgress>(() => {
-    const progress = loadUserProgress() || getDefaultUserProgress();
-    if (user) {
-      progress.username = user.name;
-      progress.email = user.email;
+    if (!user) {
+      return getDefaultUserProgress();
     }
-    return progress;
+
+    const savedProgress = loadUserProgress(user.id) || getDefaultUserProgress();
+    return {
+      ...savedProgress,
+      username: user.displayName,
+      email: user.email,
+    };
   });
+  const currentUserDisplayName = user?.displayName || userProgress.username;
 
   // Load board, labels, cards, and sprints on mount
   useEffect(() => {
@@ -119,7 +124,7 @@ export function Board() {
             labelMap[label.name] = label.id;
           });
           
-          const defaultCards = createDefaultCards(user.name, labelMap);
+          const defaultCards = createDefaultCards(user.displayName, labelMap);
           setCards(defaultCards);
         } else {
           setLabels(boardLabels);
@@ -149,7 +154,7 @@ export function Board() {
     ];
     
     const userCompletedTasks = allTasksList.filter(
-      (card) => card.status === "done" && card.assignee?.name === userProgress.username
+      (card) => card.status === "done" && card.assignee?.name === currentUserDisplayName
     );
     
     const calculatedXP = userCompletedTasks.reduce(
@@ -172,15 +177,23 @@ export function Board() {
         tasksCompleted: calculatedTasksCompleted,
       }));
     }
-  }, [cards, userProgress.username]);
+  }, [cards, currentUserDisplayName, userProgress.level, userProgress.tasksCompleted, userProgress.xp]);
 
   // Save user progress to localStorage
   useEffect(() => {
-    saveUserProgress(userProgress);
-  }, [userProgress]);
+    if (!user) {
+      return;
+    }
+
+    saveUserProgress(user.id, {
+      ...userProgress,
+      username: user.displayName,
+      email: user.email,
+    });
+  }, [user, userProgress]);
 
   const availableAssignees = [
-    { name: user?.name || "Anna", color: "#3b82f6" },
+    { name: user?.displayName || "Player", color: "#3b82f6" },
     { name: "Jonas", color: "#10b981" },
     { name: "Marius", color: "#8b5cf6" },
     { name: "Laura", color: "#f59e0b" },
@@ -221,7 +234,7 @@ export function Board() {
       }
     }
 
-    if (activeFilter === "assigned" && card.assignee?.name !== userProgress.username) {
+    if (activeFilter === "assigned" && card.assignee?.name !== currentUserDisplayName) {
       return false;
     }
 
@@ -246,7 +259,7 @@ export function Board() {
 
   const filteredAllCards = useMemo(() => {
     return allCards.filter(matchesCardFilters);
-  }, [allCards, searchQuery, selectedLabelIds, activeFilter, userProgress.username, labels]);
+  }, [allCards, searchQuery, selectedLabelIds, activeFilter, currentUserDisplayName, labels]);
 
   const backlogCards = useMemo(() => {
     return filteredAllCards.filter(card => !card.sprintId);
@@ -286,7 +299,7 @@ export function Board() {
       movedCard.status = toColumn;
 
       // Handle XP changes
-      if (fromColumn === "done" && toColumn !== "done" && movedCard.storyPoints && movedCard.assignee?.name === userProgress.username) {
+      if (fromColumn === "done" && toColumn !== "done" && movedCard.storyPoints && movedCard.assignee?.name === currentUserDisplayName) {
         const xpLost = getXPForStoryPoints(movedCard.storyPoints);
         const newXP = Math.max(0, userProgress.xp - xpLost);
         const newLevel = calculateLevel(newXP);
@@ -297,7 +310,7 @@ export function Board() {
           level: newLevel,
           tasksCompleted: Math.max(0, prev.tasksCompleted - 1),
         }));
-      } else if (toColumn === "done" && fromColumn !== "done" && movedCard.storyPoints && movedCard.assignee?.name === userProgress.username) {
+      } else if (toColumn === "done" && fromColumn !== "done" && movedCard.storyPoints && movedCard.assignee?.name === currentUserDisplayName) {
         const xpEarned = getXPForStoryPoints(movedCard.storyPoints);
         const newXP = userProgress.xp + xpEarned;
         const newLevel = calculateLevel(newXP);
@@ -346,7 +359,7 @@ export function Board() {
       [newCard.status]: [card, ...prevCards[newCard.status]],
     }));
 
-    if (newCard.status === "done" && newCard.storyPoints && newCard.assignee?.name === userProgress.username) {
+    if (newCard.status === "done" && newCard.storyPoints && newCard.assignee?.name === currentUserDisplayName) {
       const xpEarned = getXPForStoryPoints(newCard.storyPoints);
       const newXP = userProgress.xp + xpEarned;
       const newLevel = calculateLevel(newXP);
@@ -443,7 +456,7 @@ export function Board() {
             newCards[newStatus] = [updatedCard, ...newCards[newStatus]];
             
             // Handle XP changes
-            if (oldStatus === "done" && newStatus !== "done" && updatedCard.storyPoints && updatedCard.assignee?.name === userProgress.username) {
+            if (oldStatus === "done" && newStatus !== "done" && updatedCard.storyPoints && updatedCard.assignee?.name === currentUserDisplayName) {
               const xpLost = getXPForStoryPoints(updatedCard.storyPoints);
               const newXP = Math.max(0, userProgress.xp - xpLost);
               const newLevel = calculateLevel(newXP);
@@ -454,7 +467,7 @@ export function Board() {
                 level: newLevel,
                 tasksCompleted: Math.max(0, prev.tasksCompleted - 1),
               }));
-            } else if (newStatus === "done" && oldStatus !== "done" && updatedCard.storyPoints && updatedCard.assignee?.name === userProgress.username) {
+            } else if (newStatus === "done" && oldStatus !== "done" && updatedCard.storyPoints && updatedCard.assignee?.name === currentUserDisplayName) {
               const xpEarned = getXPForStoryPoints(updatedCard.storyPoints);
               const newXP = userProgress.xp + xpEarned;
               const newLevel = calculateLevel(newXP);
@@ -560,18 +573,6 @@ export function Board() {
     setView('board');
   };
 
-  // Profile update handler
-  const handleUpdateProfile = (updates: Partial<UserProgress>) => {
-    setUserProgress((prev) => ({
-      ...prev,
-      ...updates,
-    }));
-    
-    if (updates.username && user) {
-      updateUser({ ...user, name: updates.username });
-    }
-  };
-
   // Label management handlers
   const handleCreateLabel = (name: string, color: string) => {
     if (!boardId) return;
@@ -608,6 +609,10 @@ export function Board() {
     }
   };
 
+  if (!user) {
+    return null;
+  }
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div className={`size-full flex ${isDarkMode ? 'bg-[#16181d]' : 'bg-gray-50'}`}>
@@ -619,8 +624,8 @@ export function Board() {
             selectedLabels={selectedLabelIds}
             onLabelsChange={setSelectedLabelIds}
             onProfileClick={() => setIsProfileOpen(true)}
-            onLogout={() => {
-              logout();
+            onLogout={async () => {
+              await logout();
               navigate('/login');
             }}
             onBack={() => navigate('/app')}
@@ -658,9 +663,9 @@ export function Board() {
                   setIsMobileSidebarOpen(false);
                   setIsProfileOpen(true);
                 }}
-                onLogout={() => {
+                onLogout={async () => {
                   setIsMobileSidebarOpen(false);
-                  logout();
+                  await logout();
                   navigate('/login');
                 }}
                 onBack={() => {
@@ -892,17 +897,17 @@ export function Board() {
         <ProfileModal
           isOpen={isProfileOpen}
           onClose={() => setIsProfileOpen(false)}
+          user={user}
           userProgress={userProgress}
-          onUpdateProfile={handleUpdateProfile}
           tasksCompleted={
             allCards.filter(
-              (card) => card.status === "done" && card.assignee?.name === userProgress.username
+              (card) => card.status === "done" && card.assignee?.name === currentUserDisplayName
             ).length || 0
           }
           userTotalXP={
             allCards
               .filter(
-                (card) => card.status === "done" && card.assignee?.name === userProgress.username
+                (card) => card.status === "done" && card.assignee?.name === currentUserDisplayName
               )
               .reduce((sum, card) => sum + (card.storyPoints ? getXPForStoryPoints(card.storyPoints) : 0), 0) || 0
           }

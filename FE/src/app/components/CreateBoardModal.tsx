@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme, getThemeColors } from '../contexts/ThemeContext';
 import { createBoard, Board, BoardMember } from '../utils/boards';
 import { createDefaultCards, saveBoardCards } from '../utils/cards';
-import { createDefaultLabels, saveBoardLabels } from '../utils/labels';
+import { createDefaultLabels } from '../utils/labels';
 
 interface CreateBoardModalProps {
   isOpen: boolean;
@@ -76,7 +76,7 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
 
     if (members.length === 0 && user) {
       // Auto-add current user if no members
-      setMembers([{ name: user.name, color: getRandomColor() }]);
+      setMembers([{ name: user.displayName, color: getRandomColor() }]);
     }
 
     setErrors(newErrors);
@@ -87,10 +87,7 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
     if (!validateForm() || !user) return;
 
     // Ensure current user is in members
-    let finalMembers = [...members];
-    if (!finalMembers.some(m => m.name === user.name)) {
-      finalMembers.unshift({ name: user.name, color: getRandomColor() });
-    }
+    const finalMembers = finalMembersWithCurrentUser();
 
     const newBoard = createBoard(user.id, boardName.trim(), description.trim(), finalMembers);
     
@@ -104,11 +101,23 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
     });
     
     // Create default demo cards for the new board with proper label IDs
-    const defaultCards = createDefaultCards(user.name, labelMap);
+    const defaultCards = createDefaultCards(user.displayName, labelMap);
     saveBoardCards(newBoard.id, defaultCards);
 
     onBoardCreated(newBoard);
     handleClose();
+  };
+
+  const finalMembersWithCurrentUser = () => {
+    if (!user) {
+      return [...members];
+    }
+
+    if (members.some((member) => member.name === user.displayName)) {
+      return [...members];
+    }
+
+    return [{ name: user.displayName, color: getRandomColor() }, ...members];
   };
 
   if (!isOpen) return null;
@@ -176,7 +185,7 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
                 type="text"
                 value={newMemberName}
                 onChange={(e) => setNewMemberName(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleAddMember()}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddMember()}
                 placeholder="Enter member name"
                 className={`flex-1 px-4 py-2 border-2 ${currentTheme.inputBorder} rounded-xl focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent transition-all ${currentTheme.inputBg} ${currentTheme.text}`}
               />

@@ -11,7 +11,15 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 // AppRoutes must be inside AuthProvider to use useAuth
 function AppRoutes() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isInitializing } = useAuth();
+
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-100">
+        <p className="text-sm tracking-[0.2em] uppercase">Restoring session...</p>
+      </div>
+    );
+  }
 
   return (
     <Routes>

@@ -1,157 +1,261 @@
-// Mock authentication utilities using localStorage
-
 export interface User {
   id: string;
-  name: string;
   email: string;
-  avatar?: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  displayName: string;
 }
 
-export interface AuthState {
-  user: User | null;
-  token: string | null;
+export interface RegisterInput {
+  email: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  password: string;
 }
 
-const AUTH_STORAGE_KEY = 'banban_auth';
-const USERS_STORAGE_KEY = 'banban_users';
-
-// Get all registered users
-export function getRegisteredUsers(): Record<string, { password: string; user: User }> {
-  const users = localStorage.getItem(USERS_STORAGE_KEY);
-  return users ? JSON.parse(users) : {};
+interface AuthResponse {
+  accessToken: string;
+  expiresAtUtc: string;
+  user: ApiUser;
 }
 
-// Save registered users
-function saveRegisteredUsers(users: Record<string, { password: string; user: User }>) {
-  localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+interface AuthErrorResponse {
+  message?: string;
 }
 
-// Get current auth state
-export function getAuthState(): AuthState {
-  const authData = localStorage.getItem(AUTH_STORAGE_KEY);
-  if (!authData) {
-    return { user: null, token: null };
+interface ApiUser {
+  id: number | string;
+  email: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  displayName: string;
+}
+
+const LEGACY_RESET_MARKER_KEY = "banban_real_auth_bootstrapped_v1";
+const LEGACY_STORAGE_KEYS = new Set([
+  "banban_auth",
+  "banban_users",
+  "banban_sprints",
+  "banban_user_progress",
+]);
+const LEGACY_STORAGE_PREFIXES = [
+  "banban_boards_",
+  "banban_cards_",
+  "banban_labels_",
+];
+
+let accessToken: string | null = null;
+
+function normalizeUser(user: ApiUser): User {
+  return {
+    id: String(user.id),
+    email: user.email,
+    username: user.username,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    displayName: user.displayName,
+  };
+}
+
+function setAccessToken(token: string | null) {
+  accessToken = token;
+}
+
+function createAuthorizedHeaders(headers: HeadersInit = {}): HeadersInit {
+  const nextHeaders = new Headers(headers);
+  if (accessToken) {
+    nextHeaders.set("Authorization", `Bearer ${accessToken}`);
   }
+
+  return nextHeaders;
+}
+
+function getErrorMessage(payload: unknown, fallback: string): string {
+  if (payload && typeof payload === "object" && "message" in payload) {
+    const message = (payload as AuthErrorResponse).message;
+    if (typeof message === "string" && message.trim()) {
+      return message;
+    }
+  }
+
+  return fallback;
+}
+
+async function parseJson<T>(response: Response): Promise<T | null> {
+  const text = await response.text();
+  if (!text) {
+    return null;
+  }
+
+  return JSON.parse(text) as T;
+}
+
+async function authRequest(
+  path: string,
+  init: RequestInit,
+  fallbackMessage: string,
+): Promise<{ success: true; user: User } | { success: false; error: string }> {
   try {
-    return JSON.parse(authData);
+    const response = await fetch(path, {
+      ...init,
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(init.headers ?? {}),
+      },
+    });
+
+    const payload = await parseJson<AuthResponse | AuthErrorResponse>(response);
+    if (!response.ok || !payload || !("accessToken" in payload)) {
+      setAccessToken(null);
+      return {
+        success: false,
+        error: getErrorMessage(payload, fallbackMessage),
+      };
+    }
+
+    setAccessToken(payload.accessToken);
+    return {
+      success: true,
+      user: normalizeUser(payload.user),
+    };
   } catch {
-    return { user: null, token: null };
+    setAccessToken(null);
+    return {
+      success: false,
+      error: fallbackMessage,
+    };
   }
 }
 
-// Save auth state
-export function saveAuthState(state: AuthState) {
-  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(state));
-}
-
-// Clear auth state
-export function clearAuthState() {
-  localStorage.removeItem(AUTH_STORAGE_KEY);
-}
-
-// Login
-export function login(email: string, password: string): { success: boolean; user?: User; token?: string; error?: string } {
-  const users = getRegisteredUsers();
-  const userEntry = users[email.toLowerCase()];
-
-  if (!userEntry || userEntry.password !== password) {
-    return { success: false, error: 'Invalid email or password' };
+function clearLegacyLocalDemoDataOnce() {
+  if (localStorage.getItem(LEGACY_RESET_MARKER_KEY) === "true") {
+    return;
   }
 
-  const token = `mock_token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  const authState: AuthState = {
-    user: userEntry.user,
-    token,
-  };
+  const keysToRemove: string[] = [];
 
-  saveAuthState(authState);
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index);
+    if (!key) {
+      continue;
+    }
 
-  return {
-    success: true,
-    user: userEntry.user,
-    token,
-  };
+    const shouldRemove =
+      LEGACY_STORAGE_KEYS.has(key) ||
+      LEGACY_STORAGE_PREFIXES.some((prefix) => key.startsWith(prefix));
+
+    if (shouldRemove) {
+      keysToRemove.push(key);
+    }
+  }
+
+  keysToRemove.forEach((key) => localStorage.removeItem(key));
+  localStorage.setItem(LEGACY_RESET_MARKER_KEY, "true");
 }
 
-// Register
-export function register(
-  name: string,
+export function getAccessToken(): string | null {
+  return accessToken;
+}
+
+export async function fetchCurrentUser(): Promise<User | null> {
+  if (!accessToken) {
+    return null;
+  }
+
+  try {
+    const response = await fetch("/api/auth/me", {
+      method: "GET",
+      credentials: "include",
+      headers: createAuthorizedHeaders(),
+    });
+
+    const payload = await parseJson<ApiUser | AuthErrorResponse>(response);
+    if (!response.ok || !payload || !("id" in payload)) {
+      if (response.status === 401) {
+        setAccessToken(null);
+      }
+      return null;
+    }
+
+    return normalizeUser(payload);
+  } catch {
+    return null;
+  }
+}
+
+export async function bootstrapAuth(): Promise<User | null> {
+  const result = await authRequest(
+    "/api/auth/refresh",
+    { method: "POST" },
+    "Unable to restore your session.",
+  );
+
+  if (!result.success) {
+    return null;
+  }
+
+  const currentUser = await fetchCurrentUser();
+  return currentUser ?? result.user;
+}
+
+export async function login(
   email: string,
-  password: string
-): { success: boolean; user?: User; token?: string; error?: string } {
-  const users = getRegisteredUsers();
-  const emailLower = email.toLowerCase();
+  password: string,
+): Promise<{ success: boolean; user?: User; error?: string }> {
+  const result = await authRequest(
+    "/api/auth/login",
+    {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    },
+    "Unable to log in right now.",
+  );
 
-  if (users[emailLower]) {
-    return { success: false, error: 'Email already registered' };
+  if (!result.success) {
+    return result;
   }
 
-  const user: User = {
-    id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    name,
-    email: emailLower,
-  };
-
-  users[emailLower] = { password, user };
-  saveRegisteredUsers(users);
-
-  const token = `mock_token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  const authState: AuthState = {
-    user,
-    token,
-  };
-
-  saveAuthState(authState);
-
+  clearLegacyLocalDemoDataOnce();
   return {
     success: true,
-    user,
-    token,
+    user: result.user,
   };
 }
 
-// Logout
-export function logout() {
-  clearAuthState();
+export async function register(
+  input: RegisterInput,
+): Promise<{ success: boolean; user?: User; error?: string }> {
+  const result = await authRequest(
+    "/api/auth/register",
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+    "Unable to create your account right now.",
+  );
+
+  if (!result.success) {
+    return result;
+  }
+
+  clearLegacyLocalDemoDataOnce();
+  return {
+    success: true,
+    user: result.user,
+  };
 }
 
-// Check if user is authenticated
-export function isAuthenticated(): boolean {
-  const authState = getAuthState();
-  return !!(authState.user && authState.token);
-}
-
-// Update user profile
-export function updateUserProfile(updates: Partial<User>): { success: boolean; user?: User; error?: string } {
-  const authState = getAuthState();
-  
-  if (!authState.user) {
-    return { success: false, error: 'Not authenticated' };
+export async function logout(): Promise<void> {
+  try {
+    await fetch("/api/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+  } finally {
+    setAccessToken(null);
   }
-
-  const users = getRegisteredUsers();
-  const userEntry = users[authState.user.email];
-
-  if (!userEntry) {
-    return { success: false, error: 'User not found' };
-  }
-
-  // Update user data
-  const updatedUser = { ...userEntry.user, ...updates };
-  userEntry.user = updatedUser;
-
-  // If email changed, update the key
-  if (updates.email && updates.email !== authState.user.email) {
-    const oldEmail = authState.user.email;
-    users[updates.email.toLowerCase()] = userEntry;
-    delete users[oldEmail];
-  }
-
-  saveRegisteredUsers(users);
-
-  // Update auth state
-  authState.user = updatedUser;
-  saveAuthState(authState);
-
-  return { success: true, user: updatedUser };
 }

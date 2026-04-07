@@ -1,7 +1,5 @@
 using BE.Models;
-using Microsoft.AspNetCore.Cryptography.KeyDerivation;
-using System.Net.Mail;
-using System.Security.Cryptography;
+using BE.Services;
 
 namespace BE.Data;
 
@@ -20,7 +18,7 @@ public static class DbSeeder
             {
                 Username = "alice_smith",
                 Email = "alice@example.com",
-                PasswordHash = HashPassword(alicePassword),
+                PasswordHash = PasswordHasher.HashPassword(alicePassword),
                 FirstName = "Alice",
                 LastName = "Smith",
                 CreatedAt = DateTime.UtcNow,
@@ -30,7 +28,7 @@ public static class DbSeeder
             {
                 Username = "bob_jones",
                 Email = "bob@example.com",
-                PasswordHash = HashPassword(bobPassword),
+                PasswordHash = PasswordHasher.HashPassword(bobPassword),
                 FirstName = "Bob",
                 LastName = "Jones",
                 CreatedAt = DateTime.UtcNow
@@ -39,7 +37,7 @@ public static class DbSeeder
             {
                 Username = "charlie_brown",
                 Email = "charlie@example.com",
-                PasswordHash = HashPassword(charliePassword),
+                PasswordHash = PasswordHasher.HashPassword(charliePassword),
                 FirstName = "Charlie",
                 LastName = "Brown",
                 CreatedAt = DateTime.UtcNow
@@ -213,19 +211,5 @@ public static class DbSeeder
         }
 
         context.SaveChanges();
-    }
-
-    private static string HashPassword(string password)
-    {
-        byte[] salt = RandomNumberGenerator.GetBytes(16);
-        byte[] hash = KeyDerivation.Pbkdf2(
-            password: password,
-            salt: salt,
-            prf: KeyDerivationPrf.HMACSHA256,
-            iterationCount: 100_000,
-            numBytesRequested: 32);
-
-        // Format: base64(salt) + ":" + base64(hash)
-        return $"{Convert.ToBase64String(salt)}:{Convert.ToBase64String(hash)}";
     }
 }
