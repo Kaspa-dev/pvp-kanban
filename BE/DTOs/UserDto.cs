@@ -13,6 +13,14 @@ public class UserDto
     public List<MembershipDto> Memberships { get; set; } = new();
 }
 
+public class UserSearchDto
+{
+    public int Id { get; set; }
+    public string Username { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+}
+
 public class MembershipDto
 {
     public int Id { get; set; }

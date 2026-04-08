@@ -15,15 +15,64 @@ public class BoardDto
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public string LogoIconKey { get; set; } = string.Empty;
+    public string LogoColorKey { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public int CreatorUserId { get; set; }
     public List<BoardMemberDto> Members { get; set; } = new();
+}
+
+public class BoardListItemDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string LogoIconKey { get; set; } = string.Empty;
+    public string LogoColorKey { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public int CreatorUserId { get; set; }
+    public int MemberCount { get; set; }
+    public bool HasActiveSprint { get; set; }
+    public string? ActiveSprintName { get; set; }
+    public int RemainingActiveSprintTasks { get; set; }
+    public List<BoardMemberDto> Members { get; set; } = new();
+}
+
+public class BoardListSummaryDto
+{
+    public int ActiveProjects { get; set; }
+    public int ActiveSprints { get; set; }
+    public int AssignedTasks { get; set; }
+    public int OpenTasks { get; set; }
+    public int CompletedTasks { get; set; }
+}
+
+public class PagedBoardListResponseDto
+{
+    public List<BoardListItemDto> Items { get; set; } = new();
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalItems { get; set; }
+    public int TotalPages { get; set; }
+    public BoardListSummaryDto Summary { get; set; } = new();
+}
+
+public class BoardListQueryDto
+{
+    public string? Q { get; set; }
+    public string? Membership { get; set; }
+    public bool ActiveSprint { get; set; }
+    public string? Sort { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 12;
 }
 
 public class CreateBoardRequestDto
 {
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public string LogoIconKey { get; set; } = string.Empty;
+    public string LogoColorKey { get; set; } = string.Empty;
     public List<int> MemberUserIds { get; set; } = new();
 }
 
@@ -31,6 +80,8 @@ public class UpdateBoardRequestDto
 {
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public string LogoIconKey { get; set; } = string.Empty;
+    public string LogoColorKey { get; set; } = string.Empty;
     public List<int> MemberUserIds { get; set; } = new();
 }
 

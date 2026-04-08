@@ -63,6 +63,8 @@ public class AppDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Title).IsRequired().HasMaxLength(128);
             entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.LogoIconKey).IsRequired().HasMaxLength(32);
+            entity.Property(e => e.LogoColorKey).IsRequired().HasMaxLength(32);
             entity.Property(e => e.CreatedAt).IsRequired();
 
             entity.HasOne(e => e.Creator)

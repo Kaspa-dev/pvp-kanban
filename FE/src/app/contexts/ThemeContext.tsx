@@ -1,6 +1,27 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
-export type Theme = "purple" | "ocean" | "sunset" | "forest" | "mono";
+export type Theme =
+  | "purple"
+  | "ocean"
+  | "sunset"
+  | "forest"
+  | "mono"
+  | "berry"
+  | "lagoon"
+  | "citrus"
+  | "cobalt";
+
+export const AVAILABLE_THEMES: Theme[] = [
+  "purple",
+  "ocean",
+  "sunset",
+  "forest",
+  "mono",
+  "berry",
+  "lagoon",
+  "citrus",
+  "cobalt",
+];
 
 interface ThemeContextType {
   theme: Theme;
@@ -22,7 +43,7 @@ const ThemeContext = createContext<ThemeContextType>(defaultThemeContext);
 function getInitialTheme(): Theme {
   try {
     const saved = localStorage.getItem('banban-theme');
-    if (saved && ['purple', 'ocean', 'sunset', 'forest', 'mono'].includes(saved)) {
+    if (saved && AVAILABLE_THEMES.includes(saved as Theme)) {
       return saved as Theme;
     }
   } catch (error) {
@@ -179,6 +200,82 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
         ? "hover:bg-gray-800 hover:text-gray-300"
         : "hover:bg-gray-200 hover:text-gray-700",
     },
+    berry: {
+      name: "Berry Bloom",
+      primary: "from-fuchsia-600 to-rose-500",
+      primaryHover: "from-fuchsia-700 to-rose-600",
+      primarySoft: "from-fuchsia-500/10 to-rose-500/10",
+      primarySoftStrong: "from-fuchsia-500/20 to-rose-500/20",
+      primarySolid: "bg-fuchsia-600",
+      primaryLight: isDarkMode ? "bg-fuchsia-950/40" : "bg-fuchsia-100",
+      primaryBg: isDarkMode ? "bg-fuchsia-950/40" : "bg-fuchsia-100",
+      primaryText: isDarkMode ? "text-fuchsia-300" : "text-fuchsia-700",
+      primaryBorder: "border-fuchsia-500",
+      ring: isDarkMode ? "ring-fuchsia-500" : "ring-fuchsia-400",
+      focus: isDarkMode ? "focus:ring-fuchsia-500" : "focus:ring-fuchsia-400",
+      accentDivider: "border-fuchsia-200/20 dark:border-fuchsia-800/20",
+      accentHoverRing: "group-hover:ring-fuchsia-200 dark:group-hover:ring-fuchsia-800",
+      accentIconButtonHover: isDarkMode
+        ? "hover:bg-fuchsia-950/40 hover:text-fuchsia-300"
+        : "hover:bg-fuchsia-100 hover:text-fuchsia-700",
+    },
+    lagoon: {
+      name: "Lagoon Teal",
+      primary: "from-teal-500 to-sky-500",
+      primaryHover: "from-teal-600 to-sky-600",
+      primarySoft: "from-teal-500/10 to-sky-500/10",
+      primarySoftStrong: "from-teal-500/20 to-sky-500/20",
+      primarySolid: "bg-teal-500",
+      primaryLight: isDarkMode ? "bg-teal-950/40" : "bg-teal-100",
+      primaryBg: isDarkMode ? "bg-teal-950/40" : "bg-teal-100",
+      primaryText: isDarkMode ? "text-teal-300" : "text-teal-700",
+      primaryBorder: "border-teal-500",
+      ring: isDarkMode ? "ring-teal-500" : "ring-teal-400",
+      focus: isDarkMode ? "focus:ring-teal-500" : "focus:ring-teal-400",
+      accentDivider: "border-teal-200/20 dark:border-teal-800/20",
+      accentHoverRing: "group-hover:ring-teal-200 dark:group-hover:ring-teal-800",
+      accentIconButtonHover: isDarkMode
+        ? "hover:bg-teal-950/40 hover:text-teal-300"
+        : "hover:bg-teal-100 hover:text-teal-700",
+    },
+    citrus: {
+      name: "Citrus Lime",
+      primary: "from-lime-500 to-amber-400",
+      primaryHover: "from-lime-600 to-amber-500",
+      primarySoft: "from-lime-500/10 to-amber-400/10",
+      primarySoftStrong: "from-lime-500/20 to-amber-400/20",
+      primarySolid: "bg-lime-500",
+      primaryLight: isDarkMode ? "bg-lime-950/35" : "bg-lime-100",
+      primaryBg: isDarkMode ? "bg-lime-950/35" : "bg-lime-100",
+      primaryText: isDarkMode ? "text-lime-300" : "text-lime-700",
+      primaryBorder: "border-lime-500",
+      ring: isDarkMode ? "ring-lime-500" : "ring-lime-400",
+      focus: isDarkMode ? "focus:ring-lime-500" : "focus:ring-lime-400",
+      accentDivider: "border-lime-200/20 dark:border-lime-800/20",
+      accentHoverRing: "group-hover:ring-lime-200 dark:group-hover:ring-lime-800",
+      accentIconButtonHover: isDarkMode
+        ? "hover:bg-lime-950/35 hover:text-lime-300"
+        : "hover:bg-lime-100 hover:text-lime-700",
+    },
+    cobalt: {
+      name: "Cobalt Night",
+      primary: "from-indigo-500 to-blue-600",
+      primaryHover: "from-indigo-600 to-blue-700",
+      primarySoft: "from-indigo-500/10 to-blue-600/10",
+      primarySoftStrong: "from-indigo-500/20 to-blue-600/20",
+      primarySolid: "bg-indigo-500",
+      primaryLight: isDarkMode ? "bg-indigo-950/40" : "bg-indigo-100",
+      primaryBg: isDarkMode ? "bg-indigo-950/40" : "bg-indigo-100",
+      primaryText: isDarkMode ? "text-indigo-300" : "text-indigo-700",
+      primaryBorder: "border-indigo-500",
+      ring: isDarkMode ? "ring-indigo-500" : "ring-indigo-400",
+      focus: isDarkMode ? "focus:ring-indigo-500" : "focus:ring-indigo-400",
+      accentDivider: "border-indigo-200/20 dark:border-indigo-800/20",
+      accentHoverRing: "group-hover:ring-indigo-200 dark:group-hover:ring-indigo-800",
+      accentIconButtonHover: isDarkMode
+        ? "hover:bg-indigo-950/40 hover:text-indigo-300"
+        : "hover:bg-indigo-100 hover:text-indigo-700",
+    },
   };
 
   const baseColors = isDarkMode
@@ -247,6 +344,34 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       inReview: "bg-gray-600",
       done: "bg-gray-900",
       backlog: "bg-gray-400",
+    },
+    berry: {
+      todo: "bg-rose-400",
+      inProgress: "bg-fuchsia-600",
+      inReview: "bg-pink-500",
+      done: "bg-emerald-500",
+      backlog: "bg-slate-500",
+    },
+    lagoon: {
+      todo: "bg-sky-400",
+      inProgress: "bg-teal-500",
+      inReview: "bg-cyan-500",
+      done: "bg-emerald-500",
+      backlog: "bg-slate-500",
+    },
+    citrus: {
+      todo: "bg-amber-400",
+      inProgress: "bg-lime-500",
+      inReview: "bg-yellow-500",
+      done: "bg-emerald-600",
+      backlog: "bg-stone-500",
+    },
+    cobalt: {
+      todo: "bg-sky-500",
+      inProgress: "bg-indigo-500",
+      inReview: "bg-violet-500",
+      done: "bg-emerald-500",
+      backlog: "bg-slate-500",
     },
   };
 
@@ -413,6 +538,130 @@ export const themes = {
       inReview: "bg-gray-600",
       done: "bg-gray-900",
       backlog: "bg-gray-400",
+    },
+  },
+  berry: {
+    name: "Berry Bloom",
+    primary: "from-fuchsia-600 to-rose-500",
+    primaryHover: "from-fuchsia-700 to-rose-600",
+    primarySolid: "bg-fuchsia-600",
+    primaryLight: "bg-fuchsia-100",
+    primaryBg: "bg-fuchsia-100",
+    primaryText: "text-fuchsia-700",
+    primaryBorder: "border-fuchsia-500",
+    ring: "ring-fuchsia-400",
+    focus: "focus:ring-fuchsia-400",
+    bg: "bg-white",
+    bgSecondary: "bg-gray-50",
+    bgTertiary: "bg-gray-100",
+    cardBg: "bg-white",
+    text: "text-gray-900",
+    textSecondary: "text-gray-600",
+    textMuted: "text-gray-500",
+    border: "border-gray-200",
+    borderHover: "border-gray-300",
+    inputBg: "bg-white",
+    inputBorder: "border-gray-300",
+    isDark: false,
+    badge: {
+      todo: "bg-rose-400",
+      inProgress: "bg-fuchsia-600",
+      inReview: "bg-pink-500",
+      done: "bg-emerald-500",
+      backlog: "bg-slate-500",
+    },
+  },
+  lagoon: {
+    name: "Lagoon Teal",
+    primary: "from-teal-500 to-sky-500",
+    primaryHover: "from-teal-600 to-sky-600",
+    primarySolid: "bg-teal-500",
+    primaryLight: "bg-teal-100",
+    primaryBg: "bg-teal-100",
+    primaryText: "text-teal-700",
+    primaryBorder: "border-teal-500",
+    ring: "ring-teal-400",
+    focus: "focus:ring-teal-400",
+    bg: "bg-white",
+    bgSecondary: "bg-gray-50",
+    bgTertiary: "bg-gray-100",
+    cardBg: "bg-white",
+    text: "text-gray-900",
+    textSecondary: "text-gray-600",
+    textMuted: "text-gray-500",
+    border: "border-gray-200",
+    borderHover: "border-gray-300",
+    inputBg: "bg-white",
+    inputBorder: "border-gray-300",
+    isDark: false,
+    badge: {
+      todo: "bg-sky-400",
+      inProgress: "bg-teal-500",
+      inReview: "bg-cyan-500",
+      done: "bg-emerald-500",
+      backlog: "bg-slate-500",
+    },
+  },
+  citrus: {
+    name: "Citrus Lime",
+    primary: "from-lime-500 to-amber-400",
+    primaryHover: "from-lime-600 to-amber-500",
+    primarySolid: "bg-lime-500",
+    primaryLight: "bg-lime-100",
+    primaryBg: "bg-lime-100",
+    primaryText: "text-lime-700",
+    primaryBorder: "border-lime-500",
+    ring: "ring-lime-400",
+    focus: "focus:ring-lime-400",
+    bg: "bg-white",
+    bgSecondary: "bg-gray-50",
+    bgTertiary: "bg-gray-100",
+    cardBg: "bg-white",
+    text: "text-gray-900",
+    textSecondary: "text-gray-600",
+    textMuted: "text-gray-500",
+    border: "border-gray-200",
+    borderHover: "border-gray-300",
+    inputBg: "bg-white",
+    inputBorder: "border-gray-300",
+    isDark: false,
+    badge: {
+      todo: "bg-amber-400",
+      inProgress: "bg-lime-500",
+      inReview: "bg-yellow-500",
+      done: "bg-emerald-600",
+      backlog: "bg-stone-500",
+    },
+  },
+  cobalt: {
+    name: "Cobalt Night",
+    primary: "from-indigo-500 to-blue-600",
+    primaryHover: "from-indigo-600 to-blue-700",
+    primarySolid: "bg-indigo-500",
+    primaryLight: "bg-indigo-100",
+    primaryBg: "bg-indigo-100",
+    primaryText: "text-indigo-700",
+    primaryBorder: "border-indigo-500",
+    ring: "ring-indigo-400",
+    focus: "focus:ring-indigo-400",
+    bg: "bg-white",
+    bgSecondary: "bg-gray-50",
+    bgTertiary: "bg-gray-100",
+    cardBg: "bg-white",
+    text: "text-gray-900",
+    textSecondary: "text-gray-600",
+    textMuted: "text-gray-500",
+    border: "border-gray-200",
+    borderHover: "border-gray-300",
+    inputBg: "bg-white",
+    inputBorder: "border-gray-300",
+    isDark: false,
+    badge: {
+      todo: "bg-sky-500",
+      inProgress: "bg-indigo-500",
+      inReview: "bg-violet-500",
+      done: "bg-emerald-500",
+      backlog: "bg-slate-500",
     },
   },
 };

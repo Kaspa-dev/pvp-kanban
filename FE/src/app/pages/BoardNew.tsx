@@ -643,6 +643,8 @@ export function Board() {
               navigate('/login');
             }}
             boardName={currentBoard.name}
+            boardLogoIconKey={currentBoard.logoIconKey}
+            boardLogoColorKey={currentBoard.logoColorKey}
             labels={labels}
           />
         )}
@@ -677,6 +679,8 @@ export function Board() {
                   navigate('/login');
                 }}
                 boardName={currentBoard.name}
+                boardLogoIconKey={currentBoard.logoIconKey}
+                boardLogoColorKey={currentBoard.logoColorKey}
                 labels={labels}
                 className="w-full min-h-full border-r-0"
               />

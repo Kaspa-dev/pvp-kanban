@@ -20,6 +20,45 @@ public class UsersController : ControllerBase
         _context = context;
     }
 
+    // GET api/users/search?q=query&limit=8
+    [HttpGet("search")]
+    public async Task<ActionResult<IEnumerable<UserSearchDto>>> SearchUsers(
+        [FromQuery] string? q,
+        [FromQuery] int limit = 8,
+        CancellationToken cancellationToken = default)
+    {
+        string query = q?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return Ok(Array.Empty<UserSearchDto>());
+        }
+
+        int cappedLimit = Math.Clamp(limit, 1, 20);
+        string normalizedQuery = query.ToLower();
+
+        var users = await _context.Users
+            .AsNoTracking()
+            .Where(u =>
+                u.Username.ToLower().Contains(normalizedQuery) ||
+                u.Email.ToLower().Contains(normalizedQuery) ||
+                u.FirstName.ToLower().Contains(normalizedQuery) ||
+                u.LastName.ToLower().Contains(normalizedQuery) ||
+                (u.FirstName + " " + u.LastName).ToLower().Contains(normalizedQuery))
+            .OrderBy(u => u.FirstName)
+            .ThenBy(u => u.LastName)
+            .Take(cappedLimit)
+            .Select(u => new UserSearchDto
+            {
+                Id = u.Id,
+                Username = u.Username,
+                Email = u.Email,
+                DisplayName = (u.FirstName + " " + u.LastName).Trim(),
+            })
+            .ToListAsync(cancellationToken);
+
+        return Ok(users);
+    }
+
     // GET api/users
     [HttpGet]
     public async Task<ActionResult<IEnumerable<UserDto>>> GetUsers()

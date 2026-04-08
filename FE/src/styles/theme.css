@@ -208,26 +208,15 @@
     @apply bg-gray-800 text-gray-100;
   }
 
-  /* Custom scrollbar for better visibility in popovers/dropdowns */
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-  }
+}
 
-  .custom-scrollbar::-webkit-scrollbar-track {
-    @apply bg-gray-100 dark:bg-gray-700 rounded-full;
-  }
+.hide-native-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-gray-400 dark:bg-gray-500 rounded-full hover:bg-gray-500 dark:hover:bg-gray-400;
-  }
-
-  /* Firefox scrollbar */
-  .custom-scrollbar {
-    scrollbar-width: thin;
-    scrollbar-color: rgb(156 163 175) rgb(243 244 246); /* gray-400 gray-100 */
-  }
-
-  .dark .custom-scrollbar {
-    scrollbar-color: rgb(107 114 128) rgb(55 65 81); /* gray-500 gray-700 */
-  }
+.hide-native-scrollbar::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
 }

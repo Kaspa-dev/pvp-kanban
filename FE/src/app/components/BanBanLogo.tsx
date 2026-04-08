@@ -1,14 +1,19 @@
 import { useTheme, getThemeColors } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
+import { Link } from 'react-router';
 import banbanLogo from '../../assets/0c5c2ae679a157574fde9f7ad1b973b49f938ec0.png';
 
 interface BanBanLogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
+  to?: string;
 }
 
-export function BanBanLogo({ size = 'md', className = '' }: BanBanLogoProps) {
+export function BanBanLogo({ size = 'md', className = '', to }: BanBanLogoProps) {
   const { theme, isDarkMode } = useTheme();
+  const { user } = useAuth();
   const t = getThemeColors(theme, isDarkMode);
+  const destination = to ?? (user ? '/app' : '/');
 
   // Size mapping - increased 1.5-2x from original
   const sizeClasses = {
@@ -19,7 +24,11 @@ export function BanBanLogo({ size = 'md', className = '' }: BanBanLogoProps) {
   };
 
   return (
-    <div className={`relative inline-flex ${className}`}>
+    <Link
+      to={destination}
+      aria-label="Go to main page"
+      className={`relative inline-flex transition-opacity hover:opacity-90 ${className}`.trim()}
+    >
       {/* Gradient overlay using CSS mask to apply gradient to logo shape */}
       <div 
         className={`absolute inset-0 bg-gradient-to-r ${t.primary}`}
@@ -41,6 +50,6 @@ export function BanBanLogo({ size = 'md', className = '' }: BanBanLogoProps) {
         className={`${sizeClasses[size]} object-contain opacity-0`}
         style={{ pointerEvents: 'none' }}
       />
-    </div>
+    </Link>
   );
 }

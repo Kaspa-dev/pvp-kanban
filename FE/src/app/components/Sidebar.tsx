@@ -1,9 +1,10 @@
 import { User, Inbox, Calendar, Tag, Plus, ChevronDown, X, LogOut } from "lucide-react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
+import { BoardLogo } from "./BoardLogo";
 import { Label } from "../utils/labels";
 import { BanBanLogo } from "./BanBanLogo";
-import { Link } from "react-router";
 import * as Popover from "@radix-ui/react-popover";
+import { BoardLogoColorKey, BoardLogoIconKey } from "../utils/boardIdentity";
 
 interface SidebarProps {
   activeFilter: string;
@@ -13,6 +14,8 @@ interface SidebarProps {
   onLabelsChange: (labels: number[]) => void;
   onLogout?: () => void;
   boardName?: string;
+  boardLogoIconKey?: BoardLogoIconKey;
+  boardLogoColorKey?: BoardLogoColorKey;
   labels: Label[];
   className?: string;
 }
@@ -25,6 +28,8 @@ export function Sidebar({
   onLabelsChange,
   onLogout,
   boardName,
+  boardLogoIconKey,
+  boardLogoColorKey,
   labels,
   className = "",
 }: SidebarProps) {
@@ -53,11 +58,12 @@ export function Sidebar({
     <aside className={`w-72 ${isDarkMode ? 'bg-[#1a1d24]' : 'bg-[#fafbfc]'} flex flex-col border-r ${isDarkMode ? 'border-gray-800' : 'border-gray-200'} ${className}`}>
       {/* Logo & Project Title */}
       <div className="px-6 pt-6 pb-6 border-b border-gray-200 dark:border-gray-800">
-        <Link to="/app" className="inline-block">
-          <BanBanLogo size="lg" />
-        </Link>
+        <BanBanLogo size="lg" />
         {boardName && (
-          <h2 className={`mt-4 text-base font-bold ${currentTheme.text} truncate`}>{boardName}</h2>
+          <div className="mt-4 flex items-center gap-3 min-w-0">
+            <BoardLogo iconKey={boardLogoIconKey} colorKey={boardLogoColorKey} size="xs" />
+            <h2 className={`min-w-0 text-base font-bold ${currentTheme.text} truncate`}>{boardName}</h2>
+          </div>
         )}
       </div>
 

@@ -17,6 +17,11 @@ namespace BE.Controllers;
 public class BoardsController(AppDbContext context) : ControllerBase
 {
     private readonly AppDbContext _context = context;
+    private const int MaxBoardMembers = 20;
+    private const int MaxBoardNameLength = 128;
+    private const int MaxBoardDescriptionLength = 500;
+    private const int DefaultBoardPageSize = 6;
+    private const int MaxBoardPageSize = 48;
 
     private static readonly string[] StatusKeys =
     [
@@ -39,22 +44,116 @@ public class BoardsController(AppDbContext context) : ControllerBase
         "#84cc16",
     ];
 
+    private static readonly string[] AllowedBoardLogoIconKeys =
+    [
+        "folder",
+        "briefcase",
+        "rocket",
+        "layoutGrid",
+        "code2",
+        "megaphone",
+        "palette",
+        "chartNoAxesColumn",
+    ];
+
+    private static readonly string[] AllowedBoardLogoColorKeys =
+    [
+        "slate",
+        "blue",
+        "emerald",
+        "amber",
+        "rose",
+        "violet",
+        "cyan",
+        "stone",
+    ];
+
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<BoardDto>>> GetBoards(CancellationToken cancellationToken)
+    public async Task<ActionResult<PagedBoardListResponseDto>> GetBoards([FromQuery] BoardListQueryDto query, CancellationToken cancellationToken)
     {
         if (!TryGetCurrentUserId(out int userId))
         {
             return Unauthorized();
         }
 
-        var boards = await _context.Boards
-            .Where(board => board.Memberships.Any(membership => membership.UserId == userId))
+        IQueryable<Board> accessibleBoardsQuery = _context.Boards
+            .Where(board => board.Memberships.Any(membership => membership.UserId == userId));
+
+        var summary = new BoardListSummaryDto
+        {
+            ActiveProjects = await accessibleBoardsQuery.CountAsync(cancellationToken),
+            ActiveSprints = await _context.Sprints
+                .Where(sprint =>
+                    sprint.Status == SprintStatus.Active &&
+                    accessibleBoardsQuery.Select(board => board.Id).Contains(sprint.BoardId))
+                .CountAsync(cancellationToken),
+            AssignedTasks = await _context.Tasks
+                .Where(task =>
+                    task.AssigneeId == userId &&
+                    accessibleBoardsQuery.Select(board => board.Id).Contains(task.BoardId))
+                .CountAsync(cancellationToken),
+            OpenTasks = await _context.Tasks
+                .Where(task =>
+                    task.AssigneeId == userId &&
+                    accessibleBoardsQuery.Select(board => board.Id).Contains(task.BoardId) &&
+                    task.Status.Title != "done")
+                .CountAsync(cancellationToken),
+            CompletedTasks = await _context.Tasks
+                .Where(task =>
+                    task.AssigneeId == userId &&
+                    accessibleBoardsQuery.Select(board => board.Id).Contains(task.BoardId) &&
+                    task.Status.Title == "done")
+                .CountAsync(cancellationToken),
+        };
+
+        IQueryable<Board> filteredBoardsQuery = ApplyBoardListFilters(accessibleBoardsQuery, userId, query);
+
+        int pageSize = Math.Clamp(query.PageSize <= 0 ? DefaultBoardPageSize : query.PageSize, 1, MaxBoardPageSize);
+        int totalItems = await filteredBoardsQuery.CountAsync(cancellationToken);
+        int totalPages = totalItems == 0 ? 0 : (int)Math.Ceiling(totalItems / (double)pageSize);
+        int page = Math.Max(query.Page, 1);
+        if (totalPages > 0 && page > totalPages)
+        {
+            page = totalPages;
+        }
+
+        var boards = await ApplyBoardListSorting(filteredBoardsQuery, query)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Include(board => board.Memberships)
             .ThenInclude(membership => membership.User)
-            .OrderByDescending(board => board.CreatedAt)
+            .AsSplitQuery()
             .ToListAsync(cancellationToken);
 
-        return Ok(boards.Select(ToBoardDto));
+        List<int> boardIds = boards.Select(board => board.Id).ToList();
+        var activeSprintsByBoardId = boardIds.Count == 0
+            ? new Dictionary<int, Sprint>()
+            : await _context.Sprints
+                .Where(sprint => boardIds.Contains(sprint.BoardId) && sprint.Status == SprintStatus.Active)
+                .ToDictionaryAsync(sprint => sprint.BoardId, cancellationToken);
+
+        Dictionary<int, int> remainingTasksBySprintId = [];
+        List<int> activeSprintIds = activeSprintsByBoardId.Values.Select(sprint => sprint.Id).ToList();
+        if (activeSprintIds.Count > 0)
+        {
+            remainingTasksBySprintId = await _context.Tasks
+                .Where(task => task.SprintId.HasValue && activeSprintIds.Contains(task.SprintId.Value) && task.Status.Title != "done")
+                .GroupBy(task => task.SprintId!.Value)
+                .Select(group => new { SprintId = group.Key, Count = group.Count() })
+                .ToDictionaryAsync(item => item.SprintId, item => item.Count, cancellationToken);
+        }
+
+        return Ok(new PagedBoardListResponseDto
+        {
+            Items = boards
+                .Select(board => ToBoardListItemDto(board, activeSprintsByBoardId, remainingTasksBySprintId))
+                .ToList(),
+            Page = page,
+            PageSize = pageSize,
+            TotalItems = totalItems,
+            TotalPages = totalPages,
+            Summary = summary,
+        });
     }
 
     [HttpPost]
@@ -71,10 +170,44 @@ public class BoardsController(AppDbContext context) : ControllerBase
             return BadRequest(new { message = "Board name is required." });
         }
 
+        if (boardName.Length > MaxBoardNameLength)
+        {
+            return BadRequest(new { message = $"Board name can be up to {MaxBoardNameLength} characters." });
+        }
+
+        string description = request.Description.Trim();
+        if (description.Length > MaxBoardDescriptionLength)
+        {
+            return BadRequest(new { message = $"Board description can be up to {MaxBoardDescriptionLength} characters." });
+        }
+
+        if (!TryNormalizeBoardLogoKey(
+                request.LogoIconKey,
+                AllowedBoardLogoIconKeys,
+                Board.DefaultLogoIconKey,
+                out string logoIconKey))
+        {
+            return BadRequest(new { message = "Board logo icon is invalid." });
+        }
+
+        if (!TryNormalizeBoardLogoKey(
+                request.LogoColorKey,
+                AllowedBoardLogoColorKeys,
+                Board.DefaultLogoColorKey,
+                out string logoColorKey))
+        {
+            return BadRequest(new { message = "Board logo color is invalid." });
+        }
+
         List<int> memberUserIds = request.MemberUserIds
             .Append(userId)
             .Distinct()
             .ToList();
+
+        if (memberUserIds.Count > MaxBoardMembers)
+        {
+            return BadRequest(new { message = $"Boards can have up to {MaxBoardMembers} members." });
+        }
 
         var users = await _context.Users
             .Where(user => memberUserIds.Contains(user.Id))
@@ -88,7 +221,9 @@ public class BoardsController(AppDbContext context) : ControllerBase
         var board = new Board
         {
             Title = boardName,
-            Description = request.Description.Trim(),
+            Description = description,
+            LogoIconKey = logoIconKey,
+            LogoColorKey = logoColorKey,
             CreatorId = userId,
             CreatedAt = DateTime.UtcNow,
         };
@@ -168,11 +303,45 @@ public class BoardsController(AppDbContext context) : ControllerBase
             return BadRequest(new { message = "Board name is required." });
         }
 
+        if (boardName.Length > MaxBoardNameLength)
+        {
+            return BadRequest(new { message = $"Board name can be up to {MaxBoardNameLength} characters." });
+        }
+
+        string description = request.Description.Trim();
+        if (description.Length > MaxBoardDescriptionLength)
+        {
+            return BadRequest(new { message = $"Board description can be up to {MaxBoardDescriptionLength} characters." });
+        }
+
+        if (!TryNormalizeBoardLogoKey(
+                request.LogoIconKey,
+                AllowedBoardLogoIconKeys,
+                Board.DefaultLogoIconKey,
+                out string logoIconKey))
+        {
+            return BadRequest(new { message = "Board logo icon is invalid." });
+        }
+
+        if (!TryNormalizeBoardLogoKey(
+                request.LogoColorKey,
+                AllowedBoardLogoColorKeys,
+                Board.DefaultLogoColorKey,
+                out string logoColorKey))
+        {
+            return BadRequest(new { message = "Board logo color is invalid." });
+        }
+
         Board board = accessContext!.Board;
         List<int> requestedMemberIds = request.MemberUserIds
             .Append(userId)
             .Distinct()
             .ToList();
+
+        if (requestedMemberIds.Count > MaxBoardMembers)
+        {
+            return BadRequest(new { message = $"Boards can have up to {MaxBoardMembers} members." });
+        }
 
         var users = await _context.Users
             .Where(user => requestedMemberIds.Contains(user.Id))
@@ -184,7 +353,9 @@ public class BoardsController(AppDbContext context) : ControllerBase
         }
 
         board.Title = boardName;
-        board.Description = request.Description.Trim();
+        board.Description = description;
+        board.LogoIconKey = logoIconKey;
+        board.LogoColorKey = logoColorKey;
 
         var existingMemberships = board.Memberships.ToDictionary(membership => membership.UserId);
         var removedMemberIds = existingMemberships.Keys.Except(requestedMemberIds).ToList();
@@ -867,6 +1038,26 @@ public class BoardsController(AppDbContext context) : ControllerBase
         return status is not null;
     }
 
+    private static bool TryNormalizeBoardLogoKey(
+        string? value,
+        IEnumerable<string> allowedKeys,
+        string fallbackKey,
+        out string normalizedKey)
+    {
+        string requestedKey = string.IsNullOrWhiteSpace(value) ? fallbackKey : value.Trim();
+        string? canonicalKey = allowedKeys.FirstOrDefault(
+            allowedKey => allowedKey.Equals(requestedKey, StringComparison.OrdinalIgnoreCase));
+
+        if (canonicalKey is not null)
+        {
+            normalizedKey = canonicalKey;
+            return true;
+        }
+
+        normalizedKey = string.Empty;
+        return false;
+    }
+
     private static bool AreBoardLabelsValid(Board board, IEnumerable<int> labelIds)
     {
         HashSet<int> allowedLabelIds = board.Labels.Select(label => label.Id).ToHashSet();
@@ -946,8 +1137,99 @@ public class BoardsController(AppDbContext context) : ControllerBase
             Id = board.Id,
             Name = board.Title,
             Description = board.Description,
+            LogoIconKey = board.LogoIconKey,
+            LogoColorKey = board.LogoColorKey,
             CreatedAt = board.CreatedAt,
             CreatorUserId = board.CreatorId,
+            Members = board.Memberships
+                .OrderBy(membership => membership.Role == BoardRole.Owner ? 0 : 1)
+                .ThenBy(membership => membership.User.FirstName)
+                .ThenBy(membership => membership.User.LastName)
+                .Select(ToBoardMemberDto)
+                .ToList(),
+        };
+    }
+
+    private static IQueryable<Board> ApplyBoardListFilters(IQueryable<Board> query, int userId, BoardListQueryDto request)
+    {
+        string membership = NormalizeMembershipFilter(request.Membership);
+
+        if (!string.IsNullOrWhiteSpace(request.Q))
+        {
+            string search = request.Q.Trim();
+            query = query.Where(board =>
+                EF.Functions.Like(board.Title, $"%{search}%") ||
+                EF.Functions.Like(board.Description, $"%{search}%"));
+        }
+
+        query = membership switch
+        {
+            "owned" => query.Where(board => board.Memberships.Any(membership => membership.UserId == userId && membership.Role == BoardRole.Owner)),
+            "shared" => query.Where(board => board.Memberships.Any(membership => membership.UserId == userId && membership.Role == BoardRole.Member)),
+            _ => query,
+        };
+
+        if (request.ActiveSprint)
+        {
+            query = query.Where(board => board.Sprints.Any(sprint => sprint.Status == SprintStatus.Active));
+        }
+
+        return query;
+    }
+
+    private static IQueryable<Board> ApplyBoardListSorting(IQueryable<Board> query, BoardListQueryDto request)
+    {
+        return NormalizeBoardSort(request.Sort) switch
+        {
+            "nameAsc" => query.OrderBy(board => board.Title).ThenByDescending(board => board.CreatedAt),
+            "nameDesc" => query.OrderByDescending(board => board.Title).ThenByDescending(board => board.CreatedAt),
+            _ => query.OrderByDescending(board => board.CreatedAt),
+        };
+    }
+
+    private static string NormalizeMembershipFilter(string? value)
+    {
+        return value?.Trim().ToLowerInvariant() switch
+        {
+            "owned" => "owned",
+            "shared" => "shared",
+            _ => "all",
+        };
+    }
+
+    private static string NormalizeBoardSort(string? value)
+    {
+        return value?.Trim() switch
+        {
+            "nameAsc" => "nameAsc",
+            "nameDesc" => "nameDesc",
+            _ => "newest",
+        };
+    }
+
+    private static BoardListItemDto ToBoardListItemDto(
+        Board board,
+        IReadOnlyDictionary<int, Sprint> activeSprintsByBoardId,
+        IReadOnlyDictionary<int, int> remainingTasksBySprintId)
+    {
+        Sprint? activeSprint = activeSprintsByBoardId.TryGetValue(board.Id, out Sprint? sprint) ? sprint : null;
+        int remainingTasks = activeSprint is not null && remainingTasksBySprintId.TryGetValue(activeSprint.Id, out int count)
+            ? count
+            : 0;
+
+        return new BoardListItemDto
+        {
+            Id = board.Id,
+            Name = board.Title,
+            Description = board.Description,
+            LogoIconKey = board.LogoIconKey,
+            LogoColorKey = board.LogoColorKey,
+            CreatedAt = board.CreatedAt,
+            CreatorUserId = board.CreatorId,
+            MemberCount = board.Memberships.Count,
+            HasActiveSprint = activeSprint is not null,
+            ActiveSprintName = activeSprint?.Title,
+            RemainingActiveSprintTasks = remainingTasks,
             Members = board.Memberships
                 .OrderBy(membership => membership.Role == BoardRole.Owner ? 0 : 1)
                 .ThenBy(membership => membership.User.FirstName)

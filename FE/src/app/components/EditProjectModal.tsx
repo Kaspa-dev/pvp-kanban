@@ -1,34 +1,74 @@
-import { X, User, Plus, Trash2, Users, Crown } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { X, User, Trash2, Users, Crown } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { Board } from "../utils/boards";
-import { getUsers, ProjectUser } from "../utils/users";
+import {
+  BoardLogoColorKey,
+  BoardLogoIconKey,
+  DEFAULT_BOARD_LOGO_COLOR_KEY,
+  DEFAULT_BOARD_LOGO_ICON_KEY,
+} from "../utils/boardIdentity";
+import { ProjectUser } from "../utils/users";
+import { BoardIdentityPicker } from "./BoardIdentityPicker";
+import { CustomScrollArea } from "./CustomScrollArea";
+import { UserSearchPicker } from "./UserSearchPicker";
 
 interface EditProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
   board: Board | null;
-  onBoardUpdated: (boardId: number, updates: { name: string; description: string; memberUserIds: number[] }) => Promise<void>;
+  onBoardUpdated: (boardId: number, updates: {
+    name: string;
+    description: string;
+    logoIconKey: BoardLogoIconKey;
+    logoColorKey: BoardLogoColorKey;
+    memberUserIds: number[];
+  }) => Promise<void>;
 }
+
+const MAX_BOARD_MEMBERS = 20;
+const MAX_BOARD_NAME_LENGTH = 128;
+const MAX_BOARD_DESCRIPTION_LENGTH = 500;
 
 function getInitialProjectDraft(board: Board | null) {
   return {
     name: board?.name ?? "",
     description: board?.description ?? "",
+    logoIconKey: board?.logoIconKey ?? DEFAULT_BOARD_LOGO_ICON_KEY,
+    logoColorKey: board?.logoColorKey ?? DEFAULT_BOARD_LOGO_COLOR_KEY,
     memberUserIds: board?.members.map((member) => member.userId) ?? [],
   };
+}
+
+function getInitialMemberDirectory(board: Board | null): Record<number, ProjectUser> {
+  if (!board) {
+    return {};
+  }
+
+  return board.members.reduce<Record<number, ProjectUser>>((accumulator, member) => {
+    accumulator[member.userId] = {
+      id: member.userId,
+      username: member.username,
+      displayName: member.displayName,
+      email: member.email,
+    };
+
+    return accumulator;
+  }, {});
 }
 
 export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: EditProjectModalProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const initialDraft = getInitialProjectDraft(board);
+  const initialDirectory = getInitialMemberDirectory(board);
 
   const [name, setName] = useState(initialDraft.name);
   const [description, setDescription] = useState(initialDraft.description);
+  const [logoIconKey, setLogoIconKey] = useState<BoardLogoIconKey>(initialDraft.logoIconKey);
+  const [logoColorKey, setLogoColorKey] = useState<BoardLogoColorKey>(initialDraft.logoColorKey);
   const [memberUserIds, setMemberUserIds] = useState<number[]>(initialDraft.memberUserIds);
-  const [selectedUserId, setSelectedUserId] = useState<number | "">("");
-  const [availableUsers, setAvailableUsers] = useState<ProjectUser[]>([]);
+  const [memberDirectory, setMemberDirectory] = useState<Record<number, ProjectUser>>(initialDirectory);
   const [showError, setShowError] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,49 +76,15 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
   const handleClose = () => {
     setShowError(false);
     setSubmitError("");
-    setSelectedUserId("");
     setIsSubmitting(false);
     onClose();
   };
 
   useEffect(() => {
-    let isActive = true;
-
-    const loadUsers = async () => {
-      if (!isOpen) {
-        return;
-      }
-
-      try {
-        const users = await getUsers();
-        if (!isActive) {
-          return;
-        }
-
-        setAvailableUsers(users);
-      } catch (error) {
-        if (!isActive) {
-          return;
-        }
-
-        const message = error instanceof Error ? error.message : "Unable to load users.";
-        setSubmitError(message);
-      }
-    };
-
-    void loadUsers();
-
-    return () => {
-      isActive = false;
-    };
-  }, [isOpen]);
-
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && isOpen) {
         setShowError(false);
         setSubmitError("");
-        setSelectedUserId("");
         setIsSubmitting(false);
         onClose();
       }
@@ -96,19 +102,15 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
   }, [isOpen, onClose]);
 
   const members = useMemo(
-    () => {
-      if (!board) {
-        return [];
-      }
-
-      return memberUserIds
+    () =>
+      memberUserIds
         .map((userId) => {
-          const existingMember = board.members.find((member) => member.userId === userId);
+          const existingMember = board?.members.find((member) => member.userId === userId);
           if (existingMember) {
             return existingMember;
           }
 
-          const user = availableUsers.find((candidate) => candidate.id === userId);
+          const user = memberDirectory[userId];
           if (!user) {
             return null;
           }
@@ -123,20 +125,16 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
             name: user.displayName,
           };
         })
-        .filter((member): member is NonNullable<typeof member> => member !== null);
-    },
-    [availableUsers, board, memberUserIds],
+        .filter((member): member is NonNullable<typeof member> => member !== null),
+    [board, memberDirectory, memberUserIds],
   );
-
-  const remainingUsers = useMemo(
-    () => availableUsers.filter((user) => !memberUserIds.includes(user.id)),
-    [availableUsers, memberUserIds],
-  );
+  const totalMemberCount = members.length;
+  const hasReachedMemberLimit = totalMemberCount >= MAX_BOARD_MEMBERS;
 
   if (!isOpen || !board) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
 
     if (!name.trim()) {
       setShowError(true);
@@ -149,6 +147,8 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
       await onBoardUpdated(board.id, {
         name: name.trim(),
         description: description.trim(),
+        logoIconKey,
+        logoColorKey,
         memberUserIds,
       });
 
@@ -160,31 +160,27 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
     }
   };
 
-  const handleAddMember = () => {
-    if (!selectedUserId) return;
-
-    setMemberUserIds((prev) => [...prev, selectedUserId]);
-    setSelectedUserId("");
-  };
-
-  const handleRemoveMember = (userId: number) => {
-    if (!board) {
+  const handleAddMember = (projectUser: ProjectUser) => {
+    if (hasReachedMemberLimit) {
       return;
     }
 
+    setMemberDirectory((previous) => ({
+      ...previous,
+      [projectUser.id]: projectUser,
+    }));
+    setMemberUserIds((previous) =>
+      previous.includes(projectUser.id) ? previous : [...previous, projectUser.id],
+    );
+  };
+
+  const handleRemoveMember = (userId: number) => {
     const member = board.members.find((item) => item.userId === userId);
     if (member?.role === "owner") {
       return;
     }
 
-    setMemberUserIds((prev) => prev.filter((memberId) => memberId !== userId));
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleAddMember();
-    }
+    setMemberUserIds((previous) => previous.filter((memberId) => memberId !== userId));
   };
 
   return (
@@ -194,10 +190,14 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
         onClick={handleClose}
       />
 
-      <div className={`relative ${currentTheme.cardBg} rounded-3xl shadow-2xl w-full max-w-2xl mx-4 border-2 ${currentTheme.border} animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto`}>
-        <div className={`sticky top-0 z-10 flex items-center justify-between p-6 border-b-2 ${currentTheme.border} ${currentTheme.cardBg} rounded-t-3xl`}>
+      <div
+        className={`relative ${currentTheme.cardBg} rounded-3xl shadow-2xl w-full max-w-2xl mx-4 border-2 ${currentTheme.border} animate-in zoom-in-95 duration-200 overflow-hidden flex flex-col`}
+        style={{ height: "min(90vh, 52rem)" }}
+      >
+        <div className={`z-10 flex items-center justify-between p-6 border-b-2 ${currentTheme.border} ${currentTheme.cardBg} rounded-t-3xl shrink-0`}>
           <h2 className={`text-2xl font-bold ${currentTheme.text}`}>Edit Project</h2>
           <button
+            type="button"
             onClick={handleClose}
             className={`${currentTheme.textMuted} hover:${currentTheme.textSecondary} transition-colors hover:${currentTheme.bgSecondary} rounded-full p-2`}
           >
@@ -205,140 +205,154 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <div>
-            <label htmlFor="name" className={`block text-sm font-semibold ${currentTheme.textSecondary} mb-2`}>
-              Project Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="name"
-              type="text"
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                if (showError && e.target.value.trim()) {
-                  setShowError(false);
+        <form onSubmit={handleSubmit} className="flex flex-1 min-h-0 flex-col overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-hidden px-6 py-6">
+            <CustomScrollArea
+              className="h-full min-h-0"
+              viewportClassName="h-full min-h-0 pr-4"
+            >
+              <div className="space-y-6 px-1 py-1">
+              <div>
+                <label htmlFor="name" className={`block text-sm font-semibold ${currentTheme.textSecondary} mb-2`}>
+                  Project Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="name"
+                  type="text"
+                  value={name}
+                  onChange={(event) => {
+                    setName(event.target.value);
+                    if (showError && event.target.value.trim()) {
+                      setShowError(false);
+                    }
+                  }}
+                  maxLength={MAX_BOARD_NAME_LENGTH}
+                  placeholder="Enter project name..."
+                  className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent transition-all ${currentTheme.inputBg} ${currentTheme.text} ${
+                    showError && !name.trim() ? "border-red-500" : currentTheme.inputBorder
+                  }`}
+                  autoFocus
+                />
+                <p className={`mt-2 text-xs ${currentTheme.textMuted}`}>
+                  Up to {MAX_BOARD_NAME_LENGTH} characters.
+                </p>
+                {showError && !name.trim() && (
+                  <p className="text-red-500 text-sm mt-1">Project name is required</p>
+                )}
+              </div>
+
+              <div>
+                <label htmlFor="description" className={`block text-sm font-semibold ${currentTheme.textSecondary} mb-2`}>
+                  Description <span className={`${currentTheme.textMuted} font-normal`}>(optional)</span>
+                </label>
+                <textarea
+                  id="description"
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  maxLength={MAX_BOARD_DESCRIPTION_LENGTH}
+                  placeholder="Describe your project..."
+                  rows={4}
+                  className={`w-full px-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent resize-y transition-all ${currentTheme.inputBg} ${currentTheme.text}`}
+                />
+                <p className={`mt-2 text-xs ${currentTheme.textMuted}`}>
+                  Up to {MAX_BOARD_DESCRIPTION_LENGTH} characters.
+                </p>
+              </div>
+
+              <BoardIdentityPicker
+                iconKey={logoIconKey}
+                colorKey={logoColorKey}
+                onIconChange={setLogoIconKey}
+                onColorChange={setLogoColorKey}
+              />
+
+              <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Users className={`w-4 h-4 ${currentTheme.textSecondary}`} />
+                <label className={`text-sm font-semibold ${currentTheme.textSecondary}`}>
+                    Team Members
+                  </label>
+                  <span className={`text-xs ${currentTheme.textMuted}`}>
+                  ({members.length} member{members.length !== 1 ? 's' : ''})
+                </span>
+              </div>
+
+              <UserSearchPicker
+                excludedUserIds={memberUserIds}
+                onSelectUser={handleAddMember}
+                disabled={hasReachedMemberLimit}
+                placeholder={
+                  hasReachedMemberLimit
+                    ? "Member limit reached"
+                    : "Search members by name, username, or email"
                 }
-              }}
-              placeholder="Enter project name..."
-              className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent transition-all ${currentTheme.inputBg} ${currentTheme.text} ${
-                showError && !name.trim() ? "border-red-500" : currentTheme.inputBorder
-              }`}
-              autoFocus
-            />
-            {showError && !name.trim() && (
-              <p className="text-red-500 text-sm mt-1">Project name is required</p>
-            )}
-          </div>
+              />
 
-          <div>
-            <label htmlFor="description" className={`block text-sm font-semibold ${currentTheme.textSecondary} mb-2`}>
-              Description <span className={`${currentTheme.textMuted} font-normal`}>(optional)</span>
-            </label>
-            <textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe your project..."
-              rows={4}
-              className={`w-full px-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent resize-y transition-all ${currentTheme.inputBg} ${currentTheme.text}`}
-            />
-          </div>
+              <p className={`mt-3 text-sm ${currentTheme.textMuted}`}>
+                Boards can have up to {MAX_BOARD_MEMBERS} members total. This board is currently using {totalMemberCount} of {MAX_BOARD_MEMBERS}.
+              </p>
 
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Users className={`w-4 h-4 ${currentTheme.textSecondary}`} />
-              <label className={`text-sm font-semibold ${currentTheme.textSecondary}`}>
-                Team Members
-              </label>
-              <span className={`text-xs ${currentTheme.textMuted}`}>
-                ({members.length} member{members.length !== 1 ? 's' : ''})
-              </span>
-            </div>
+                {members.length === 0 ? (
+                  <div className={`mt-4 rounded-xl border ${currentTheme.border} ${currentTheme.bgSecondary} py-6 text-center ${currentTheme.textMuted}`}>
+                    <User className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No members yet.</p>
+                  </div>
+                ) : (
+                  <div className="mt-4 space-y-2">
+                    {members.map((member) => {
+                      const isOwner = member.role === "owner";
 
-            <div className="flex gap-2 mb-4">
-              <select
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value ? Number(e.target.value) : "")}
-                onKeyDown={handleKeyDown}
-                className={`flex-1 px-4 py-2.5 border-2 ${currentTheme.inputBorder} rounded-xl focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent transition-all ${currentTheme.inputBg} ${currentTheme.text}`}
-              >
-                <option value="">{remainingUsers.length === 0 ? "No more users to add" : "Select a user"}</option>
-                {remainingUsers.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.displayName} ({user.email})
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                onClick={handleAddMember}
-                disabled={!selectedUserId}
-                className={`px-4 py-2.5 bg-gradient-to-r ${currentTheme.primary} text-white font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md`}
-              >
-                <Plus className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className={`${currentTheme.bgSecondary} rounded-xl p-4 max-h-60 overflow-y-auto`}>
-              {members.length === 0 ? (
-                <div className={`text-center py-6 ${currentTheme.textMuted}`}>
-                  <User className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No members yet.</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {members.map((member) => {
-                    const isOwner = member.role === "owner";
-
-                    return (
-                      <div
-                        key={member.userId}
-                        className={`flex items-center justify-between p-3 ${currentTheme.cardBg} rounded-lg border ${currentTheme.border} group hover:border-red-400 transition-all`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md"
-                            style={{ backgroundColor: member.color }}
-                          >
-                            {member.name.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className={`font-semibold ${currentTheme.text}`}>{member.name}</p>
-                            <div className="flex items-center gap-1.5">
-                              {isOwner && <Crown className="w-3.5 h-3.5 text-amber-500" />}
-                              <p className={`text-xs ${currentTheme.textMuted}`}>{isOwner ? "Owner" : "Team Member"}</p>
+                      return (
+                        <div
+                          key={member.userId}
+                          className={`flex items-center justify-between p-3 ${currentTheme.bgSecondary} rounded-lg border ${currentTheme.border} group hover:${currentTheme.primaryBorder} transition-all`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md shrink-0"
+                              style={{ backgroundColor: member.color }}
+                            >
+                              {member.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <p className={`font-semibold ${currentTheme.text} truncate`}>{member.name}</p>
+                              <p className={`text-xs ${currentTheme.textMuted} truncate`}>@{member.username}</p>
+                              <div className="flex items-center gap-1.5">
+                                {isOwner && <Crown className="w-3.5 h-3.5 text-amber-500" />}
+                                <p className={`text-xs ${currentTheme.textMuted}`}>{isOwner ? "Owner" : "Team Member"}</p>
+                              </div>
                             </div>
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveMember(member.userId)}
+                            disabled={isOwner}
+                            className={`p-2 rounded-lg transition-all ${
+                              isOwner
+                                ? "opacity-30 cursor-not-allowed"
+                                : "hover:bg-red-50 dark:hover:bg-red-950 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100"
+                            }`}
+                            title={isOwner ? "Project owner cannot be removed" : "Remove member"}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveMember(member.userId)}
-                          disabled={isOwner}
-                          className={`p-2 rounded-lg transition-all ${
-                            isOwner
-                              ? "opacity-30 cursor-not-allowed"
-                              : "hover:bg-red-50 dark:hover:bg-red-950 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100"
-                          }`}
-                          title={isOwner ? "Project owner cannot be removed" : "Remove member"}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+                {submitError && (
+                  <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {submitError}
+                  </div>
+                )}
+              </div>
+            </CustomScrollArea>
           </div>
 
-          {submitError && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {submitError}
-            </div>
-          )}
-
-          <div className="flex gap-3 pt-3">
+          <div className={`flex gap-3 p-6 border-t-2 ${currentTheme.border} ${currentTheme.cardBg} shrink-0`}>
             <button
               type="button"
               onClick={handleClose}

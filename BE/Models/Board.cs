@@ -2,9 +2,14 @@ namespace BE.Models;
 
 public class Board
 {
+    public const string DefaultLogoIconKey = "folder";
+    public const string DefaultLogoColorKey = "slate";
+
     public int Id { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public string LogoIconKey { get; set; } = DefaultLogoIconKey;
+    public string LogoColorKey { get; set; } = DefaultLogoColorKey;
     public int CreatorId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

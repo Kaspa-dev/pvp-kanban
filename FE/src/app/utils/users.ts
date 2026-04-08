@@ -4,14 +4,12 @@ export interface ProjectUser {
   id: number;
   username: string;
   email: string;
-  firstName: string;
-  lastName: string;
   displayName: string;
 }
 
-export async function getUsers(): Promise<ProjectUser[]> {
+export async function searchUsers(query: string, limit = 8): Promise<ProjectUser[]> {
   return apiJson<ProjectUser[]>(
-    "/api/users",
+    `/api/users/search?q=${encodeURIComponent(query)}&limit=${limit}`,
     { method: "GET" },
     "Unable to load users right now.",
   );
