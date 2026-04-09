@@ -305,44 +305,6 @@ namespace BE.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
-            modelBuilder.Entity("BE.Models.Sprint", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    b.Property<int>("BoardId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime>("EndDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime>("StartDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("varchar(128)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BoardId");
-
-                    b.ToTable("Sprints");
-                });
-
             modelBuilder.Entity("BE.Models.Task", b =>
                 {
                     b.Property<int>("Id")
@@ -363,14 +325,16 @@ namespace BE.Migrations
                     b.Property<DateTime?>("DueDate")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<bool>("IsQueued")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Priority")
                         .HasMaxLength(16)
                         .HasColumnType("varchar(16)");
 
                     b.Property<int>("ReporterId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("SprintId")
                         .HasColumnType("int");
 
                     b.Property<int>("StatusId")
@@ -398,8 +362,6 @@ namespace BE.Migrations
                     b.HasIndex("BoardId");
 
                     b.HasIndex("ReporterId");
-
-                    b.HasIndex("SprintId");
 
                     b.HasIndex("StatusId");
 
@@ -624,17 +586,6 @@ namespace BE.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("BE.Models.Sprint", b =>
-                {
-                    b.HasOne("BE.Models.Board", "Board")
-                        .WithMany("Sprints")
-                        .HasForeignKey("BoardId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Board");
-                });
-
             modelBuilder.Entity("BE.Models.Task", b =>
                 {
                     b.HasOne("BE.Models.User", "Assignee")
@@ -654,11 +605,6 @@ namespace BE.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("BE.Models.Sprint", "Sprint")
-                        .WithMany("Tasks")
-                        .HasForeignKey("SprintId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("BE.Models.TaskStatus", "Status")
                         .WithMany("Tasks")
                         .HasForeignKey("StatusId")
@@ -677,8 +623,6 @@ namespace BE.Migrations
                     b.Navigation("Board");
 
                     b.Navigation("Reporter");
-
-                    b.Navigation("Sprint");
 
                     b.Navigation("Status");
                 });
@@ -702,8 +646,6 @@ namespace BE.Migrations
 
                     b.Navigation("Memberships");
 
-                    b.Navigation("Sprints");
-
                     b.Navigation("TaskStatuses");
 
                     b.Navigation("Teams");
@@ -724,11 +666,6 @@ namespace BE.Migrations
                     b.Navigation("AssignedTasks");
 
                     b.Navigation("Members");
-                });
-
-            modelBuilder.Entity("BE.Models.Sprint", b =>
-                {
-                    b.Navigation("Tasks");
                 });
 
             modelBuilder.Entity("BE.Models.Task", b =>

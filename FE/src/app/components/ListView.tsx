@@ -2,11 +2,11 @@ import { Trash2, Zap, Edit, FileText, Bug, Lightbulb, CheckSquare, CalendarDays 
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { AssigneePopover } from "./AssigneePopover";
 import { Label } from "../utils/labels";
-import { Tooltip } from "./Tooltip";
 import { getPriorityIndicator } from "../utils/priorityColors";
 import { Card, Priority, TaskAssignee, TaskType } from "../utils/cards";
 import { format, parseISO } from "date-fns";
 import { PriorityBadge } from "./PriorityBadge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 type ListCard = Card & {
   priority?: Priority;
@@ -113,10 +113,15 @@ export function ListView({ cards, onAssigneeChange, onDelete, onEdit, availableA
                     <tr key={card.id} className={`hover:${currentTheme.bgSecondary} transition-colors ${currentTheme.border} border-b`}>
                       <td className="px-6 py-4">
                         {card.priority ? (
-                          <Tooltip content={priorityIndicator?.tooltip || card.priority} position="right">
-                            <div className="cursor-help">
-                              <PriorityBadge priority={card.priority} isDarkMode={isDarkMode} compact />
-                            </div>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="cursor-help">
+                                <PriorityBadge priority={card.priority} isDarkMode={isDarkMode} compact />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" sideOffset={8}>
+                              {priorityIndicator?.tooltip || card.priority}
+                            </TooltipContent>
                           </Tooltip>
                         ) : (
                           <span className={`${currentTheme.textMuted} text-sm`}>-</span>
@@ -172,10 +177,15 @@ export function ListView({ cards, onAssigneeChange, onDelete, onEdit, availableA
                       </td>
                       <td className="px-6 py-4">
                         {card.storyPoints ? (
-                          <div className={`flex items-center gap-1.5 font-medium ${currentTheme.textSecondary}`}>
-                            <Zap className="w-4 h-4" />
-                            <span className="text-sm">{card.storyPoints}</span>
-                          </div>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className={`flex items-center gap-1.5 font-medium ${currentTheme.textSecondary}`}>
+                                <Zap className="w-4 h-4" />
+                                <span className="text-sm">{card.storyPoints}</span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" sideOffset={8}>{card.storyPoints} story points</TooltipContent>
+                          </Tooltip>
                         ) : (
                           <span className={`${currentTheme.textMuted} text-sm`}>-</span>
                         )}
@@ -183,21 +193,31 @@ export function ListView({ cards, onAssigneeChange, onDelete, onEdit, availableA
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           {onEdit && (
-                            <button
-                              onClick={() => onEdit(card.id)}
-                              className={`${currentTheme.textMuted} hover:${currentTheme.primaryText} p-2 rounded-lg transition-all ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
-                              title="Edit task"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={() => onEdit(card.id)}
+                                  className={`${currentTheme.textMuted} hover:${currentTheme.primaryText} p-2 rounded-lg transition-all ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+                                  type="button"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" sideOffset={8}>Edit task</TooltipContent>
+                            </Tooltip>
                           )}
-                          <button
-                            onClick={() => onDelete(card.id, card.title)}
-                            className={`text-red-500 hover:text-red-700 p-2 rounded-lg transition-all ${isDarkMode ? 'hover:bg-red-950' : 'hover:bg-red-50'}`}
-                            title="Delete task"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                onClick={() => onDelete(card.id, card.title)}
+                                className={`text-red-500 hover:text-red-700 p-2 rounded-lg transition-all ${isDarkMode ? 'hover:bg-red-950' : 'hover:bg-red-50'}`}
+                                type="button"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" sideOffset={8}>Delete task</TooltipContent>
+                          </Tooltip>
                         </div>
                       </td>
                     </tr>

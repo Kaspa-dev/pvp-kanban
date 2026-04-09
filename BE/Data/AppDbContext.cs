@@ -16,7 +16,6 @@ public class AppDbContext : DbContext
     public DbSet<Board> Boards => Set<Board>();
     public DbSet<BoardMembership> BoardMemberships => Set<BoardMembership>();
     public DbSet<BE.Models.Task> Tasks => Set<BE.Models.Task>();
-    public DbSet<Sprint> Sprints => Set<Sprint>();
     public DbSet<BE.Models.TaskStatus> TaskStatuses => Set<BE.Models.TaskStatus>();
     public DbSet<Label> Labels => Set<Label>();
     public DbSet<LabeledTask> LabeledTasks => Set<LabeledTask>();
@@ -141,24 +140,6 @@ public class AppDbContext : DbContext
         });
 
         // Board & Task related tables (except for Board)
-        modelBuilder.Entity<Sprint>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Title).IsRequired().HasMaxLength(128);
-            entity.Property(e => e.StartDate).IsRequired();
-            entity.Property(e => e.EndDate).IsRequired();
-            entity.Property(e => e.Status)
-                .HasConversion<string>()
-                .HasMaxLength(20);
-            entity.Property(e => e.CreatedAt).IsRequired();
-            entity.Property(e => e.CompletedAt);
-
-            entity.HasOne(e => e.Board)
-                .WithMany(b => b.Sprints)
-                .HasForeignKey(e => e.BoardId)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
-
         modelBuilder.Entity<BE.Models.TaskStatus>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -189,6 +170,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Title).IsRequired().HasMaxLength(128);
             entity.Property(e => e.Description).HasMaxLength(2000);
             entity.Property(e => e.StoryPoints);
+            entity.Property(e => e.IsQueued).HasDefaultValue(false);
             entity.Property(e => e.Priority)
                 .HasConversion<string>()
                 .HasMaxLength(16);
@@ -216,11 +198,6 @@ public class AppDbContext : DbContext
                 .WithMany(u => u.CreatedTasks)
                 .HasForeignKey(e => e.ReporterId)
                 .OnDelete(DeleteBehavior.Restrict);
-            
-            entity.HasOne(e => e.Sprint)
-                .WithMany(s => s.Tasks)
-                .HasForeignKey(e => e.SprintId)
-                .OnDelete(DeleteBehavior.SetNull);
             
             entity.HasOne(e => e.AssignedTeam)
                 .WithMany(ou => ou.AssignedTasks)

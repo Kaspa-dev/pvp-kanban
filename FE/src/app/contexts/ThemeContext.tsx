@@ -281,17 +281,17 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
   const baseColors = isDarkMode
     ? {
         // Dark mode base colors
-        bg: "bg-gray-950",
-        bgSecondary: "bg-gray-900",
-        bgTertiary: "bg-gray-850",
-        cardBg: "bg-gray-800",
-        text: "text-gray-100",
-        textSecondary: "text-gray-200",
-        textMuted: "text-gray-300",
-        border: "border-gray-600",
-        borderHover: "border-gray-500",
-        inputBg: "bg-gray-900",
-        inputBorder: "border-gray-600",
+        bg: "bg-zinc-950",
+        bgSecondary: "bg-zinc-950",
+        bgTertiary: "bg-zinc-900",
+        cardBg: "bg-zinc-900",
+        text: "text-zinc-100",
+        textSecondary: "text-zinc-200",
+        textMuted: "text-zinc-400",
+        border: "border-zinc-800",
+        borderHover: "border-zinc-700",
+        inputBg: "bg-zinc-950",
+        inputBorder: "border-zinc-800",
       }
     : {
         // Light mode base colors

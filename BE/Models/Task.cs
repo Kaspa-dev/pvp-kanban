@@ -10,8 +10,8 @@ public class Task
     public int StatusId { get; set; }
     public int? AssigneeId { get; set; } = null;
     public int ReporterId { get; set; }
-    public int? SprintId { get; set; } = null;
     public int? TeamId { get; set; } = null;
+    public bool IsQueued { get; set; } = false;
     public Priority? Priority { get; set; } = null;
     public Type? Type { get; set; } = null;
     public DateTime? DueDate { get; set; } = null;
@@ -20,7 +20,6 @@ public class Task
     public Models.TaskStatus Status { get; set; } = null!;
     public User? Assignee { get; set; } = null;
     public User Reporter { get; set; } = null!;
-    public Sprint? Sprint { get; set; } = null;
     public OrganizationalUnit? AssignedTeam { get; set; } = null;
     public ICollection<LabeledTask> LabeledTasks { get; set; } = new List<LabeledTask>();
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();

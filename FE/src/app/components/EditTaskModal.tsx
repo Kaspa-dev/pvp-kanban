@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useState } from "react";
+import { ChangeEvent, useState } from "react";
 import { Label } from "../utils/labels";
 import { Priority, TaskAssignee, TaskStatus, TaskType } from "../utils/cards";
 import { STORY_POINTS_MAX, STORY_POINTS_MIN } from "../utils/gamification";
@@ -60,38 +60,19 @@ export function EditTaskModal({
   onCreateLabel,
   availableAssignees,
 }: EditTaskModalProps) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [status, setStatus] = useState<TaskStatus>("todo");
-  const [selectedLabelIds, setSelectedLabelIds] = useState<number[]>([]);
-  const [selectedAssignee, setSelectedAssignee] = useState<TaskAssignee | null>(null);
-  const [storyPoints, setStoryPoints] = useState<number | undefined>(undefined);
-  const [dueDate, setDueDate] = useState("");
-  const [customStoryPoints, setCustomStoryPoints] = useState("");
-  const [priority, setPriority] = useState<Priority | undefined>(undefined);
-  const [taskType, setTaskType] = useState<TaskType | undefined>(undefined);
+  const initialState = getInitialTaskState(task);
+  const [title, setTitle] = useState(initialState.title);
+  const [description, setDescription] = useState(initialState.description);
+  const [status, setStatus] = useState<TaskStatus>(initialState.status);
+  const [selectedLabelIds, setSelectedLabelIds] = useState<number[]>(initialState.selectedLabelIds);
+  const [selectedAssignee, setSelectedAssignee] = useState<TaskAssignee | null>(initialState.selectedAssignee);
+  const [storyPoints, setStoryPoints] = useState<number | undefined>(initialState.storyPoints);
+  const [dueDate, setDueDate] = useState(initialState.dueDate);
+  const [customStoryPoints, setCustomStoryPoints] = useState(initialState.customStoryPoints);
+  const [priority, setPriority] = useState<Priority | undefined>(initialState.priority);
+  const [taskType, setTaskType] = useState<TaskType | undefined>(initialState.taskType);
   const [showError, setShowError] = useState(false);
   const [submitError, setSubmitError] = useState("");
-
-  useEffect(() => {
-    if (!isOpen || !task) {
-      return;
-    }
-
-    const initialState = getInitialTaskState(task);
-    setTitle(initialState.title);
-    setDescription(initialState.description);
-    setStatus(initialState.status);
-    setSelectedLabelIds(initialState.selectedLabelIds);
-    setSelectedAssignee(initialState.selectedAssignee);
-    setStoryPoints(initialState.storyPoints);
-    setDueDate(initialState.dueDate);
-    setCustomStoryPoints(initialState.customStoryPoints);
-    setPriority(initialState.priority);
-    setTaskType(initialState.taskType);
-    setShowError(false);
-    setSubmitError("");
-  }, [isOpen, task]);
 
   if (!isOpen || !task) return null;
 

@@ -68,7 +68,7 @@ export function ConfirmDeleteProjectDialog({
               Are you sure you want to delete <span className="font-bold text-red-500">"{board.name}"</span>?
             </p>
             <p className={`text-xs ${currentTheme.textMuted}`}>
-              All tasks, labels, and sprint data associated with this project will be permanently deleted.
+              All tasks, labels, and board data associated with this project will be permanently deleted.
             </p>
           </div>
 

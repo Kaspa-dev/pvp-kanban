@@ -6,7 +6,6 @@ import {
   Clock3,
   Edit3,
   FilterX,
-  Flag,
   Folder,
   ListTodo,
   LogOut,
@@ -39,6 +38,7 @@ import { ConfirmDeleteProjectDialog } from "../components/ConfirmDeleteProjectDi
 import { CoachmarkOverlay } from "../components/CoachmarkOverlay";
 import { BanBanLogo } from "../components/BanBanLogo";
 import { getProjectsCoachmarkFlow, useProjectsCoachmarks } from "../hooks/useProjectsCoachmarks";
+import { UserProfileChip } from "../components/UserProfileChip";
 import {
   Select,
   SelectContent,
@@ -60,6 +60,22 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "../components/ui/tooltip";
+import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
+
+function isEditableKeyboardTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  const tagName = target.tagName;
+  return (
+    target.isContentEditable ||
+    tagName === "INPUT" ||
+    tagName === "TEXTAREA" ||
+    tagName === "SELECT" ||
+    Boolean(target.closest("[contenteditable='true']"))
+  );
+}
 
 const BOARD_PAGE_SIZE = 6;
 const DEFAULT_MEMBERSHIP_FILTER: BoardMembershipFilter = "all";
@@ -73,7 +89,6 @@ const EMPTY_BOARD_LIST_RESPONSE: PagedBoardListResponse = {
   totalPages: 0,
   summary: {
     activeProjects: 0,
-    activeSprints: 0,
     assignedTasks: 0,
     openTasks: 0,
     completedTasks: 0,
@@ -83,7 +98,6 @@ const EMPTY_BOARD_LIST_RESPONSE: PagedBoardListResponse = {
 type ProjectsQueryState = {
   q: string;
   membership: BoardMembershipFilter;
-  activeSprint: boolean;
   sort: BoardSort;
   page: number;
 };
@@ -105,7 +119,6 @@ function parseProjectsQueryState(searchParams: URLSearchParams): ProjectsQuerySt
   return {
     q: searchParams.get("q")?.trim() ?? "",
     membership: parseMembershipFilter(searchParams.get("membership")),
-    activeSprint: searchParams.get("activeSprint") === "true",
     sort: parseBoardSort(searchParams.get("sort")),
     page: parsePage(searchParams.get("page")),
   };
@@ -120,10 +133,6 @@ function createProjectsSearchParams(query: ProjectsQueryState): URLSearchParams 
 
   if (query.membership !== DEFAULT_MEMBERSHIP_FILTER) {
     params.set("membership", query.membership);
-  }
-
-  if (query.activeSprint) {
-    params.set("activeSprint", "true");
   }
 
   if (query.sort !== DEFAULT_SORT) {
@@ -180,6 +189,7 @@ export function Projects() {
     markFlowCompleted,
   } = useUserPreferences();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
 
   const queryState = useMemo(() => parseProjectsQueryState(searchParams), [searchParams]);
 
@@ -237,7 +247,6 @@ export function Projects() {
         const response = await getUserBoardsPage({
           q: queryState.q,
           membership: queryState.membership,
-          activeSprint: queryState.activeSprint,
           sort: queryState.sort,
           page: queryState.page,
           pageSize: BOARD_PAGE_SIZE,
@@ -283,7 +292,6 @@ export function Projects() {
 
   const dashboardIndicators = [
     { label: "Active Projects", value: boardList.summary.activeProjects, icon: Folder },
-    { label: "Active Sprints", value: boardList.summary.activeSprints, icon: Flag },
     { label: "Assigned to You", value: boardList.summary.assignedTasks, icon: ListTodo },
     { label: "Open Right Now", value: boardList.summary.openTasks, icon: Clock3 },
     { label: "Completed by You", value: boardList.summary.completedTasks, icon: CheckCircle2 },
@@ -292,7 +300,6 @@ export function Projects() {
   const hasActiveFilters =
     queryState.q.length > 0 ||
     queryState.membership !== DEFAULT_MEMBERSHIP_FILTER ||
-    queryState.activeSprint ||
     queryState.sort !== DEFAULT_SORT;
   const hasAnyBoards = boardList.summary.activeProjects > 0;
   const hasVisibleBoardCards = boardList.items.length > 0;
@@ -301,10 +308,11 @@ export function Projects() {
     isLoadingBoards || boardList.summary.activeProjects > 0 || hasActiveFilters;
   const isInitialBoardsLoad = isLoadingBoards && !hasLoadedBoardsOnce;
   const isRefreshingBoards = isLoadingBoards && hasLoadedBoardsOnce;
+  const effectiveTotalPages = Math.max(boardList.totalPages, 1);
 
   const paginationItems = useMemo(
-    () => buildPaginationItems(boardList.totalPages, boardList.page),
-    [boardList.page, boardList.totalPages],
+    () => buildPaginationItems(effectiveTotalPages, boardList.page),
+    [boardList.page, effectiveTotalPages],
   );
   const currentProjectsFlow = getProjectsCoachmarkFlow(hasAnyBoards, hasVisibleBoardCards);
 
@@ -337,7 +345,7 @@ export function Projects() {
   };
 
   const handlePageChange = (page: number) => {
-    if (page < 1 || page > boardList.totalPages || page === boardList.page) {
+    if (page < 1 || page > effectiveTotalPages || page === boardList.page) {
       return;
     }
 
@@ -357,6 +365,92 @@ export function Projects() {
     setSearchInput("");
     setSearchParams(new URLSearchParams());
   };
+
+  useEffect(() => {
+    if (
+      !user ||
+      isInitialBoardsLoad ||
+      !!loadError ||
+      isCreateModalOpen ||
+      isEditModalOpen ||
+      isSettingsModalOpen ||
+      isDeleteDialogOpen
+    ) {
+      return;
+    }
+
+    const handleFilterKeybind = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.repeat ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        isEditableKeyboardTarget(event.target)
+      ) {
+        return;
+      }
+
+      const key = event.key;
+      if (!["1", "2", "3", "Escape", "Tab", "Shift"].includes(key)) {
+        return;
+      }
+
+      if (key === "Tab" || key === "Shift") {
+        const activeElement = document.activeElement;
+        const isDocumentLevelFocus =
+          activeElement === document.body || activeElement === document.documentElement;
+
+        if (!isDocumentLevelFocus) {
+          return;
+        }
+
+        event.preventDefault();
+        handlePageChange(
+          key === "Shift"
+            ? Math.max(boardList.page - 1, 1)
+            : Math.min(boardList.page + 1, effectiveTotalPages),
+        );
+        return;
+      }
+
+      event.preventDefault();
+
+      if (key === "1") {
+        handleQueryStateChange({ membership: "all", page: 1 });
+        return;
+      }
+
+      if (key === "2") {
+        handleQueryStateChange({ membership: "owned", page: 1 });
+        return;
+      }
+
+      if (key === "3") {
+        handleQueryStateChange({ membership: "shared", page: 1 });
+        return;
+      }
+
+      clearFilters();
+    };
+
+    window.addEventListener("keydown", handleFilterKeybind);
+    return () => {
+      window.removeEventListener("keydown", handleFilterKeybind);
+    };
+  }, [
+    boardList.page,
+    clearFilters,
+    effectiveTotalPages,
+    handleQueryStateChange,
+    isCreateModalOpen,
+    isDeleteDialogOpen,
+    isEditModalOpen,
+    isInitialBoardsLoad,
+    isSettingsModalOpen,
+    loadError,
+    user,
+  ]);
 
   const refreshBoards = () => {
     setReloadVersion((current) => current + 1);
@@ -416,18 +510,16 @@ export function Projects() {
   if (!user) return null;
 
   return (
-    <div className={`min-h-screen relative overflow-hidden ${currentTheme.bgSecondary}`}>
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className={`absolute top-0 left-1/4 w-96 h-96 bg-gradient-to-br ${currentTheme.primarySoft} rounded-full blur-3xl animate-pulse`} style={{ animationDuration: "8s" }} />
-        <div className={`absolute bottom-0 right-1/4 w-80 h-80 bg-gradient-to-tr ${currentTheme.primarySoft} rounded-full blur-3xl animate-pulse`} style={{ animationDuration: "10s", animationDelay: "2s" }} />
-        <div className={`absolute top-1/2 left-1/2 w-72 h-72 bg-gradient-to-br ${currentTheme.primarySoft} rounded-full blur-3xl animate-pulse`} style={{ animationDuration: "12s", animationDelay: "4s" }} />
+    <div className={workspaceSurface.pageClassName}>
+      <div className={workspaceSurface.backgroundLayerClassName}>
+        {workspaceSurface.backgroundBlobs.map((blob, index) => (
+          <div key={index} className={blob.className} style={blob.style} />
+        ))}
       </div>
 
       <header
-        className={`relative z-10 border-b ${currentTheme.border} backdrop-blur-xl`}
-        style={{
-          backgroundColor: isDarkMode ? "rgba(17, 24, 39, 0.9)" : "rgba(255, 255, 255, 0.9)",
-        }}
+        className={workspaceSurface.glassHeaderClassName}
+        style={workspaceSurface.glassHeaderStyle}
       >
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -435,15 +527,7 @@ export function Projects() {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className={`flex items-center gap-3 px-4 py-2 ${currentTheme.bgSecondary} rounded-xl border ${currentTheme.border}`}>
-              <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${currentTheme.primary} flex items-center justify-center text-white font-bold shadow-md`}>
-                {user.displayName.charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <p className={`font-semibold ${currentTheme.text} text-sm`}>{user.displayName}</p>
-                <p className={`text-xs ${currentTheme.textMuted}`}>{user.email}</p>
-              </div>
-            </div>
+            <UserProfileChip username={user.displayName} subtitle={user.email} />
             <button
               onClick={handleReplayCoachmarks}
               disabled={!currentProjectsFlow}
@@ -486,11 +570,11 @@ export function Projects() {
             </button>
             <button
               onClick={handleLogout}
-              className={`p-3 rounded-xl transition-all border ${
+              className={`p-3 rounded-xl transition-all cursor-pointer relative z-20 border ${
                 isDarkMode
-                  ? "border-transparent hover:border-red-500/50 hover:shadow-sm hover:shadow-red-500/10 text-red-400 hover:text-red-300"
-                  : "border-transparent hover:bg-red-50 text-red-500 hover:text-red-600"
-              } focus:outline-none focus:ring-2 focus:ring-red-500/30`}
+                  ? `border-transparent hover:${currentTheme.primaryBorder} text-gray-400 hover:text-gray-200 hover:shadow-sm`
+                  : "border-transparent hover:bg-gray-100 text-gray-500 hover:text-gray-900"
+              } focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus}`}
               type="button"
             >
               <Tooltip>
@@ -551,7 +635,7 @@ export function Projects() {
           </div>
 
           <div className={`relative z-10 mt-8 pt-6 border-t ${currentTheme.accentDivider}`}>
-            <div className="grid grid-cols-2 gap-6 xl:grid-cols-5">
+            <div className="grid grid-cols-2 gap-6 xl:grid-cols-4">
               {dashboardIndicators.map((indicator) => {
                 const Icon = indicator.icon;
                 return (
@@ -617,11 +701,11 @@ export function Projects() {
                   <span className={`mb-2 block text-sm font-semibold ${currentTheme.text}`}>Sort by</span>
                   <Select value={queryState.sort} onValueChange={(value) => handleQueryStateChange({ sort: value as BoardSort, page: 1 })}>
                     <SelectTrigger
-                      className={`h-11 rounded-xl border ${currentTheme.inputBorder} ${currentTheme.text} data-[size=default]:h-11 px-4 py-0 shadow-none transition-colors hover:${currentTheme.borderHover} focus:ring-2 ${currentTheme.focus} [&_[data-slot=select-value]]:text-left ${
-                        isDarkMode
-                          ? "bg-gray-900 hover:bg-gray-900 dark:!bg-gray-900 dark:hover:!bg-gray-900"
-                          : currentTheme.inputBg
-                      }`}
+                      className={`h-11 rounded-xl border ${workspaceSurface.inputSurfaceClassName} ${currentTheme.text} data-[size=default]:h-11 px-4 py-0 shadow-none transition-colors hover:${currentTheme.borderHover} focus:ring-2 ${currentTheme.focus} [&_[data-slot=select-value]]:text-left dark:!bg-zinc-950 dark:hover:!bg-zinc-950`}
+                      style={{
+                        ...workspaceSurface.inputSurfaceStyle,
+                        backgroundColor: isDarkMode ? "#09090b" : "#ffffff",
+                      }}
                     >
                       <SelectValue placeholder="Sort boards" />
                     </SelectTrigger>
@@ -662,7 +746,12 @@ export function Projects() {
                                 }`}
                                 aria-pressed={isActive}
                               >
-                                {filter.label}
+                                <span className="inline-flex items-center gap-2">
+                                  <span>{filter.label}</span>
+                                  <kbd className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${currentTheme.border} ${currentTheme.textMuted}`}>
+                                    {filter.value === "all" ? "1" : filter.value === "owned" ? "2" : "3"}
+                                  </kbd>
+                                </span>
                               </button>
                             </TooltipTrigger>
                             <TooltipContent side="top" sideOffset={8}>
@@ -676,26 +765,6 @@ export function Projects() {
                         );
                       })}
 
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={() => handleQueryStateChange({ activeSprint: !queryState.activeSprint, page: 1 })}
-                            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all ${
-                              queryState.activeSprint
-                                ? `${currentTheme.primaryBg} ${currentTheme.primaryText} ${currentTheme.primaryBorder}`
-                                : `${currentTheme.bg} ${currentTheme.textSecondary} ${currentTheme.border} hover:${currentTheme.borderHover}`
-                            }`}
-                            aria-pressed={queryState.activeSprint}
-                          >
-                            <Flag className="h-4 w-4" />
-                            Active sprint only
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" sideOffset={8}>
-                          Show only boards that currently have an active sprint
-                        </TooltipContent>
-                      </Tooltip>
                     </div>
                   </div>
 
@@ -712,7 +781,10 @@ export function Projects() {
                         }`}
                       >
                         <FilterX className="h-4 w-4" />
-                        Clear filters
+                        <span className="inline-flex items-center gap-2">
+                          <span>Clear filters</span>
+                          <kbd className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${currentTheme.border} ${currentTheme.textMuted}`}>Esc</kbd>
+                        </span>
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="top" sideOffset={8}>
@@ -781,9 +853,6 @@ export function Projects() {
                     data-coachmark={index === 0 ? "projects-board-card" : undefined}
                     className={`relative min-h-[17.5rem] overflow-hidden ${currentTheme.cardBg} rounded-2xl border-2 ${currentTheme.border} p-6 hover:${currentTheme.primaryBorder} hover:shadow-xl hover:-translate-y-1 transition-all duration-300 text-left group`}
                   >
-                    {board.hasActiveSprint && (
-                      <div className={`absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r ${currentTheme.primary}`} />
-                    )}
                     {canManageBoard && (
                       <>
                         <button
@@ -833,19 +902,6 @@ export function Projects() {
                               size="md"
                               className="group-hover:scale-110 transition-transform duration-300 shadow-md"
                             />
-                            {board.hasActiveSprint && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className={`inline-flex items-center gap-1.5 rounded-full border ${currentTheme.primaryBorder} ${currentTheme.primaryBg} px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${currentTheme.primaryText}`}>
-                                    <span className={`h-2 w-2 rounded-full ${currentTheme.primarySolid}`} />
-                                    Active sprint
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" sideOffset={8}>
-                                  This board currently has an active sprint
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
                           </div>
                           <ArrowRight
                             className={`w-5 h-5 ${currentTheme.textMuted} group-hover:${currentTheme.primaryText} transition-all duration-300 ${
@@ -893,81 +949,88 @@ export function Projects() {
               })}
             </div>
 
-            {boardList.totalPages > 1 && (
-              <div className="mt-10">
+            <div className="mt-10 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+              <div className="flex items-center gap-2 whitespace-nowrap">
+                <kbd className={`rounded-md border px-2 py-1 text-[10px] font-semibold ${currentTheme.border} ${currentTheme.textMuted}`}>Shift</kbd>
+                <span className={`text-xs ${currentTheme.textMuted}`}>Previous page</span>
+                <kbd className={`ml-2 rounded-md border px-2 py-1 text-[10px] font-semibold ${currentTheme.border} ${currentTheme.textMuted}`}>Tab</kbd>
+                <span className={`text-xs ${currentTheme.textMuted}`}>Next page</span>
+              </div>
+              <div className="justify-self-center">
                 <Pagination>
                   <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious
-                        href={createPageHref(Math.max(boardList.page - 1, 1))}
-                        aria-disabled={boardList.page === 1}
-                        className={`${
-                          boardList.page === 1
-                            ? "pointer-events-none opacity-50"
-                            : `${currentTheme.textSecondary} hover:${currentTheme.primaryText} hover:${currentTheme.primaryBg} border ${currentTheme.border}`
-                        }`}
-                        onClick={(event) => {
-                          if (boardList.page === 1) {
-                            event.preventDefault();
-                            return;
-                          }
-
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href={createPageHref(Math.max(boardList.page - 1, 1))}
+                      aria-disabled={boardList.page === 1}
+                      className={`${
+                        boardList.page === 1
+                          ? "pointer-events-none opacity-50"
+                          : `${currentTheme.textSecondary} hover:${currentTheme.primaryText} hover:${currentTheme.primaryBg} border ${currentTheme.border}`
+                      }`}
+                      onClick={(event) => {
+                        if (boardList.page === 1) {
                           event.preventDefault();
-                          handlePageChange(boardList.page - 1);
-                        }}
-                      />
-                    </PaginationItem>
+                          return;
+                        }
 
-                    {paginationItems.map((item, index) =>
-                      item === "ellipsis" ? (
-                        <PaginationItem key={`ellipsis-${index}`}>
-                          <PaginationEllipsis />
-                        </PaginationItem>
-                      ) : (
-                        <PaginationItem key={item}>
-                          <PaginationLink
-                            href={createPageHref(item)}
-                            isActive={item === boardList.page}
-                            className={
-                              item === boardList.page
-                                ? `border ${currentTheme.primaryBorder} ${currentTheme.primaryBg} ${currentTheme.primaryText} shadow-sm`
-                                : `${currentTheme.textSecondary} hover:${currentTheme.primaryText} hover:${currentTheme.primaryBg}`
-                            }
-                            onClick={(event) => {
-                              event.preventDefault();
-                              handlePageChange(item);
-                            }}
-                          >
-                            {item}
-                          </PaginationLink>
-                        </PaginationItem>
-                      ),
-                    )}
+                        event.preventDefault();
+                        handlePageChange(boardList.page - 1);
+                      }}
+                    />
+                  </PaginationItem>
 
-                    <PaginationItem>
-                      <PaginationNext
-                        href={createPageHref(Math.min(boardList.page + 1, boardList.totalPages))}
-                        aria-disabled={boardList.page === boardList.totalPages}
-                        className={`${
-                          boardList.page === boardList.totalPages
-                            ? "pointer-events-none opacity-50"
-                            : `${currentTheme.textSecondary} hover:${currentTheme.primaryText} hover:${currentTheme.primaryBg} border ${currentTheme.border}`
-                        }`}
-                        onClick={(event) => {
-                          if (boardList.page === boardList.totalPages) {
-                            event.preventDefault();
-                            return;
+                  {paginationItems.map((item, index) =>
+                    item === "ellipsis" ? (
+                      <PaginationItem key={`ellipsis-${index}`}>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    ) : (
+                      <PaginationItem key={item}>
+                        <PaginationLink
+                          href={createPageHref(item)}
+                          isActive={item === boardList.page}
+                          className={
+                            item === boardList.page
+                              ? `border ${currentTheme.primaryBorder} ${currentTheme.primaryBg} ${currentTheme.primaryText} shadow-sm`
+                              : `${currentTheme.textSecondary} hover:${currentTheme.primaryText} hover:${currentTheme.primaryBg}`
                           }
+                          onClick={(event) => {
+                            event.preventDefault();
+                            handlePageChange(item);
+                          }}
+                        >
+                          {item}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ),
+                  )}
 
+                  <PaginationItem>
+                    <PaginationNext
+                      href={createPageHref(Math.min(boardList.page + 1, effectiveTotalPages))}
+                      aria-disabled={boardList.page === effectiveTotalPages}
+                      className={`${
+                        boardList.page === effectiveTotalPages
+                          ? "pointer-events-none opacity-50"
+                          : `${currentTheme.textSecondary} hover:${currentTheme.primaryText} hover:${currentTheme.primaryBg} border ${currentTheme.border}`
+                      }`}
+                      onClick={(event) => {
+                        if (boardList.page === effectiveTotalPages) {
                           event.preventDefault();
-                          handlePageChange(boardList.page + 1);
-                        }}
-                      />
-                    </PaginationItem>
+                          return;
+                        }
+
+                        event.preventDefault();
+                        handlePageChange(boardList.page + 1);
+                      }}
+                    />
+                  </PaginationItem>
                   </PaginationContent>
                 </Pagination>
               </div>
-            )}
+              <div />
+            </div>
           </>
         )}
       </main>

@@ -12,11 +12,10 @@ export type CoachmarkTargetId =
   | "toolbar-view-switcher"
   | "toolbar-search"
   | "board-empty-state-cta"
-  | "active-sprint-banner"
+  | "workflow-summary"
   | "board-columns-grid"
   | "backlog-new-task"
-  | "backlog-sprint-panel"
-  | "backlog-active-sprint-banner"
+  | "backlog-overview"
   | "backlog-list";
 
 export interface CoachmarkStep {
@@ -27,7 +26,7 @@ export interface CoachmarkStep {
 
 interface UseBoardCoachmarksOptions {
   view: BoardWorkspaceView;
-  hasActiveSprint: boolean;
+  hasWorkflowCards: boolean;
   coachmarksEnabled: boolean;
   completedFlows: CoachmarkFlowId[];
   hasFetchedPreferences: boolean;
@@ -39,83 +38,83 @@ const FLOW_STEPS: Record<BoardCoachmarkFlowId, CoachmarkStep[]> = {
   "board-no-active-sprint": [
     {
       targetId: "toolbar-view-switcher",
-      title: "Switch Your Workspace View",
-      description: "Board, List, Backlog, and History stay one click away. Backlog is where you create and start sprints.",
+      title: "Switch Between Workspaces",
+      description: "Board, List, Backlog, and History stay one click away so you can move between planning and active work quickly.",
     },
     {
       targetId: "board-empty-state-cta",
-      title: "Start From Backlog",
-      description: "There is no active sprint yet. Jump to Backlog to create a sprint and pull work into it.",
+      title: "Pull Work Out Of Backlog",
+      description: "No task has entered the workflow yet. Open Backlog to create work or move a ready item into To Do.",
     },
   ],
   "board-active-sprint": [
     {
       targetId: "toolbar-view-switcher",
-      title: "Switch Views Without Losing Context",
-      description: "Use these tabs to move between the active board, list, backlog planning, and completed history.",
+      title: "Keep Your Place Across Views",
+      description: "Use these tabs to swap between the board, table view, backlog, and task history without losing context.",
     },
     {
       targetId: "toolbar-search",
-      title: "Search What Is On Screen",
-      description: "Search filters the tasks in your current workspace so you can narrow the sprint quickly.",
+      title: "Search Only What You Need",
+      description: "Search narrows the tasks in the current workspace so it is easier to focus on the work in front of you.",
     },
     {
-      targetId: "active-sprint-banner",
-      title: "Track The Current Sprint",
-      description: "This header summarizes the active sprint dates and total task count for the work in progress.",
+      targetId: "workflow-summary",
+      title: "Monitor The Flow",
+      description: "This summary shows how much work is active, how much is done, and how much is still waiting in backlog.",
     },
     {
       targetId: "board-columns-grid",
-      title: "Move Work Across Statuses",
-      description: "Drag tasks between columns as work advances from To Do through Done.",
+      title: "Move Tasks Through The Board",
+      description: "Drag tasks between To Do, In Progress, In Review, and Done as work advances.",
     },
   ],
   "backlog-planning": [
     {
       targetId: "backlog-new-task",
       title: "Capture New Work",
-      description: "Create unscheduled tasks here before deciding when they belong in a sprint.",
+      description: "Add ideas, requests, and upcoming tasks here so the team always has fresh work ready to stage.",
     },
     {
-      targetId: "backlog-sprint-panel",
-      title: "Plan The Next Sprint",
-      description: "Create a sprint, review its dates, add tasks, and start it when the sprint is ready.",
+      targetId: "backlog-overview",
+      title: "Stage A Batch In Queue",
+      description: "This queue collects ready backlog tasks so you can launch them into To Do together instead of one by one.",
     },
     {
       targetId: "backlog-list",
-      title: "Fill The Sprint From Backlog",
-      description: "Keep future work here, then add the right tasks into the planned sprint when they are ready.",
+      title: "Choose What To Stage",
+      description: "Use the card actions or drag-and-drop to add tasks into the queue, or pull them back out before starting the batch.",
     },
   ],
   "backlog-active-sprint": [
     {
-      targetId: "backlog-active-sprint-banner",
-      title: "This Sprint Is Already Running",
-      description: "The current sprint is active, and you can complete it here when the planned work is finished.",
+      targetId: "backlog-overview",
+      title: "Queue Up The Next Batch",
+      description: "Even while work is active on the board, the queue helps you prepare the next set of backlog tasks to release together.",
     },
     {
       targetId: "toolbar-view-switcher",
-      title: "Use Board And List For Active Work",
-      description: "Board and List focus on the active sprint, while Backlog stays available for upcoming work.",
+      title: "Jump Back To Active Work",
+      description: "Board and List show the tasks already in motion, while Backlog stays focused on what comes next.",
     },
     {
       targetId: "backlog-new-task",
-      title: "Keep Adding Future Work",
-      description: "You can still create backlog tasks now so the next sprint is easier to plan later.",
+      title: "Keep Feeding The Queue",
+      description: "Continue adding future work here so the queue always has strong candidates when the team has capacity.",
     },
   ],
 };
 
 export function getCoachmarkFlowForView(
   view: BoardWorkspaceView,
-  hasActiveSprint: boolean,
+  hasWorkflowCards: boolean,
 ): BoardCoachmarkFlowId | null {
   if (view === "board") {
-    return hasActiveSprint ? "board-active-sprint" : "board-no-active-sprint";
+    return hasWorkflowCards ? "board-active-sprint" : "board-no-active-sprint";
   }
 
   if (view === "backlog") {
-    return hasActiveSprint ? "backlog-active-sprint" : "backlog-planning";
+    return hasWorkflowCards ? "backlog-active-sprint" : "backlog-planning";
   }
 
   return null;
@@ -127,7 +126,7 @@ function getCoachmarkElement(targetId: CoachmarkTargetId): HTMLElement | null {
 
 export function useBoardCoachmarks({
   view,
-  hasActiveSprint,
+  hasWorkflowCards,
   coachmarksEnabled,
   completedFlows,
   hasFetchedPreferences,
@@ -282,7 +281,7 @@ export function useBoardCoachmarks({
       return;
     }
 
-    const flowId = getCoachmarkFlowForView(view, hasActiveSprint);
+    const flowId = getCoachmarkFlowForView(view, hasWorkflowCards);
     if (!flowId || completedFlows.includes(flowId)) {
       return;
     }
@@ -298,8 +297,8 @@ export function useBoardCoachmarks({
     activeFlowId,
     coachmarksEnabled,
     completedFlows,
-    hasActiveSprint,
     hasFetchedPreferences,
+    hasWorkflowCards,
     isBlocked,
     startFlow,
     view,

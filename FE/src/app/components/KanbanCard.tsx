@@ -5,10 +5,10 @@ import { AssigneePopover } from "./AssigneePopover";
 import { Label } from "../utils/labels";
 import { ReactNode, useState } from "react";
 import { Priority, TaskAssignee, TaskType } from "../utils/cards";
-import { Tooltip } from "./Tooltip";
 import { getPriorityIndicator } from "../utils/priorityColors";
 import { format, parseISO } from "date-fns";
 import { PriorityBadge } from "./PriorityBadge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 interface KanbanCardProps {
   id: number;
@@ -96,14 +96,18 @@ export function KanbanCard({
       }}
     >
       {showDelete && (
-        <button
-          onClick={() => onDelete(id, title)}
-          onMouseDown={(e) => e.stopPropagation()}
-          className="absolute -top-2 -right-2 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg flex items-center justify-center transition-all z-10 cursor-pointer"
-          title="Delete task"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => onDelete(id, title)}
+              onMouseDown={(e) => e.stopPropagation()}
+              className="absolute -top-2 -right-2 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg flex items-center justify-center transition-all z-10 cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top" sideOffset={8}>Delete task</TooltipContent>
+        </Tooltip>
       )}
 
       <div
@@ -132,10 +136,13 @@ export function KanbanCard({
                   </div>
                 )}
                 {priorityIndicator && (
-                  <Tooltip content={priorityIndicator.tooltip} position="top">
-                    <div className="cursor-help">
-                      <PriorityBadge priority={priority!} isDarkMode={isDarkMode} />
-                    </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="cursor-help">
+                        <PriorityBadge priority={priority!} isDarkMode={isDarkMode} />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={8}>{priorityIndicator.tooltip}</TooltipContent>
                   </Tooltip>
                 )}
               </div>
@@ -172,21 +179,31 @@ export function KanbanCard({
 
               <div className="flex items-center gap-2">
                 {storyPoints !== undefined && storyPoints > 0 && (
-                  <div className={`flex items-center gap-1 font-medium ${currentTheme.textSecondary}`}>
-                    <Zap className="w-4 h-4" />
-                    <span className="text-sm">{storyPoints}</span>
-                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className={`flex items-center gap-1 font-medium ${currentTheme.textSecondary}`}>
+                        <Zap className="w-4 h-4" />
+                        <span className="text-sm">{storyPoints}</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={8}>{storyPoints} story points</TooltipContent>
+                  </Tooltip>
                 )}
 
                 {onEdit && (
-                  <button
-                    onClick={() => onEdit(id)}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    className={`flex items-center gap-1 ${currentTheme.textMuted} hover:${currentTheme.primaryText} cursor-pointer transition-colors p-1 rounded hover:${isDarkMode ? "bg-gray-700" : "bg-gray-100"}`}
-                    title="Edit task"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => onEdit(id)}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        className={`flex items-center gap-1 ${currentTheme.textMuted} hover:${currentTheme.primaryText} cursor-pointer transition-colors p-1 rounded hover:${isDarkMode ? "bg-gray-700" : "bg-gray-100"}`}
+                        type="button"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={8}>Edit task</TooltipContent>
+                  </Tooltip>
                 )}
               </div>
             </div>

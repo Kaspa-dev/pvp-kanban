@@ -5,6 +5,8 @@ import { Label } from "../utils/labels";
 import { BanBanLogo } from "./BanBanLogo";
 import * as Popover from "@radix-ui/react-popover";
 import { BoardLogoColorKey, BoardLogoIconKey } from "../utils/boardIdentity";
+import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 interface SidebarProps {
   activeFilter: string;
@@ -35,6 +37,7 @@ export function Sidebar({
 }: SidebarProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
 
   const filters = [
     { id: "all", label: "All", icon: Inbox },
@@ -55,9 +58,12 @@ export function Sidebar({
   };
 
   return (
-    <aside className={`w-72 ${isDarkMode ? 'bg-[#1a1d24]' : 'bg-[#fafbfc]'} flex flex-col border-r ${isDarkMode ? 'border-gray-800' : 'border-gray-200'} ${className}`}>
+    <aside
+      className={`w-72 flex flex-col border-r ${workspaceSurface.panelSurfaceClassName} ${className}`}
+      style={workspaceSurface.panelSurfaceStyle}
+    >
       {/* Logo & Project Title */}
-      <div className="px-6 pt-6 pb-6 border-b border-gray-200 dark:border-gray-800">
+      <div className={`border-b px-6 pb-6 pt-6 ${currentTheme.border}`}>
         <BanBanLogo size="lg" />
         {boardName && (
           <div className="mt-4 flex items-center gap-3 min-w-0">
@@ -69,13 +75,18 @@ export function Sidebar({
 
       {/* Create Task Button */}
       <div className="px-5 pt-6 pb-6">
-        <button
-          onClick={onCreateTask}
-          className={`w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r ${currentTheme.primary} text-white font-semibold rounded-lg hover:${currentTheme.primaryHover} transition-all hover:scale-[1.01] shadow-md hover:shadow-lg`}
-        >
-          <Plus className="w-5 h-5" />
-          Create Task
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={onCreateTask}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r ${currentTheme.primary} text-white font-semibold rounded-lg hover:${currentTheme.primaryHover} transition-all hover:scale-[1.01] shadow-md hover:shadow-lg`}
+            >
+              <Plus className="w-5 h-5" />
+              Create Task
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right" sideOffset={10}>Create a new backlog task</TooltipContent>
+        </Tooltip>
       </div>
 
       {/* Quick Filters Section */}
@@ -88,20 +99,24 @@ export function Sidebar({
             const Icon = filter.icon;
             const isActive = activeFilter === filter.id;
             return (
-              <button
-                key={filter.id}
-                onClick={() => onFilterChange(filter.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium text-sm transition-all ${
-                  isActive
-                    ? `bg-gradient-to-r ${currentTheme.primary} text-white shadow-sm`
-                    : isDarkMode
-                    ? `text-gray-300 hover:text-white border border-transparent hover:${currentTheme.primaryBorder} hover:shadow-sm`
-                    : `${currentTheme.textSecondary} hover:bg-gray-100`
-                }`}
-              >
-                <Icon className="w-4.5 h-4.5" />
-                <span>{filter.label}</span>
-              </button>
+              <Tooltip key={filter.id}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => onFilterChange(filter.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium text-sm transition-all ${
+                      isActive
+                        ? `bg-gradient-to-r ${currentTheme.primary} text-white shadow-sm`
+                        : isDarkMode
+                        ? `${currentTheme.textSecondary} border border-transparent hover:${currentTheme.borderHover} hover:${currentTheme.bgTertiary}`
+                        : `${currentTheme.textSecondary} hover:bg-gray-100`
+                    }`}
+                  >
+                    <Icon className="w-4.5 h-4.5" />
+                    <span>{filter.label}</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={10}>{filter.label}</TooltipContent>
+              </Tooltip>
             );
           })}
         </nav>
@@ -114,21 +129,24 @@ export function Sidebar({
         </h4>
         
         <Popover.Root>
-          <Popover.Trigger asChild>
-            <button
-              className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 ${
-                isDarkMode 
-                  ? `bg-[#242830] border-gray-700 hover:${currentTheme.primaryBorder} hover:shadow-sm` 
-                  : `bg-white border-gray-200 hover:${currentTheme.primaryBorder}`
-              } border rounded-lg transition-all text-left mb-4`}
-            >
-              <div className="flex items-center gap-2">
-                <Tag className={`w-4 h-4 ${currentTheme.textMuted}`} />
-                <span className={`text-sm font-medium ${currentTheme.textSecondary}`}>Select labels</span>
-              </div>
-              <ChevronDown className={`w-4 h-4 ${currentTheme.textMuted}`} />
-            </button>
-          </Popover.Trigger>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex w-full">
+                <Popover.Trigger asChild>
+                  <button
+                    className={`mb-4 w-full rounded-lg border px-3 py-2.5 text-left transition-all ${workspaceSurface.inputSurfaceClassName} hover:${currentTheme.primaryBorder} hover:shadow-sm`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Tag className={`w-4 h-4 ${currentTheme.textMuted}`} />
+                      <span className={`text-sm font-medium ${currentTheme.textSecondary}`}>Select labels</span>
+                    </div>
+                    <ChevronDown className={`w-4 h-4 ${currentTheme.textMuted}`} />
+                  </button>
+                </Popover.Trigger>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={10}>Filter tasks by label</TooltipContent>
+          </Tooltip>
 
           <Popover.Portal>
             <Popover.Content
@@ -169,7 +187,7 @@ export function Sidebar({
                   })
                 )}
               </div>
-              <Popover.Arrow className={isDarkMode ? 'fill-gray-800' : 'fill-white'} />
+              <Popover.Arrow className={isDarkMode ? 'fill-zinc-900' : 'fill-white'} />
             </Popover.Content>
           </Popover.Portal>
         </Popover.Root>
@@ -202,14 +220,19 @@ export function Sidebar({
 
       {/* Logout Button */}
       {onLogout && (
-        <div className="px-5 pb-6 pt-2 border-t border-gray-200 dark:border-gray-800">
-          <button
-            onClick={onLogout}
-            className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 ${isDarkMode ? 'bg-[#242830] text-gray-300 hover:bg-[#2a2f3a] border-gray-700' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-200'} border font-medium rounded-lg transition-all`}
-          >
-            <LogOut className="w-4 h-4" />
-            Log out
-          </button>
+        <div className={`border-t px-5 pb-6 pt-2 ${currentTheme.border}`}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={onLogout}
+                className={`w-full flex items-center justify-center gap-2 rounded-lg border px-4 py-2.5 font-medium transition-all ${workspaceSurface.inputSurfaceClassName} ${currentTheme.textSecondary} hover:${currentTheme.primaryBorder} hover:shadow-sm`}
+              >
+                <LogOut className="w-4 h-4" />
+                Log out
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={10}>Sign out of your account</TooltipContent>
+          </Tooltip>
         </div>
       )}
     </aside>

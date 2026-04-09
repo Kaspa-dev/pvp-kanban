@@ -2,6 +2,7 @@ import * as Popover from "@radix-ui/react-popover";
 import { X } from "lucide-react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { TaskAssignee } from "../utils/cards";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 interface AssigneePopoverProps {
   currentAssignee: TaskAssignee;
@@ -19,15 +20,21 @@ export function AssigneePopover({
 
   return (
     <Popover.Root>
-      <Popover.Trigger asChild>
-        <button
-          className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-semibold shadow-sm ring-1 ${isDarkMode ? 'ring-gray-600' : 'ring-gray-200'} hover:ring-2 hover:shadow-md transition-all cursor-pointer`}
-          style={{ backgroundColor: currentAssignee.color }}
-          title={`Assigned to ${currentAssignee.name}`}
-        >
-          {currentAssignee.name.charAt(0).toUpperCase()}
-        </button>
-      </Popover.Trigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex">
+            <Popover.Trigger asChild>
+              <button
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-semibold shadow-sm ring-1 ${isDarkMode ? 'ring-gray-600' : 'ring-gray-200'} hover:ring-2 hover:shadow-md transition-all cursor-pointer`}
+                style={{ backgroundColor: currentAssignee.color }}
+              >
+                {currentAssignee.name.charAt(0).toUpperCase()}
+              </button>
+            </Popover.Trigger>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" sideOffset={8}>Assigned to {currentAssignee.name}</TooltipContent>
+      </Tooltip>
 
       <Popover.Portal>
         <Popover.Content

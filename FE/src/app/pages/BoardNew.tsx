@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router";
 import { endOfWeek, isWithinInterval, parseISO, startOfWeek } from "date-fns";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import { Play, Calendar, Target } from "lucide-react";
+import { ArrowRight, ClipboardList, LayoutGrid } from "lucide-react";
 import { KanbanColumn } from "../components/KanbanColumn";
 import { AddCardModal } from "../components/AddCardModal";
 import { EditTaskModal } from "../components/EditTaskModal";
@@ -15,7 +15,6 @@ import { ProfileModal } from "../components/ProfileModal";
 import { ListView } from "../components/ListView";
 import { BacklogView2 } from "../components/BacklogView2";
 import { HistoryView } from "../components/HistoryView";
-import { SprintPlanningModal } from "../components/SprintPlanningModal";
 import { CoachmarkOverlay } from "../components/CoachmarkOverlay";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "../components/ui/sheet";
 import { useIsMobile } from "../components/ui/use-mobile";
@@ -30,6 +29,7 @@ import {
 } from "../utils/gamification";
 import { getBoard, Board as BoardType } from "../utils/boards";
 import {
+  addTaskToQueue,
   Card,
   Cards,
   createBoardTask,
@@ -37,6 +37,8 @@ import {
   deleteBoardTask,
   getBoardCards,
   Priority,
+  removeTaskFromQueue,
+  startBoardQueue,
   TaskAssignee,
   TaskStatus,
   TaskType,
@@ -46,24 +48,34 @@ import {
 } from "../utils/cards";
 import {
   Label,
-  getBoardLabels,
   createLabel,
+  getBoardLabels,
 } from "../utils/labels";
-import {
-  Sprint,
-  completeSprint,
-  createSprint,
-  getActiveSprint,
-  getBoardSprints,
-  getPlannedSprint,
-  startSprint,
-} from "../utils/sprints";
+import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
+
+const WORKSPACE_VIEW_ORDER: BoardWorkspaceView[] = ["board", "list", "backlog", "history"];
+
+function isEditableKeyboardTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  const tagName = target.tagName;
+  return (
+    target.isContentEditable ||
+    tagName === "INPUT" ||
+    tagName === "TEXTAREA" ||
+    tagName === "SELECT" ||
+    Boolean(target.closest("[contenteditable='true']"))
+  );
+}
 
 export function Board() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
   const { boardId } = useParams<{ boardId: string }>();
   const isMobile = useIsMobile();
   const numericBoardId = boardId ? Number(boardId) : NaN;
@@ -71,7 +83,6 @@ export function Board() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isSprintPlanningOpen, setIsSprintPlanningOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Card | null>(null);
   const [pendingReplay, setPendingReplay] = useState<{ flowId: ReturnType<typeof getCoachmarkFlowForView>; targetView: BoardWorkspaceView } | null>(null);
@@ -89,8 +100,6 @@ export function Board() {
   const [labels, setLabels] = useState<Label[]>([]);
   const [cards, setCards] = useState<Cards>(createEmptyCards());
   const [currentBoard, setCurrentBoard] = useState<BoardType | null>(null);
-  const [activeSprint, setActiveSprint] = useState<Sprint | null>(null);
-  const [plannedSprint, setPlannedSprint] = useState<Sprint | null>(null);
   const [isLoadingBoard, setIsLoadingBoard] = useState(true);
   const [boardAccessState, setBoardAccessState] = useState<"available" | "forbidden" | "notFound">("available");
   const [loadError, setLoadError] = useState("");
@@ -108,6 +117,7 @@ export function Board() {
       email: user.email,
     };
   });
+
   const {
     preferences,
     hasFetched: hasFetchedPreferences,
@@ -139,8 +149,6 @@ export function Board() {
         setCurrentBoard(null);
         setLabels([]);
         setCards(createEmptyCards());
-        setActiveSprint(null);
-        setPlannedSprint(null);
         setBoardAccessState("notFound");
         setLoadError("");
         setActionError("");
@@ -153,8 +161,6 @@ export function Board() {
         setCurrentBoard(null);
         setLabels([]);
         setCards(createEmptyCards());
-        setActiveSprint(null);
-        setPlannedSprint(null);
         setBoardAccessState("available");
         setLoadError("");
         setActionError("");
@@ -175,10 +181,9 @@ export function Board() {
           return;
         }
 
-        const [boardLabels, boardCards, sprints, progress] = await Promise.all([
+        const [boardLabels, boardCards, progress] = await Promise.all([
           getBoardLabels(numericBoardId),
           getBoardCards(numericBoardId),
-          getBoardSprints(numericBoardId),
           fetchCurrentUserProgress(),
         ]);
 
@@ -190,8 +195,6 @@ export function Board() {
         setCurrentBoard(boardResult.board);
         setLabels(boardLabels);
         setCards(boardCards);
-        setActiveSprint(getActiveSprint(sprints));
-        setPlannedSprint(getPlannedSprint(sprints));
         setUserProgress({
           username: user.displayName,
           email: user.email,
@@ -268,37 +271,6 @@ export function Board() {
     }
   };
 
-  const coachmarks = useBoardCoachmarks({
-    view,
-    hasActiveSprint: !!activeSprint,
-    coachmarksEnabled: preferences.coachmarksEnabled,
-    completedFlows: preferences.completedFlows,
-    hasFetchedPreferences,
-    isBlocked:
-      isLoadingBoard ||
-      isModalOpen ||
-      isSettingsOpen ||
-      isProfileOpen ||
-      isSprintPlanningOpen ||
-      isMobileSidebarOpen ||
-      editingTask !== null ||
-      deleteDialog.isOpen,
-    onFlowCompleted: (flowId) => {
-      void markFlowCompleted(flowId);
-    },
-  });
-  const {
-    activeFlowId,
-    activeStep,
-    stepIndex,
-    totalSteps,
-    targetRect,
-    startFlow,
-    closeFlow,
-    goToNextStep,
-    goToPreviousStep,
-  } = coachmarks;
-
   const saveTask = async (
     taskId: number,
     updates: {
@@ -311,7 +283,6 @@ export function Board() {
       dueDate?: string | null;
       priority?: Priority;
       taskType?: TaskType;
-      sprintId?: number | null;
     },
   ) => {
     if (!Number.isFinite(numericBoardId)) {
@@ -345,10 +316,6 @@ export function Board() {
         updates.taskType === undefined
           ? existingTask.taskType
           : updates.taskType,
-      sprintId:
-        updates.sprintId === undefined
-          ? existingTask.sprintId ?? null
-          : updates.sprintId,
     });
 
     setTaskInState(updatedTask);
@@ -402,29 +369,130 @@ export function Board() {
     });
   }, [activeFilter, allCards, currentUserId, labels, searchQuery, selectedLabelIds]);
 
-  const backlogCards = useMemo(() => {
-    return filteredAllCards.filter((card) => !card.sprintId);
-  }, [filteredAllCards]);
+  const backlogCards = useMemo(
+    () => filteredAllCards.filter((card) => card.status === "backlog"),
+    [filteredAllCards],
+  );
 
-  const plannedSprintCards = useMemo(() => {
-    if (!plannedSprint) return [];
-    return filteredAllCards.filter((card) => card.sprintId === plannedSprint.id);
-  }, [filteredAllCards, plannedSprint]);
+  const queuedBacklogCards = useMemo(
+    () => backlogCards.filter((card) => card.isQueued),
+    [backlogCards],
+  );
 
-  const activeSprintCards = useMemo(() => {
-    if (!activeSprint) {
-      return { todo: [], inProgress: [], inReview: [], done: [] };
+  const plainBacklogCards = useMemo(
+    () => backlogCards.filter((card) => !card.isQueued),
+    [backlogCards],
+  );
+
+  const workflowCards = useMemo(
+    () => filteredAllCards.filter((card) => card.status !== "backlog"),
+    [filteredAllCards],
+  );
+
+  const workflowColumns = useMemo(
+    () => ({
+      todo: workflowCards.filter((card) => card.status === "todo"),
+      inProgress: workflowCards.filter((card) => card.status === "inProgress"),
+      inReview: workflowCards.filter((card) => card.status === "inReview"),
+      done: workflowCards.filter((card) => card.status === "done"),
+    }),
+    [workflowCards],
+  );
+
+  const coachmarks = useBoardCoachmarks({
+    view,
+    hasWorkflowCards: workflowCards.length > 0,
+    coachmarksEnabled: preferences.coachmarksEnabled,
+    completedFlows: preferences.completedFlows,
+    hasFetchedPreferences,
+    isBlocked:
+      isLoadingBoard ||
+      isModalOpen ||
+      isSettingsOpen ||
+      isProfileOpen ||
+      isMobileSidebarOpen ||
+      editingTask !== null ||
+      deleteDialog.isOpen,
+    onFlowCompleted: (flowId) => {
+      void markFlowCompleted(flowId);
+    },
+  });
+
+  const {
+    activeFlowId,
+    activeStep,
+    stepIndex,
+    totalSteps,
+    targetRect,
+    startFlow,
+    closeFlow,
+    goToNextStep,
+    goToPreviousStep,
+  } = coachmarks;
+
+  useEffect(() => {
+    if (
+      isLoadingBoard ||
+      !currentBoard ||
+      isModalOpen ||
+      isSettingsOpen ||
+      isProfileOpen ||
+      isMobileSidebarOpen ||
+      editingTask !== null ||
+      deleteDialog.isOpen ||
+      activeFlowId !== null
+    ) {
+      return;
     }
 
-    const sprintCards = filteredAllCards.filter((card) => card.sprintId === activeSprint.id);
+    const handleWorkspaceKeybind = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.repeat ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey ||
+        isEditableKeyboardTarget(event.target)
+      ) {
+        return;
+      }
 
-    return {
-      todo: sprintCards.filter((card) => card.status === "todo"),
-      inProgress: sprintCards.filter((card) => card.status === "inProgress"),
-      inReview: sprintCards.filter((card) => card.status === "inReview"),
-      done: sprintCards.filter((card) => card.status === "done"),
+      const key = event.key.toLowerCase();
+      if (key !== "q" && key !== "e") {
+        return;
+      }
+
+      event.preventDefault();
+      setView((currentView) => {
+        const currentIndex = WORKSPACE_VIEW_ORDER.indexOf(currentView);
+        if (currentIndex === -1) {
+          return currentView;
+        }
+
+        if (key === "q") {
+          return WORKSPACE_VIEW_ORDER[(currentIndex - 1 + WORKSPACE_VIEW_ORDER.length) % WORKSPACE_VIEW_ORDER.length];
+        }
+
+        return WORKSPACE_VIEW_ORDER[(currentIndex + 1) % WORKSPACE_VIEW_ORDER.length];
+      });
     };
-  }, [filteredAllCards, activeSprint]);
+
+    window.addEventListener("keydown", handleWorkspaceKeybind);
+    return () => {
+      window.removeEventListener("keydown", handleWorkspaceKeybind);
+    };
+  }, [
+    activeFlowId,
+    currentBoard,
+    deleteDialog.isOpen,
+    editingTask,
+    isLoadingBoard,
+    isMobileSidebarOpen,
+    isModalOpen,
+    isProfileOpen,
+    isSettingsOpen,
+  ]);
 
   const handleCardDrop = async (cardId: number, _fromColumnId: string, toColumnId: string) => {
     try {
@@ -463,7 +531,6 @@ export function Board() {
         priority: newCard.priority,
         taskType: newCard.taskType,
         dueDate: newCard.dueDate || null,
-        sprintId: null,
       });
 
       setTaskInState(createdTask);
@@ -533,68 +600,57 @@ export function Board() {
     }
   };
 
-  const handleAddToSprint = async (cardId: number) => {
-    if (!plannedSprint) return;
-
-    try {
-      setActionError("");
-      await saveTask(cardId, { sprintId: plannedSprint.id });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to add the task to the sprint.";
-      setActionError(message);
-    }
-  };
-
-  const handleRemoveFromSprint = async (cardId: number) => {
-    try {
-      setActionError("");
-      await saveTask(cardId, { sprintId: null });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to remove the task from the sprint.";
-      setActionError(message);
-    }
-  };
-
-  const handleCreateSprint = async (input: { name: string; startDate: string; endDate: string }) => {
+  const handleAddToQueue = async (cardId: number) => {
     if (!Number.isFinite(numericBoardId)) {
-      throw new Error("Board not found.");
-    }
-
-    const sprint = await createSprint(numericBoardId, input.name, input.startDate, input.endDate);
-    setPlannedSprint(sprint);
-    setIsSprintPlanningOpen(false);
-    return sprint;
-  };
-
-  const handleStartSprint = async () => {
-    if (!Number.isFinite(numericBoardId) || !plannedSprint) {
-      throw new Error("Sprint not found.");
-    }
-
-    const startedSprint = await startSprint(numericBoardId, plannedSprint.id);
-    refreshWorkspace();
-    setView("board");
-    return startedSprint;
-  };
-
-  const handleCompleteSprint = async () => {
-    if (!Number.isFinite(numericBoardId) || !activeSprint) {
       return;
     }
 
     try {
       setActionError("");
-      await completeSprint(numericBoardId, activeSprint.id);
-      refreshWorkspace();
-      setView("backlog");
+      const updatedTask = await addTaskToQueue(numericBoardId, cardId);
+      setTaskInState(updatedTask);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to complete the sprint right now.";
+      const message = error instanceof Error ? error.message : "Unable to add the task to the queue right now.";
+      setActionError(message);
+    }
+  };
+
+  const handleRemoveFromQueue = async (cardId: number) => {
+    if (!Number.isFinite(numericBoardId)) {
+      return;
+    }
+
+    try {
+      setActionError("");
+      const updatedTask = await removeTaskFromQueue(numericBoardId, cardId);
+      setTaskInState(updatedTask);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to remove the task from the queue right now.";
+      setActionError(message);
+    }
+  };
+
+  const handleStartQueue = async () => {
+    if (!Number.isFinite(numericBoardId)) {
+      return;
+    }
+
+    try {
+      setActionError("");
+      const startedTasks = await startBoardQueue(numericBoardId);
+      startedTasks.forEach(setTaskInState);
+      await refreshProgress();
+      setView("board");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to start the queue right now.";
       setActionError(message);
     }
   };
 
   const handleCreateLabel = async (name: string, color: string) => {
-    if (!Number.isFinite(numericBoardId)) return;
+    if (!Number.isFinite(numericBoardId)) {
+      return;
+    }
 
     try {
       setActionError("");
@@ -608,7 +664,7 @@ export function Board() {
   };
 
   const replayFlowForView = (targetView: BoardWorkspaceView) => {
-    const flowId = getCoachmarkFlowForView(targetView, !!activeSprint);
+    const flowId = getCoachmarkFlowForView(targetView, workflowCards.length > 0);
     if (!flowId) {
       return;
     }
@@ -645,7 +701,7 @@ export function Board() {
 
   if (isLoadingBoard) {
     return (
-      <div className={`flex min-h-screen items-center justify-center ${isDarkMode ? 'bg-[#16181d]' : 'bg-gray-50'}`}>
+      <div className={`flex min-h-screen items-center justify-center ${currentTheme.bgSecondary}`}>
         <p className={currentTheme.textMuted}>Loading board...</p>
       </div>
     );
@@ -664,7 +720,7 @@ export function Board() {
           };
 
     return (
-      <div className={`flex min-h-screen items-center justify-center px-6 ${isDarkMode ? 'bg-[#16181d]' : 'bg-gray-50'}`}>
+      <div className={`flex min-h-screen items-center justify-center px-6 ${currentTheme.bgSecondary}`}>
         <div className={`w-full max-w-xl rounded-3xl border ${currentTheme.border} ${currentTheme.cardBg} p-8 shadow-xl`}>
           <h1 className={`text-2xl font-bold ${currentTheme.text}`}>
             {loadError ? "Unable to load this board" : stateContent.title}
@@ -675,14 +731,14 @@ export function Board() {
           <div className="mt-6 flex flex-wrap gap-3">
             <button
               onClick={() => navigate("/app")}
-              className={`rounded-xl border ${currentTheme.border} px-5 py-3 font-semibold ${currentTheme.bgSecondary} ${currentTheme.text} transition-all hover:${currentTheme.bgTertiary}`}
+              className={`rounded-xl border px-5 py-3 font-semibold ${currentTheme.border} ${currentTheme.bgSecondary} ${currentTheme.text} transition-all hover:${currentTheme.bgTertiary}`}
             >
               Back to Projects
             </button>
             {loadError && (
               <button
                 onClick={refreshWorkspace}
-                className={`rounded-xl px-5 py-3 font-semibold text-white bg-gradient-to-r ${currentTheme.primary} transition-all`}
+                className={`rounded-xl bg-gradient-to-r px-5 py-3 font-semibold text-white transition-all ${currentTheme.primary}`}
               >
                 Retry
               </button>
@@ -695,7 +751,7 @@ export function Board() {
 
   if (!currentBoard) {
     return (
-      <div className={`flex min-h-screen items-center justify-center ${isDarkMode ? 'bg-[#16181d]' : 'bg-gray-50'}`}>
+      <div className={`flex min-h-screen items-center justify-center ${currentTheme.bgSecondary}`}>
         <p className={currentTheme.textMuted}>Loading board...</p>
       </div>
     );
@@ -703,7 +759,12 @@ export function Board() {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className={`min-h-screen w-full flex ${isDarkMode ? 'bg-[#16181d]' : 'bg-gray-50'}`}>
+      <div className={`${workspaceSurface.pageClassName} flex w-full`}>
+        <div className={workspaceSurface.backgroundLayerClassName}>
+          {workspaceSurface.backgroundBlobs.map((blob, index) => (
+            <div key={index} className={blob.className} style={blob.style} />
+          ))}
+        </div>
         {!isMobile && (
           <Sidebar
             activeFilter={activeFilter}
@@ -713,7 +774,7 @@ export function Board() {
             onLabelsChange={setSelectedLabelIds}
             onLogout={async () => {
               await logout();
-              navigate('/login');
+              navigate("/login");
             }}
             boardName={currentBoard.name}
             boardLogoIconKey={currentBoard.logoIconKey}
@@ -749,19 +810,19 @@ export function Board() {
                 onLogout={async () => {
                   setIsMobileSidebarOpen(false);
                   await logout();
-                  navigate('/login');
+                  navigate("/login");
                 }}
                 boardName={currentBoard.name}
                 boardLogoIconKey={currentBoard.logoIconKey}
                 boardLogoColorKey={currentBoard.logoColorKey}
                 labels={labels}
-                className="w-full min-h-full border-r-0"
+                className="min-h-full w-full border-r-0"
               />
             </SheetContent>
           </Sheet>
         )}
 
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="relative z-10 flex min-w-0 flex-1 flex-col">
           <Toolbar
             view={view}
             onViewChange={setView}
@@ -774,6 +835,7 @@ export function Board() {
             onReplayCurrentHints={() => replayFlowForView(view)}
             onReplayBoardHints={() => replayFlowForView("board")}
             onReplayBacklogHints={() => replayFlowForView("backlog")}
+            showViewShortcuts
             userProgress={userProgress}
           />
 
@@ -795,59 +857,74 @@ export function Board() {
 
           {view === "board" && (
             <>
-              {activeSprint ? (
-                <main className={`flex-1 overflow-y-auto ${isDarkMode ? 'bg-[#16181d]' : 'bg-gray-50'}`}>
+              {workflowCards.length > 0 ? (
+                <main className={`flex-1 overflow-y-auto ${currentTheme.bgSecondary}`}>
                   <div
-                    className={`${currentTheme.bgSecondary} border-b ${currentTheme.border} px-8 py-4`}
-                    data-coachmark="active-sprint-banner"
+                    className={`border-b px-8 py-5 ${currentTheme.border} ${currentTheme.bgSecondary}`}
+                    data-coachmark="workflow-summary"
                   >
-                    <div className="flex items-center justify-between max-w-[2000px] mx-auto">
+                    <div className="mx-auto flex max-w-[2000px] flex-wrap items-center justify-between gap-5">
                       <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${currentTheme.primary} flex items-center justify-center`}>
-                          <Play className="w-5 h-5 text-white" />
+                        <div className={`flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${currentTheme.primary}`}>
+                          <LayoutGrid className="h-5 w-5 text-white" />
                         </div>
                         <div>
-                          <h2 className={`text-lg font-bold ${currentTheme.text}`}>{activeSprint.name}</h2>
-                          <div className="flex items-center gap-4 mt-1">
-                            <span className={`text-sm ${currentTheme.textMuted} flex items-center gap-1.5`}>
-                              <Calendar className="w-3.5 h-3.5" />
-                              {new Date(activeSprint.startDate).toLocaleDateString()} - {new Date(activeSprint.endDate).toLocaleDateString()}
-                            </span>
-                            <span className={`text-sm ${currentTheme.textMuted} flex items-center gap-1.5`}>
-                              <Target className="w-3.5 h-3.5" />
-                              {activeSprintCards.todo.length + activeSprintCards.inProgress.length + activeSprintCards.inReview.length + activeSprintCards.done.length} tasks
-                            </span>
-                          </div>
+                          <h2 className={`text-lg font-bold ${currentTheme.text}`}>Workflow Board</h2>
+                          <p className={`text-sm ${currentTheme.textMuted}`}>
+                            Active work outside backlog, ready to move across the board.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-3">
+                        <div className={`rounded-xl border px-3 py-2 ${currentTheme.border} ${currentTheme.bg}`}>
+                          <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${currentTheme.textMuted}`}>
+                            In Flow
+                          </p>
+                          <p className={`text-lg font-bold ${currentTheme.text}`}>{workflowCards.length}</p>
+                        </div>
+                        <div className={`rounded-xl border px-3 py-2 ${currentTheme.border} ${currentTheme.bg}`}>
+                          <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${currentTheme.textMuted}`}>
+                            Done
+                          </p>
+                          <p className={`text-lg font-bold ${currentTheme.text}`}>{workflowColumns.done.length}</p>
+                        </div>
+                        <div className={`rounded-xl border px-3 py-2 ${currentTheme.border} ${currentTheme.bg}`}>
+                          <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${currentTheme.textMuted}`}>
+                            Backlog
+                          </p>
+                          <p className={`text-lg font-bold ${currentTheme.text}`}>{backlogCards.length}</p>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="w-full max-w-[2000px] mx-auto px-8 py-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" data-coachmark="board-columns-grid">
-                      <KanbanColumn id="todo" title="To Do" count={activeSprintCards.todo.length} cards={activeSprintCards.todo} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} availableAssignees={availableAssignees} labels={labels} />
-                      <KanbanColumn id="inProgress" title="In Progress" count={activeSprintCards.inProgress.length} cards={activeSprintCards.inProgress} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} availableAssignees={availableAssignees} labels={labels} />
-                      <KanbanColumn id="inReview" title="In Review" count={activeSprintCards.inReview.length} cards={activeSprintCards.inReview} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} availableAssignees={availableAssignees} labels={labels} />
-                      <KanbanColumn id="done" title="Done" count={activeSprintCards.done.length} cards={activeSprintCards.done} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} availableAssignees={availableAssignees} labels={labels} />
+                  <div className="mx-auto w-full max-w-[2000px] px-8 py-8">
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4" data-coachmark="board-columns-grid">
+                      <KanbanColumn id="todo" title="To Do" count={workflowColumns.todo.length} cards={workflowColumns.todo} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} availableAssignees={availableAssignees} labels={labels} />
+                      <KanbanColumn id="inProgress" title="In Progress" count={workflowColumns.inProgress.length} cards={workflowColumns.inProgress} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} availableAssignees={availableAssignees} labels={labels} />
+                      <KanbanColumn id="inReview" title="In Review" count={workflowColumns.inReview.length} cards={workflowColumns.inReview} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} availableAssignees={availableAssignees} labels={labels} />
+                      <KanbanColumn id="done" title="Done" count={workflowColumns.done.length} cards={workflowColumns.done} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} availableAssignees={availableAssignees} labels={labels} />
                     </div>
                   </div>
                 </main>
               ) : (
-                <div className={`flex-1 flex items-center justify-center ${currentTheme.bgSecondary}`}>
-                  <div className="text-center max-w-md px-6">
-                    <div className={`w-20 h-20 rounded-2xl ${currentTheme.primarySoftStrong} flex items-center justify-center mx-auto mb-6`}>
-                      <Play className={`w-10 h-10 ${currentTheme.primaryText}`} />
+                <div className={`flex flex-1 items-center justify-center ${currentTheme.bgSecondary}`}>
+                  <div className="max-w-md px-6 text-center">
+                    <div className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl ${currentTheme.primarySoftStrong}`}>
+                      <ClipboardList className={`h-10 w-10 ${currentTheme.primaryText}`} />
                     </div>
-                    <h2 className={`text-2xl font-bold ${currentTheme.text} mb-3`}>No Active Sprint</h2>
-                    <p className={`text-base ${currentTheme.textMuted} mb-8`}>
-                      Start a sprint from the Backlog to begin working on tasks in the kanban board
+                    <h2 className={`mb-3 text-2xl font-bold ${currentTheme.text}`}>No active workflow yet</h2>
+                    <p className={`mb-8 text-base ${currentTheme.textMuted}`}>
+                      Tasks stay in Backlog until your team pulls them into To Do. Open Backlog to create work or promote a ready item.
                     </p>
                     <button
-                      onClick={() => setView('backlog')}
+                      onClick={() => setView("backlog")}
                       data-coachmark="board-empty-state-cta"
-                      className={`px-6 py-3 bg-gradient-to-r ${currentTheme.primary} text-white font-bold rounded-lg hover:scale-[1.02] hover:shadow-lg transition-all`}
+                      className={`inline-flex items-center gap-2 rounded-lg bg-gradient-to-r px-6 py-3 font-bold text-white transition-all hover:scale-[1.02] hover:shadow-lg ${currentTheme.primary}`}
                     >
                       Go to Backlog
+                      <ArrowRight className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
@@ -857,9 +934,9 @@ export function Board() {
 
           {view === "list" && (
             <>
-              {activeSprint ? (
+              {workflowCards.length > 0 ? (
                 <ListView
-                  cards={[...activeSprintCards.todo, ...activeSprintCards.inProgress, ...activeSprintCards.inReview, ...activeSprintCards.done]}
+                  cards={workflowCards}
                   onAssigneeChange={handleAssigneeChange}
                   onDelete={handleDeleteRequest}
                   onEdit={handleEditTask}
@@ -867,20 +944,21 @@ export function Board() {
                   labels={labels}
                 />
               ) : (
-                <div className={`flex-1 flex items-center justify-center ${currentTheme.bgSecondary}`}>
-                  <div className="text-center max-w-md px-6">
-                    <div className={`w-20 h-20 rounded-2xl ${currentTheme.primarySoftStrong} flex items-center justify-center mx-auto mb-6`}>
-                      <Play className={`w-10 h-10 ${currentTheme.primaryText}`} />
+                <div className={`flex flex-1 items-center justify-center ${currentTheme.bgSecondary}`}>
+                  <div className="max-w-md px-6 text-center">
+                    <div className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl ${currentTheme.primarySoftStrong}`}>
+                      <ClipboardList className={`h-10 w-10 ${currentTheme.primaryText}`} />
                     </div>
-                    <h2 className={`text-2xl font-bold ${currentTheme.text} mb-3`}>No Active Sprint</h2>
-                    <p className={`text-base ${currentTheme.textMuted} mb-8`}>
-                      List view shows active sprint tasks in table format. Start a sprint from Backlog first.
+                    <h2 className={`mb-3 text-2xl font-bold ${currentTheme.text}`}>No active workflow yet</h2>
+                    <p className={`mb-8 text-base ${currentTheme.textMuted}`}>
+                      List view shows tasks that have already left backlog. Move work into To Do first to see it here.
                     </p>
                     <button
-                      onClick={() => setView('backlog')}
-                      className={`px-6 py-3 bg-gradient-to-r ${currentTheme.primary} text-white font-bold rounded-lg hover:scale-[1.02] hover:shadow-lg transition-all`}
+                      onClick={() => setView("backlog")}
+                      className={`inline-flex items-center gap-2 rounded-lg bg-gradient-to-r px-6 py-3 font-bold text-white transition-all hover:scale-[1.02] hover:shadow-lg ${currentTheme.primary}`}
                     >
                       Go to Backlog
+                      <ArrowRight className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
@@ -890,20 +968,16 @@ export function Board() {
 
           {view === "backlog" && (
             <BacklogView2
-              backlogCards={backlogCards}
-              sprintCards={plannedSprintCards}
-              activeSprint={activeSprint}
-              plannedSprint={plannedSprint}
+              backlogCards={plainBacklogCards}
+              queuedCards={queuedBacklogCards}
               onAssigneeChange={handleAssigneeChange}
               onDelete={handleDeleteRequest}
               onEdit={handleEditTask}
-              onAddToSprint={handleAddToSprint}
-              onRemoveFromSprint={handleRemoveFromSprint}
+              onAddToQueue={(cardId) => void handleAddToQueue(cardId)}
+              onRemoveFromQueue={(cardId) => void handleRemoveFromQueue(cardId)}
+              onStartQueue={() => void handleStartQueue()}
               availableAssignees={availableAssignees}
               labels={labels}
-              onCreateSprint={() => setIsSprintPlanningOpen(true)}
-              onStartSprint={() => void handleStartSprint()}
-              onCompleteSprint={() => void handleCompleteSprint()}
               onCreateTask={() => setIsModalOpen(true)}
             />
           )}
@@ -956,15 +1030,6 @@ export function Board() {
           onClose={() => setDeleteDialog({ isOpen: false, cardId: null, title: "" })}
           onConfirm={() => void handleDeleteConfirm()}
           taskTitle={deleteDialog.title}
-        />
-
-        <SprintPlanningModal
-          key={`${plannedSprint?.id ?? "new"}-${isSprintPlanningOpen ? "open" : "closed"}`}
-          isOpen={isSprintPlanningOpen}
-          onClose={() => setIsSprintPlanningOpen(false)}
-          onCreateSprint={handleCreateSprint}
-          onStartSprint={async () => handleStartSprint()}
-          existingSprint={plannedSprint}
         />
 
         <CoachmarkOverlay

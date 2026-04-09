@@ -82,11 +82,6 @@ public class BoardsController(AppDbContext context) : ControllerBase
         var summary = new BoardListSummaryDto
         {
             ActiveProjects = await accessibleBoardsQuery.CountAsync(cancellationToken),
-            ActiveSprints = await _context.Sprints
-                .Where(sprint =>
-                    sprint.Status == SprintStatus.Active &&
-                    accessibleBoardsQuery.Select(board => board.Id).Contains(sprint.BoardId))
-                .CountAsync(cancellationToken),
             AssignedTasks = await _context.Tasks
                 .Where(task =>
                     task.AssigneeId == userId &&
@@ -125,28 +120,10 @@ public class BoardsController(AppDbContext context) : ControllerBase
             .AsSplitQuery()
             .ToListAsync(cancellationToken);
 
-        List<int> boardIds = boards.Select(board => board.Id).ToList();
-        var activeSprintsByBoardId = boardIds.Count == 0
-            ? new Dictionary<int, Sprint>()
-            : await _context.Sprints
-                .Where(sprint => boardIds.Contains(sprint.BoardId) && sprint.Status == SprintStatus.Active)
-                .ToDictionaryAsync(sprint => sprint.BoardId, cancellationToken);
-
-        Dictionary<int, int> remainingTasksBySprintId = [];
-        List<int> activeSprintIds = activeSprintsByBoardId.Values.Select(sprint => sprint.Id).ToList();
-        if (activeSprintIds.Count > 0)
-        {
-            remainingTasksBySprintId = await _context.Tasks
-                .Where(task => task.SprintId.HasValue && activeSprintIds.Contains(task.SprintId.Value) && task.Status.Title != "done")
-                .GroupBy(task => task.SprintId!.Value)
-                .Select(group => new { SprintId = group.Key, Count = group.Count() })
-                .ToDictionaryAsync(item => item.SprintId, item => item.Count, cancellationToken);
-        }
-
         return Ok(new PagedBoardListResponseDto
         {
             Items = boards
-                .Select(board => ToBoardListItemDto(board, activeSprintsByBoardId, remainingTasksBySprintId))
+                .Select(ToBoardListItemDto)
                 .ToList(),
             Page = page,
             PageSize = pageSize,
@@ -492,11 +469,6 @@ public class BoardsController(AppDbContext context) : ControllerBase
             return BadRequest(new { message = "Assignee must be a member of this board." });
         }
 
-        if (!DoesBoardContainSprint(board, request.SprintId))
-        {
-            return BadRequest(new { message = "Sprint does not belong to this board." });
-        }
-
         if (!TryParsePriority(request.Priority, out Priority? priority))
         {
             return BadRequest(new { message = "Priority is invalid." });
@@ -520,8 +492,8 @@ public class BoardsController(AppDbContext context) : ControllerBase
             StatusId = status!.Id,
             AssigneeId = request.AssigneeUserId,
             ReporterId = userId,
-            SprintId = request.SprintId,
             StoryPoints = request.StoryPoints,
+            IsQueued = false,
             DueDate = dueDate,
             Priority = priority,
             Type = taskType,
@@ -599,11 +571,6 @@ public class BoardsController(AppDbContext context) : ControllerBase
             return BadRequest(new { message = "Assignee must be a member of this board." });
         }
 
-        if (!DoesBoardContainSprint(board, request.SprintId))
-        {
-            return BadRequest(new { message = "Sprint does not belong to this board." });
-        }
-
         if (!TryParsePriority(request.Priority, out Priority? priority))
         {
             return BadRequest(new { message = "Priority is invalid." });
@@ -623,11 +590,14 @@ public class BoardsController(AppDbContext context) : ControllerBase
         task.Description = request.Description.Trim();
         task.StatusId = status!.Id;
         task.AssigneeId = request.AssigneeUserId;
-        task.SprintId = request.SprintId;
         task.StoryPoints = request.StoryPoints;
         task.DueDate = dueDate;
         task.Priority = priority;
         task.Type = taskType;
+        if (!string.Equals(status.Title, "backlog", StringComparison.OrdinalIgnoreCase))
+        {
+            task.IsQueued = false;
+        }
 
         _context.LabeledTasks.RemoveRange(task.LabeledTasks);
         task.LabeledTasks.Clear();
@@ -675,6 +645,146 @@ public class BoardsController(AppDbContext context) : ControllerBase
         await _context.SaveChangesAsync(cancellationToken);
 
         return NoContent();
+    }
+
+    [HttpPost("{boardId:int}/queue/tasks/{taskId:int}")]
+    public async Task<ActionResult<BoardTaskDto>> AddTaskToQueue(int boardId, int taskId, CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        var (accessContext, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
+        if (failure is not null)
+        {
+            return failure;
+        }
+
+        Board board = accessContext!.Board;
+        TaskEntity? task = await _context.Tasks
+            .Where(item => item.Id == taskId && item.BoardId == boardId)
+            .Include(item => item.Status)
+            .Include(item => item.Assignee)
+            .Include(item => item.LabeledTasks)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (task is null)
+        {
+            return NotFound();
+        }
+
+        if (!string.Equals(task.Status.Title, "backlog", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { message = "Only backlog tasks can be added to the queue." });
+        }
+
+        task.IsQueued = true;
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var memberLookup = board.Memberships.ToDictionary(
+            membership => membership.UserId,
+            ToBoardMemberDto);
+
+        return Ok(ToTaskDto(task, memberLookup));
+    }
+
+    [HttpDelete("{boardId:int}/queue/tasks/{taskId:int}")]
+    public async Task<ActionResult<BoardTaskDto>> RemoveTaskFromQueue(int boardId, int taskId, CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        var (accessContext, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
+        if (failure is not null)
+        {
+            return failure;
+        }
+
+        Board board = accessContext!.Board;
+        TaskEntity? task = await _context.Tasks
+            .Where(item => item.Id == taskId && item.BoardId == boardId)
+            .Include(item => item.Status)
+            .Include(item => item.Assignee)
+            .Include(item => item.LabeledTasks)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (task is null)
+        {
+            return NotFound();
+        }
+
+        task.IsQueued = false;
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var memberLookup = board.Memberships.ToDictionary(
+            membership => membership.UserId,
+            ToBoardMemberDto);
+
+        return Ok(ToTaskDto(task, memberLookup));
+    }
+
+    [HttpPost("{boardId:int}/queue/start")]
+    public async Task<ActionResult<IEnumerable<BoardTaskDto>>> StartQueue(int boardId, CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        var (accessContext, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
+        if (failure is not null)
+        {
+            return failure;
+        }
+
+        Board board = accessContext!.Board;
+        BoardTaskStatus? todoStatus = board.TaskStatuses
+            .SingleOrDefault(item => item.Title.Equals("todo", StringComparison.OrdinalIgnoreCase));
+
+        if (todoStatus is null)
+        {
+            return BadRequest(new { message = "The board is missing a To Do status." });
+        }
+
+        var queuedTasks = await _context.Tasks
+            .Where(task => task.BoardId == boardId && task.IsQueued)
+            .Include(task => task.Status)
+            .Include(task => task.Assignee)
+            .Include(task => task.LabeledTasks)
+            .OrderByDescending(task => task.Id)
+            .ToListAsync(cancellationToken);
+
+        List<TaskEntity> startableTasks = queuedTasks
+            .Where(task => task.Status.Title.Equals("backlog", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (startableTasks.Count == 0)
+        {
+            return BadRequest(new { message = "There are no queued backlog tasks to start." });
+        }
+
+        foreach (TaskEntity task in startableTasks)
+        {
+            task.StatusId = todoStatus.Id;
+            task.Status = todoStatus;
+            task.IsQueued = false;
+        }
+
+        foreach (TaskEntity task in queuedTasks.Except(startableTasks))
+        {
+            task.IsQueued = false;
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var memberLookup = board.Memberships.ToDictionary(
+            membership => membership.UserId,
+            ToBoardMemberDto);
+
+        return Ok(startableTasks.Select(task => ToTaskDto(task, memberLookup)));
     }
 
     [HttpGet("{boardId:int}/labels")]
@@ -793,211 +903,6 @@ public class BoardsController(AppDbContext context) : ControllerBase
         return NoContent();
     }
 
-    [HttpGet("{boardId:int}/sprints")]
-    public async Task<ActionResult<IEnumerable<BoardSprintDto>>> GetSprints(int boardId, CancellationToken cancellationToken)
-    {
-        if (!TryGetCurrentUserId(out int userId))
-        {
-            return Unauthorized();
-        }
-
-        var (_, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
-        if (failure is not null)
-        {
-            return failure;
-        }
-
-        var sprints = await _context.Sprints
-            .Where(sprint => sprint.BoardId == boardId)
-            .OrderByDescending(sprint => sprint.CreatedAt)
-            .ToListAsync(cancellationToken);
-
-        return Ok(sprints.Select(ToSprintDto));
-    }
-
-    [HttpPost("{boardId:int}/sprints")]
-    public async Task<ActionResult<BoardSprintDto>> CreateSprint(int boardId, CreateSprintRequestDto request, CancellationToken cancellationToken)
-    {
-        if (!TryGetCurrentUserId(out int userId))
-        {
-            return Unauthorized();
-        }
-
-        var (accessContext, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
-        if (failure is not null)
-        {
-            return failure;
-        }
-
-        Board board = accessContext!.Board;
-
-        if (board.Sprints.Any(sprint => sprint.Status is SprintStatus.Planned or SprintStatus.Active))
-        {
-            return Conflict(new { message = "This board already has an active or planned sprint." });
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Name))
-        {
-            return BadRequest(new { message = "Sprint name is required." });
-        }
-
-        if (!TryParseDate(request.StartDate, out DateTime? startDate) || !TryParseDate(request.EndDate, out DateTime? endDate))
-        {
-            return BadRequest(new { message = "Sprint dates must use the yyyy-MM-dd format." });
-        }
-
-        if (endDate <= startDate)
-        {
-            return BadRequest(new { message = "Sprint end date must be after the start date." });
-        }
-
-        var sprint = new Sprint
-        {
-            BoardId = boardId,
-            Title = request.Name.Trim(),
-            StartDate = startDate!.Value,
-            EndDate = endDate!.Value,
-            Status = SprintStatus.Planned,
-            CreatedAt = DateTime.UtcNow,
-        };
-
-        _context.Sprints.Add(sprint);
-        await _context.SaveChangesAsync(cancellationToken);
-
-        return CreatedAtAction(nameof(GetSprints), new { boardId }, ToSprintDto(sprint));
-    }
-
-    [HttpPatch("{boardId:int}/sprints/{sprintId:int}")]
-    public async Task<ActionResult<BoardSprintDto>> UpdateSprint(int boardId, int sprintId, UpdateSprintRequestDto request, CancellationToken cancellationToken)
-    {
-        if (!TryGetCurrentUserId(out int userId))
-        {
-            return Unauthorized();
-        }
-
-        var (_, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
-        if (failure is not null)
-        {
-            return failure;
-        }
-
-        Sprint? sprint = await _context.Sprints
-            .FirstOrDefaultAsync(item => item.Id == sprintId && item.BoardId == boardId, cancellationToken);
-
-        if (sprint is null)
-        {
-            return NotFound();
-        }
-
-        if (sprint.Status == SprintStatus.Completed)
-        {
-            return Conflict(new { message = "Completed sprints cannot be edited." });
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Name))
-        {
-            return BadRequest(new { message = "Sprint name is required." });
-        }
-
-        if (!TryParseDate(request.StartDate, out DateTime? startDate) || !TryParseDate(request.EndDate, out DateTime? endDate))
-        {
-            return BadRequest(new { message = "Sprint dates must use the yyyy-MM-dd format." });
-        }
-
-        if (endDate <= startDate)
-        {
-            return BadRequest(new { message = "Sprint end date must be after the start date." });
-        }
-
-        sprint.Title = request.Name.Trim();
-        sprint.StartDate = startDate!.Value;
-        sprint.EndDate = endDate!.Value;
-
-        await _context.SaveChangesAsync(cancellationToken);
-        return Ok(ToSprintDto(sprint));
-    }
-
-    [HttpPost("{boardId:int}/sprints/{sprintId:int}/start")]
-    public async Task<ActionResult<BoardSprintDto>> StartSprint(int boardId, int sprintId, CancellationToken cancellationToken)
-    {
-        if (!TryGetCurrentUserId(out int userId))
-        {
-            return Unauthorized();
-        }
-
-        var (accessContext, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
-        if (failure is not null)
-        {
-            return failure;
-        }
-
-        Board board = accessContext!.Board;
-        Sprint? sprint = board.Sprints.FirstOrDefault(item => item.Id == sprintId);
-        if (sprint is null)
-        {
-            return NotFound();
-        }
-
-        if (board.Sprints.Any(item => item.Id != sprintId && item.Status == SprintStatus.Active))
-        {
-            return Conflict(new { message = "This board already has an active sprint." });
-        }
-
-        if (sprint.Status != SprintStatus.Planned)
-        {
-            return Conflict(new { message = "Only planned sprints can be started." });
-        }
-
-        sprint.Status = SprintStatus.Active;
-
-        BoardTaskStatus backlogStatus = board.TaskStatuses.Single(status => status.Title == "backlog");
-        BoardTaskStatus todoStatus = board.TaskStatuses.Single(status => status.Title == "todo");
-
-        var sprintTasks = await _context.Tasks
-            .Where(task => task.BoardId == boardId && task.SprintId == sprintId)
-            .ToListAsync(cancellationToken);
-
-        foreach (TaskEntity task in sprintTasks.Where(task => task.StatusId == backlogStatus.Id))
-        {
-            task.StatusId = todoStatus.Id;
-        }
-
-        await _context.SaveChangesAsync(cancellationToken);
-        return Ok(ToSprintDto(sprint));
-    }
-
-    [HttpPost("{boardId:int}/sprints/{sprintId:int}/complete")]
-    public async Task<ActionResult<BoardSprintDto>> CompleteSprint(int boardId, int sprintId, CancellationToken cancellationToken)
-    {
-        if (!TryGetCurrentUserId(out int userId))
-        {
-            return Unauthorized();
-        }
-
-        var (accessContext, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
-        if (failure is not null)
-        {
-            return failure;
-        }
-
-        Sprint? sprint = accessContext!.Board.Sprints.FirstOrDefault(item => item.Id == sprintId);
-        if (sprint is null)
-        {
-            return NotFound();
-        }
-
-        if (sprint.Status != SprintStatus.Active)
-        {
-            return Conflict(new { message = "Only active sprints can be completed." });
-        }
-
-        sprint.Status = SprintStatus.Completed;
-        sprint.CompletedAt = DateTime.UtcNow;
-
-        await _context.SaveChangesAsync(cancellationToken);
-        return Ok(ToSprintDto(sprint));
-    }
-
     private async Task<(BoardAccessContext? Context, ActionResult? Failure)> GetBoardAccessAsync(
         int boardId,
         int userId,
@@ -1009,7 +914,6 @@ public class BoardsController(AppDbContext context) : ControllerBase
             .ThenInclude(membership => membership.User)
             .Include(item => item.TaskStatuses)
             .Include(item => item.Labels)
-            .Include(item => item.Sprints)
             .FirstOrDefaultAsync(item => item.Id == boardId, cancellationToken);
 
         if (board is null)
@@ -1067,11 +971,6 @@ public class BoardsController(AppDbContext context) : ControllerBase
     private static bool IsBoardMember(Board board, int? assigneeUserId)
     {
         return assigneeUserId is null || board.Memberships.Any(membership => membership.UserId == assigneeUserId.Value);
-    }
-
-    private static bool DoesBoardContainSprint(Board board, int? sprintId)
-    {
-        return sprintId is null || board.Sprints.Any(sprint => sprint.Id == sprintId.Value);
     }
 
     private static bool TryParsePriority(string? value, out Priority? priority)
@@ -1169,11 +1068,6 @@ public class BoardsController(AppDbContext context) : ControllerBase
             _ => query,
         };
 
-        if (request.ActiveSprint)
-        {
-            query = query.Where(board => board.Sprints.Any(sprint => sprint.Status == SprintStatus.Active));
-        }
-
         return query;
     }
 
@@ -1207,16 +1101,8 @@ public class BoardsController(AppDbContext context) : ControllerBase
         };
     }
 
-    private static BoardListItemDto ToBoardListItemDto(
-        Board board,
-        IReadOnlyDictionary<int, Sprint> activeSprintsByBoardId,
-        IReadOnlyDictionary<int, int> remainingTasksBySprintId)
+    private static BoardListItemDto ToBoardListItemDto(Board board)
     {
-        Sprint? activeSprint = activeSprintsByBoardId.TryGetValue(board.Id, out Sprint? sprint) ? sprint : null;
-        int remainingTasks = activeSprint is not null && remainingTasksBySprintId.TryGetValue(activeSprint.Id, out int count)
-            ? count
-            : 0;
-
         return new BoardListItemDto
         {
             Id = board.Id,
@@ -1227,9 +1113,6 @@ public class BoardsController(AppDbContext context) : ControllerBase
             CreatedAt = board.CreatedAt,
             CreatorUserId = board.CreatorId,
             MemberCount = board.Memberships.Count,
-            HasActiveSprint = activeSprint is not null,
-            ActiveSprintName = activeSprint?.Title,
-            RemainingActiveSprintTasks = remainingTasks,
             Members = board.Memberships
                 .OrderBy(membership => membership.Role == BoardRole.Owner ? 0 : 1)
                 .ThenBy(membership => membership.User.FirstName)
@@ -1260,6 +1143,7 @@ public class BoardsController(AppDbContext context) : ControllerBase
             Title = task.Title,
             Description = task.Description,
             StatusKey = task.Status.Title,
+            IsQueued = task.IsQueued,
             LabelIds = task.LabeledTasks
                 .Select(labeledTask => labeledTask.LabelId)
                 .OrderBy(id => id)
@@ -1269,7 +1153,6 @@ public class BoardsController(AppDbContext context) : ControllerBase
                 ? member
                 : null,
             ReporterUserId = task.ReporterId,
-            SprintId = task.SprintId,
             StoryPoints = task.StoryPoints,
             DueDate = task.DueDate?.ToString("yyyy-MM-dd"),
             Priority = task.Priority?.ToString().ToLowerInvariant(),
@@ -1284,21 +1167,6 @@ public class BoardsController(AppDbContext context) : ControllerBase
             Id = label.Id,
             Name = label.Title,
             Color = label.Color,
-        };
-    }
-
-    private static BoardSprintDto ToSprintDto(Sprint sprint)
-    {
-        return new BoardSprintDto
-        {
-            Id = sprint.Id,
-            BoardId = sprint.BoardId,
-            Name = sprint.Title,
-            StartDate = sprint.StartDate.ToString("yyyy-MM-dd"),
-            EndDate = sprint.EndDate.ToString("yyyy-MM-dd"),
-            Status = sprint.Status.ToString().ToLowerInvariant(),
-            CreatedAt = sprint.CreatedAt,
-            CompletedAt = sprint.CompletedAt,
         };
     }
 

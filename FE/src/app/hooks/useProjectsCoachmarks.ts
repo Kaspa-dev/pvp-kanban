@@ -57,7 +57,7 @@ const PROJECTS_FLOW_STEPS: Record<"projects-empty-state" | "projects-board-list"
     {
       targetId: "projects-board-card",
       title: "Scan Board Status At A Glance",
-      description: "Each card highlights active sprint state, teammates, and board actions so you can understand a board before opening it.",
+      description: "Each card highlights the board identity, teammates, and management actions so you can understand a workspace before opening it.",
     },
   ],
 };

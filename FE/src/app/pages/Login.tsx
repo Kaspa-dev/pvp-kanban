@@ -77,7 +77,7 @@ export function Login() {
           </h2>
 
           <p className={`text-lg ${t.textSecondary} mb-8 max-w-md`}>
-            Learn project organization through an engaging Kanban workflow with XP rewards and sprint planning.
+            Learn project organization through an engaging Kanban workflow with XP rewards and team-friendly task flow.
           </p>
 
           <div className="space-y-4 mb-8">
@@ -86,8 +86,8 @@ export function Login() {
                 <LayoutGrid className="w-5 h-5 text-white" strokeWidth={2} />
               </div>
               <div>
-                <p className={`font-semibold ${t.text}`}>Agile sprint workflow</p>
-                <p className={`text-sm ${t.textMuted}`}>Plan, track, and complete sprints</p>
+                <p className={`font-semibold ${t.text}`}>Flow-first planning</p>
+                <p className={`text-sm ${t.textMuted}`}>Pull work from backlog into a clear delivery flow</p>
               </div>
             </div>
 

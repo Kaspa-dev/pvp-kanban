@@ -16,7 +16,7 @@ export const LEVEL_NAMES = [
   "Trainee",           // Level 2
   "Contributor",       // Level 3
   "Organizer",         // Level 4
-  "Sprint Runner",     // Level 5
+  "Flow Runner",       // Level 5
   "Task Slayer",       // Level 6
   "Flow Master",       // Level 7
   "Board Wizard",      // Level 8
@@ -26,7 +26,7 @@ export const LEVEL_NAMES = [
   "Productivity Guru", // Level 12
   "Velocity King",     // Level 13
   "Epic Closer",       // Level 14
-  "Sprint Champion",   // Level 15
+  "Kanban Champion",   // Level 15
 ];
 
 // XP required for each level (cumulative)

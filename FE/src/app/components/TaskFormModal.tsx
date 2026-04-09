@@ -8,7 +8,7 @@ import { Label } from "../utils/labels";
 import { LabelSelector } from "./LabelSelector";
 import { PriorityIcon } from "./PriorityIcon";
 import { TaskDueDatePicker } from "./TaskDueDatePicker";
-import { Tooltip } from "./Tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 interface TaskFormModalProps {
   isOpen: boolean;
@@ -243,8 +243,13 @@ export function TaskFormModal({
               <label className="text-sm font-semibold text-gray-700 dark:text-gray-200">
                 Story Points
               </label>
-              <Tooltip content="Estimate the complexity of the task. Higher points mean more complex work.">
-                <HelpCircle className="w-3.5 h-3.5 text-gray-400 cursor-help" />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="w-3.5 h-3.5 text-gray-400 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={8}>
+                  Estimate the complexity of the task. Higher points mean more complex work.
+                </TooltipContent>
               </Tooltip>
             </div>
             <div className="relative">
@@ -285,8 +290,13 @@ export function TaskFormModal({
               <label className={`text-sm font-semibold ${currentTheme.textSecondary}`}>
                 Priority
               </label>
-              <Tooltip content="Indicates how urgent the task is. Critical tasks should be completed first.">
-                <HelpCircle className="w-3.5 h-3.5 text-gray-400 cursor-help" />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="w-3.5 h-3.5 text-gray-400 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={8}>
+                  Indicates how urgent the task is. Critical tasks should be completed first.
+                </TooltipContent>
               </Tooltip>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -330,8 +340,13 @@ export function TaskFormModal({
               <label className="text-sm font-semibold text-gray-700 dark:text-gray-200">
                 Task Type
               </label>
-              <Tooltip content="Defines the nature of the work: Story, Task, Bug, or Spike.">
-                <HelpCircle className="w-3.5 h-3.5 text-gray-400 cursor-help" />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="w-3.5 h-3.5 text-gray-400 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={8}>
+                  Defines the nature of the work: Story, Task, Bug, or Spike.
+                </TooltipContent>
               </Tooltip>
             </div>
             <div className="flex flex-wrap gap-2">

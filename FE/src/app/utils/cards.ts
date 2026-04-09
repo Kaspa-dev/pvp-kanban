@@ -10,11 +10,11 @@ interface ApiTask {
   title: string;
   description: string;
   statusKey: TaskStatus;
+  isQueued: boolean;
   labelIds: number[];
   assigneeUserId: number | null;
   assignee: ApiAssignee | null;
   reporterUserId: number;
-  sprintId: number | null;
   storyPoints?: number;
   dueDate?: string | null;
   priority?: Priority;
@@ -41,9 +41,9 @@ export interface Card {
   assignee: TaskAssignee;
   assigneeUserId: number | null;
   status: TaskStatus;
+  isQueued?: boolean;
   storyPoints?: number;
   dueDate?: string | null;
-  sprintId?: number | null;
   priority?: Priority;
   taskType?: TaskType;
   reporterUserId?: number;
@@ -92,9 +92,9 @@ function normalizeTask(task: ApiTask): Card {
     assignee: normalizeAssignee(task.assignee),
     assigneeUserId: task.assigneeUserId,
     status: task.statusKey,
+    isQueued: task.isQueued ?? false,
     storyPoints: task.storyPoints,
     dueDate: task.dueDate ?? null,
-    sprintId: task.sprintId ?? null,
     priority: task.priority,
     taskType: task.taskType,
     reporterUserId: task.reporterUserId,
@@ -150,7 +150,6 @@ export async function createBoardTask(
     dueDate?: string | null;
     priority?: Priority;
     taskType?: TaskType;
-    sprintId?: number | null;
   },
 ): Promise<Card> {
   const task = await apiJson<ApiTask>(
@@ -167,7 +166,6 @@ export async function createBoardTask(
         dueDate: input.dueDate ?? null,
         priority: input.priority,
         taskType: input.taskType,
-        sprintId: input.sprintId ?? null,
       }),
     },
     "Unable to create the task right now.",
@@ -189,7 +187,6 @@ export async function updateBoardTask(
     dueDate?: string | null;
     priority?: Priority;
     taskType?: TaskType;
-    sprintId?: number | null;
   },
 ): Promise<Card> {
   const task = await apiJson<ApiTask>(
@@ -206,7 +203,6 @@ export async function updateBoardTask(
         dueDate: input.dueDate ?? null,
         priority: input.priority,
         taskType: input.taskType,
-        sprintId: input.sprintId ?? null,
       }),
     },
     "Unable to save the task right now.",
@@ -224,4 +220,42 @@ export async function deleteBoardTask(
     { method: "DELETE" },
     "Unable to delete the task right now.",
   );
+}
+
+export async function addTaskToQueue(
+  boardId: number | string,
+  taskId: number | string,
+): Promise<Card> {
+  const task = await apiJson<ApiTask>(
+    `/api/boards/${Number(boardId)}/queue/tasks/${Number(taskId)}`,
+    { method: "POST" },
+    "Unable to add the task to the queue right now.",
+  );
+
+  return normalizeTask(task);
+}
+
+export async function removeTaskFromQueue(
+  boardId: number | string,
+  taskId: number | string,
+): Promise<Card> {
+  const task = await apiJson<ApiTask>(
+    `/api/boards/${Number(boardId)}/queue/tasks/${Number(taskId)}`,
+    { method: "DELETE" },
+    "Unable to remove the task from the queue right now.",
+  );
+
+  return normalizeTask(task);
+}
+
+export async function startBoardQueue(
+  boardId: number | string,
+): Promise<Card[]> {
+  const tasks = await apiJson<ApiTask[]>(
+    `/api/boards/${Number(boardId)}/queue/start`,
+    { method: "POST" },
+    "Unable to start the queue right now.",
+  );
+
+  return tasks.map(normalizeTask);
 }

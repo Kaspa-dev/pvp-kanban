@@ -30,14 +30,10 @@ interface ApiBoard {
 
 interface ApiBoardListItem extends ApiBoard {
   memberCount: number;
-  hasActiveSprint: boolean;
-  activeSprintName: string | null;
-  remainingActiveSprintTasks: number;
 }
 
 interface ApiBoardListSummary {
   activeProjects: number;
-  activeSprints: number;
   assignedTasks: number;
   openTasks: number;
   completedTasks: number;
@@ -79,7 +75,6 @@ export type BoardSort = "newest" | "nameAsc" | "nameDesc";
 export interface BoardListQuery {
   q?: string;
   membership?: BoardMembershipFilter;
-  activeSprint?: boolean;
   sort?: BoardSort;
   page?: number;
   pageSize?: number;
@@ -87,7 +82,6 @@ export interface BoardListQuery {
 
 export interface BoardListSummary {
   activeProjects: number;
-  activeSprints: number;
   assignedTasks: number;
   openTasks: number;
   completedTasks: number;
@@ -95,9 +89,6 @@ export interface BoardListSummary {
 
 export interface BoardListItem extends Board {
   memberCount: number;
-  hasActiveSprint: boolean;
-  activeSprintName: string | null;
-  remainingActiveSprintTasks: number;
 }
 
 export interface PagedBoardListResponse {
@@ -139,9 +130,6 @@ function normalizeBoardListItem(board: ApiBoardListItem): BoardListItem {
   return {
     ...normalizeBoard(board),
     memberCount: board.memberCount,
-    hasActiveSprint: board.hasActiveSprint,
-    activeSprintName: board.activeSprintName,
-    remainingActiveSprintTasks: board.remainingActiveSprintTasks,
   };
 }
 
@@ -160,10 +148,6 @@ export async function getUserBoardsPage(query: BoardListQuery = {}): Promise<Pag
 
   if (query.membership && query.membership !== "all") {
     params.set("membership", query.membership);
-  }
-
-  if (query.activeSprint) {
-    params.set("activeSprint", "true");
   }
 
   if (query.sort && query.sort !== "newest") {

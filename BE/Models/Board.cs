@@ -18,6 +18,5 @@ public class Board
     public ICollection<OrganizationalUnit> Teams { get; set; } = new List<OrganizationalUnit>();
     public ICollection<Models.TaskStatus> TaskStatuses { get; set; } = new List<Models.TaskStatus>();
     public ICollection<Models.Task> Backlog { get; set; } = new List<Models.Task>();
-    public ICollection<Sprint> Sprints { get; set; } = new List<Sprint>();
     public ICollection<Label> Labels { get; set; } = new List<Label>();
 }

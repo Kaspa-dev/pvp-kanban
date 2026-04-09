@@ -1,6 +1,9 @@
 import { Search, LayoutGrid, List, Settings, Archive, Clock, Menu, HelpCircle } from "lucide-react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
+import { UserProfileChip } from "./UserProfileChip";
 
 interface ToolbarProps {
   view: "board" | "list" | "backlog" | "history";
@@ -14,6 +17,7 @@ interface ToolbarProps {
   onReplayCurrentHints?: () => void;
   onReplayBoardHints?: () => void;
   onReplayBacklogHints?: () => void;
+  showViewShortcuts?: boolean;
   userProgress?: {
     username: string;
     email: string;
@@ -34,10 +38,12 @@ export function Toolbar({
   onReplayCurrentHints,
   onReplayBoardHints,
   onReplayBacklogHints,
+  showViewShortcuts = false,
   userProgress,
 }: ToolbarProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
 
   const viewButtons: Array<{ value: ToolbarProps["view"]; label: string; icon: typeof LayoutGrid }> = [
     { value: "board", label: "Board", icon: LayoutGrid },
@@ -53,19 +59,26 @@ export function Toolbar({
   } focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus}`;
 
   return (
-    <header className={`${isDarkMode ? "bg-[#1e1f26]" : "bg-white"} border-b ${isDarkMode ? "border-gray-800" : "border-gray-200"}`}>
+    <header
+      className={workspaceSurface.glassHeaderClassName}
+      style={workspaceSurface.glassHeaderStyle}
+    >
       <div className="w-full px-4 md:px-6 py-4">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3 w-full md:max-w-md">
             {showMenuButton && onOpenMenu && (
-              <button
-                onClick={onOpenMenu}
-                className={`md:hidden p-3 rounded-lg border ${currentTheme.border} ${currentTheme.textSecondary} hover:${currentTheme.bgSecondary} transition-all`}
-                title="Open menu"
-                type="button"
-              >
-                <Menu className="w-5 h-5" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={onOpenMenu}
+                    className={`md:hidden p-3 rounded-lg border ${currentTheme.border} ${currentTheme.textSecondary} hover:${currentTheme.bgSecondary} transition-all`}
+                    type="button"
+                  >
+                    <Menu className="w-5 h-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" sideOffset={8}>Open board menu</TooltipContent>
+              </Tooltip>
             )}
 
             <div className="relative flex-1" data-coachmark="toolbar-search">
@@ -75,56 +88,86 @@ export function Toolbar({
                 placeholder="Search tasks..."
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
-                className={`w-full pl-10 pr-4 py-2.5 ${isDarkMode ? "bg-[#242830] border-gray-700 text-gray-100 placeholder-gray-500" : "bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400"} border rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-0 transition-all text-sm ${currentTheme.focus} ${currentTheme.primaryBorder}`}
+                className={`w-full rounded-lg border pl-10 pr-4 py-2.5 text-sm transition-all ${workspaceSurface.inputSurfaceClassName} ${currentTheme.text} placeholder:${currentTheme.textMuted} focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} ${currentTheme.primaryBorder}`}
               />
             </div>
           </div>
 
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:flex-1">
-            <div
-              className={`inline-flex items-center gap-1 ${currentTheme.primaryBg} rounded-xl p-1.5 overflow-x-auto`}
-              data-coachmark="toolbar-view-switcher"
-            >
-              {viewButtons.map(({ value, label, icon: Icon }) => (
-                <button
-                  key={value}
-                  onClick={() => onViewChange(value)}
-                  className={`relative flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all whitespace-nowrap ${
-                    view === value
-                      ? `bg-gradient-to-r ${currentTheme.primary} text-white shadow-md`
-                      : `${isDarkMode ? "text-gray-400" : "text-gray-600"} hover:${currentTheme.primaryText} hover:${currentTheme.primaryBg}`
-                  }`}
-                  title={`${label} View`}
-                >
-                  <Icon className={`w-4 h-4 ${view === value ? "text-white" : ""}`} />
-                  <span>{label}</span>
-                </button>
-              ))}
+            <div className="flex items-center gap-3">
+              {showViewShortcuts && (
+                <div className={`hidden rounded-full border px-3 py-2 md:flex md:items-center md:gap-2 ${currentTheme.border} ${currentTheme.bg}`}>
+                  <kbd className={`rounded-md border px-2 py-0.5 text-[11px] font-semibold ${currentTheme.border} ${currentTheme.text}`}>Q</kbd>
+                  <span className={`text-xs font-medium ${currentTheme.textMuted}`}>Prev</span>
+                </div>
+              )}
+
+              <div
+                className={`inline-flex items-center gap-1 ${currentTheme.primaryBg} rounded-xl p-1.5 overflow-x-auto`}
+                data-coachmark="toolbar-view-switcher"
+              >
+                {viewButtons.map(({ value, label, icon: Icon }) => (
+                  <Tooltip key={value}>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => onViewChange(value)}
+                        className={`relative flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all whitespace-nowrap ${
+                          view === value
+                            ? `bg-gradient-to-r ${currentTheme.primary} text-white shadow-md`
+                            : `${isDarkMode ? "text-gray-400" : "text-gray-600"} hover:${currentTheme.primaryText} hover:${currentTheme.primaryBg}`
+                        }`}
+                        type="button"
+                      >
+                        <Icon className={`w-4 h-4 ${view === value ? "text-white" : ""}`} />
+                        <span>{label}</span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" sideOffset={8}>{label} view</TooltipContent>
+                  </Tooltip>
+                ))}
+              </div>
+
+              {showViewShortcuts && (
+                <div className={`hidden rounded-full border px-3 py-2 md:flex md:items-center md:gap-2 ${currentTheme.border} ${currentTheme.bg}`}>
+                  <span className={`text-xs font-medium ${currentTheme.textMuted}`}>Next</span>
+                  <kbd className={`rounded-md border px-2 py-0.5 text-[11px] font-semibold ${currentTheme.border} ${currentTheme.text}`}>E</kbd>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2 justify-end">
               {(view === "board" || view === "backlog") && onReplayCurrentHints && (
-                <button
-                  onClick={onReplayCurrentHints}
-                  className={helpButtonClassName}
-                  title="Replay hints"
-                  type="button"
-                >
-                  <HelpCircle className="w-5 h-5 pointer-events-none" />
-                </button>
-              )}
-
-              {(view === "list" || view === "history") && onReplayBoardHints && onReplayBacklogHints && (
-                <Popover>
-                  <PopoverTrigger asChild>
+                <Tooltip>
+                  <TooltipTrigger asChild>
                     <button
+                      onClick={onReplayCurrentHints}
                       className={helpButtonClassName}
-                      title="Open hint options"
                       type="button"
                     >
                       <HelpCircle className="w-5 h-5 pointer-events-none" />
                     </button>
-                  </PopoverTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" sideOffset={8}>Replay coachmarks</TooltipContent>
+                </Tooltip>
+              )}
+
+              {(view === "list" || view === "history") && onReplayBoardHints && onReplayBacklogHints && (
+                <Popover>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex">
+                        <PopoverTrigger asChild>
+                          <button
+                            className={helpButtonClassName}
+                            type="button"
+                          >
+                            <HelpCircle className="w-5 h-5 pointer-events-none" />
+                          </button>
+                        </PopoverTrigger>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" sideOffset={8}>Open coachmark options</TooltipContent>
+                  </Tooltip>
                   <PopoverContent align="end" className="w-64 p-3">
                     <p className={`text-sm font-semibold ${currentTheme.text}`}>Replay hints</p>
                     <p className={`mt-1 text-xs ${currentTheme.textMuted}`}>
@@ -151,37 +194,26 @@ export function Toolbar({
               )}
 
               {userProgress && onProfileClick && (
-                <button
+                <UserProfileChip
+                  username={userProgress.username}
+                  subtitle={`Level ${userProgress.level}`}
                   onClick={onProfileClick}
-                  className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all cursor-pointer border ${
-                    isDarkMode
-                      ? `border-transparent hover:${currentTheme.primaryBorder} hover:shadow-sm`
-                      : "border-transparent hover:bg-gray-100"
-                  }`}
-                  title="View profile"
-                >
-                  <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${currentTheme.primary} flex items-center justify-center text-white text-sm font-bold shadow-sm pointer-events-none`}>
-                    {userProgress.username.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="hidden sm:flex flex-col items-start min-w-0 pointer-events-none">
-                    <span className={`text-sm font-semibold ${currentTheme.text} leading-tight truncate max-w-[120px]`}>
-                      {userProgress.username}
-                    </span>
-                    <span className={`text-xs ${currentTheme.textMuted} leading-tight`}>
-                      Level {userProgress.level}
-                    </span>
-                  </div>
-                </button>
+                  tooltip="Open profile"
+                />
               )}
 
-              <button
-                onClick={onOpenSettings}
-                className={helpButtonClassName}
-                title="Settings"
-                type="button"
-              >
-                <Settings className="w-5 h-5 pointer-events-none" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={onOpenSettings}
+                    className={helpButtonClassName}
+                    type="button"
+                  >
+                    <Settings className="w-5 h-5 pointer-events-none" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" sideOffset={8}>Open settings</TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </div>
