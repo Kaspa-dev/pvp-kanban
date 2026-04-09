@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using System.Text.Json;
 
 namespace BE.Controllers;
 
@@ -13,6 +14,17 @@ namespace BE.Controllers;
 [Route("api/[controller]")]
 public class UsersController : ControllerBase
 {
+    private static readonly JsonSerializerOptions UserPreferenceJsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly HashSet<string> AllowedCoachmarkFlows =
+    [
+        "board-no-active-sprint",
+        "board-active-sprint",
+        "backlog-planning",
+        "backlog-active-sprint",
+        "projects-empty-state",
+        "projects-board-list",
+    ];
+
     private readonly AppDbContext _context;
 
     public UsersController(AppDbContext context)
@@ -147,6 +159,47 @@ public class UsersController : ControllerBase
         });
     }
 
+    // GET api/users/me/preferences
+    [HttpGet("me/preferences")]
+    public async Task<ActionResult<UserPreferencesDto>> GetMyPreferences(CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        string? preferencesJson = await _context.Users
+            .Where(user => user.Id == userId)
+            .Select(user => user.PreferencesJson)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return Ok(ParsePreferences(preferencesJson));
+    }
+
+    // PUT api/users/me/preferences
+    [HttpPut("me/preferences")]
+    public async Task<ActionResult<UserPreferencesDto>> UpdateMyPreferences(
+        UpdateUserPreferencesRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        var user = await _context.Users.SingleOrDefaultAsync(candidate => candidate.Id == userId, cancellationToken);
+        if (user is null)
+        {
+            return Unauthorized();
+        }
+
+        UserPreferencesDto normalizedPreferences = NormalizePreferences(request);
+        user.PreferencesJson = JsonSerializer.Serialize(normalizedPreferences, UserPreferenceJsonOptions);
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return Ok(normalizedPreferences);
+    }
+
     private static int CalculateLevel(int xp)
     {
         int[] xpPerLevel =
@@ -190,5 +243,48 @@ public class UsersController : ControllerBase
             User.FindFirstValue("sub");
 
         return int.TryParse(value, out userId);
+    }
+
+    private static UserPreferencesDto ParsePreferences(string? preferencesJson)
+    {
+        if (string.IsNullOrWhiteSpace(preferencesJson))
+        {
+            return new UserPreferencesDto();
+        }
+
+        try
+        {
+            UserPreferencesDto? preferences = JsonSerializer.Deserialize<UserPreferencesDto>(preferencesJson, UserPreferenceJsonOptions);
+            return NormalizePreferences(preferences);
+        }
+        catch (JsonException)
+        {
+            return new UserPreferencesDto();
+        }
+    }
+
+    private static UserPreferencesDto NormalizePreferences(UpdateUserPreferencesRequestDto? request)
+    {
+        return NormalizePreferences(request is null
+            ? null
+            : new UserPreferencesDto
+            {
+                CoachmarksEnabled = request.CoachmarksEnabled,
+                CompletedFlows = request.CompletedFlows,
+            });
+    }
+
+    private static UserPreferencesDto NormalizePreferences(UserPreferencesDto? preferences)
+    {
+        List<string> completedFlows = preferences?.CompletedFlows?
+            .Where(flowId => !string.IsNullOrWhiteSpace(flowId) && AllowedCoachmarkFlows.Contains(flowId))
+            .Distinct(StringComparer.Ordinal)
+            .ToList() ?? new List<string>();
+
+        return new UserPreferencesDto
+        {
+            CoachmarksEnabled = preferences?.CoachmarksEnabled ?? true,
+            CompletedFlows = completedFlows,
+        };
     }
 }

@@ -56,25 +56,9 @@ export function LabelSelector({
 
   return (
     <div>
-      <label className={`block text-sm font-semibold mb-2 ${currentTheme.text}`}>
+      <label className={`block text-sm font-semibold mb-2 ${currentTheme.textSecondary}`}>
         Labels
       </label>
-
-      {selectedLabels.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-2">
-          {selectedLabels.map((label) => (
-            <button
-              key={label.id}
-              onClick={() => removeLabel(label.id)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white text-sm font-medium hover:opacity-80 transition-opacity"
-              style={{ backgroundColor: label.color }}
-            >
-              <span>{label.name}</span>
-              <X className="w-3 h-3" />
-            </button>
-          ))}
-        </div>
-      )}
 
       <Popover.Root open={isOpen} onOpenChange={setIsOpen}>
         <Popover.Trigger asChild>
@@ -210,6 +194,22 @@ export function LabelSelector({
           </Popover.Content>
         </Popover.Portal>
       </Popover.Root>
+
+      {selectedLabels.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {selectedLabels.map((label) => (
+            <button
+              key={label.id}
+              onClick={() => removeLabel(label.id)}
+              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-80"
+              style={{ backgroundColor: label.color }}
+            >
+              <span>{label.name}</span>
+              <X className="h-3 w-3" />
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

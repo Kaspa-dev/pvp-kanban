@@ -1,7 +1,8 @@
-import { X, Palette, Zap, Bell, User, Moon, Sun } from "lucide-react";
+import { X, Palette, Zap, Bell, User, Moon, Sun, Sparkles } from "lucide-react";
 import { useTheme, getThemeColors, AVAILABLE_THEMES } from "../contexts/ThemeContext";
 import { useEffect, useState } from "react";
 import { CustomScrollArea } from "./CustomScrollArea";
+import { useUserPreferences } from "../contexts/UserPreferencesContext";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -11,6 +12,13 @@ interface SettingsModalProps {
 
 export function SettingsModal({ isOpen, onClose, onOpenProfile }: SettingsModalProps) {
   const { theme, setTheme, isDarkMode, setIsDarkMode } = useTheme();
+  const {
+    preferences,
+    isLoading: isPreferencesLoading,
+    errorMessage: preferencesError,
+    updatePreferences,
+    clearError,
+  } = useUserPreferences();
   
   // Load settings from localStorage
   const [gamificationEnabled, setGamificationEnabled] = useState(() => {
@@ -51,6 +59,11 @@ export function SettingsModal({ isOpen, onClose, onOpenProfile }: SettingsModalP
   if (!isOpen) return null;
 
   const currentTheme = getThemeColors(theme, isDarkMode);
+
+  const handleCoachmarkToggle = (checked: boolean) => {
+    clearError();
+    void updatePreferences({ coachmarksEnabled: checked });
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center animate-in fade-in duration-200">
@@ -208,6 +221,41 @@ export function SettingsModal({ isOpen, onClose, onOpenProfile }: SettingsModalP
                     }`}>
                       <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform ${
                         notificationsEnabled ? 'translate-x-6' : 'translate-x-0'
+                      }`} />
+                    </div>
+                  </div>
+                </button>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles className={`w-5 h-5 ${currentTheme.primaryText}`} />
+                  <h3 className={`text-lg font-bold ${currentTheme.text}`}>Coachmarks</h3>
+                </div>
+                <button
+                  onClick={() => handleCoachmarkToggle(!preferences.coachmarksEnabled)}
+                  disabled={isPreferencesLoading}
+                  className={`w-full p-4 rounded-xl border-2 transition-all ${currentTheme.border} hover:${currentTheme.borderHover} ${currentTheme.isDark ? currentTheme.bgSecondary : ''} disabled:cursor-not-allowed disabled:opacity-70`}
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="text-left">
+                      <p className={`font-semibold ${currentTheme.text}`}>Coachmarks</p>
+                      <p className={`text-xs ${currentTheme.textMuted} mt-1`}>
+                        Show guided walkthroughs in projects, boards, and backlog.
+                      </p>
+                      {preferencesError && (
+                        <p className="mt-2 text-xs text-red-600">
+                          {preferencesError}
+                        </p>
+                      )}
+                    </div>
+                    <div className={`relative w-12 h-6 rounded-full transition-colors ${
+                      preferences.coachmarksEnabled
+                        ? `bg-gradient-to-r ${currentTheme.primary}`
+                        : 'bg-gray-300'
+                    }`}>
+                      <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform ${
+                        preferences.coachmarksEnabled ? 'translate-x-6' : 'translate-x-0'
                       }`} />
                     </div>
                   </div>

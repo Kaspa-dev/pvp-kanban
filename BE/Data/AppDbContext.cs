@@ -37,6 +37,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.PasswordHash).IsRequired().HasMaxLength(255);
             entity.Property(e => e.FirstName).IsRequired().HasMaxLength(32);
             entity.Property(e => e.LastName).IsRequired().HasMaxLength(32);
+            entity.Property(e => e.PreferencesJson).HasColumnType("longtext");
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.HasIndex(e => e.Username).IsUnique();
             entity.HasIndex(e => e.Email).IsUnique();

@@ -1,6 +1,6 @@
 import { KanbanCard } from "./KanbanCard";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
-import { Plus, Play, Calendar, CheckSquare, Target, Archive, Zap, Check } from "lucide-react";
+import { Plus, Play, Calendar, CheckSquare, Target, Archive, Zap, Check, MoveDown, MoveUp } from "lucide-react";
 import { Label } from "../utils/labels";
 import { Sprint } from "../utils/sprints";
 import { Card, TaskAssignee } from "../utils/cards";
@@ -53,6 +53,7 @@ export function BacklogView2({
             <h1 className={`text-3xl font-bold ${currentTheme.text}`}>Backlog</h1>
             <button
               onClick={onCreateTask}
+              data-coachmark="backlog-new-task"
               className={`flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r ${currentTheme.primary} text-white font-semibold rounded-lg hover:scale-[1.02] hover:shadow-lg transition-all`}
             >
               <Plus className="w-5 h-5" />
@@ -66,6 +67,7 @@ export function BacklogView2({
 
         {!activeSprint && (
           <div
+            data-coachmark="backlog-sprint-panel"
             className={`${currentTheme.cardBg} rounded-xl border-2 ${
               plannedSprint ? currentTheme.primaryBorder : currentTheme.border
             } overflow-hidden`}
@@ -170,13 +172,19 @@ export function BacklogView2({
                           dueDate={card.dueDate}
                           priority={card.priority}
                           taskType={card.taskType}
+                          footerTone="neutral"
+                          footerAction={
+                            <button
+                              type="button"
+                              onClick={() => onRemoveFromSprint(card.id)}
+                              onMouseDown={(event) => event.stopPropagation()}
+                              className="flex w-full items-center justify-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] transition-opacity hover:opacity-80"
+                            >
+                              <MoveDown className="h-3.5 w-3.5" />
+                              <span>Remove from Sprint</span>
+                            </button>
+                          }
                         />
-                        <button
-                          onClick={() => onRemoveFromSprint(card.id)}
-                          className={`absolute -right-2 -top-2 px-3 py-1.5 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-300'} border rounded-lg text-xs font-medium ${currentTheme.textSecondary} opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:shadow-md`}
-                        >
-                          Remove
-                        </button>
                       </div>
                     ))}
                   </div>
@@ -187,7 +195,10 @@ export function BacklogView2({
         )}
 
         {activeSprint && (
-          <div className={`${currentTheme.cardBg} rounded-xl border ${currentTheme.border} p-6`}>
+          <div
+            className={`${currentTheme.cardBg} rounded-xl border ${currentTheme.border} p-6`}
+            data-coachmark="backlog-active-sprint-banner"
+          >
             <div className="flex items-center gap-4">
               <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${currentTheme.primary} flex items-center justify-center`}>
                 <Play className="w-6 h-6 text-white" />
@@ -213,7 +224,10 @@ export function BacklogView2({
           </div>
         )}
 
-        <div className={`${currentTheme.cardBg} rounded-xl border ${currentTheme.border} overflow-hidden`}>
+        <div
+          className={`${currentTheme.cardBg} rounded-xl border ${currentTheme.border} overflow-hidden`}
+          data-coachmark="backlog-list"
+        >
           <div className={`px-6 py-4 border-b ${currentTheme.border} ${currentTheme.bgSecondary}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -267,15 +281,21 @@ export function BacklogView2({
                       dueDate={card.dueDate}
                       priority={card.priority}
                       taskType={card.taskType}
+                      footerTone="primary"
+                      footerAction={
+                        plannedSprint && !activeSprint ? (
+                          <button
+                            type="button"
+                            onClick={() => onAddToSprint(card.id)}
+                            onMouseDown={(event) => event.stopPropagation()}
+                            className="flex w-full items-center justify-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] transition-opacity hover:opacity-80"
+                          >
+                            <MoveUp className="h-3.5 w-3.5" />
+                            <span>Add to Sprint</span>
+                          </button>
+                        ) : undefined
+                      }
                     />
-                    {plannedSprint && !activeSprint && (
-                      <button
-                        onClick={() => onAddToSprint(card.id)}
-                        className={`absolute -right-2 -top-2 px-3 py-1.5 bg-gradient-to-r ${currentTheme.primary} text-white rounded-lg text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:shadow-lg hover:scale-105`}
-                      >
-                        Add to Sprint
-                      </button>
-                    )}
                   </div>
                 ))}
               </div>

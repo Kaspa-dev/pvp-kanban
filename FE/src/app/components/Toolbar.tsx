@@ -1,5 +1,6 @@
-import { Search, LayoutGrid, List, Settings, Archive, Clock, Menu } from "lucide-react";
+import { Search, LayoutGrid, List, Settings, Archive, Clock, Menu, HelpCircle } from "lucide-react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 
 interface ToolbarProps {
   view: "board" | "list" | "backlog" | "history";
@@ -10,6 +11,9 @@ interface ToolbarProps {
   onProfileClick?: () => void;
   onOpenMenu?: () => void;
   showMenuButton?: boolean;
+  onReplayCurrentHints?: () => void;
+  onReplayBoardHints?: () => void;
+  onReplayBacklogHints?: () => void;
   userProgress?: {
     username: string;
     email: string;
@@ -27,6 +31,9 @@ export function Toolbar({
   onProfileClick,
   onOpenMenu,
   showMenuButton = false,
+  onReplayCurrentHints,
+  onReplayBoardHints,
+  onReplayBacklogHints,
   userProgress,
 }: ToolbarProps) {
   const { theme, isDarkMode } = useTheme();
@@ -38,6 +45,12 @@ export function Toolbar({
     { value: "backlog", label: "Backlog", icon: Archive },
     { value: "history", label: "History", icon: Clock },
   ];
+
+  const helpButtonClassName = `p-3 rounded-lg transition-all cursor-pointer relative z-20 border ${
+    isDarkMode
+      ? `border-transparent hover:${currentTheme.primaryBorder} text-gray-400 hover:text-gray-200 hover:shadow-sm`
+      : "border-transparent hover:bg-gray-100 text-gray-500 hover:text-gray-900"
+  } focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus}`;
 
   return (
     <header className={`${isDarkMode ? "bg-[#1e1f26]" : "bg-white"} border-b ${isDarkMode ? "border-gray-800" : "border-gray-200"}`}>
@@ -55,7 +68,7 @@ export function Toolbar({
               </button>
             )}
 
-            <div className="relative flex-1">
+            <div className="relative flex-1" data-coachmark="toolbar-search">
               <Search className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${isDarkMode ? "text-gray-500" : "text-gray-400"}`} />
               <input
                 type="text"
@@ -68,7 +81,10 @@ export function Toolbar({
           </div>
 
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:flex-1">
-            <div className={`inline-flex items-center gap-1 ${currentTheme.primaryBg} rounded-xl p-1.5 overflow-x-auto`}>
+            <div
+              className={`inline-flex items-center gap-1 ${currentTheme.primaryBg} rounded-xl p-1.5 overflow-x-auto`}
+              data-coachmark="toolbar-view-switcher"
+            >
               {viewButtons.map(({ value, label, icon: Icon }) => (
                 <button
                   key={value}
@@ -87,6 +103,53 @@ export function Toolbar({
             </div>
 
             <div className="flex items-center gap-2 justify-end">
+              {(view === "board" || view === "backlog") && onReplayCurrentHints && (
+                <button
+                  onClick={onReplayCurrentHints}
+                  className={helpButtonClassName}
+                  title="Replay hints"
+                  type="button"
+                >
+                  <HelpCircle className="w-5 h-5 pointer-events-none" />
+                </button>
+              )}
+
+              {(view === "list" || view === "history") && onReplayBoardHints && onReplayBacklogHints && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      className={helpButtonClassName}
+                      title="Open hint options"
+                      type="button"
+                    >
+                      <HelpCircle className="w-5 h-5 pointer-events-none" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-64 p-3">
+                    <p className={`text-sm font-semibold ${currentTheme.text}`}>Replay hints</p>
+                    <p className={`mt-1 text-xs ${currentTheme.textMuted}`}>
+                      Jump to a guided hint flow for the board workspace.
+                    </p>
+                    <div className="mt-3 space-y-2">
+                      <button
+                        type="button"
+                        onClick={onReplayBoardHints}
+                        className={`w-full rounded-xl border ${currentTheme.border} px-3 py-2 text-left text-sm font-medium ${currentTheme.text} transition-all hover:${currentTheme.bgSecondary}`}
+                      >
+                        Replay Board Hints
+                      </button>
+                      <button
+                        type="button"
+                        onClick={onReplayBacklogHints}
+                        className={`w-full rounded-xl border ${currentTheme.border} px-3 py-2 text-left text-sm font-medium ${currentTheme.text} transition-all hover:${currentTheme.bgSecondary}`}
+                      >
+                        Replay Backlog Hints
+                      </button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
+
               {userProgress && onProfileClick && (
                 <button
                   onClick={onProfileClick}
@@ -113,11 +176,7 @@ export function Toolbar({
 
               <button
                 onClick={onOpenSettings}
-                className={`p-3 rounded-lg transition-all cursor-pointer relative z-20 border ${
-                  isDarkMode
-                    ? `border-transparent hover:${currentTheme.primaryBorder} text-gray-400 hover:text-gray-200 hover:shadow-sm`
-                    : "border-transparent hover:bg-gray-100 text-gray-500 hover:text-gray-900"
-                } focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus}`}
+                className={helpButtonClassName}
                 title="Settings"
                 type="button"
               >

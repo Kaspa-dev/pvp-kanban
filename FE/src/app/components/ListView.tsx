@@ -3,9 +3,10 @@ import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { AssigneePopover } from "./AssigneePopover";
 import { Label } from "../utils/labels";
 import { Tooltip } from "./Tooltip";
-import { getPriorityColor, getPriorityIndicator } from "../utils/priorityColors";
+import { getPriorityIndicator } from "../utils/priorityColors";
 import { Card, Priority, TaskAssignee, TaskType } from "../utils/cards";
 import { format, parseISO } from "date-fns";
+import { PriorityBadge } from "./PriorityBadge";
 
 type ListCard = Card & {
   priority?: Priority;
@@ -71,7 +72,7 @@ export function ListView({ cards, onAssigneeChange, onDelete, onEdit, availableA
           <table className="w-full">
             <thead>
               <tr className={`${currentTheme.bgSecondary} border-b-2 ${currentTheme.border}`}>
-                <th className={`px-6 py-4 text-left text-xs font-bold ${currentTheme.textMuted} uppercase tracking-wider w-12`}>
+                <th className={`px-6 py-4 text-left text-xs font-bold ${currentTheme.textMuted} uppercase tracking-wider w-32`}>
                   Priority
                 </th>
                 <th className={`px-6 py-4 text-left text-xs font-bold ${currentTheme.textMuted} uppercase tracking-wider`}>
@@ -113,18 +114,17 @@ export function ListView({ cards, onAssigneeChange, onDelete, onEdit, availableA
                       <td className="px-6 py-4">
                         {card.priority ? (
                           <Tooltip content={priorityIndicator?.tooltip || card.priority} position="right">
-                            <div
-                              className="w-1.5 h-10 rounded-full cursor-help"
-                              style={{ backgroundColor: getPriorityColor(card.priority, isDarkMode) }}
-                            />
+                            <div className="cursor-help">
+                              <PriorityBadge priority={card.priority} isDarkMode={isDarkMode} compact />
+                            </div>
                           </Tooltip>
                         ) : (
-                          <div className="w-1.5 h-10" />
+                          <span className={`${currentTheme.textMuted} text-sm`}>-</span>
                         )}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-1.5">
-                          {(taskTypeDisplay || priorityIndicator || formattedDueDate) && (
+                          {(taskTypeDisplay || formattedDueDate) && (
                             <div className={`flex items-center gap-2 ${currentTheme.textMuted} flex-wrap`}>
                               {taskTypeDisplay && (
                                 <div className="flex items-center gap-1.5">
@@ -137,14 +137,6 @@ export function ListView({ cards, onAssigneeChange, onDelete, onEdit, availableA
                                   <CalendarDays className="w-3.5 h-3.5" />
                                   <span className="text-xs font-medium">{formattedDueDate}</span>
                                 </div>
-                              )}
-                              {priorityIndicator && (
-                                <Tooltip content={priorityIndicator.tooltip} position="top">
-                                  <div className="flex items-center gap-1 cursor-help">
-                                    <span className="text-sm">{priorityIndicator.emoji}</span>
-                                    <span className="text-xs font-medium">{priorityIndicator.label}</span>
-                                  </div>
-                                </Tooltip>
                               )}
                             </div>
                           )}

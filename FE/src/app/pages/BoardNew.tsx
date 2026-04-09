@@ -16,10 +16,13 @@ import { ListView } from "../components/ListView";
 import { BacklogView2 } from "../components/BacklogView2";
 import { HistoryView } from "../components/HistoryView";
 import { SprintPlanningModal } from "../components/SprintPlanningModal";
+import { CoachmarkOverlay } from "../components/CoachmarkOverlay";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "../components/ui/sheet";
 import { useIsMobile } from "../components/ui/use-mobile";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
+import { useUserPreferences } from "../contexts/UserPreferencesContext";
+import { BoardWorkspaceView, getCoachmarkFlowForView, useBoardCoachmarks } from "../hooks/useBoardCoachmarks";
 import {
   UserProgress,
   fetchCurrentUserProgress,
@@ -71,6 +74,7 @@ export function Board() {
   const [isSprintPlanningOpen, setIsSprintPlanningOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Card | null>(null);
+  const [pendingReplay, setPendingReplay] = useState<{ flowId: ReturnType<typeof getCoachmarkFlowForView>; targetView: BoardWorkspaceView } | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; cardId: number | null; title: string }>({
     isOpen: false,
     cardId: null,
@@ -104,6 +108,12 @@ export function Board() {
       email: user.email,
     };
   });
+  const {
+    preferences,
+    hasFetched: hasFetchedPreferences,
+    errorMessage: preferencesError,
+    markFlowCompleted,
+  } = useUserPreferences();
 
   useEffect(() => {
     if (!user) {
@@ -257,6 +267,37 @@ export function Board() {
       setActionError(message);
     }
   };
+
+  const coachmarks = useBoardCoachmarks({
+    view,
+    hasActiveSprint: !!activeSprint,
+    coachmarksEnabled: preferences.coachmarksEnabled,
+    completedFlows: preferences.completedFlows,
+    hasFetchedPreferences,
+    isBlocked:
+      isLoadingBoard ||
+      isModalOpen ||
+      isSettingsOpen ||
+      isProfileOpen ||
+      isSprintPlanningOpen ||
+      isMobileSidebarOpen ||
+      editingTask !== null ||
+      deleteDialog.isOpen,
+    onFlowCompleted: (flowId) => {
+      void markFlowCompleted(flowId);
+    },
+  });
+  const {
+    activeFlowId,
+    activeStep,
+    stepIndex,
+    totalSteps,
+    targetRect,
+    startFlow,
+    closeFlow,
+    goToNextStep,
+    goToPreviousStep,
+  } = coachmarks;
 
   const saveTask = async (
     taskId: number,
@@ -566,6 +607,38 @@ export function Board() {
     }
   };
 
+  const replayFlowForView = (targetView: BoardWorkspaceView) => {
+    const flowId = getCoachmarkFlowForView(targetView, !!activeSprint);
+    if (!flowId) {
+      return;
+    }
+
+    if (view === targetView) {
+      startFlow(flowId);
+      return;
+    }
+
+    setView(targetView);
+    setPendingReplay({ flowId, targetView });
+  };
+
+  useEffect(() => {
+    if (!pendingReplay || view !== pendingReplay.targetView || isLoadingBoard) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      if (pendingReplay.flowId) {
+        startFlow(pendingReplay.flowId);
+      }
+      setPendingReplay(null);
+    }, 120);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [isLoadingBoard, pendingReplay, startFlow, view]);
+
   if (!user) {
     return null;
   }
@@ -630,7 +703,7 @@ export function Board() {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className={`size-full flex ${isDarkMode ? 'bg-[#16181d]' : 'bg-gray-50'}`}>
+      <div className={`min-h-screen w-full flex ${isDarkMode ? 'bg-[#16181d]' : 'bg-gray-50'}`}>
         {!isMobile && (
           <Sidebar
             activeFilter={activeFilter}
@@ -698,6 +771,9 @@ export function Board() {
             onProfileClick={() => setIsProfileOpen(true)}
             onOpenMenu={() => setIsMobileSidebarOpen(true)}
             showMenuButton={isMobile}
+            onReplayCurrentHints={() => replayFlowForView(view)}
+            onReplayBoardHints={() => replayFlowForView("board")}
+            onReplayBacklogHints={() => replayFlowForView("backlog")}
             userProgress={userProgress}
           />
 
@@ -709,11 +785,22 @@ export function Board() {
             </div>
           )}
 
+          {preferencesError && !actionError && (
+            <div className="px-6 pt-4">
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
+                {preferencesError}
+              </div>
+            </div>
+          )}
+
           {view === "board" && (
             <>
               {activeSprint ? (
                 <main className={`flex-1 overflow-y-auto ${isDarkMode ? 'bg-[#16181d]' : 'bg-gray-50'}`}>
-                  <div className={`${currentTheme.bgSecondary} border-b ${currentTheme.border} px-8 py-4`}>
+                  <div
+                    className={`${currentTheme.bgSecondary} border-b ${currentTheme.border} px-8 py-4`}
+                    data-coachmark="active-sprint-banner"
+                  >
                     <div className="flex items-center justify-between max-w-[2000px] mx-auto">
                       <div className="flex items-center gap-4">
                         <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${currentTheme.primary} flex items-center justify-center`}>
@@ -737,7 +824,7 @@ export function Board() {
                   </div>
 
                   <div className="w-full max-w-[2000px] mx-auto px-8 py-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" data-coachmark="board-columns-grid">
                       <KanbanColumn id="todo" title="To Do" count={activeSprintCards.todo.length} cards={activeSprintCards.todo} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} availableAssignees={availableAssignees} labels={labels} />
                       <KanbanColumn id="inProgress" title="In Progress" count={activeSprintCards.inProgress.length} cards={activeSprintCards.inProgress} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} availableAssignees={availableAssignees} labels={labels} />
                       <KanbanColumn id="inReview" title="In Review" count={activeSprintCards.inReview.length} cards={activeSprintCards.inReview} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} availableAssignees={availableAssignees} labels={labels} />
@@ -757,6 +844,7 @@ export function Board() {
                     </p>
                     <button
                       onClick={() => setView('backlog')}
+                      data-coachmark="board-empty-state-cta"
                       className={`px-6 py-3 bg-gradient-to-r ${currentTheme.primary} text-white font-bold rounded-lg hover:scale-[1.02] hover:shadow-lg transition-all`}
                     >
                       Go to Backlog
@@ -877,6 +965,17 @@ export function Board() {
           onCreateSprint={handleCreateSprint}
           onStartSprint={async () => handleStartSprint()}
           existingSprint={plannedSprint}
+        />
+
+        <CoachmarkOverlay
+          isOpen={activeFlowId !== null}
+          step={activeStep}
+          targetRect={targetRect}
+          stepIndex={stepIndex}
+          totalSteps={totalSteps}
+          onBack={goToPreviousStep}
+          onNext={goToNextStep}
+          onClose={() => closeFlow(true)}
         />
       </div>
     </DndProvider>

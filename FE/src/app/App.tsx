@@ -8,6 +8,7 @@ import { Board } from './pages/BoardNew';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { UserPreferencesProvider } from './contexts/UserPreferencesContext';
 
 // AppRoutes must be inside AuthProvider to use useAuth
 function AppRoutes() {
@@ -72,7 +73,9 @@ export default function App() {
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
-          <AppRoutes />
+          <UserPreferencesProvider>
+            <AppRoutes />
+          </UserPreferencesProvider>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

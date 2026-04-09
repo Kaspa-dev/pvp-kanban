@@ -15,9 +15,11 @@ import {
   Settings,
   Trash2,
   Users,
+  HelpCircle,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
+import { useUserPreferences } from "../contexts/UserPreferencesContext";
 import {
   Board,
   BoardListItem,
@@ -34,7 +36,9 @@ import { BoardLogo } from "../components/BoardLogo";
 import { EditProjectModal } from "../components/EditProjectModal";
 import { SettingsModal } from "../components/SettingsModal";
 import { ConfirmDeleteProjectDialog } from "../components/ConfirmDeleteProjectDialog";
+import { CoachmarkOverlay } from "../components/CoachmarkOverlay";
 import { BanBanLogo } from "../components/BanBanLogo";
+import { getProjectsCoachmarkFlow, useProjectsCoachmarks } from "../hooks/useProjectsCoachmarks";
 import {
   Select,
   SelectContent,
@@ -170,6 +174,11 @@ export function Projects() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, logout } = useAuth();
   const { theme, isDarkMode } = useTheme();
+  const {
+    preferences,
+    hasFetched: hasFetchedPreferences,
+    markFlowCompleted,
+  } = useUserPreferences();
   const currentTheme = getThemeColors(theme, isDarkMode);
 
   const queryState = useMemo(() => parseProjectsQueryState(searchParams), [searchParams]);
@@ -285,6 +294,8 @@ export function Projects() {
     queryState.membership !== DEFAULT_MEMBERSHIP_FILTER ||
     queryState.activeSprint ||
     queryState.sort !== DEFAULT_SORT;
+  const hasAnyBoards = boardList.summary.activeProjects > 0;
+  const hasVisibleBoardCards = boardList.items.length > 0;
 
   const shouldShowToolbar =
     isLoadingBoards || boardList.summary.activeProjects > 0 || hasActiveFilters;
@@ -295,6 +306,25 @@ export function Projects() {
     () => buildPaginationItems(boardList.totalPages, boardList.page),
     [boardList.page, boardList.totalPages],
   );
+  const currentProjectsFlow = getProjectsCoachmarkFlow(hasAnyBoards, hasVisibleBoardCards);
+
+  const coachmarks = useProjectsCoachmarks({
+    hasAnyBoards,
+    hasVisibleBoardCards,
+    coachmarksEnabled: preferences.coachmarksEnabled,
+    completedFlows: preferences.completedFlows,
+    hasFetchedPreferences,
+    isBlocked:
+      isInitialBoardsLoad ||
+      !!loadError ||
+      isCreateModalOpen ||
+      isEditModalOpen ||
+      isSettingsModalOpen ||
+      isDeleteDialogOpen,
+    onFlowCompleted: (flowId) => {
+      void markFlowCompleted(flowId);
+    },
+  });
 
   const handleQueryStateChange = (updates: Partial<ProjectsQueryState>, replace = false) => {
     setSearchParams(
@@ -375,6 +405,14 @@ export function Projects() {
     refreshBoards();
   };
 
+  const handleReplayCoachmarks = () => {
+    if (!currentProjectsFlow) {
+      return;
+    }
+
+    coachmarks.startFlow(currentProjectsFlow);
+  };
+
   if (!user) return null;
 
   return (
@@ -406,6 +444,28 @@ export function Projects() {
                 <p className={`text-xs ${currentTheme.textMuted}`}>{user.email}</p>
               </div>
             </div>
+            <button
+              onClick={handleReplayCoachmarks}
+              disabled={!currentProjectsFlow}
+              data-coachmark="projects-settings-help"
+              className={`p-3 rounded-xl transition-all cursor-pointer relative z-20 border ${
+                isDarkMode
+                  ? `border-transparent hover:${currentTheme.primaryBorder} text-gray-400 hover:text-gray-200 hover:shadow-sm`
+                  : "border-transparent hover:bg-gray-100 text-gray-500 hover:text-gray-900"
+              } focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} disabled:cursor-not-allowed disabled:opacity-50`}
+              type="button"
+            >
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex">
+                    <HelpCircle className="w-5 h-5 pointer-events-none" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" sideOffset={8}>
+                  {currentProjectsFlow ? "Replay coachmarks" : "No coachmarks are available in this state"}
+                </TooltipContent>
+              </Tooltip>
+            </button>
             <button
               onClick={() => setIsSettingsModalOpen(true)}
               className={`p-3 rounded-xl transition-all cursor-pointer relative z-20 border ${
@@ -473,6 +533,7 @@ export function Projects() {
             </div>
             <button
               onClick={() => setIsCreateModalOpen(true)}
+              data-coachmark="projects-create-board"
               className={`flex items-center gap-2.5 px-7 py-3.5 bg-gradient-to-r ${currentTheme.primary} text-white font-bold rounded-xl hover:scale-105 hover:shadow-2xl transition-all shadow-lg group`}
             >
               <Tooltip>
@@ -516,7 +577,10 @@ export function Projects() {
         )}
 
         {shouldShowToolbar && (
-          <div className={`${currentTheme.cardBg} rounded-2xl border ${currentTheme.border} p-5 mb-8 shadow-sm`}>
+          <div
+            className={`${currentTheme.cardBg} rounded-2xl border ${currentTheme.border} p-5 mb-8 shadow-sm`}
+            data-coachmark="projects-search-filters"
+          >
             <div className="flex flex-col gap-5">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div>
@@ -680,6 +744,7 @@ export function Projects() {
             <p className={`${currentTheme.textMuted} mb-6`}>Create your first project to get started</p>
             <button
               onClick={() => setIsCreateModalOpen(true)}
+              data-coachmark="projects-empty-create"
               className={`inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r ${currentTheme.primary} text-white font-bold rounded-xl hover:scale-105 transition-all shadow-lg`}
             >
               <Plus className="w-5 h-5" />
@@ -703,13 +768,17 @@ export function Projects() {
           </div>
         ) : (
           <>
-            <div className={`grid md:grid-cols-2 lg:grid-cols-3 gap-6 transition-opacity duration-200 ${isRefreshingBoards ? "opacity-70" : "opacity-100"}`}>
-              {boardList.items.map((board: BoardListItem) => {
+            <div
+              className={`grid md:grid-cols-2 lg:grid-cols-3 gap-6 transition-opacity duration-200 ${isRefreshingBoards ? "opacity-70" : "opacity-100"}`}
+              data-coachmark="projects-board-grid"
+            >
+              {boardList.items.map((board: BoardListItem, index) => {
                 const canManageBoard = isBoardOwner(board, user.id);
 
                 return (
                   <div
                     key={board.id}
+                    data-coachmark={index === 0 ? "projects-board-card" : undefined}
                     className={`relative min-h-[17.5rem] overflow-hidden ${currentTheme.cardBg} rounded-2xl border-2 ${currentTheme.border} p-6 hover:${currentTheme.primaryBorder} hover:shadow-xl hover:-translate-y-1 transition-all duration-300 text-left group`}
                   >
                     {board.hasActiveSprint && (
@@ -795,34 +864,28 @@ export function Projects() {
                           {board.description || "No description"}
                         </p>
 
-                        <div className="mt-4 flex items-center gap-1">
-                          {board.members.slice(0, 4).map((member) => (
-                            <Tooltip key={member.userId}>
-                              <TooltipTrigger asChild>
-                                <div
-                                  className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ${isDarkMode ? "ring-gray-800 group-hover:ring-slate-600" : "ring-white group-hover:ring-slate-300"} transition-all duration-300`}
-                                  style={{ backgroundColor: member.color }}
-                                  aria-label={member.name}
-                                >
-                                  {member.name.charAt(0).toUpperCase()}
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" sideOffset={8}>{member.name}</TooltipContent>
-                            </Tooltip>
-                          ))}
-                          {board.memberCount > 4 && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <div className={`w-8 h-8 rounded-full ${currentTheme.bgTertiary} flex items-center justify-center ${currentTheme.textSecondary} text-xs font-bold ring-2 ${isDarkMode ? "ring-gray-800 group-hover:ring-slate-600" : "ring-white group-hover:ring-slate-300"} transition-all duration-300`}>
-                                  +{board.memberCount - 4}
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" sideOffset={8}>
-                                {board.memberCount - 4} more {board.memberCount - 4 === 1 ? "member" : "members"}
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
-                        </div>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div
+                              className={`mt-4 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-all ${
+                                board.memberCount > 0
+                                  ? `${currentTheme.bgSecondary} ${currentTheme.textSecondary} ${currentTheme.border} group-hover:${currentTheme.borderHover}`
+                                  : `${currentTheme.bgSecondary} ${currentTheme.textMuted} ${currentTheme.border}`
+                              }`}
+                              aria-label={`${board.memberCount} ${board.memberCount === 1 ? "member" : "members"}`}
+                            >
+                              <Users className="h-4 w-4" />
+                              <span>
+                                {board.memberCount} {board.memberCount === 1 ? "member" : "members"}
+                              </span>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" sideOffset={8}>
+                            {board.memberCount === 0
+                              ? "Only you are on this board right now"
+                              : `${board.memberCount} ${board.memberCount === 1 ? "member" : "members"} on this board`}
+                          </TooltipContent>
+                        </Tooltip>
                       </div>
                     </button>
                   </div>
@@ -933,6 +996,17 @@ export function Projects() {
         onClose={() => setIsDeleteDialogOpen(false)}
         board={boardToDelete}
         onBoardDeleted={handleDeleteBoard}
+      />
+
+      <CoachmarkOverlay
+        isOpen={coachmarks.activeFlowId !== null}
+        step={coachmarks.activeStep}
+        targetRect={coachmarks.targetRect}
+        stepIndex={coachmarks.stepIndex}
+        totalSteps={coachmarks.totalSteps}
+        onBack={coachmarks.goToPreviousStep}
+        onNext={coachmarks.goToNextStep}
+        onClose={() => coachmarks.closeFlow(true)}
       />
     </div>
   );
