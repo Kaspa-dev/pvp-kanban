@@ -1,7 +1,6 @@
 import { ChangeEvent, useState } from "react";
 import { Label } from "../utils/labels";
-import { Priority, TaskAssignee, TaskStatus, TaskType } from "../utils/cards";
-import { STORY_POINTS_MAX, STORY_POINTS_MIN } from "../utils/gamification";
+import { getStoryPointsValidationError, Priority, TaskAssignee, TaskStatus, TaskType } from "../utils/cards";
 import { TaskFormModal } from "./TaskFormModal";
 
 interface EditTaskModalProps {
@@ -10,13 +9,12 @@ interface EditTaskModalProps {
   onSave: (cardId: number, updates: {
     title: string;
     description: string;
-    status: TaskStatus;
     labelIds: number[];
     assignee: TaskAssignee | null;
-    storyPoints?: number;
+    storyPoints?: number | null;
     dueDate?: string | null;
-    priority?: Priority;
-    taskType?: TaskType;
+    priority?: Priority | null;
+    taskType?: TaskType | null;
   }) => Promise<void>;
   task: {
     id: number;
@@ -26,10 +24,10 @@ interface EditTaskModalProps {
     status: TaskStatus;
     labelIds: number[];
     assignee: TaskAssignee | null;
-    storyPoints?: number;
+    storyPoints?: number | null;
     dueDate?: string | null;
-    priority?: Priority;
-    taskType?: TaskType;
+    priority?: Priority | null;
+    taskType?: TaskType | null;
   } | null;
   availableLabels: Label[];
   onCreateLabel: (name: string, color: string) => Promise<void>;
@@ -40,7 +38,6 @@ function getInitialTaskState(task: EditTaskModalProps["task"]) {
   return {
     title: task?.title || "",
     description: task?.description || "",
-    status: task?.status || "todo",
     selectedLabelIds: task?.labelIds || [],
     selectedAssignee: task?.assignee || null,
     storyPoints: task?.storyPoints,
@@ -63,14 +60,14 @@ export function EditTaskModal({
   const initialState = getInitialTaskState(task);
   const [title, setTitle] = useState(initialState.title);
   const [description, setDescription] = useState(initialState.description);
-  const [status, setStatus] = useState<TaskStatus>(initialState.status);
   const [selectedLabelIds, setSelectedLabelIds] = useState<number[]>(initialState.selectedLabelIds);
   const [selectedAssignee, setSelectedAssignee] = useState<TaskAssignee | null>(initialState.selectedAssignee);
-  const [storyPoints, setStoryPoints] = useState<number | undefined>(initialState.storyPoints);
+  const [storyPoints, setStoryPoints] = useState<number | null | undefined>(initialState.storyPoints);
   const [dueDate, setDueDate] = useState(initialState.dueDate);
   const [customStoryPoints, setCustomStoryPoints] = useState(initialState.customStoryPoints);
-  const [priority, setPriority] = useState<Priority | undefined>(initialState.priority);
-  const [taskType, setTaskType] = useState<TaskType | undefined>(initialState.taskType);
+  const [storyPointsError, setStoryPointsError] = useState("");
+  const [priority, setPriority] = useState<Priority | null | undefined>(initialState.priority);
+  const [taskType, setTaskType] = useState<TaskType | null | undefined>(initialState.taskType);
   const [showError, setShowError] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
@@ -79,8 +76,13 @@ export function EditTaskModal({
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (!title.trim()) {
-      setShowError(true);
+    const nextShowTitleError = !title.trim();
+    const nextStoryPointsError = getStoryPointsValidationError(customStoryPoints) ?? "";
+
+    setShowError(nextShowTitleError);
+    setStoryPointsError(nextStoryPointsError);
+
+    if (nextShowTitleError || nextStoryPointsError) {
       return;
     }
 
@@ -89,7 +91,6 @@ export function EditTaskModal({
       await onSave(task.id, {
         title: title.trim(),
         description: description.trim(),
-        status,
         labelIds: selectedLabelIds,
         assignee: selectedAssignee,
         storyPoints,
@@ -105,21 +106,30 @@ export function EditTaskModal({
   };
 
   const handleStoryPointsPresetClick = (value: number) => {
-    const nextValue = storyPoints === value ? undefined : value;
+    const nextValue = storyPoints === value ? null : value;
     setStoryPoints(nextValue);
     setCustomStoryPoints(nextValue?.toString() || "");
+    setStoryPointsError("");
   };
 
   const handleCustomStoryPointsChange = (event: ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
     setCustomStoryPoints(value);
 
-    const parsedValue = parseInt(value, 10);
-    if (!Number.isNaN(parsedValue) && parsedValue >= STORY_POINTS_MIN && parsedValue <= STORY_POINTS_MAX) {
-      setStoryPoints(parsedValue);
-    } else if (value === "") {
+    const validationError = getStoryPointsValidationError(value);
+    setStoryPointsError(validationError ?? "");
+
+    if (validationError) {
       setStoryPoints(undefined);
+      return;
     }
+
+    if (value.trim() === "") {
+      setStoryPoints(null);
+      return;
+    }
+
+    setStoryPoints(parseInt(value, 10));
   };
 
   return (
@@ -148,18 +158,17 @@ export function EditTaskModal({
       availableAssignees={availableAssignees}
       selectedAssignee={selectedAssignee}
       onSelectedAssigneeChange={setSelectedAssignee}
-      status={status}
-      onStatusChange={setStatus}
       storyPoints={storyPoints}
       customStoryPoints={customStoryPoints}
       onStoryPointsPresetClick={handleStoryPointsPresetClick}
       onCustomStoryPointsChange={handleCustomStoryPointsChange}
+      storyPointsError={storyPointsError}
       dueDate={dueDate}
       onDueDateChange={setDueDate}
       priority={priority}
-      onPriorityChange={setPriority}
+      onPriorityChange={(value) => setPriority(value ?? null)}
       taskType={taskType}
-      onTaskTypeChange={setTaskType}
+      onTaskTypeChange={(value) => setTaskType(value ?? null)}
     />
   );
 }

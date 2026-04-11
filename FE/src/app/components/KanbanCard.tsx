@@ -1,9 +1,9 @@
-import { GripVertical, Trash2, Zap, Edit, FileText, Bug, Lightbulb, CheckSquare, CalendarDays } from "lucide-react";
+import { GripVertical, Trash2, Zap, Edit, FileText, Bug, Lightbulb, CheckSquare, CalendarDays, Undo2 } from "lucide-react";
 import { useDrag } from "react-dnd";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { AssigneePopover } from "./AssigneePopover";
 import { Label } from "../utils/labels";
-import { ReactNode, useState } from "react";
+import { ReactNode } from "react";
 import { Priority, TaskAssignee, TaskType } from "../utils/cards";
 import { getPriorityIndicator } from "../utils/priorityColors";
 import { format, parseISO } from "date-fns";
@@ -19,6 +19,7 @@ interface KanbanCardProps {
   onAssigneeChange: (cardId: number, assignee: TaskAssignee | null) => void;
   onDelete: (cardId: number, title: string) => void;
   onEdit?: (cardId: number) => void;
+  onMoveToBacklog?: (cardId: number) => void;
   availableAssignees: TaskAssignee[];
   labels: Label[];
   storyPoints?: number;
@@ -26,7 +27,6 @@ interface KanbanCardProps {
   priority?: Priority;
   taskType?: TaskType;
   footerAction?: ReactNode;
-  footerTone?: "primary" | "neutral";
 }
 
 export function KanbanCard({
@@ -38,6 +38,7 @@ export function KanbanCard({
   onAssigneeChange,
   onDelete,
   onEdit,
+  onMoveToBacklog,
   availableAssignees,
   labels,
   storyPoints,
@@ -45,11 +46,9 @@ export function KanbanCard({
   priority,
   taskType,
   footerAction,
-  footerTone = "primary",
 }: KanbanCardProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
-  const [showDelete, setShowDelete] = useState(false);
 
   const [{ isDragging }, drag] = useDrag({
     type: "CARD",
@@ -82,12 +81,14 @@ export function KanbanCard({
   };
 
   const taskTypeDisplay = getTaskTypeDisplay();
+  const hasTopMeta = Boolean(taskTypeDisplay || formattedDueDate || priorityIndicator);
+  const canMoveToBacklog = columnId !== "backlog" && columnId !== "queue" && Boolean(onMoveToBacklog);
+  const actionButtonClassName = `${currentTheme.textMuted} hover:${currentTheme.primaryText} cursor-pointer transition-colors p-1 rounded hover:${isDarkMode ? "bg-gray-700" : "bg-gray-100"}`;
+  const deleteButtonClassName = actionButtonClassName;
 
   return (
     <div
       ref={drag}
-      onMouseEnter={() => setShowDelete(true)}
-      onMouseLeave={() => setShowDelete(false)}
       className={`relative group overflow-visible ${
         isDragging ? "opacity-50 scale-95" : "opacity-100"
       }`}
@@ -95,21 +96,6 @@ export function KanbanCard({
         cursor: isDragging ? "grabbing" : "default",
       }}
     >
-      {showDelete && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => onDelete(id, title)}
-              onMouseDown={(e) => e.stopPropagation()}
-              className="absolute -top-2 -right-2 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg flex items-center justify-center transition-all z-10 cursor-pointer"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={8}>Delete task</TooltipContent>
-        </Tooltip>
-      )}
-
       <div
         className={`overflow-hidden rounded-lg border-2 ${currentTheme.border} ${currentTheme.cardBg} shadow-md transition-all duration-200 hover:-translate-y-1 hover:shadow-2xl hover:${currentTheme.primaryBorder}`}
       >
@@ -120,51 +106,56 @@ export function KanbanCard({
             <GripVertical className="w-4 h-4" />
           </div>
 
-          <div className="flex-1 min-w-0">
-            {(taskTypeDisplay || formattedDueDate || priorityIndicator) && (
-              <div className={`flex items-center gap-2 mb-2 ${currentTheme.textMuted} flex-wrap`}>
-                {taskTypeDisplay && (
-                  <div className="flex items-center gap-1.5">
-                    {taskTypeDisplay.icon}
-                    <span className="text-xs font-medium">{taskTypeDisplay.label}</span>
-                  </div>
-                )}
-                {formattedDueDate && (
-                  <div className="flex items-center gap-1.5">
-                    <CalendarDays className="w-3.5 h-3.5" />
-                    <span className="text-xs font-medium">{formattedDueDate}</span>
-                  </div>
-                )}
-                {priorityIndicator && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="cursor-help">
-                        <PriorityBadge priority={priority!} isDarkMode={isDarkMode} />
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" sideOffset={8}>{priorityIndicator.tooltip}</TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
-            )}
+          <div className="relative flex-1 min-w-0">
+            <div>
+              {hasTopMeta && (
+                <div className={`mb-2 flex min-w-0 items-center gap-2 flex-wrap ${currentTheme.textMuted}`}>
+                  {taskTypeDisplay && (
+                    <div className="flex items-center gap-1.5">
+                      {taskTypeDisplay.icon}
+                      <span className="text-xs font-medium">{taskTypeDisplay.label}</span>
+                    </div>
+                  )}
+                  {formattedDueDate && (
+                    <div className="flex items-center gap-1.5">
+                      <CalendarDays className="w-3.5 h-3.5" />
+                      <span className="text-xs font-medium">{formattedDueDate}</span>
+                    </div>
+                  )}
+                  {priorityIndicator && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="cursor-help">
+                          <PriorityBadge priority={priority!} isDarkMode={isDarkMode} />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" sideOffset={8}>{priorityIndicator.tooltip}</TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+              )}
 
-            <h3 className={`${cardLabels.length > 0 ? "mb-3" : "mb-4"} font-bold text-[15px] ${currentTheme.text} line-clamp-2 leading-tight`}>
-              {title}
-            </h3>
+              <h3
+                title={title}
+                className={`${cardLabels.length > 0 ? "mb-3" : "mb-4"} truncate font-bold text-[15px] leading-tight ${currentTheme.text}`}
+              >
+                {title}
+              </h3>
 
-            {cardLabels.length > 0 && (
-              <div className="flex gap-1.5 mb-4 flex-wrap">
-                {cardLabels.map((label) => (
-                  <span
-                    key={label.id}
-                    className="px-2 py-0.5 rounded-md text-xs font-medium text-white pointer-events-none"
-                    style={{ backgroundColor: label.color }}
-                  >
-                    {label.name}
-                  </span>
-                ))}
-              </div>
-            )}
+              {cardLabels.length > 0 && (
+                <div className="mb-4 flex gap-1.5 flex-wrap">
+                  {cardLabels.map((label) => (
+                    <span
+                      key={label.id}
+                      className="px-2 py-0.5 rounded-md text-xs font-medium text-white pointer-events-none"
+                      style={{ backgroundColor: label.color }}
+                    >
+                      {label.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
@@ -177,7 +168,7 @@ export function KanbanCard({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap justify-end">
                 {storyPoints !== undefined && storyPoints > 0 && (
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -190,13 +181,29 @@ export function KanbanCard({
                   </Tooltip>
                 )}
 
+                {canMoveToBacklog && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => onMoveToBacklog?.(id)}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        className={actionButtonClassName}
+                        type="button"
+                      >
+                        <Undo2 className="w-4 h-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={8}>Move to staging</TooltipContent>
+                  </Tooltip>
+                )}
+
                 {onEdit && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
                         onClick={() => onEdit(id)}
                         onMouseDown={(e) => e.stopPropagation()}
-                        className={`flex items-center gap-1 ${currentTheme.textMuted} hover:${currentTheme.primaryText} cursor-pointer transition-colors p-1 rounded hover:${isDarkMode ? "bg-gray-700" : "bg-gray-100"}`}
+                        className={actionButtonClassName}
                         type="button"
                       >
                         <Edit className="w-4 h-4" />
@@ -205,31 +212,27 @@ export function KanbanCard({
                     <TooltipContent side="top" sideOffset={8}>Edit task</TooltipContent>
                   </Tooltip>
                 )}
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => onDelete(id, title)}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      className={deleteButtonClassName}
+                      type="button"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={8}>Delete task</TooltipContent>
+                </Tooltip>
+
+                {footerAction}
               </div>
             </div>
           </div>
         </div>
 
-        {footerAction && (
-          <div className="max-h-0 overflow-hidden opacity-0 transition-all duration-200 group-hover:max-h-9 group-hover:opacity-100">
-            <div
-              className={`border-t px-4 py-1 ${
-                footerTone === "primary"
-                  ? `${currentTheme.primaryBorder} bg-gradient-to-r ${currentTheme.primarySoftStrong} ${currentTheme.primaryText}`
-                  : `${currentTheme.border} ${currentTheme.bgSecondary} ${currentTheme.textSecondary}`
-              }`}
-              style={{
-                boxShadow: isDarkMode
-                  ? "inset 0 1px 0 rgba(255,255,255,0.06)"
-                  : "inset 0 1px 0 rgba(255,255,255,0.55)",
-              }}
-            >
-              <div className="relative flex min-h-5 items-center justify-center text-[11px]">
-                {footerAction}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

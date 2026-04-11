@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Tag, Plus, X, ChevronDown } from "lucide-react";
+import { Tag, Plus, X, ChevronDown, HelpCircle } from "lucide-react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { Label, LABEL_COLORS } from "../utils/labels";
 import * as Popover from "@radix-ui/react-popover";
+import { CustomScrollArea } from "./CustomScrollArea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 interface LabelSelectorProps {
   availableLabels: Label[];
@@ -56,15 +58,25 @@ export function LabelSelector({
 
   return (
     <div>
-      <label className={`block text-sm font-semibold mb-2 ${currentTheme.textSecondary}`}>
-        Labels
-      </label>
+      <div className="mb-2 flex items-center gap-2">
+        <label className={`text-sm font-semibold ${currentTheme.textSecondary}`}>
+          Labels
+        </label>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <HelpCircle className={`h-3.5 w-3.5 ${currentTheme.textMuted} cursor-help`} />
+          </TooltipTrigger>
+          <TooltipContent side="top" sideOffset={8}>
+            Use labels to group tasks by topic, feature, or workflow.
+          </TooltipContent>
+        </Tooltip>
+      </div>
 
       <Popover.Root open={isOpen} onOpenChange={setIsOpen}>
         <Popover.Trigger asChild>
           <button
             type="button"
-            className={`w-full flex items-center justify-between gap-2 px-4 py-2.5 border-2 ${currentTheme.inputBorder} rounded-xl hover:${currentTheme.borderHover} transition-colors text-left ${currentTheme.inputBg}`}
+            className={`flex min-h-[52px] w-full items-center justify-between gap-2 rounded-xl border-2 px-4 py-3 text-left transition-colors ${currentTheme.inputBorder} ${currentTheme.inputBg} hover:${currentTheme.borderHover}`}
           >
             <div className="flex items-center gap-2">
               <Tag className={`w-4 h-4 ${currentTheme.textMuted}`} />
@@ -157,40 +169,42 @@ export function LabelSelector({
               </button>
             )}
 
-            <div className="space-y-1 max-h-64 overflow-y-auto custom-scrollbar">
-              {availableLabels.length === 0 ? (
-                <p className={`text-sm ${currentTheme.textMuted} italic text-center py-4`}>
-                  No labels yet. Create one above!
-                </p>
-              ) : (
-                availableLabels.map((label) => {
-                  const isSelected = selectedLabelIds.includes(label.id);
-                  return (
-                    <button
-                      key={label.id}
-                      type="button"
-                      onClick={() => toggleLabel(label.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-left ${
-                        isSelected
-                          ? `bg-gradient-to-r ${currentTheme.primary} text-white`
-                          : `${isDarkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"}`
-                      }`}
-                    >
-                      <div
-                        className={`w-3 h-3 rounded-full ${isSelected ? "bg-white" : ""}`}
-                        style={{ backgroundColor: isSelected ? "white" : label.color }}
-                      />
-                      <span className={`text-sm font-medium flex-1 ${isSelected ? "text-white" : currentTheme.text}`}>{label.name}</span>
-                      {isSelected && (
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </button>
-                  );
-                })
-              )}
-            </div>
+            <CustomScrollArea viewportClassName="max-h-64 py-1 pr-1">
+              <div className="space-y-1">
+                {availableLabels.length === 0 ? (
+                  <p className={`py-4 text-center text-sm italic ${currentTheme.textMuted}`}>
+                    No labels yet. Create one above!
+                  </p>
+                ) : (
+                  availableLabels.map((label) => {
+                    const isSelected = selectedLabelIds.includes(label.id);
+                    return (
+                      <button
+                        key={label.id}
+                        type="button"
+                        onClick={() => toggleLabel(label.id)}
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-left ${
+                          isSelected
+                            ? `bg-gradient-to-r ${currentTheme.primary} text-white`
+                            : `${isDarkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"}`
+                        }`}
+                      >
+                        <div
+                          className={`w-3 h-3 rounded-full ${isSelected ? "bg-white" : ""}`}
+                          style={{ backgroundColor: isSelected ? "white" : label.color }}
+                        />
+                        <span className={`text-sm font-medium flex-1 ${isSelected ? "text-white" : currentTheme.text}`}>{label.name}</span>
+                        {isSelected && (
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </CustomScrollArea>
           </Popover.Content>
         </Popover.Portal>
       </Popover.Root>

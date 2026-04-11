@@ -56,7 +56,7 @@ export function TaskDueDatePicker({
           id={id}
           type="button"
           aria-label={selectedDate ? `Due date ${format(selectedDate, "MMMM d, yyyy")}` : "Choose due date"}
-          className={`group flex w-full items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition-all ${currentTheme.inputBorder} ${currentTheme.inputBg} ${currentTheme.text} focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent hover:${currentTheme.borderHover}`}
+          className={`group flex min-h-[52px] w-full items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition-all ${currentTheme.inputBorder} ${currentTheme.inputBg} ${currentTheme.text} focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent hover:${currentTheme.borderHover}`}
         >
           <CalendarDays className={`h-4 w-4 shrink-0 ${selectedDate ? currentTheme.textSecondary : currentTheme.textMuted}`} />
           <span className="min-w-0 flex-1 truncate text-sm font-medium">
@@ -113,13 +113,13 @@ export function TaskDueDatePicker({
             })}
           </div>
 
-          <div className={`overflow-hidden rounded-2xl border ${currentTheme.inputBorder}`}>
+          <div className={`flex justify-center overflow-hidden rounded-2xl border ${currentTheme.inputBorder}`}>
             <Calendar
               mode="single"
               selected={selectedDate}
               month={selectedDate}
               onSelect={(nextDate) => onChange(nextDate ? format(nextDate, "yyyy-MM-dd") : "")}
-              className={`${currentTheme.cardBg} [--cell-size:2.25rem]`}
+              className={`mx-auto ${currentTheme.cardBg} [--cell-size:2.25rem]`}
               classNames={{
                 caption_label: `text-sm font-semibold ${currentTheme.text}`,
                 head_cell: `w-9 rounded-md text-[0.75rem] font-medium ${currentTheme.textMuted}`,

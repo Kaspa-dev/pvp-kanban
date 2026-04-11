@@ -16,6 +16,7 @@ interface HistoryViewProps {
   onAssigneeChange: (cardId: number, assignee: TaskAssignee | null) => void;
   onDelete: (cardId: number, title: string) => void;
   onEdit?: (cardId: number) => void;
+  onMoveToBacklog?: (cardId: number) => void;
   availableAssignees: TaskAssignee[];
   labels: Label[];
 }
@@ -25,6 +26,7 @@ export function HistoryView({
   onAssigneeChange, 
   onDelete,
   onEdit, 
+  onMoveToBacklog,
   availableAssignees,
   labels
 }: HistoryViewProps) {
@@ -133,6 +135,7 @@ export function HistoryView({
                         onAssigneeChange={onAssigneeChange}
                         onDelete={onDelete}
                         onEdit={onEdit}
+                        onMoveToBacklog={onMoveToBacklog}
                         availableAssignees={availableAssignees}
                         labels={labels}
                         storyPoints={card.storyPoints}

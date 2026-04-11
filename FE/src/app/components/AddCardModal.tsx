@@ -1,7 +1,6 @@
 import { ChangeEvent, useState } from "react";
 import { Label } from "../utils/labels";
-import { Priority, TaskAssignee, TaskType } from "../utils/cards";
-import { STORY_POINTS_MAX, STORY_POINTS_MIN } from "../utils/gamification";
+import { getStoryPointsValidationError, Priority, TaskAssignee, TaskType } from "../utils/cards";
 import { TaskFormModal } from "./TaskFormModal";
 
 interface AddCardModalProps {
@@ -34,11 +33,12 @@ export function AddCardModal({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedLabelIds, setSelectedLabelIds] = useState<number[]>([]);
-  const [selectedAssignee, setSelectedAssignee] = useState<TaskAssignee | null>(availableAssignees[0] ?? null);
+  const [selectedAssignee, setSelectedAssignee] = useState<TaskAssignee | null>(null);
   const [showError, setShowError] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [storyPoints, setStoryPoints] = useState<number | undefined>(undefined);
   const [customStoryPoints, setCustomStoryPoints] = useState("");
+  const [storyPointsError, setStoryPointsError] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [priority, setPriority] = useState<Priority | undefined>(undefined);
   const [taskType, setTaskType] = useState<TaskType | undefined>(undefined);
@@ -49,11 +49,12 @@ export function AddCardModal({
     setTitle("");
     setDescription("");
     setSelectedLabelIds([]);
-    setSelectedAssignee(availableAssignees[0] ?? null);
+    setSelectedAssignee(null);
     setShowError(false);
     setSubmitError("");
     setStoryPoints(undefined);
     setCustomStoryPoints("");
+    setStoryPointsError("");
     setDueDate("");
     setPriority(undefined);
     setTaskType(undefined);
@@ -67,8 +68,13 @@ export function AddCardModal({
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (!title.trim()) {
-      setShowError(true);
+    const nextShowTitleError = !title.trim();
+    const nextStoryPointsError = getStoryPointsValidationError(customStoryPoints) ?? "";
+
+    setShowError(nextShowTitleError);
+    setStoryPointsError(nextStoryPointsError);
+
+    if (nextShowTitleError || nextStoryPointsError) {
       return;
     }
 
@@ -97,18 +103,27 @@ export function AddCardModal({
     const nextValue = storyPoints === value ? undefined : value;
     setStoryPoints(nextValue);
     setCustomStoryPoints(nextValue?.toString() || "");
+    setStoryPointsError("");
   };
 
   const handleCustomStoryPointsChange = (event: ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
     setCustomStoryPoints(value);
 
-    const parsedValue = parseInt(value, 10);
-    if (!Number.isNaN(parsedValue) && parsedValue >= STORY_POINTS_MIN && parsedValue <= STORY_POINTS_MAX) {
-      setStoryPoints(parsedValue);
-    } else if (value === "") {
+    const validationError = getStoryPointsValidationError(value);
+    setStoryPointsError(validationError ?? "");
+
+    if (validationError) {
       setStoryPoints(undefined);
+      return;
     }
+
+    if (value.trim() === "") {
+      setStoryPoints(undefined);
+      return;
+    }
+
+    setStoryPoints(parseInt(value, 10));
   };
 
   return (
@@ -141,12 +156,13 @@ export function AddCardModal({
       customStoryPoints={customStoryPoints}
       onStoryPointsPresetClick={handleStoryPointsPresetClick}
       onCustomStoryPointsChange={handleCustomStoryPointsChange}
+      storyPointsError={storyPointsError}
       dueDate={dueDate}
       onDueDateChange={setDueDate}
       priority={priority}
-      onPriorityChange={setPriority}
+      onPriorityChange={(value) => setPriority(value ?? undefined)}
       taskType={taskType}
-      onTaskTypeChange={setTaskType}
+      onTaskTypeChange={(value) => setTaskType(value ?? undefined)}
     />
   );
 }

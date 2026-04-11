@@ -1,4 +1,4 @@
-import { Trash2, Zap, Edit, FileText, Bug, Lightbulb, CheckSquare, CalendarDays } from "lucide-react";
+import { Trash2, Zap, Edit, FileText, Bug, Lightbulb, CheckSquare, CalendarDays, Undo2 } from "lucide-react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { AssigneePopover } from "./AssigneePopover";
 import { Label } from "../utils/labels";
@@ -18,11 +18,12 @@ interface ListViewProps {
   onAssigneeChange: (cardId: number, assignee: TaskAssignee | null) => void;
   onDelete: (cardId: number, title: string) => void;
   onEdit?: (cardId: number) => void;
+  onMoveToBacklog?: (cardId: number) => void;
   availableAssignees: TaskAssignee[];
   labels: Label[];
 }
 
-export function ListView({ cards, onAssigneeChange, onDelete, onEdit, availableAssignees, labels }: ListViewProps) {
+export function ListView({ cards, onAssigneeChange, onDelete, onEdit, onMoveToBacklog, availableAssignees, labels }: ListViewProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
 
@@ -32,7 +33,7 @@ export function ListView({ cards, onAssigneeChange, onDelete, onEdit, availableA
       inProgress: { label: "In Progress", class: currentTheme.badge.inProgress },
       inReview: { label: "In Review", class: currentTheme.badge.inReview },
       done: { label: "Done", class: currentTheme.badge.done },
-      backlog: { label: "Backlog", class: currentTheme.badge.backlog },
+      backlog: { label: "Staging", class: currentTheme.badge.backlog },
     };
 
     const statusInfo = statusMap[status] || statusMap.todo;
@@ -192,6 +193,20 @@ export function ListView({ cards, onAssigneeChange, onDelete, onEdit, availableA
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
+                          {onMoveToBacklog && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={() => onMoveToBacklog(card.id)}
+                                  className={`${currentTheme.textMuted} hover:${currentTheme.primaryText} p-2 rounded-lg transition-all ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+                                  type="button"
+                                >
+                                  <Undo2 className="w-4 h-4" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" sideOffset={8}>Move to staging</TooltipContent>
+                            </Tooltip>
+                          )}
                           {onEdit && (
                             <Tooltip>
                               <TooltipTrigger asChild>

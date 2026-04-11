@@ -241,7 +241,7 @@ export function SettingsModal({ isOpen, onClose, onOpenProfile }: SettingsModalP
                     <div className="text-left">
                       <p className={`font-semibold ${currentTheme.text}`}>Coachmarks</p>
                       <p className={`text-xs ${currentTheme.textMuted} mt-1`}>
-                        Show guided walkthroughs in projects, boards, and backlog.
+                        Show guided walkthroughs in projects, boards, and staging.
                       </p>
                       {preferencesError && (
                         <p className="mt-2 text-xs text-red-600">

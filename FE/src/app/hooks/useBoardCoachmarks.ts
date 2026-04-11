@@ -39,19 +39,19 @@ const FLOW_STEPS: Record<BoardCoachmarkFlowId, CoachmarkStep[]> = {
     {
       targetId: "toolbar-view-switcher",
       title: "Switch Between Workspaces",
-      description: "Board, List, Backlog, and History stay one click away so you can move between planning and active work quickly.",
+      description: "Board, List, Staging, and History stay one click away so you can move between planning and active work quickly.",
     },
     {
       targetId: "board-empty-state-cta",
-      title: "Pull Work Out Of Backlog",
-      description: "No task has entered the workflow yet. Open Backlog to create work or move a ready item into To Do.",
+      title: "Pull Work Out Of Staging",
+      description: "No task has entered the workflow yet. Open Staging to create work or move a ready item into To Do.",
     },
   ],
   "board-active-sprint": [
     {
       targetId: "toolbar-view-switcher",
       title: "Keep Your Place Across Views",
-      description: "Use these tabs to swap between the board, table view, backlog, and task history without losing context.",
+      description: "Use these tabs to swap between the board, table view, staging, and task history without losing context.",
     },
     {
       targetId: "toolbar-search",
@@ -61,7 +61,7 @@ const FLOW_STEPS: Record<BoardCoachmarkFlowId, CoachmarkStep[]> = {
     {
       targetId: "workflow-summary",
       title: "Monitor The Flow",
-      description: "This summary shows how much work is active, how much is done, and how much is still waiting in backlog.",
+      description: "This summary shows how much work is active, how much is done, and how much is still waiting in staging.",
     },
     {
       targetId: "board-columns-grid",
@@ -78,7 +78,7 @@ const FLOW_STEPS: Record<BoardCoachmarkFlowId, CoachmarkStep[]> = {
     {
       targetId: "backlog-overview",
       title: "Stage A Batch In Queue",
-      description: "This queue collects ready backlog tasks so you can launch them into To Do together instead of one by one.",
+      description: "This queue collects ready staging tasks so you can launch them into To Do together instead of one by one.",
     },
     {
       targetId: "backlog-list",
@@ -90,12 +90,12 @@ const FLOW_STEPS: Record<BoardCoachmarkFlowId, CoachmarkStep[]> = {
     {
       targetId: "backlog-overview",
       title: "Queue Up The Next Batch",
-      description: "Even while work is active on the board, the queue helps you prepare the next set of backlog tasks to release together.",
+      description: "Even while work is active on the board, the queue helps you prepare the next set of staging tasks to release together.",
     },
     {
       targetId: "toolbar-view-switcher",
       title: "Jump Back To Active Work",
-      description: "Board and List show the tasks already in motion, while Backlog stays focused on what comes next.",
+      description: "Board and List show the tasks already in motion, while Staging stays focused on what comes next.",
     },
     {
       targetId: "backlog-new-task",

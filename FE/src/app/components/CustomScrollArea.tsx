@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { getThemeColors, useTheme } from "../contexts/ThemeContext";
+import { useTheme } from "../contexts/ThemeContext";
 
 interface CustomScrollAreaProps {
   children: ReactNode;
@@ -14,8 +14,15 @@ export function CustomScrollArea({
   className = "",
   viewportClassName = "",
 }: CustomScrollAreaProps) {
-  const { theme, isDarkMode } = useTheme();
-  const currentTheme = getThemeColors(theme, isDarkMode);
+  const { isDarkMode } = useTheme();
+  const scrollbarPalette = useMemo(
+    () => ({
+      track: isDarkMode ? "rgba(255, 255, 255, 0.06)" : "rgba(226, 232, 240, 0.78)",
+      thumb: isDarkMode ? "rgba(113, 113, 122, 0.88)" : "rgba(148, 163, 184, 0.88)",
+      thumbActive: isDarkMode ? "rgba(161, 161, 170, 0.96)" : "rgba(100, 116, 139, 0.92)",
+    }),
+    [isDarkMode],
+  );
 
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const [thumbHeight, setThumbHeight] = useState(0);
@@ -23,14 +30,13 @@ export function CustomScrollArea({
   const [isScrollable, setIsScrollable] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const dragStateRef = useRef({ startY: 0, startScrollTop: 0 });
+  const reservedScrollbarGutterClassName = "pr-3";
 
   const thumbStyle = useMemo(
     () => ({
-      backgroundColor: isDragging
-        ? (isDarkMode ? "rgba(148, 163, 184, 0.95)" : "rgba(100, 116, 139, 0.88)")
-        : (isDarkMode ? "rgba(100, 116, 139, 0.9)" : "rgba(148, 163, 184, 0.88)"),
+      backgroundColor: isDragging ? scrollbarPalette.thumbActive : scrollbarPalette.thumb,
     }),
-    [isDarkMode, isDragging],
+    [isDragging, scrollbarPalette],
   );
 
   const updateThumb = () => {
@@ -179,14 +185,16 @@ export function CustomScrollArea({
     <div className={`relative ${className}`}>
       <div
         ref={viewportRef}
-        className={`hide-native-scrollbar overflow-y-auto ${viewportClassName} ${isScrollable ? "pr-3" : ""}`}
+        className={`hide-native-scrollbar overflow-y-auto ${reservedScrollbarGutterClassName} ${viewportClassName}`}
+        style={{ scrollbarGutter: "stable" }}
       >
         {children}
       </div>
 
       {isScrollable && (
         <div
-          className={`absolute bottom-2 right-1 top-2 w-2 rounded-full ${currentTheme.isDark ? "bg-white/6" : "bg-slate-200/70"}`}
+          className="absolute bottom-2 right-1 top-2 w-2 rounded-full"
+          style={{ backgroundColor: scrollbarPalette.track }}
           onMouseDown={handleTrackMouseDown}
         >
           <div

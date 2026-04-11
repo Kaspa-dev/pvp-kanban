@@ -1,9 +1,32 @@
 import { apiJson, apiVoid } from "./auth";
 import type { BoardMember, BoardRole } from "./boards";
+import { STORY_POINTS_MAX, STORY_POINTS_MIN } from "./gamification";
 
 export type TaskStatus = "todo" | "inProgress" | "inReview" | "done" | "backlog";
 export type Priority = "low" | "medium" | "high" | "critical";
 export type TaskType = "story" | "task" | "bug" | "spike";
+
+export const MAX_TASK_TITLE_LENGTH = 128;
+export const MAX_TASK_DESCRIPTION_LENGTH = 2000;
+
+export function getStoryPointsValidationError(value: string): string | null {
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue) {
+    return null;
+  }
+
+  if (!/^-?\d+$/.test(trimmedValue)) {
+    return "Story points must be a whole number.";
+  }
+
+  const parsedValue = Number(trimmedValue);
+  if (parsedValue < STORY_POINTS_MIN || parsedValue > STORY_POINTS_MAX) {
+    return `Story points must be between ${STORY_POINTS_MIN} and ${STORY_POINTS_MAX}.`;
+  }
+
+  return null;
+}
 
 interface ApiTask {
   id: number;
@@ -183,10 +206,10 @@ export async function updateBoardTask(
     status: TaskStatus;
     labelIds: number[];
     assigneeUserId: number | null;
-    storyPoints?: number;
+    storyPoints?: number | null;
     dueDate?: string | null;
-    priority?: Priority;
-    taskType?: TaskType;
+    priority?: Priority | null;
+    taskType?: TaskType | null;
   },
 ): Promise<Card> {
   const task = await apiJson<ApiTask>(

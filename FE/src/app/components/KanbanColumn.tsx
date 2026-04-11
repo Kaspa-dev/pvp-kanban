@@ -18,6 +18,7 @@ interface KanbanColumnProps {
   onAssigneeChange: (cardId: number, assignee: TaskAssignee | null) => void;
   onDelete: (cardId: number, title: string) => void;
   onEdit?: (cardId: number) => void;
+  onMoveToBacklog?: (cardId: number) => void;
   availableAssignees: TaskAssignee[];
   labels: Label[];
 }
@@ -31,6 +32,7 @@ export function KanbanColumn({
   onAssigneeChange,
   onDelete,
   onEdit,
+  onMoveToBacklog,
   availableAssignees,
   labels
 }: KanbanColumnProps) {
@@ -84,6 +86,7 @@ export function KanbanColumn({
                   onAssigneeChange={onAssigneeChange}
                   onDelete={onDelete}
                   onEdit={onEdit}
+                  onMoveToBacklog={onMoveToBacklog}
                   availableAssignees={availableAssignees}
                   labels={labels}
                   storyPoints={card.storyPoints}

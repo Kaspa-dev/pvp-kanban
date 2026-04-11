@@ -16,8 +16,7 @@ import { ListView } from "../components/ListView";
 import { BacklogView2 } from "../components/BacklogView2";
 import { HistoryView } from "../components/HistoryView";
 import { CoachmarkOverlay } from "../components/CoachmarkOverlay";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "../components/ui/sheet";
-import { useIsMobile } from "../components/ui/use-mobile";
+import { SidebarInset, SidebarProvider } from "../components/ui/sidebar";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { useUserPreferences } from "../contexts/UserPreferencesContext";
@@ -77,13 +76,11 @@ export function Board() {
   const currentTheme = getThemeColors(theme, isDarkMode);
   const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
   const { boardId } = useParams<{ boardId: string }>();
-  const isMobile = useIsMobile();
   const numericBoardId = boardId ? Number(boardId) : NaN;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Card | null>(null);
   const [pendingReplay, setPendingReplay] = useState<{ flowId: ReturnType<typeof getCoachmarkFlowForView>; targetView: BoardWorkspaceView } | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; cardId: number | null; title: string }>({
@@ -279,10 +276,10 @@ export function Board() {
       status?: TaskStatus;
       labelIds?: number[];
       assignee?: TaskAssignee | null;
-      storyPoints?: number;
+      storyPoints?: number | null;
       dueDate?: string | null;
-      priority?: Priority;
-      taskType?: TaskType;
+      priority?: Priority | null;
+      taskType?: TaskType | null;
     },
   ) => {
     if (!Number.isFinite(numericBoardId)) {
@@ -303,19 +300,16 @@ export function Board() {
         updates.assignee === undefined
           ? existingTask.assigneeUserId
           : updates.assignee?.userId || null,
-      storyPoints: updates.storyPoints ?? existingTask.storyPoints,
+      storyPoints:
+        updates.storyPoints === undefined
+          ? existingTask.storyPoints
+          : updates.storyPoints,
       dueDate:
         updates.dueDate === undefined
           ? existingTask.dueDate ?? null
           : updates.dueDate,
-      priority:
-        updates.priority === undefined
-          ? existingTask.priority
-          : updates.priority,
-      taskType:
-        updates.taskType === undefined
-          ? existingTask.taskType
-          : updates.taskType,
+      priority: updates.priority === undefined ? existingTask.priority : updates.priority,
+      taskType: updates.taskType === undefined ? existingTask.taskType : updates.taskType,
     });
 
     setTaskInState(updatedTask);
@@ -410,7 +404,6 @@ export function Board() {
       isModalOpen ||
       isSettingsOpen ||
       isProfileOpen ||
-      isMobileSidebarOpen ||
       editingTask !== null ||
       deleteDialog.isOpen,
     onFlowCompleted: (flowId) => {
@@ -437,7 +430,6 @@ export function Board() {
       isModalOpen ||
       isSettingsOpen ||
       isProfileOpen ||
-      isMobileSidebarOpen ||
       editingTask !== null ||
       deleteDialog.isOpen ||
       activeFlowId !== null
@@ -488,7 +480,6 @@ export function Board() {
     deleteDialog.isOpen,
     editingTask,
     isLoadingBoard,
-    isMobileSidebarOpen,
     isModalOpen,
     isProfileOpen,
     isSettingsOpen,
@@ -581,12 +572,11 @@ export function Board() {
   const handleSaveEdit = async (cardId: number, updates: {
     title: string;
     description: string;
-    status: "todo" | "inProgress" | "inReview" | "done" | "backlog";
     labelIds: number[];
     assignee: TaskAssignee | null;
-    storyPoints?: number;
-    priority?: Priority;
-    taskType?: TaskType;
+    storyPoints?: number | null;
+    priority?: Priority | null;
+    taskType?: TaskType | null;
     dueDate?: string | null;
   }) => {
     try {
@@ -597,6 +587,16 @@ export function Board() {
       const message = error instanceof Error ? error.message : "Unable to save the task right now.";
       setActionError(message);
       throw new Error(message);
+    }
+  };
+
+  const handleMoveToBacklog = async (cardId: number) => {
+    try {
+      setActionError("");
+      await saveTask(cardId, { status: "backlog" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to move the task back to staging right now.";
+      setActionError(message);
     }
   };
 
@@ -759,70 +759,30 @@ export function Board() {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className={`${workspaceSurface.pageClassName} flex w-full`}>
+      <SidebarProvider defaultOpen>
+        <div className={`${workspaceSurface.pageClassName} flex h-screen max-h-screen w-full overflow-hidden`}>
         <div className={workspaceSurface.backgroundLayerClassName}>
           {workspaceSurface.backgroundBlobs.map((blob, index) => (
             <div key={index} className={blob.className} style={blob.style} />
           ))}
         </div>
-        {!isMobile && (
-          <Sidebar
-            activeFilter={activeFilter}
-            onFilterChange={setActiveFilter}
-            onCreateTask={() => setIsModalOpen(true)}
-            selectedLabels={selectedLabelIds}
-            onLabelsChange={setSelectedLabelIds}
-            onLogout={async () => {
-              await logout();
-              navigate("/login");
-            }}
-            boardName={currentBoard.name}
-            boardLogoIconKey={currentBoard.logoIconKey}
-            boardLogoColorKey={currentBoard.logoColorKey}
-            labels={labels}
-          />
-        )}
+        <Sidebar
+          activeFilter={activeFilter}
+          onFilterChange={setActiveFilter}
+          onCreateTask={() => setIsModalOpen(true)}
+          selectedLabels={selectedLabelIds}
+          onLabelsChange={setSelectedLabelIds}
+          onLogout={async () => {
+            await logout();
+            navigate("/login");
+          }}
+          boardName={currentBoard.name}
+          boardLogoIconKey={currentBoard.logoIconKey}
+          boardLogoColorKey={currentBoard.logoColorKey}
+          labels={labels}
+        />
 
-        {isMobile && (
-          <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
-            <SheetContent
-              side="left"
-              className={`w-full max-w-none p-0 ${currentTheme.cardBg} ${currentTheme.border}`}
-            >
-              <SheetHeader className="sr-only">
-                <SheetTitle>Board menu</SheetTitle>
-                <SheetDescription>
-                  Open quick filters, labels, and account actions.
-                </SheetDescription>
-              </SheetHeader>
-              <Sidebar
-                activeFilter={activeFilter}
-                onFilterChange={(filter) => {
-                  setActiveFilter(filter);
-                  setIsMobileSidebarOpen(false);
-                }}
-                onCreateTask={() => {
-                  setIsMobileSidebarOpen(false);
-                  setIsModalOpen(true);
-                }}
-                selectedLabels={selectedLabelIds}
-                onLabelsChange={setSelectedLabelIds}
-                onLogout={async () => {
-                  setIsMobileSidebarOpen(false);
-                  await logout();
-                  navigate("/login");
-                }}
-                boardName={currentBoard.name}
-                boardLogoIconKey={currentBoard.logoIconKey}
-                boardLogoColorKey={currentBoard.logoColorKey}
-                labels={labels}
-                className="min-h-full w-full border-r-0"
-              />
-            </SheetContent>
-          </Sheet>
-        )}
-
-        <div className="relative z-10 flex min-w-0 flex-1 flex-col">
+        <SidebarInset className="relative z-10 flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden bg-transparent">
           <Toolbar
             view={view}
             onViewChange={setView}
@@ -830,17 +790,14 @@ export function Board() {
             onSearchChange={setSearchQuery}
             onOpenSettings={() => setIsSettingsOpen(true)}
             onProfileClick={() => setIsProfileOpen(true)}
-            onOpenMenu={() => setIsMobileSidebarOpen(true)}
-            showMenuButton={isMobile}
             onReplayCurrentHints={() => replayFlowForView(view)}
-            onReplayBoardHints={() => replayFlowForView("board")}
-            onReplayBacklogHints={() => replayFlowForView("backlog")}
             showViewShortcuts
+            showSidebarToggle
             userProgress={userProgress}
           />
 
           {actionError && (
-            <div className="px-6 pt-4">
+            <div className="shrink-0 px-6 pt-4">
               <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
                 {actionError}
               </div>
@@ -848,7 +805,7 @@ export function Board() {
           )}
 
           {preferencesError && !actionError && (
-            <div className="px-6 pt-4">
+            <div className="shrink-0 px-6 pt-4">
               <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
                 {preferencesError}
               </div>
@@ -858,7 +815,7 @@ export function Board() {
           {view === "board" && (
             <>
               {workflowCards.length > 0 ? (
-                <main className={`flex-1 overflow-y-auto ${currentTheme.bgSecondary}`}>
+                <main className={`flex-1 min-h-0 overflow-y-auto ${currentTheme.bgSecondary}`}>
                   <div
                     className={`border-b px-8 py-5 ${currentTheme.border} ${currentTheme.bgSecondary}`}
                     data-coachmark="workflow-summary"
@@ -871,7 +828,7 @@ export function Board() {
                         <div>
                           <h2 className={`text-lg font-bold ${currentTheme.text}`}>Workflow Board</h2>
                           <p className={`text-sm ${currentTheme.textMuted}`}>
-                            Active work outside backlog, ready to move across the board.
+                            Active work outside staging, ready to move across the board.
                           </p>
                         </div>
                       </div>
@@ -891,7 +848,7 @@ export function Board() {
                         </div>
                         <div className={`rounded-xl border px-3 py-2 ${currentTheme.border} ${currentTheme.bg}`}>
                           <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${currentTheme.textMuted}`}>
-                            Backlog
+                            Staging
                           </p>
                           <p className={`text-lg font-bold ${currentTheme.text}`}>{backlogCards.length}</p>
                         </div>
@@ -901,29 +858,29 @@ export function Board() {
 
                   <div className="mx-auto w-full max-w-[2000px] px-8 py-8">
                     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4" data-coachmark="board-columns-grid">
-                      <KanbanColumn id="todo" title="To Do" count={workflowColumns.todo.length} cards={workflowColumns.todo} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} availableAssignees={availableAssignees} labels={labels} />
-                      <KanbanColumn id="inProgress" title="In Progress" count={workflowColumns.inProgress.length} cards={workflowColumns.inProgress} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} availableAssignees={availableAssignees} labels={labels} />
-                      <KanbanColumn id="inReview" title="In Review" count={workflowColumns.inReview.length} cards={workflowColumns.inReview} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} availableAssignees={availableAssignees} labels={labels} />
-                      <KanbanColumn id="done" title="Done" count={workflowColumns.done.length} cards={workflowColumns.done} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} availableAssignees={availableAssignees} labels={labels} />
+                      <KanbanColumn id="todo" title="To Do" count={workflowColumns.todo.length} cards={workflowColumns.todo} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                      <KanbanColumn id="inProgress" title="In Progress" count={workflowColumns.inProgress.length} cards={workflowColumns.inProgress} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                      <KanbanColumn id="inReview" title="In Review" count={workflowColumns.inReview.length} cards={workflowColumns.inReview} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                      <KanbanColumn id="done" title="Done" count={workflowColumns.done.length} cards={workflowColumns.done} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
                     </div>
                   </div>
                 </main>
               ) : (
-                <div className={`flex flex-1 items-center justify-center ${currentTheme.bgSecondary}`}>
+                <div className={`flex min-h-0 flex-1 items-center justify-center ${currentTheme.bgSecondary}`}>
                   <div className="max-w-md px-6 text-center">
                     <div className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl ${currentTheme.primarySoftStrong}`}>
                       <ClipboardList className={`h-10 w-10 ${currentTheme.primaryText}`} />
                     </div>
                     <h2 className={`mb-3 text-2xl font-bold ${currentTheme.text}`}>No active workflow yet</h2>
                     <p className={`mb-8 text-base ${currentTheme.textMuted}`}>
-                      Tasks stay in Backlog until your team pulls them into To Do. Open Backlog to create work or promote a ready item.
+                      Tasks stay in Staging until your team pulls them into To Do. Open Staging to create work or promote a ready item.
                     </p>
                     <button
                       onClick={() => setView("backlog")}
                       data-coachmark="board-empty-state-cta"
                       className={`inline-flex items-center gap-2 rounded-lg bg-gradient-to-r px-6 py-3 font-bold text-white transition-all hover:scale-[1.02] hover:shadow-lg ${currentTheme.primary}`}
                     >
-                      Go to Backlog
+                      Go to Staging
                       <ArrowRight className="h-4 w-4" />
                     </button>
                   </div>
@@ -940,24 +897,25 @@ export function Board() {
                   onAssigneeChange={handleAssigneeChange}
                   onDelete={handleDeleteRequest}
                   onEdit={handleEditTask}
+                  onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)}
                   availableAssignees={availableAssignees}
                   labels={labels}
                 />
               ) : (
-                <div className={`flex flex-1 items-center justify-center ${currentTheme.bgSecondary}`}>
+                <div className={`flex min-h-0 flex-1 items-center justify-center ${currentTheme.bgSecondary}`}>
                   <div className="max-w-md px-6 text-center">
                     <div className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl ${currentTheme.primarySoftStrong}`}>
                       <ClipboardList className={`h-10 w-10 ${currentTheme.primaryText}`} />
                     </div>
                     <h2 className={`mb-3 text-2xl font-bold ${currentTheme.text}`}>No active workflow yet</h2>
                     <p className={`mb-8 text-base ${currentTheme.textMuted}`}>
-                      List view shows tasks that have already left backlog. Move work into To Do first to see it here.
+                      List view shows tasks that have already left staging. Move work into To Do first to see it here.
                     </p>
                     <button
                       onClick={() => setView("backlog")}
                       className={`inline-flex items-center gap-2 rounded-lg bg-gradient-to-r px-6 py-3 font-bold text-white transition-all hover:scale-[1.02] hover:shadow-lg ${currentTheme.primary}`}
                     >
-                      Go to Backlog
+                      Go to Staging
                       <ArrowRight className="h-4 w-4" />
                     </button>
                   </div>
@@ -967,19 +925,21 @@ export function Board() {
           )}
 
           {view === "backlog" && (
-            <BacklogView2
-              backlogCards={plainBacklogCards}
-              queuedCards={queuedBacklogCards}
-              onAssigneeChange={handleAssigneeChange}
-              onDelete={handleDeleteRequest}
-              onEdit={handleEditTask}
-              onAddToQueue={(cardId) => void handleAddToQueue(cardId)}
-              onRemoveFromQueue={(cardId) => void handleRemoveFromQueue(cardId)}
-              onStartQueue={() => void handleStartQueue()}
-              availableAssignees={availableAssignees}
-              labels={labels}
-              onCreateTask={() => setIsModalOpen(true)}
-            />
+            <main className={`flex-1 min-h-0 overflow-hidden ${currentTheme.bgSecondary}`}>
+              <BacklogView2
+                backlogCards={plainBacklogCards}
+                queuedCards={queuedBacklogCards}
+                onAssigneeChange={handleAssigneeChange}
+                onDelete={handleDeleteRequest}
+                onEdit={handleEditTask}
+                onAddToQueue={(cardId) => void handleAddToQueue(cardId)}
+                onRemoveFromQueue={(cardId) => void handleRemoveFromQueue(cardId)}
+                onStartQueue={() => void handleStartQueue()}
+                availableAssignees={availableAssignees}
+                labels={labels}
+                onCreateTask={() => setIsModalOpen(true)}
+              />
+            </main>
           )}
 
           {view === "history" && (
@@ -988,11 +948,12 @@ export function Board() {
               onAssigneeChange={handleAssigneeChange}
               onDelete={handleDeleteRequest}
               onEdit={handleEditTask}
+              onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)}
               availableAssignees={availableAssignees}
               labels={labels}
             />
           )}
-        </div>
+        </SidebarInset>
 
         <AddCardModal
           isOpen={isModalOpen}
@@ -1042,7 +1003,8 @@ export function Board() {
           onNext={goToNextStep}
           onClose={() => closeFlow(true)}
         />
-      </div>
+        </div>
+      </SidebarProvider>
     </DndProvider>
   );
 }

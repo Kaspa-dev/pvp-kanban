@@ -106,6 +106,8 @@ docker-compose down
 - Provide meaningful labels for screen readers (aria-label, aria-* where needed).
 - Avoid relying solely on color to convey meaning.
 - Keep styling consistent with existing Tailwind patterns (utility-first, minimal custom CSS).
+- When working with component styles, make sure its compatible with different color accents dark/bright modes.
+- When in need of a component, make sure not to introduce a new component, if one already exists. If you are creating a new component, make sure its reusable and open to modifications.
 
 ### Backend application
 - When modifying backend endpoints, update corresponding frontend API calls.

@@ -72,7 +72,7 @@ export function Landing() {
               </div>
               <h4 className={`text-lg font-bold ${t.text} mb-2`}>Multiple views</h4>
               <p className={`${t.textSecondary} text-sm`}>
-                Switch between Board, List, and Backlog views to match your workflow.
+                Switch between Board, List, and Staging views to match your workflow.
               </p>
             </div>
 

@@ -87,7 +87,7 @@ export function Login() {
               </div>
               <div>
                 <p className={`font-semibold ${t.text}`}>Flow-first planning</p>
-                <p className={`text-sm ${t.textMuted}`}>Pull work from backlog into a clear delivery flow</p>
+                <p className={`text-sm ${t.textMuted}`}>Pull work from staging into a clear delivery flow</p>
               </div>
             </div>
 

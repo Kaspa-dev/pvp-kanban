@@ -1,9 +1,9 @@
-import { Search, LayoutGrid, List, Settings, Archive, Clock, Menu, HelpCircle } from "lucide-react";
+import { Search, LayoutGrid, List, Settings, Archive, Clock, HelpCircle } from "lucide-react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
 import { UserProfileChip } from "./UserProfileChip";
+import { SidebarTrigger } from "./ui/sidebar";
 
 interface ToolbarProps {
   view: "board" | "list" | "backlog" | "history";
@@ -12,12 +12,9 @@ interface ToolbarProps {
   onSearchChange: (query: string) => void;
   onOpenSettings: () => void;
   onProfileClick?: () => void;
-  onOpenMenu?: () => void;
-  showMenuButton?: boolean;
   onReplayCurrentHints?: () => void;
-  onReplayBoardHints?: () => void;
-  onReplayBacklogHints?: () => void;
   showViewShortcuts?: boolean;
+  showSidebarToggle?: boolean;
   userProgress?: {
     username: string;
     email: string;
@@ -33,12 +30,9 @@ export function Toolbar({
   onSearchChange,
   onOpenSettings,
   onProfileClick,
-  onOpenMenu,
-  showMenuButton = false,
   onReplayCurrentHints,
-  onReplayBoardHints,
-  onReplayBacklogHints,
   showViewShortcuts = false,
+  showSidebarToggle = false,
   userProgress,
 }: ToolbarProps) {
   const { theme, isDarkMode } = useTheme();
@@ -48,7 +42,7 @@ export function Toolbar({
   const viewButtons: Array<{ value: ToolbarProps["view"]; label: string; icon: typeof LayoutGrid }> = [
     { value: "board", label: "Board", icon: LayoutGrid },
     { value: "list", label: "List", icon: List },
-    { value: "backlog", label: "Backlog", icon: Archive },
+    { value: "backlog", label: "Staging", icon: Archive },
     { value: "history", label: "History", icon: Clock },
   ];
 
@@ -66,18 +60,14 @@ export function Toolbar({
       <div className="w-full px-4 md:px-6 py-4">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3 w-full md:max-w-md">
-            {showMenuButton && onOpenMenu && (
+            {showSidebarToggle && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button
-                    onClick={onOpenMenu}
-                    className={`md:hidden p-3 rounded-lg border ${currentTheme.border} ${currentTheme.textSecondary} hover:${currentTheme.bgSecondary} transition-all`}
-                    type="button"
-                  >
-                    <Menu className="w-5 h-5" />
-                  </button>
+                  <SidebarTrigger
+                    className={`h-11 w-11 rounded-xl border ${currentTheme.border} ${currentTheme.textSecondary} transition-all ${currentTheme.accentIconButtonHover}`}
+                  />
                 </TooltipTrigger>
-                <TooltipContent side="bottom" sideOffset={8}>Open board menu</TooltipContent>
+                <TooltipContent side="bottom" sideOffset={8}>Toggle board menu</TooltipContent>
               </Tooltip>
             )}
 
@@ -149,48 +139,6 @@ export function Toolbar({
                   </TooltipTrigger>
                   <TooltipContent side="bottom" sideOffset={8}>Replay coachmarks</TooltipContent>
                 </Tooltip>
-              )}
-
-              {(view === "list" || view === "history") && onReplayBoardHints && onReplayBacklogHints && (
-                <Popover>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="inline-flex">
-                        <PopoverTrigger asChild>
-                          <button
-                            className={helpButtonClassName}
-                            type="button"
-                          >
-                            <HelpCircle className="w-5 h-5 pointer-events-none" />
-                          </button>
-                        </PopoverTrigger>
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" sideOffset={8}>Open coachmark options</TooltipContent>
-                  </Tooltip>
-                  <PopoverContent align="end" className="w-64 p-3">
-                    <p className={`text-sm font-semibold ${currentTheme.text}`}>Replay hints</p>
-                    <p className={`mt-1 text-xs ${currentTheme.textMuted}`}>
-                      Jump to a guided hint flow for the board workspace.
-                    </p>
-                    <div className="mt-3 space-y-2">
-                      <button
-                        type="button"
-                        onClick={onReplayBoardHints}
-                        className={`w-full rounded-xl border ${currentTheme.border} px-3 py-2 text-left text-sm font-medium ${currentTheme.text} transition-all hover:${currentTheme.bgSecondary}`}
-                      >
-                        Replay Board Hints
-                      </button>
-                      <button
-                        type="button"
-                        onClick={onReplayBacklogHints}
-                        className={`w-full rounded-xl border ${currentTheme.border} px-3 py-2 text-left text-sm font-medium ${currentTheme.text} transition-all hover:${currentTheme.bgSecondary}`}
-                      >
-                        Replay Backlog Hints
-                      </button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
               )}
 
               {userProgress && onProfileClick && (
