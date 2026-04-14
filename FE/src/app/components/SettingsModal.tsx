@@ -1,8 +1,9 @@
-import { X, Palette, Zap, Bell, User, Moon, Sun, Sparkles } from "lucide-react";
-import { useTheme, getThemeColors, AVAILABLE_THEMES } from "../contexts/ThemeContext";
-import { useEffect, useState } from "react";
+import { X, User } from "lucide-react";
+import { useEffect } from "react";
+import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import { CustomScrollArea } from "./CustomScrollArea";
-import { useUserPreferences } from "../contexts/UserPreferencesContext";
+import { PreferencesSettingsSections } from "./PreferencesSettingsSections";
+import { useLocalStorageBoolean } from "../hooks/useLocalStorageBoolean";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -11,34 +12,9 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ isOpen, onClose, onOpenProfile }: SettingsModalProps) {
-  const { theme, setTheme, isDarkMode, setIsDarkMode } = useTheme();
-  const {
-    preferences,
-    isLoading: isPreferencesLoading,
-    errorMessage: preferencesError,
-    updatePreferences,
-    clearError,
-  } = useUserPreferences();
-  
-  // Load settings from localStorage
-  const [gamificationEnabled, setGamificationEnabled] = useState(() => {
-    const saved = localStorage.getItem('settings.gamification');
-    return saved !== null ? JSON.parse(saved) : true;
-  });
-  
-  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
-    const saved = localStorage.getItem('settings.notifications');
-    return saved !== null ? JSON.parse(saved) : true;
-  });
-  
-  // Save settings to localStorage
-  useEffect(() => {
-    localStorage.setItem('settings.gamification', JSON.stringify(gamificationEnabled));
-  }, [gamificationEnabled]);
-  
-  useEffect(() => {
-    localStorage.setItem('settings.notifications', JSON.stringify(notificationsEnabled));
-  }, [notificationsEnabled]);
+  const { theme, isDarkMode } = useTheme();
+  const [gamificationEnabled, setGamificationEnabled] = useLocalStorageBoolean("settings.gamification", true);
+  const [notificationsEnabled, setNotificationsEnabled] = useLocalStorageBoolean("settings.notifications", true);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -59,11 +35,6 @@ export function SettingsModal({ isOpen, onClose, onOpenProfile }: SettingsModalP
   if (!isOpen) return null;
 
   const currentTheme = getThemeColors(theme, isDarkMode);
-
-  const handleCoachmarkToggle = (checked: boolean) => {
-    clearError();
-    void updatePreferences({ coachmarksEnabled: checked });
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center animate-in fade-in duration-200">
@@ -91,176 +62,12 @@ export function SettingsModal({ isOpen, onClose, onOpenProfile }: SettingsModalP
         <div className="flex-1 min-h-0 overflow-hidden px-8 py-6">
           <CustomScrollArea className="h-full min-h-0" viewportClassName="h-full min-h-0 pr-4">
             <div className="space-y-6 px-1 py-1">
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Palette className={`w-5 h-5 ${currentTheme.primaryText}`} />
-                  <h3 className={`text-lg font-bold ${currentTheme.text}`}>Appearance</h3>
-                </div>
-
-                <div className="mb-4">
-                  <p className={`text-sm font-semibold ${currentTheme.textSecondary} mb-3`}>Mode</p>
-                  <button
-                    onClick={() => setIsDarkMode(!isDarkMode)}
-                    className={`w-full p-4 rounded-xl border-2 transition-all ${currentTheme.border} hover:${currentTheme.borderHover} ${currentTheme.isDark ? currentTheme.bgSecondary : ''}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        {isDarkMode ? (
-                          <Moon className={`w-5 h-5 ${currentTheme.primaryText}`} />
-                        ) : (
-                          <Sun className={`w-5 h-5 ${currentTheme.primaryText}`} />
-                        )}
-                        <div className="text-left">
-                          <p className={`font-semibold ${currentTheme.text}`}>
-                            {isDarkMode ? 'Dark Mode' : 'Light Mode'}
-                          </p>
-                          <p className={`text-xs ${currentTheme.textMuted} mt-0.5`}>
-                            {isDarkMode ? 'Using dark interface' : 'Using light interface'}
-                          </p>
-                        </div>
-                      </div>
-                      <div className={`relative w-12 h-6 rounded-full transition-colors ${
-                        isDarkMode
-                          ? `bg-gradient-to-r ${currentTheme.primary}`
-                          : 'bg-gray-300'
-                      }`}>
-                        <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform ${
-                          isDarkMode ? 'translate-x-6' : 'translate-x-0'
-                        }`} />
-                      </div>
-                    </div>
-                  </button>
-                </div>
-
-                <div>
-                  <p className={`text-sm font-semibold ${currentTheme.textSecondary} mb-3`}>Accent Theme</p>
-                  <p className={`text-xs ${currentTheme.textMuted} mb-4`}>
-                    Choose the accent color family that should appear across buttons, highlights, and status details.
-                  </p>
-                  <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                    {AVAILABLE_THEMES.map((themeKey) => {
-                      const themeData = getThemeColors(themeKey, isDarkMode);
-                      const isActive = theme === themeKey;
-                      return (
-                        <button
-                          key={themeKey}
-                          onClick={() => setTheme(themeKey)}
-                          className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all ${
-                            isActive
-                              ? `${currentTheme.border} ring-2 ${currentTheme.focus}`
-                              : `${currentTheme.border} hover:${currentTheme.borderHover}`
-                          } ${currentTheme.isDark ? currentTheme.bgSecondary : ''}`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${themeData.primary} shadow-md`} />
-                            <span className={`font-medium text-sm ${currentTheme.text}`}>{themeData.name}</span>
-                          </div>
-                          {isActive && (
-                            <div className={`w-4 h-4 rounded-full bg-gradient-to-r ${themeData.primary} flex items-center justify-center`}>
-                              <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                              </svg>
-                            </div>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Zap className={`w-5 h-5 ${currentTheme.primaryText}`} />
-                  <h3 className={`text-lg font-bold ${currentTheme.text}`}>Gamification</h3>
-                </div>
-                <button
-                  onClick={() => setGamificationEnabled(!gamificationEnabled)}
-                  className={`w-full p-4 rounded-xl border-2 transition-all ${currentTheme.border} hover:${currentTheme.borderHover} ${currentTheme.isDark ? currentTheme.bgSecondary : ''}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="text-left">
-                      <p className={`font-semibold ${currentTheme.text}`}>XP & Level System</p>
-                      <p className={`text-xs ${currentTheme.textMuted} mt-1`}>
-                        Earn experience points and level up by completing tasks
-                      </p>
-                    </div>
-                    <div className={`relative w-12 h-6 rounded-full transition-colors ${
-                      gamificationEnabled
-                        ? `bg-gradient-to-r ${currentTheme.primary}`
-                        : 'bg-gray-300'
-                    }`}>
-                      <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform ${
-                        gamificationEnabled ? 'translate-x-6' : 'translate-x-0'
-                      }`} />
-                    </div>
-                  </div>
-                </button>
-              </div>
-
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Bell className={`w-5 h-5 ${currentTheme.primaryText}`} />
-                  <h3 className={`text-lg font-bold ${currentTheme.text}`}>Notifications</h3>
-                </div>
-                <button
-                  onClick={() => setNotificationsEnabled(!notificationsEnabled)}
-                  className={`w-full p-4 rounded-xl border-2 transition-all ${currentTheme.border} hover:${currentTheme.borderHover} ${currentTheme.isDark ? currentTheme.bgSecondary : ''}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="text-left">
-                      <p className={`font-semibold ${currentTheme.text}`}>Task Update Notifications</p>
-                      <p className={`text-xs ${currentTheme.textMuted} mt-1`}>
-                        Get notified when tasks are updated or completed
-                      </p>
-                    </div>
-                    <div className={`relative w-12 h-6 rounded-full transition-colors ${
-                      notificationsEnabled
-                        ? `bg-gradient-to-r ${currentTheme.primary}`
-                        : 'bg-gray-300'
-                    }`}>
-                      <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform ${
-                        notificationsEnabled ? 'translate-x-6' : 'translate-x-0'
-                      }`} />
-                    </div>
-                  </div>
-                </button>
-              </div>
-
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Sparkles className={`w-5 h-5 ${currentTheme.primaryText}`} />
-                  <h3 className={`text-lg font-bold ${currentTheme.text}`}>Coachmarks</h3>
-                </div>
-                <button
-                  onClick={() => handleCoachmarkToggle(!preferences.coachmarksEnabled)}
-                  disabled={isPreferencesLoading}
-                  className={`w-full p-4 rounded-xl border-2 transition-all ${currentTheme.border} hover:${currentTheme.borderHover} ${currentTheme.isDark ? currentTheme.bgSecondary : ''} disabled:cursor-not-allowed disabled:opacity-70`}
-                >
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="text-left">
-                      <p className={`font-semibold ${currentTheme.text}`}>Coachmarks</p>
-                      <p className={`text-xs ${currentTheme.textMuted} mt-1`}>
-                        Show guided walkthroughs in projects, boards, and staging.
-                      </p>
-                      {preferencesError && (
-                        <p className="mt-2 text-xs text-red-600">
-                          {preferencesError}
-                        </p>
-                      )}
-                    </div>
-                    <div className={`relative w-12 h-6 rounded-full transition-colors ${
-                      preferences.coachmarksEnabled
-                        ? `bg-gradient-to-r ${currentTheme.primary}`
-                        : 'bg-gray-300'
-                    }`}>
-                      <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform ${
-                        preferences.coachmarksEnabled ? 'translate-x-6' : 'translate-x-0'
-                      }`} />
-                    </div>
-                  </div>
-                </button>
-              </div>
+              <PreferencesSettingsSections
+                gamificationEnabled={gamificationEnabled}
+                onGamificationChange={setGamificationEnabled}
+                notificationsEnabled={notificationsEnabled}
+                onNotificationsChange={setNotificationsEnabled}
+              />
 
               <div>
                 <div className="flex items-center gap-2 mb-3">

@@ -108,6 +108,9 @@ docker-compose down
 - Keep styling consistent with existing Tailwind patterns (utility-first, minimal custom CSS).
 - When working with component styles, make sure its compatible with different color accents dark/bright modes.
 - When in need of a component, make sure not to introduce a new component, if one already exists. If you are creating a new component, make sure its reusable and open to modifications.
+- Prefer icons over emojis.
+- Don't forget to style elements both for bright and dark modes.
+- If you need to fetch data from the API, prefer showing a spinner or skeletons that match rendered element dimensions, instead of text information.
 
 ### Backend application
 - When modifying backend endpoints, update corresponding frontend API calls.

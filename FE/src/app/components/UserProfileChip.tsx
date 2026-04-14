@@ -20,10 +20,8 @@ export function UserProfileChip({
   const content = onClick ? (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 transition-all cursor-pointer ${
-        isDarkMode
-          ? `border-transparent hover:${currentTheme.primaryBorder} hover:shadow-sm`
-          : "border-transparent hover:bg-gray-100"
+      className={`flex items-center gap-2.5 rounded-2xl px-3 py-2 transition-all cursor-pointer ${
+        isDarkMode ? "hover:bg-white/[0.05]" : "hover:bg-black/[0.04]"
       }`}
       type="button"
     >

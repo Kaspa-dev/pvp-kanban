@@ -1,22 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CoachmarkFlowId } from "../utils/userPreferences";
 
-export type BoardWorkspaceView = "board" | "list" | "backlog" | "history";
+export type BoardWorkspaceView = "board" | "list" | "staging" | "backlog" | "history";
 type BoardCoachmarkFlowId =
   | "board-no-active-sprint"
   | "board-active-sprint"
-  | "backlog-planning"
-  | "backlog-active-sprint";
+  | "staging-planning"
+  | "staging-active-sprint";
 
 export type CoachmarkTargetId =
   | "toolbar-view-switcher"
-  | "toolbar-search"
   | "board-empty-state-cta"
   | "workflow-summary"
   | "board-columns-grid"
-  | "backlog-new-task"
-  | "backlog-overview"
-  | "backlog-list";
+  | "staging-new-task"
+  | "staging-overview"
+  | "staging-list";
 
 export interface CoachmarkStep {
   targetId: CoachmarkTargetId;
@@ -51,12 +50,7 @@ const FLOW_STEPS: Record<BoardCoachmarkFlowId, CoachmarkStep[]> = {
     {
       targetId: "toolbar-view-switcher",
       title: "Keep Your Place Across Views",
-      description: "Use these tabs to swap between the board, table view, staging, and task history without losing context.",
-    },
-    {
-      targetId: "toolbar-search",
-      title: "Search Only What You Need",
-      description: "Search narrows the tasks in the current workspace so it is easier to focus on the work in front of you.",
+      description: "Use these tabs to swap between the board, list, staging, backlog, and task history without losing context.",
     },
     {
       targetId: "workflow-summary",
@@ -69,26 +63,26 @@ const FLOW_STEPS: Record<BoardCoachmarkFlowId, CoachmarkStep[]> = {
       description: "Drag tasks between To Do, In Progress, In Review, and Done as work advances.",
     },
   ],
-  "backlog-planning": [
+  "staging-planning": [
     {
-      targetId: "backlog-new-task",
+      targetId: "staging-new-task",
       title: "Capture New Work",
       description: "Add ideas, requests, and upcoming tasks here so the team always has fresh work ready to stage.",
     },
     {
-      targetId: "backlog-overview",
+      targetId: "staging-overview",
       title: "Stage A Batch In Queue",
       description: "This queue collects ready staging tasks so you can launch them into To Do together instead of one by one.",
     },
     {
-      targetId: "backlog-list",
+      targetId: "staging-list",
       title: "Choose What To Stage",
       description: "Use the card actions or drag-and-drop to add tasks into the queue, or pull them back out before starting the batch.",
     },
   ],
-  "backlog-active-sprint": [
+  "staging-active-sprint": [
     {
-      targetId: "backlog-overview",
+      targetId: "staging-overview",
       title: "Queue Up The Next Batch",
       description: "Even while work is active on the board, the queue helps you prepare the next set of staging tasks to release together.",
     },
@@ -98,7 +92,7 @@ const FLOW_STEPS: Record<BoardCoachmarkFlowId, CoachmarkStep[]> = {
       description: "Board and List show the tasks already in motion, while Staging stays focused on what comes next.",
     },
     {
-      targetId: "backlog-new-task",
+      targetId: "staging-new-task",
       title: "Keep Feeding The Queue",
       description: "Continue adding future work here so the queue always has strong candidates when the team has capacity.",
     },
@@ -113,8 +107,8 @@ export function getCoachmarkFlowForView(
     return hasWorkflowCards ? "board-active-sprint" : "board-no-active-sprint";
   }
 
-  if (view === "backlog") {
-    return hasWorkflowCards ? "backlog-active-sprint" : "backlog-planning";
+  if (view === "staging") {
+    return hasWorkflowCards ? "staging-active-sprint" : "staging-planning";
   }
 
   return null;
@@ -136,6 +130,7 @@ export function useBoardCoachmarks({
   const [activeFlowId, setActiveFlowId] = useState<BoardCoachmarkFlowId | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+  const [dismissedFlowId, setDismissedFlowId] = useState<BoardCoachmarkFlowId | null>(null);
 
   const steps = useMemo(
     () => (activeFlowId ? FLOW_STEPS[activeFlowId] : []),
@@ -169,6 +164,10 @@ export function useBoardCoachmarks({
 
   const closeFlow = useCallback((markCompleted: boolean) => {
     if (activeFlowId && markCompleted) {
+      setDismissedFlowId(activeFlowId);
+    }
+
+    if (activeFlowId && markCompleted) {
       onFlowCompleted(activeFlowId);
     }
 
@@ -178,6 +177,7 @@ export function useBoardCoachmarks({
   }, [activeFlowId, onFlowCompleted]);
 
   const startFlow = useCallback((flowId: BoardCoachmarkFlowId) => {
+    setDismissedFlowId(null);
     setActiveFlowId(flowId);
     setStepIndex(0);
     setTargetRect(null);
@@ -282,7 +282,7 @@ export function useBoardCoachmarks({
     }
 
     const flowId = getCoachmarkFlowForView(view, hasWorkflowCards);
-    if (!flowId || completedFlows.includes(flowId)) {
+    if (!flowId || completedFlows.includes(flowId) || dismissedFlowId === flowId) {
       return;
     }
 
@@ -297,6 +297,7 @@ export function useBoardCoachmarks({
     activeFlowId,
     coachmarksEnabled,
     completedFlows,
+    dismissedFlowId,
     hasFetchedPreferences,
     hasWorkflowCards,
     isBlocked,

@@ -3,8 +3,8 @@ import { apiJson } from "./auth";
 export type CoachmarkFlowId =
   | "board-no-active-sprint"
   | "board-active-sprint"
-  | "backlog-planning"
-  | "backlog-active-sprint"
+  | "staging-planning"
+  | "staging-active-sprint"
   | "projects-empty-state"
   | "projects-board-list";
 

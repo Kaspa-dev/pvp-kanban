@@ -1,9 +1,12 @@
 using BE.Data;
 using BE.DTOs;
 using BE.Models;
+using BE.Options;
+using BE.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using System.Text.Json;
 
@@ -26,10 +29,12 @@ public class UsersController : ControllerBase
     ];
 
     private readonly AppDbContext _context;
+    private readonly AuthOptions _authOptions;
 
-    public UsersController(AppDbContext context)
+    public UsersController(AppDbContext context, IOptions<AuthOptions> authOptions)
     {
         _context = context;
+        _authOptions = authOptions.Value;
     }
 
     // GET api/users/search?q=query&limit=8
@@ -200,6 +205,137 @@ public class UsersController : ControllerBase
         return Ok(normalizedPreferences);
     }
 
+    // PUT api/users/me
+    [HttpPut("me")]
+    public async Task<ActionResult<AuthUserDto>> UpdateMyProfile(
+        UpdateCurrentUserRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        string email = request.Email.Trim().ToLowerInvariant();
+        string username = request.Username.Trim();
+        string firstName = request.FirstName.Trim();
+        string lastName = request.LastName.Trim();
+
+        string? validationError = ValidateProfileUpdate(email, username, firstName, lastName);
+        if (validationError is not null)
+        {
+            return BadRequest(new AuthErrorDto { Message = validationError });
+        }
+
+        var user = await _context.Users.SingleOrDefaultAsync(candidate => candidate.Id == userId, cancellationToken);
+        if (user is null)
+        {
+            return Unauthorized();
+        }
+
+        if (await _context.Users.AnyAsync(candidate => candidate.Id != userId && candidate.Email == email, cancellationToken))
+        {
+            return Conflict(new AuthErrorDto { Message = "Email is already registered." });
+        }
+
+        if (await _context.Users.AnyAsync(candidate => candidate.Id != userId && candidate.Username == username, cancellationToken))
+        {
+            return Conflict(new AuthErrorDto { Message = "Username is already taken." });
+        }
+
+        user.Email = email;
+        user.Username = username;
+        user.FirstName = firstName;
+        user.LastName = lastName;
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return Ok(ToAuthUserDto(user));
+    }
+
+    // POST api/users/me/change-password
+    [HttpPost("me/change-password")]
+    public async Task<IActionResult> ChangeMyPassword(
+        ChangePasswordRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        if (string.IsNullOrWhiteSpace(request.CurrentPassword) ||
+            string.IsNullOrWhiteSpace(request.NewPassword) ||
+            string.IsNullOrWhiteSpace(request.ConfirmNewPassword))
+        {
+            return BadRequest(new AuthErrorDto { Message = "All password fields are required." });
+        }
+
+        if (request.NewPassword.Length < 8)
+        {
+            return BadRequest(new AuthErrorDto { Message = "Password must be at least 8 characters long." });
+        }
+
+        if (request.NewPassword != request.ConfirmNewPassword)
+        {
+            return BadRequest(new AuthErrorDto { Message = "New password confirmation does not match." });
+        }
+
+        if (request.CurrentPassword == request.NewPassword)
+        {
+            return BadRequest(new AuthErrorDto { Message = "Choose a different password from your current one." });
+        }
+
+        var user = await _context.Users.SingleOrDefaultAsync(candidate => candidate.Id == userId, cancellationToken);
+        if (user is null)
+        {
+            return Unauthorized();
+        }
+
+        if (!PasswordHasher.VerifyPassword(request.CurrentPassword, user.PasswordHash))
+        {
+            return Unauthorized(new AuthErrorDto { Message = "Current password is incorrect." });
+        }
+
+        user.PasswordHash = PasswordHasher.HashPassword(request.NewPassword);
+        await _context.SaveChangesAsync(cancellationToken);
+        return NoContent();
+    }
+
+    // DELETE api/users/me
+    [HttpDelete("me")]
+    public async Task<IActionResult> DeleteMyAccount(CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        var user = await _context.Users.SingleOrDefaultAsync(candidate => candidate.Id == userId, cancellationToken);
+        if (user is null)
+        {
+            ClearRefreshTokenCookie();
+            return Unauthorized();
+        }
+
+        var blocked = new DeleteCurrentUserBlockedDto
+        {
+            OwnedBoardsCount = await _context.Boards.CountAsync(board => board.CreatorId == userId, cancellationToken),
+            OwnedTeamsCount = await _context.OrganizationalUnits.CountAsync(team => team.OwnerId == userId, cancellationToken),
+            ReportedTasksCount = await _context.Tasks.CountAsync(task => task.ReporterId == userId, cancellationToken),
+        };
+
+        if (blocked.OwnedBoardsCount > 0 || blocked.OwnedTeamsCount > 0 || blocked.ReportedTasksCount > 0)
+        {
+            blocked.Message = "Account deletion is blocked until you transfer or remove owned boards, owned teams, and reported tasks.";
+            return Conflict(blocked);
+        }
+
+        _context.Users.Remove(user);
+        await _context.SaveChangesAsync(cancellationToken);
+        ClearRefreshTokenCookie();
+        return NoContent();
+    }
+
     private static int CalculateLevel(int xp)
     {
         int[] xpPerLevel =
@@ -243,6 +379,49 @@ public class UsersController : ControllerBase
             User.FindFirstValue("sub");
 
         return int.TryParse(value, out userId);
+    }
+
+    private static string? ValidateProfileUpdate(string email, string username, string firstName, string lastName)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return "Email is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            return "Username is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName))
+        {
+            return "First name and last name are required.";
+        }
+
+        return null;
+    }
+
+    private static AuthUserDto ToAuthUserDto(User user)
+    {
+        return new AuthUserDto
+        {
+            Id = user.Id,
+            Email = user.Email,
+            Username = user.Username,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            DisplayName = $"{user.FirstName} {user.LastName}".Trim(),
+        };
+    }
+
+    private void ClearRefreshTokenCookie()
+    {
+        Response.Cookies.Delete(_authOptions.RefreshTokenCookieName, new CookieOptions
+        {
+            Path = "/api/auth",
+            SameSite = SameSiteMode.Lax,
+            Secure = Request.IsHttps,
+        });
     }
 
     private static UserPreferencesDto ParsePreferences(string? preferencesJson)

@@ -15,6 +15,26 @@ export interface RegisterInput {
   password: string;
 }
 
+export interface UpdateCurrentUserProfileInput {
+  email: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+}
+
+export interface ChangeCurrentUserPasswordInput {
+  currentPassword: string;
+  newPassword: string;
+  confirmNewPassword: string;
+}
+
+export interface DeleteCurrentUserBlockedResponse {
+  message: string;
+  ownedBoardsCount: number;
+  ownedTeamsCount: number;
+  reportedTasksCount: number;
+}
+
 interface AuthResponse {
   accessToken: string;
   expiresAtUtc: string;
@@ -53,10 +73,12 @@ let refreshPromise: Promise<boolean> | null = null;
 
 export class ApiError extends Error {
   status: number;
+  payload?: unknown;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, payload?: unknown) {
     super(message);
     this.status = status;
+    this.payload = payload;
     this.name = "ApiError";
   }
 }
@@ -243,7 +265,7 @@ export async function apiJson<T>(
   const payload = await parseJson<T | AuthErrorResponse>(response);
 
   if (!response.ok) {
-    throw new ApiError(response.status, getErrorMessage(payload, fallbackMessage));
+    throw new ApiError(response.status, getErrorMessage(payload, fallbackMessage), payload);
   }
 
   return payload as T;
@@ -258,7 +280,7 @@ export async function apiVoid(
   const payload = await parseJson<AuthErrorResponse>(response);
 
   if (!response.ok) {
-    throw new ApiError(response.status, getErrorMessage(payload, fallbackMessage));
+    throw new ApiError(response.status, getErrorMessage(payload, fallbackMessage), payload);
   }
 }
 
@@ -360,4 +382,42 @@ export async function logout(): Promise<void> {
   } finally {
     setAccessToken(null);
   }
+}
+
+export async function updateCurrentUserProfile(
+  input: UpdateCurrentUserProfileInput,
+): Promise<User> {
+  const updatedUser = await apiJson<ApiUser>(
+    "/api/users/me",
+    {
+      method: "PUT",
+      body: JSON.stringify(input),
+    },
+    "Unable to update your profile right now.",
+  );
+
+  return normalizeUser(updatedUser);
+}
+
+export async function changeCurrentUserPassword(
+  input: ChangeCurrentUserPasswordInput,
+): Promise<void> {
+  await apiVoid(
+    "/api/users/me/change-password",
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+    "Unable to change your password right now.",
+  );
+}
+
+export async function deleteCurrentUserAccount(): Promise<void> {
+  await apiVoid(
+    "/api/users/me",
+    {
+      method: "DELETE",
+    },
+    "Unable to delete your account right now.",
+  );
 }

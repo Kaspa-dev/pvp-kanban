@@ -89,7 +89,7 @@ export function KanbanCard({
   return (
     <div
       ref={drag}
-      className={`relative group overflow-visible ${
+      className={`relative group overflow-visible p-1 ${
         isDragging ? "opacity-50 scale-95" : "opacity-100"
       }`}
       style={{

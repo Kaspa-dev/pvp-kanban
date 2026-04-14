@@ -52,7 +52,7 @@ export function HistoryView({
 
   return (
     <div className={`${currentTheme.bgSecondary} h-full overflow-auto`}>
-      <div className="w-full max-w-[1400px] mx-auto px-6 py-6">
+      <div className="w-full px-8 py-6 lg:px-10 xl:px-12">
         <div className="mb-6">
           <h1 className={`text-3xl font-bold ${currentTheme.text} mb-2`}>History</h1>
           <p className={currentTheme.textSecondary}>Completed tasks and activity summary</p>

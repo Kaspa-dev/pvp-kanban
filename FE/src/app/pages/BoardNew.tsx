@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useNavigate, useParams } from "react-router";
-import { endOfWeek, isWithinInterval, parseISO, startOfWeek } from "date-fns";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import { ArrowRight, ClipboardList, LayoutGrid } from "lucide-react";
+import { Archive, ArrowRight, ClipboardList, Clock, LayoutGrid, List as ListIcon } from "lucide-react";
 import { KanbanColumn } from "../components/KanbanColumn";
 import { AddCardModal } from "../components/AddCardModal";
 import { EditTaskModal } from "../components/EditTaskModal";
@@ -11,12 +10,12 @@ import { Sidebar } from "../components/Sidebar";
 import { Toolbar } from "../components/Toolbar";
 import { SettingsModal } from "../components/SettingsModal";
 import { ConfirmDeleteDialog } from "../components/ConfirmDeleteDialog";
-import { ProfileModal } from "../components/ProfileModal";
 import { ListView } from "../components/ListView";
 import { BacklogView2 } from "../components/BacklogView2";
 import { HistoryView } from "../components/HistoryView";
 import { CoachmarkOverlay } from "../components/CoachmarkOverlay";
 import { SidebarInset, SidebarProvider } from "../components/ui/sidebar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../components/ui/tooltip";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { useUserPreferences } from "../contexts/UserPreferencesContext";
@@ -51,8 +50,21 @@ import {
   getBoardLabels,
 } from "../utils/labels";
 import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
+import {
+  BacklogWorkspaceFilters,
+  DEFAULT_BACKLOG_WORKSPACE_FILTERS,
+  DEFAULT_TASK_WORKSPACE_FILTERS,
+  TaskWorkspaceFilters,
+} from "../utils/taskWorkspaceFilters";
 
-const WORKSPACE_VIEW_ORDER: BoardWorkspaceView[] = ["board", "list", "backlog", "history"];
+const WORKSPACE_VIEW_ORDER: BoardWorkspaceView[] = ["board", "list", "staging", "backlog", "history"];
+const BOARD_VIEW_TABS: Array<{ value: BoardWorkspaceView; label: string; icon: typeof LayoutGrid }> = [
+  { value: "board", label: "Board", icon: LayoutGrid },
+  { value: "list", label: "List", icon: ListIcon },
+  { value: "staging", label: "Staging", icon: Archive },
+  { value: "backlog", label: "Backlog", icon: ClipboardList },
+  { value: "history", label: "History", icon: Clock },
+];
 
 function isEditableKeyboardTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
@@ -80,7 +92,6 @@ export function Board() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Card | null>(null);
   const [pendingReplay, setPendingReplay] = useState<{ flowId: ReturnType<typeof getCoachmarkFlowForView>; targetView: BoardWorkspaceView } | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; cardId: number | null; title: string }>({
@@ -89,10 +100,9 @@ export function Board() {
     title: "",
   });
 
-  const [activeFilter, setActiveFilter] = useState("all");
-  const [view, setView] = useState<"board" | "list" | "backlog" | "history">("board");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedLabelIds, setSelectedLabelIds] = useState<number[]>([]);
+  const [view, setView] = useState<BoardWorkspaceView>("board");
+  const [listFilters, setListFilters] = useState<TaskWorkspaceFilters>(DEFAULT_TASK_WORKSPACE_FILTERS);
+  const [backlogFilters, setBacklogFilters] = useState<BacklogWorkspaceFilters>(DEFAULT_BACKLOG_WORKSPACE_FILTERS);
 
   const [labels, setLabels] = useState<Label[]>([]);
   const [cards, setCards] = useState<Cards>(createEmptyCards());
@@ -248,6 +258,11 @@ export function Board() {
     setWorkspaceReloadCount((prevCount) => prevCount + 1);
   };
 
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
+
   const refreshProgress = async () => {
     if (!user) {
       return;
@@ -316,71 +331,24 @@ export function Board() {
     await refreshProgress();
   };
 
-  const filteredAllCards = useMemo(() => {
-    return allCards.filter((card) => {
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        const matchesSearch =
-          card.title.toLowerCase().includes(query) ||
-          card.labelIds.some((labelId) => {
-            const label = labels.find((item) => item.id === labelId);
-            return label?.name.toLowerCase().includes(query);
-          });
-
-        if (!matchesSearch) {
-          return false;
-        }
-      }
-
-      if (selectedLabelIds.length > 0) {
-        const matchesLabels = card.labelIds.some((labelId) => selectedLabelIds.includes(labelId));
-        if (!matchesLabels) {
-          return false;
-        }
-      }
-
-      if (activeFilter === "assigned" && card.assigneeUserId !== currentUserId) {
-        return false;
-      }
-
-      if (activeFilter === "due") {
-        if (!card.dueDate) {
-          return false;
-        }
-
-        const dueDate = parseISO(card.dueDate);
-        const weekInterval = {
-          start: startOfWeek(new Date(), { weekStartsOn: 1 }),
-          end: endOfWeek(new Date(), { weekStartsOn: 1 }),
-        };
-
-        if (!isWithinInterval(dueDate, weekInterval)) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [activeFilter, allCards, currentUserId, labels, searchQuery, selectedLabelIds]);
-
-  const backlogCards = useMemo(
-    () => filteredAllCards.filter((card) => card.status === "backlog"),
-    [filteredAllCards],
+  const stagingCards = useMemo(
+    () => allCards.filter((card) => card.status === "backlog"),
+    [allCards],
   );
 
-  const queuedBacklogCards = useMemo(
-    () => backlogCards.filter((card) => card.isQueued),
-    [backlogCards],
+  const queuedStagingCards = useMemo(
+    () => stagingCards.filter((card) => card.isQueued),
+    [stagingCards],
   );
 
-  const plainBacklogCards = useMemo(
-    () => backlogCards.filter((card) => !card.isQueued),
-    [backlogCards],
+  const plainStagingCards = useMemo(
+    () => stagingCards.filter((card) => !card.isQueued),
+    [stagingCards],
   );
 
   const workflowCards = useMemo(
-    () => filteredAllCards.filter((card) => card.status !== "backlog"),
-    [filteredAllCards],
+    () => allCards.filter((card) => card.status !== "backlog"),
+    [allCards],
   );
 
   const workflowColumns = useMemo(
@@ -403,7 +371,6 @@ export function Board() {
       isLoadingBoard ||
       isModalOpen ||
       isSettingsOpen ||
-      isProfileOpen ||
       editingTask !== null ||
       deleteDialog.isOpen,
     onFlowCompleted: (flowId) => {
@@ -429,7 +396,6 @@ export function Board() {
       !currentBoard ||
       isModalOpen ||
       isSettingsOpen ||
-      isProfileOpen ||
       editingTask !== null ||
       deleteDialog.isOpen ||
       activeFlowId !== null
@@ -481,7 +447,6 @@ export function Board() {
     editingTask,
     isLoadingBoard,
     isModalOpen,
-    isProfileOpen,
     isSettingsOpen,
   ]);
 
@@ -759,141 +724,206 @@ export function Board() {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <SidebarProvider defaultOpen>
-        <div className={`${workspaceSurface.pageClassName} flex h-screen max-h-screen w-full overflow-hidden`}>
+      <SidebarProvider
+        defaultOpen={false}
+        className={`${workspaceSurface.pageClassName} h-screen max-h-screen flex-col overflow-hidden`}
+        style={{ "--sidebar-top-offset": "4.75rem" } as CSSProperties}
+      >
         <div className={workspaceSurface.backgroundLayerClassName}>
           {workspaceSurface.backgroundBlobs.map((blob, index) => (
             <div key={index} className={blob.className} style={blob.style} />
           ))}
         </div>
-        <Sidebar
-          activeFilter={activeFilter}
-          onFilterChange={setActiveFilter}
-          onCreateTask={() => setIsModalOpen(true)}
-          selectedLabels={selectedLabelIds}
-          onLabelsChange={setSelectedLabelIds}
-          onLogout={async () => {
-            await logout();
-            navigate("/login");
-          }}
-          boardName={currentBoard.name}
-          boardLogoIconKey={currentBoard.logoIconKey}
-          boardLogoColorKey={currentBoard.logoColorKey}
-          labels={labels}
-        />
 
-        <SidebarInset className="relative z-10 flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden bg-transparent">
+        <div className="relative z-10 shrink-0">
           <Toolbar
-            view={view}
-            onViewChange={setView}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
             onOpenSettings={() => setIsSettingsOpen(true)}
-            onProfileClick={() => setIsProfileOpen(true)}
+            onLogout={handleLogout}
+            onProfileClick={() => navigate("/app/profile")}
             onReplayCurrentHints={() => replayFlowForView(view)}
-            showViewShortcuts
-            showSidebarToggle
-            userProgress={userProgress}
+            userProfile={{
+              username: userProgress.username,
+              subtitle: `Level ${userProgress.level}`,
+            }}
           />
+        </div>
 
-          {actionError && (
-            <div className="shrink-0 px-6 pt-4">
-              <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
-                {actionError}
-              </div>
-            </div>
-          )}
+        <div className="relative z-10 flex min-h-0 flex-1 overflow-hidden">
+            <Sidebar
+              onCreateTask={() => setIsModalOpen(true)}
+              boardName={currentBoard.name}
+              boardLogoIconKey={currentBoard.logoIconKey}
+              boardLogoColorKey={currentBoard.logoColorKey}
+            />
 
-          {preferencesError && !actionError && (
-            <div className="shrink-0 px-6 pt-4">
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
-                {preferencesError}
-              </div>
-            </div>
-          )}
-
-          {view === "board" && (
-            <>
-              {workflowCards.length > 0 ? (
-                <main className={`flex-1 min-h-0 overflow-y-auto ${currentTheme.bgSecondary}`}>
+            <SidebarInset className="relative flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden bg-transparent">
+              <div className={`shrink-0 border-b ${currentTheme.border} ${isDarkMode ? "bg-zinc-950/45" : "bg-white/72"} backdrop-blur-xl`}>
+                <div className="flex w-full items-center gap-2 pl-9 pr-6 py-2">
+                  <kbd className={`hidden rounded-md border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] ${currentTheme.border} ${currentTheme.textMuted} md:inline-flex`}>
+                    Q
+                  </kbd>
                   <div
-                    className={`border-b px-8 py-5 ${currentTheme.border} ${currentTheme.bgSecondary}`}
-                    data-coachmark="workflow-summary"
+                    className="inline-flex max-w-full items-center gap-1 overflow-x-auto pl-1"
+                    data-coachmark="toolbar-view-switcher"
                   >
-                    <div className="mx-auto flex max-w-[2000px] flex-wrap items-center justify-between gap-5">
-                      <div className="flex items-center gap-4">
-                        <div className={`flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${currentTheme.primary}`}>
-                          <LayoutGrid className="h-5 w-5 text-white" />
-                        </div>
-                        <div>
-                          <h2 className={`text-lg font-bold ${currentTheme.text}`}>Workflow Board</h2>
-                          <p className={`text-sm ${currentTheme.textMuted}`}>
-                            Active work outside staging, ready to move across the board.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap gap-3">
-                        <div className={`rounded-xl border px-3 py-2 ${currentTheme.border} ${currentTheme.bg}`}>
-                          <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${currentTheme.textMuted}`}>
-                            In Flow
-                          </p>
-                          <p className={`text-lg font-bold ${currentTheme.text}`}>{workflowCards.length}</p>
-                        </div>
-                        <div className={`rounded-xl border px-3 py-2 ${currentTheme.border} ${currentTheme.bg}`}>
-                          <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${currentTheme.textMuted}`}>
-                            Done
-                          </p>
-                          <p className={`text-lg font-bold ${currentTheme.text}`}>{workflowColumns.done.length}</p>
-                        </div>
-                        <div className={`rounded-xl border px-3 py-2 ${currentTheme.border} ${currentTheme.bg}`}>
-                          <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${currentTheme.textMuted}`}>
-                            Staging
-                          </p>
-                          <p className={`text-lg font-bold ${currentTheme.text}`}>{backlogCards.length}</p>
-                        </div>
-                      </div>
-                    </div>
+                    {BOARD_VIEW_TABS.map(({ value, label, icon: Icon }) => (
+                      <Tooltip key={value}>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => setView(value)}
+                            className={`relative inline-flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-semibold transition-all ${
+                              view === value
+                                ? `bg-gradient-to-r ${currentTheme.primary} text-white shadow-sm`
+                                : `${currentTheme.textSecondary} hover:${currentTheme.primaryText} ${isDarkMode ? "hover:bg-white/[0.05]" : "hover:bg-black/[0.04]"}`
+                            }`}
+                            type="button"
+                          >
+                            <Icon className="h-4 w-4" />
+                            <span>{label}</span>
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" sideOffset={8}>{label} view</TooltipContent>
+                      </Tooltip>
+                    ))}
                   </div>
-
-                  <div className="mx-auto w-full max-w-[2000px] px-8 py-8">
-                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4" data-coachmark="board-columns-grid">
-                      <KanbanColumn id="todo" title="To Do" count={workflowColumns.todo.length} cards={workflowColumns.todo} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
-                      <KanbanColumn id="inProgress" title="In Progress" count={workflowColumns.inProgress.length} cards={workflowColumns.inProgress} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
-                      <KanbanColumn id="inReview" title="In Review" count={workflowColumns.inReview.length} cards={workflowColumns.inReview} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
-                      <KanbanColumn id="done" title="Done" count={workflowColumns.done.length} cards={workflowColumns.done} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
-                    </div>
+                  <kbd className={`hidden rounded-md border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] ${currentTheme.border} ${currentTheme.textMuted} md:inline-flex`}>
+                    E
+                  </kbd>
+                  <div className="ml-auto text-[11px] font-medium md:hidden">
+                    <span className={currentTheme.textMuted}>Q / E</span>
                   </div>
-                </main>
-              ) : (
-                <div className={`flex min-h-0 flex-1 items-center justify-center ${currentTheme.bgSecondary}`}>
-                  <div className="max-w-md px-6 text-center">
-                    <div className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl ${currentTheme.primarySoftStrong}`}>
-                      <ClipboardList className={`h-10 w-10 ${currentTheme.primaryText}`} />
-                    </div>
-                    <h2 className={`mb-3 text-2xl font-bold ${currentTheme.text}`}>No active workflow yet</h2>
-                    <p className={`mb-8 text-base ${currentTheme.textMuted}`}>
-                      Tasks stay in Staging until your team pulls them into To Do. Open Staging to create work or promote a ready item.
-                    </p>
-                    <button
-                      onClick={() => setView("backlog")}
-                      data-coachmark="board-empty-state-cta"
-                      className={`inline-flex items-center gap-2 rounded-lg bg-gradient-to-r px-6 py-3 font-bold text-white transition-all hover:scale-[1.02] hover:shadow-lg ${currentTheme.primary}`}
-                    >
-                      Go to Staging
-                      <ArrowRight className="h-4 w-4" />
-                    </button>
+                </div>
+              </div>
+
+              {actionError && (
+                <div className="shrink-0 px-8 pt-4 lg:px-10 xl:px-12">
+                  <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+                    {actionError}
                   </div>
                 </div>
               )}
-            </>
-          )}
 
-          {view === "list" && (
-            <>
-              {workflowCards.length > 0 ? (
+              {preferencesError && !actionError && (
+                <div className="shrink-0 px-8 pt-4 lg:px-10 xl:px-12">
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
+                    {preferencesError}
+                  </div>
+                </div>
+              )}
+
+              {view === "board" && (
+                <>
+                  {workflowCards.length > 0 ? (
+                    <main className={`flex-1 min-h-0 overflow-y-auto ${currentTheme.bgSecondary}`}>
+                      <div className="w-full px-8 py-8 lg:px-10 xl:px-12">
+                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4" data-coachmark="board-columns-grid">
+                          <KanbanColumn id="todo" title="To Do" count={workflowColumns.todo.length} cards={workflowColumns.todo} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                          <KanbanColumn id="inProgress" title="In Progress" count={workflowColumns.inProgress.length} cards={workflowColumns.inProgress} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                          <KanbanColumn id="inReview" title="In Review" count={workflowColumns.inReview.length} cards={workflowColumns.inReview} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                          <KanbanColumn id="done" title="Done" count={workflowColumns.done.length} cards={workflowColumns.done} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                        </div>
+                      </div>
+                    </main>
+                  ) : (
+                    <div className={`flex min-h-0 flex-1 items-center justify-center ${currentTheme.bgSecondary}`}>
+                      <div className="max-w-md px-6 text-center">
+                        <div className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl ${currentTheme.primarySoftStrong}`}>
+                          <ClipboardList className={`h-10 w-10 ${currentTheme.primaryText}`} />
+                        </div>
+                        <h2 className={`mb-3 text-2xl font-bold ${currentTheme.text}`}>No active workflow yet</h2>
+                        <p className={`mb-8 text-base ${currentTheme.textMuted}`}>
+                          Tasks stay in Staging until your team pulls them into To Do. Open Staging to create work or promote a ready item.
+                        </p>
+                        <button
+                          onClick={() => setView("staging")}
+                          data-coachmark="board-empty-state-cta"
+                          className={`inline-flex items-center gap-2 rounded-lg bg-gradient-to-r px-6 py-3 font-bold text-white transition-all hover:scale-[1.02] hover:shadow-lg ${currentTheme.primary}`}
+                        >
+                          Go to Staging
+                          <ArrowRight className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {view === "list" && (
+                <>
+                  {workflowCards.length > 0 ? (
+                    <ListView
+                      mode="active"
+                      cards={workflowCards}
+                      filters={listFilters}
+                      onFiltersChange={(filters) => setListFilters(filters as TaskWorkspaceFilters)}
+                      currentUserId={currentUserId}
+                      onAssigneeChange={handleAssigneeChange}
+                      onDelete={handleDeleteRequest}
+                      onEdit={handleEditTask}
+                      onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)}
+                      availableAssignees={availableAssignees}
+                      labels={labels}
+                    />
+                  ) : (
+                    <div className={`flex min-h-0 flex-1 items-center justify-center ${currentTheme.bgSecondary}`}>
+                      <div className="max-w-md px-6 text-center">
+                        <div className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl ${currentTheme.primarySoftStrong}`}>
+                          <ClipboardList className={`h-10 w-10 ${currentTheme.primaryText}`} />
+                        </div>
+                        <h2 className={`mb-3 text-2xl font-bold ${currentTheme.text}`}>No active workflow yet</h2>
+                        <p className={`mb-8 text-base ${currentTheme.textMuted}`}>
+                          List view shows tasks that have already left staging. Move work into To Do first to see it here.
+                        </p>
+                        <button
+                          onClick={() => setView("staging")}
+                          className={`inline-flex items-center gap-2 rounded-lg bg-gradient-to-r px-6 py-3 font-bold text-white transition-all hover:scale-[1.02] hover:shadow-lg ${currentTheme.primary}`}
+                        >
+                          Go to Staging
+                          <ArrowRight className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {view === "staging" && (
+                <main className={`flex-1 min-h-0 overflow-hidden ${currentTheme.bgSecondary}`}>
+                  <BacklogView2
+                    backlogCards={plainStagingCards}
+                    queuedCards={queuedStagingCards}
+                    onAssigneeChange={handleAssigneeChange}
+                    onDelete={handleDeleteRequest}
+                    onEdit={handleEditTask}
+                    onAddToQueue={(cardId) => void handleAddToQueue(cardId)}
+                    onRemoveFromQueue={(cardId) => void handleRemoveFromQueue(cardId)}
+                    onStartQueue={() => void handleStartQueue()}
+                    availableAssignees={availableAssignees}
+                    labels={labels}
+                    onCreateTask={() => setIsModalOpen(true)}
+                  />
+                </main>
+              )}
+
+              {view === "backlog" && (
                 <ListView
-                  cards={workflowCards}
+                  mode="backlog"
+                  cards={stagingCards}
+                  filters={backlogFilters}
+                  onFiltersChange={(filters) => setBacklogFilters(filters as BacklogWorkspaceFilters)}
+                  currentUserId={currentUserId}
+                  onAssigneeChange={handleAssigneeChange}
+                  onDelete={handleDeleteRequest}
+                  onEdit={handleEditTask}
+                  availableAssignees={availableAssignees}
+                  labels={labels}
+                  onCreateTask={() => setIsModalOpen(true)}
+                />
+              )}
+
+              {view === "history" && (
+                <HistoryView
+                  cards={allCards}
                   onAssigneeChange={handleAssigneeChange}
                   onDelete={handleDeleteRequest}
                   onEdit={handleEditTask}
@@ -901,108 +931,52 @@ export function Board() {
                   availableAssignees={availableAssignees}
                   labels={labels}
                 />
-              ) : (
-                <div className={`flex min-h-0 flex-1 items-center justify-center ${currentTheme.bgSecondary}`}>
-                  <div className="max-w-md px-6 text-center">
-                    <div className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl ${currentTheme.primarySoftStrong}`}>
-                      <ClipboardList className={`h-10 w-10 ${currentTheme.primaryText}`} />
-                    </div>
-                    <h2 className={`mb-3 text-2xl font-bold ${currentTheme.text}`}>No active workflow yet</h2>
-                    <p className={`mb-8 text-base ${currentTheme.textMuted}`}>
-                      List view shows tasks that have already left staging. Move work into To Do first to see it here.
-                    </p>
-                    <button
-                      onClick={() => setView("backlog")}
-                      className={`inline-flex items-center gap-2 rounded-lg bg-gradient-to-r px-6 py-3 font-bold text-white transition-all hover:scale-[1.02] hover:shadow-lg ${currentTheme.primary}`}
-                    >
-                      Go to Staging
-                      <ArrowRight className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
               )}
-            </>
-          )}
+            </SidebarInset>
 
-          {view === "backlog" && (
-            <main className={`flex-1 min-h-0 overflow-hidden ${currentTheme.bgSecondary}`}>
-              <BacklogView2
-                backlogCards={plainBacklogCards}
-                queuedCards={queuedBacklogCards}
-                onAssigneeChange={handleAssigneeChange}
-                onDelete={handleDeleteRequest}
-                onEdit={handleEditTask}
-                onAddToQueue={(cardId) => void handleAddToQueue(cardId)}
-                onRemoveFromQueue={(cardId) => void handleRemoveFromQueue(cardId)}
-                onStartQueue={() => void handleStartQueue()}
-                availableAssignees={availableAssignees}
-                labels={labels}
-                onCreateTask={() => setIsModalOpen(true)}
-              />
-            </main>
-          )}
-
-          {view === "history" && (
-            <HistoryView
-              cards={filteredAllCards}
-              onAssigneeChange={handleAssigneeChange}
-              onDelete={handleDeleteRequest}
-              onEdit={handleEditTask}
-              onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)}
+            <AddCardModal
+              isOpen={isModalOpen}
+              onClose={() => setIsModalOpen(false)}
+              onAdd={handleAddCard}
+              availableLabels={labels}
+              onCreateLabel={handleCreateLabel}
               availableAssignees={availableAssignees}
-              labels={labels}
             />
-          )}
-        </SidebarInset>
 
-        <AddCardModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onAdd={handleAddCard}
-          availableLabels={labels}
-          onCreateLabel={handleCreateLabel}
-          availableAssignees={availableAssignees}
-        />
+            <EditTaskModal
+              key={editingTask?.id ?? "no-task"}
+              isOpen={editingTask !== null}
+              onClose={() => setEditingTask(null)}
+              onSave={handleSaveEdit}
+              task={editingTask}
+              availableLabels={labels}
+              onCreateLabel={handleCreateLabel}
+              availableAssignees={availableAssignees}
+            />
 
-        <EditTaskModal
-          key={editingTask?.id ?? "no-task"}
-          isOpen={editingTask !== null}
-          onClose={() => setEditingTask(null)}
-          onSave={handleSaveEdit}
-          task={editingTask}
-          availableLabels={labels}
-          onCreateLabel={handleCreateLabel}
-          availableAssignees={availableAssignees}
-        />
+            <SettingsModal
+              isOpen={isSettingsOpen}
+              onClose={() => setIsSettingsOpen(false)}
+              onOpenProfile={() => navigate("/app/profile")}
+            />
 
-        <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} onOpenProfile={() => setIsProfileOpen(true)} />
+            <ConfirmDeleteDialog
+              isOpen={deleteDialog.isOpen}
+              onClose={() => setDeleteDialog({ isOpen: false, cardId: null, title: "" })}
+              onConfirm={() => void handleDeleteConfirm()}
+              taskTitle={deleteDialog.title}
+            />
 
-        <ProfileModal
-          isOpen={isProfileOpen}
-          onClose={() => setIsProfileOpen(false)}
-          user={user}
-          userProgress={userProgress}
-          tasksCompleted={userProgress.tasksCompleted}
-          userTotalXP={userProgress.xp}
-        />
-
-        <ConfirmDeleteDialog
-          isOpen={deleteDialog.isOpen}
-          onClose={() => setDeleteDialog({ isOpen: false, cardId: null, title: "" })}
-          onConfirm={() => void handleDeleteConfirm()}
-          taskTitle={deleteDialog.title}
-        />
-
-        <CoachmarkOverlay
-          isOpen={activeFlowId !== null}
-          step={activeStep}
-          targetRect={targetRect}
-          stepIndex={stepIndex}
-          totalSteps={totalSteps}
-          onBack={goToPreviousStep}
-          onNext={goToNextStep}
-          onClose={() => closeFlow(true)}
-        />
+            <CoachmarkOverlay
+              isOpen={activeFlowId !== null}
+              step={activeStep}
+              targetRect={targetRect}
+              stepIndex={stepIndex}
+              totalSteps={totalSteps}
+              onBack={goToPreviousStep}
+              onNext={goToNextStep}
+              onClose={() => closeFlow(true)}
+            />
         </div>
       </SidebarProvider>
     </DndProvider>

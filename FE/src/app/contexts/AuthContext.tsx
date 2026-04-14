@@ -8,6 +8,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (input: RegisterInput) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
+  setCurrentUser: (user: User | null) => void;
 }
 
 const defaultAuthContext: AuthContextType = {
@@ -17,6 +18,7 @@ const defaultAuthContext: AuthContextType = {
   login: async () => ({ success: false, error: 'Auth not initialized' }),
   register: async () => ({ success: false, error: 'Auth not initialized' }),
   logout: async () => {},
+  setCurrentUser: () => {},
 };
 
 const AuthContext = createContext<AuthContextType>(defaultAuthContext);
@@ -68,6 +70,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const setCurrentUser = (nextUser: User | null) => {
+    setUser(nextUser);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -77,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         register,
         logout,
+        setCurrentUser,
       }}
     >
       {children}

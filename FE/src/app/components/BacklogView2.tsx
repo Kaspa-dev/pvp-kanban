@@ -81,7 +81,7 @@ export function BacklogView2({
 
   const queuedPoints = queuedCards.reduce((sum, card) => sum + (card.storyPoints || 0), 0);
   const backlogPoints = backlogCards.reduce((sum, card) => sum + (card.storyPoints || 0), 0);
-  const sectionCardClassName = `${currentTheme.cardBg} overflow-hidden rounded-[28px] border-2 shadow-[0_20px_50px_-34px_rgba(15,23,42,0.55)] transition-all`;
+  const sectionCardClassName = `${currentTheme.cardBg} rounded-[28px] border-2 shadow-[0_20px_50px_-34px_rgba(15,23,42,0.55)] transition-all`;
   const sectionStatClassName = `rounded-2xl border px-4 py-3 ${currentTheme.border} ${isDarkMode ? "bg-black/20" : "bg-white/75"} backdrop-blur-sm`;
   const primaryActionButtonClassName = `group relative inline-flex items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r font-bold text-white shadow-lg transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} ${currentTheme.primary}`;
   const queueActionButtonClassName = `${primaryActionButtonClassName} gap-2 px-5 py-3 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-lg`;
@@ -112,8 +112,8 @@ export function BacklogView2({
   });
 
   return (
-    <div className={`${currentTheme.bgSecondary} h-full min-h-0 overflow-hidden`}>
-      <div className="mx-auto flex h-full min-h-0 w-full max-w-[2000px] flex-col gap-8 overflow-hidden px-6 py-8">
+    <div className={`${currentTheme.bgSecondary} h-full min-h-0 overflow-visible`}>
+      <div className="flex h-full min-h-0 w-full flex-col gap-8 overflow-visible px-8 py-8 lg:px-10 xl:px-12">
         <div className="shrink-0">
           <div className="mb-2 flex items-center justify-between">
             <h1 className={`text-3xl font-bold ${currentTheme.text}`}>Staging</h1>
@@ -121,7 +121,7 @@ export function BacklogView2({
               <TooltipTrigger asChild>
                 <button
                   onClick={onCreateTask}
-                  data-coachmark="backlog-new-task"
+                  data-coachmark="staging-new-task"
                   className={`${primaryActionButtonClassName} gap-2 px-5 py-3 text-[15px] font-semibold`}
                 >
                   <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_15%,rgba(255,255,255,0.24)_50%,transparent_85%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
@@ -139,13 +139,13 @@ export function BacklogView2({
           </p>
         </div>
 
-        <div className="grid flex-1 min-h-0 grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-6 overflow-hidden lg:grid-cols-[minmax(0,1fr)_8.5rem_minmax(0,1fr)] lg:grid-rows-1 lg:items-stretch">
+        <div className="grid flex-1 min-h-0 grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-5 overflow-visible lg:grid-cols-[minmax(0,1fr)_7rem_minmax(0,1fr)] lg:grid-rows-1 lg:items-stretch">
           <section
             ref={backlogDrop}
             className={`flex h-full min-h-0 flex-col ${sectionCardClassName} ${
               isOverBacklog ? `${currentTheme.primaryBorder} ring-4 ${currentTheme.ring}` : currentTheme.border
             }`}
-            data-coachmark="backlog-list"
+            data-coachmark="staging-list"
           >
             <div className={`relative overflow-hidden border-b px-6 py-6 ${currentTheme.border} ${currentTheme.bgSecondary}`}>
               <div className={`pointer-events-none absolute -left-12 bottom-0 h-40 w-40 rounded-full bg-gradient-to-tr ${currentTheme.primarySoft} blur-3xl`} />
@@ -189,8 +189,8 @@ export function BacklogView2({
               </div>
             </div>
 
-            <div className="flex-1 min-h-0 overflow-hidden p-6">
-              <CustomScrollArea className="h-full min-h-0" viewportClassName="h-full min-h-0 px-2 py-2 pr-5">
+            <div className="flex-1 min-h-0 overflow-visible p-6">
+              <CustomScrollArea className="h-full min-h-0" viewportClassName="h-full min-h-0 px-4 py-3 pr-6">
                 {backlogCards.length === 0 ? (
                   <div className="flex min-h-[18rem] items-center justify-center">
                     <div className={`w-full rounded-[24px] border border-dashed px-6 py-12 text-center ${currentTheme.border}`}>
@@ -240,12 +240,12 @@ export function BacklogView2({
                                 type="button"
                                 onClick={() => onAddToQueue(card.id)}
                                 onMouseDown={(event) => event.stopPropagation()}
-                                className={`group inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition-all ${currentTheme.border} ${currentTheme.textSecondary} ${isDarkMode ? "bg-zinc-950/70 hover:bg-zinc-900/80" : "bg-white/90 hover:bg-slate-50"} hover:${currentTheme.primaryText} backdrop-blur-sm`}
+                                className={`group inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-0 ${currentTheme.border} ${currentTheme.textSecondary} ${isDarkMode ? "bg-white/[0.03] hover:bg-white/[0.06]" : "bg-slate-50 hover:bg-white"} hover:${currentTheme.primaryText} ${currentTheme.focus}`}
                               >
-                                <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${isDarkMode ? "bg-white/[0.06]" : "bg-slate-100"} transition-colors group-hover:${currentTheme.primaryBg}`}>
-                                  <FlowArrowIcon className={`h-3.5 w-3.5 ${currentTheme.primaryText}`} />
+                                <span className="leading-none">Add to Queue</span>
+                                <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+                                  <FlowArrowIcon className="block h-3.5 w-3.5 translate-y-px text-current" />
                                 </span>
-                                <span>Queue</span>
                               </button>
                             </TooltipTrigger>
                             <TooltipContent side="top" sideOffset={8}>Stage task in the queue batch</TooltipContent>
@@ -260,35 +260,19 @@ export function BacklogView2({
           </section>
 
           <div className="order-2 mx-auto w-full max-w-3xl lg:order-none lg:h-full lg:max-w-none">
-            <div className={`relative h-28 overflow-hidden rounded-[28px] border px-4 py-4 ${currentTheme.border} ${currentTheme.cardBg} lg:h-full`}>
-              <div className={`pointer-events-none absolute left-[10%] top-1/2 h-20 w-20 -translate-y-1/2 rounded-full bg-gradient-to-br ${currentTheme.primarySoftStrong} opacity-75 blur-3xl lg:left-[18%] lg:top-[14%] lg:h-24 lg:w-24 lg:translate-y-0`} />
-              <div className={`pointer-events-none absolute right-[12%] top-1/2 h-24 w-24 -translate-y-1/2 rounded-full bg-gradient-to-tr ${currentTheme.primarySoft} opacity-65 blur-[60px] lg:right-[14%] lg:top-[28%] lg:h-32 lg:w-32 lg:translate-y-0 lg:blur-[72px]`} />
-              <div className={`pointer-events-none absolute left-[32%] top-[52%] hidden h-20 w-20 rounded-full bg-gradient-to-br ${currentTheme.primarySoftStrong} opacity-75 blur-3xl lg:block`} />
-              <div className={`pointer-events-none absolute right-[26%] bottom-[22%] hidden h-28 w-28 rounded-full bg-gradient-to-bl ${currentTheme.primarySoft} opacity-75 blur-[64px] lg:block`} />
-              <div className={`pointer-events-none absolute left-[12%] bottom-[12%] hidden h-16 w-16 rounded-full bg-gradient-to-tr ${currentTheme.primarySoftStrong} opacity-70 blur-2xl lg:block`} />
-              <div
-                className="pointer-events-none absolute inset-0 opacity-[0.03] dark:opacity-[0.05]"
-                style={{
-                  backgroundImage: `linear-gradient(${isDarkMode ? "#fff" : "#000"} 1px, transparent 1px), linear-gradient(90deg, ${isDarkMode ? "#fff" : "#000"} 1px, transparent 1px)`,
-                  backgroundSize: "40px 40px",
-                }}
-              />
-              <div className="relative flex h-full items-center justify-center lg:min-h-0 lg:flex-col lg:py-16">
-                <div
-                  className="relative z-10 flex items-center justify-center gap-10 animate-pulse lg:flex-col lg:gap-[6.75rem]"
-                  style={{ animationDuration: "3.9s", animationTimingFunction: "cubic-bezier(0.32, 0, 0.2, 1)" }}
-                >
-                  <FlowLaneIcon className={`h-14 w-14 rotate-90 ${currentTheme.primaryText} lg:h-[4.5rem] lg:w-[4.5rem] lg:rotate-0`} />
-                  <FlowLaneIcon className={`h-14 w-14 rotate-90 ${currentTheme.primaryText} lg:h-[4.5rem] lg:w-[4.5rem] lg:rotate-0`} />
-                  <FlowLaneIcon className={`h-14 w-14 rotate-90 ${currentTheme.primaryText} lg:h-[4.5rem] lg:w-[4.5rem] lg:rotate-0`} />
-                </div>
+            <div className="flex h-24 items-center justify-center lg:h-full">
+              <div className="flex items-center justify-center gap-4 lg:flex-col lg:gap-5" aria-hidden="true">
+                <div className={`h-px w-14 ${isDarkMode ? "bg-white/15" : "bg-slate-300"} lg:h-14 lg:w-px`} />
+                <FlowLaneIcon className={`h-7 w-7 rotate-90 ${currentTheme.textMuted} lg:h-8 lg:w-8 lg:rotate-0`} />
+                <div className={`h-px w-14 ${isDarkMode ? "bg-white/15" : "bg-slate-300"} lg:h-14 lg:w-px`} />
               </div>
+              <span className="sr-only">Tasks move from staging into the queue batch.</span>
             </div>
           </div>
 
           <section
             ref={queueDrop}
-            data-coachmark="backlog-overview"
+            data-coachmark="staging-overview"
             className={`order-3 flex h-full min-h-0 flex-col ${sectionCardClassName} ${
               isOverQueue ? `${currentTheme.primaryBorder} ring-4 ${currentTheme.ring}` : currentTheme.border
             }`}
@@ -355,8 +339,8 @@ export function BacklogView2({
               </div>
             </div>
 
-            <div className="flex-1 min-h-0 overflow-hidden p-6">
-              <CustomScrollArea className="h-full min-h-0" viewportClassName="h-full min-h-0 px-2 py-2 pr-5">
+            <div className="flex-1 min-h-0 overflow-visible p-6">
+              <CustomScrollArea className="h-full min-h-0" viewportClassName="h-full min-h-0 px-4 py-3 pr-6">
                 {queuedCards.length === 0 ? (
                   <div className="flex min-h-[18rem] items-center justify-center">
                     <div className={`w-full rounded-[24px] border border-dashed px-6 py-12 text-center ${currentTheme.border}`}>
@@ -395,12 +379,12 @@ export function BacklogView2({
                                 type="button"
                                 onClick={() => onRemoveFromQueue(card.id)}
                                 onMouseDown={(event) => event.stopPropagation()}
-                                className={`group inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition-all ${currentTheme.border} ${currentTheme.textSecondary} ${isDarkMode ? "bg-zinc-950/70 hover:bg-zinc-900/80" : "bg-white/90 hover:bg-slate-50"} hover:${currentTheme.primaryText} backdrop-blur-sm`}
+                                className={`group inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-0 ${currentTheme.border} ${currentTheme.textSecondary} ${isDarkMode ? "bg-white/[0.03] hover:bg-white/[0.06]" : "bg-slate-50 hover:bg-white"} hover:${currentTheme.primaryText} ${currentTheme.focus}`}
                               >
-                                <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${isDarkMode ? "bg-white/[0.06]" : "bg-slate-100"} transition-colors group-hover:${currentTheme.primaryBg}`}>
-                                  <FlowArrowIcon className={`h-3.5 w-3.5 ${currentTheme.primaryText}`} direction="left" />
+                                <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+                                  <FlowArrowIcon className="block h-3.5 w-3.5 translate-y-px text-current" direction="left" />
                                 </span>
-                                <span>Staging</span>
+                                <span className="leading-none">Back to Staging</span>
                               </button>
                             </TooltipTrigger>
                             <TooltipContent side="top" sideOffset={8}>Return task to staging</TooltipContent>

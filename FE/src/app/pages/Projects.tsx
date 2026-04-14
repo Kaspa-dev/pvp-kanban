@@ -8,13 +8,10 @@ import {
   FilterX,
   Folder,
   ListTodo,
-  LogOut,
   Plus,
   Search,
-  Settings,
   Trash2,
   Users,
-  HelpCircle,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
@@ -36,9 +33,8 @@ import { EditProjectModal } from "../components/EditProjectModal";
 import { SettingsModal } from "../components/SettingsModal";
 import { ConfirmDeleteProjectDialog } from "../components/ConfirmDeleteProjectDialog";
 import { CoachmarkOverlay } from "../components/CoachmarkOverlay";
-import { BanBanLogo } from "../components/BanBanLogo";
+import { Toolbar } from "../components/Toolbar";
 import { getProjectsCoachmarkFlow, useProjectsCoachmarks } from "../hooks/useProjectsCoachmarks";
-import { UserProfileChip } from "../components/UserProfileChip";
 import {
   Select,
   SelectContent,
@@ -77,7 +73,7 @@ function isEditableKeyboardTarget(target: EventTarget | null): boolean {
   );
 }
 
-const BOARD_PAGE_SIZE = 6;
+const BOARD_PAGE_SIZE = 8;
 const DEFAULT_MEMBERSHIP_FILTER: BoardMembershipFilter = "all";
 const DEFAULT_SORT: BoardSort = "newest";
 
@@ -315,7 +311,6 @@ export function Projects() {
     [boardList.page, effectiveTotalPages],
   );
   const currentProjectsFlow = getProjectsCoachmarkFlow(hasAnyBoards, hasVisibleBoardCards);
-
   const coachmarks = useProjectsCoachmarks({
     hasAnyBoards,
     hasVisibleBoardCards,
@@ -392,7 +387,7 @@ export function Projects() {
       }
 
       const key = event.key;
-      if (!["1", "2", "3", "Escape", "Tab", "Shift"].includes(key)) {
+      if (!["1", "2", "Escape", "Tab", "Shift"].includes(key)) {
         return;
       }
 
@@ -417,16 +412,11 @@ export function Projects() {
       event.preventDefault();
 
       if (key === "1") {
-        handleQueryStateChange({ membership: "all", page: 1 });
-        return;
-      }
-
-      if (key === "2") {
         handleQueryStateChange({ membership: "owned", page: 1 });
         return;
       }
 
-      if (key === "3") {
+      if (key === "2") {
         handleQueryStateChange({ membership: "shared", page: 1 });
         return;
       }
@@ -517,80 +507,19 @@ export function Projects() {
         ))}
       </div>
 
-      <header
-        className={workspaceSurface.glassHeaderClassName}
-        style={workspaceSurface.glassHeaderStyle}
-      >
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <BanBanLogo size="lg" />
-          </div>
+      <Toolbar
+        onOpenSettings={() => setIsSettingsModalOpen(true)}
+        onLogout={handleLogout}
+        onProfileClick={() => navigate("/app/profile")}
+        onReplayCurrentHints={currentProjectsFlow ? handleReplayCoachmarks : undefined}
+        helpCoachmarkId="projects-settings-help"
+        userProfile={{
+          username: user.displayName,
+          subtitle: user.email,
+        }}
+      />
 
-          <div className="flex items-center gap-3">
-            <UserProfileChip username={user.displayName} subtitle={user.email} />
-            <button
-              onClick={handleReplayCoachmarks}
-              disabled={!currentProjectsFlow}
-              data-coachmark="projects-settings-help"
-              className={`p-3 rounded-xl transition-all cursor-pointer relative z-20 border ${
-                isDarkMode
-                  ? `border-transparent hover:${currentTheme.primaryBorder} text-gray-400 hover:text-gray-200 hover:shadow-sm`
-                  : "border-transparent hover:bg-gray-100 text-gray-500 hover:text-gray-900"
-              } focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} disabled:cursor-not-allowed disabled:opacity-50`}
-              type="button"
-            >
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="inline-flex">
-                    <HelpCircle className="w-5 h-5 pointer-events-none" />
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" sideOffset={8}>
-                  {currentProjectsFlow ? "Replay coachmarks" : "No coachmarks are available in this state"}
-                </TooltipContent>
-              </Tooltip>
-            </button>
-            <button
-              onClick={() => setIsSettingsModalOpen(true)}
-              className={`p-3 rounded-xl transition-all cursor-pointer relative z-20 border ${
-                isDarkMode
-                  ? `border-transparent hover:${currentTheme.primaryBorder} text-gray-400 hover:text-gray-200 hover:shadow-sm`
-                  : "border-transparent hover:bg-gray-100 text-gray-500 hover:text-gray-900"
-              } focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus}`}
-              type="button"
-            >
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="inline-flex">
-                    <Settings className="w-5 h-5 pointer-events-none" />
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" sideOffset={8}>Open settings</TooltipContent>
-              </Tooltip>
-            </button>
-            <button
-              onClick={handleLogout}
-              className={`p-3 rounded-xl transition-all cursor-pointer relative z-20 border ${
-                isDarkMode
-                  ? `border-transparent hover:${currentTheme.primaryBorder} text-gray-400 hover:text-gray-200 hover:shadow-sm`
-                  : "border-transparent hover:bg-gray-100 text-gray-500 hover:text-gray-900"
-              } focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus}`}
-              type="button"
-            >
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="inline-flex">
-                    <LogOut className="w-5 h-5 pointer-events-none" />
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" sideOffset={8}>Log out</TooltipContent>
-              </Tooltip>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="relative z-10 max-w-7xl mx-auto px-6 py-12">
+      <main className="relative z-10 w-full px-6 py-12">
         <div className={`${currentTheme.cardBg} rounded-3xl border ${currentTheme.border} p-10 mb-10 relative overflow-hidden shadow-lg`}>
           <div className={`absolute top-0 right-0 w-96 h-96 bg-gradient-to-br ${currentTheme.primarySoftStrong} rounded-full blur-3xl animate-pulse`} style={{ animationDuration: "6s" }} />
           <div className={`absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr ${currentTheme.primarySoft} rounded-full blur-3xl animate-pulse`} style={{ animationDuration: "8s", animationDelay: "1s" }} />
@@ -682,56 +611,54 @@ export function Projects() {
                 </div>
               </div>
 
-              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_15rem] xl:items-end">
-                <label className="block">
-                  <span className={`mb-2 block text-sm font-semibold ${currentTheme.text}`}>Search</span>
-                  <div className="relative">
-                    <Search className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${currentTheme.textMuted}`} />
-                    <input
-                      type="text"
-                      value={searchInput}
-                      onChange={(event) => setSearchInput(event.target.value)}
-                      placeholder="Search by board name or description"
-                      className={`h-11 w-full rounded-xl border ${currentTheme.inputBorder} ${currentTheme.inputBg} pl-10 pr-4 text-sm ${currentTheme.text} placeholder:${currentTheme.textMuted} focus:outline-none focus:ring-2 ${currentTheme.focus}`}
-                    />
-                  </div>
-                </label>
-
-                <label className="block">
-                  <span className={`mb-2 block text-sm font-semibold ${currentTheme.text}`}>Sort by</span>
-                  <Select value={queryState.sort} onValueChange={(value) => handleQueryStateChange({ sort: value as BoardSort, page: 1 })}>
-                    <SelectTrigger
-                      className={`h-11 rounded-xl border ${workspaceSurface.inputSurfaceClassName} ${currentTheme.text} data-[size=default]:h-11 px-4 py-0 shadow-none transition-colors hover:${currentTheme.borderHover} focus:ring-2 ${currentTheme.focus} [&_[data-slot=select-value]]:text-left dark:!bg-zinc-950 dark:hover:!bg-zinc-950`}
-                      style={{
-                        ...workspaceSurface.inputSurfaceStyle,
-                        backgroundColor: isDarkMode ? "#09090b" : "#ffffff",
-                      }}
-                    >
-                      <SelectValue placeholder="Sort boards" />
-                    </SelectTrigger>
-                    <SelectContent
-                      className={`rounded-xl border ${currentTheme.border} ${currentTheme.cardBg} shadow-xl`}
-                    >
-                      <SelectItem className={`rounded-lg ${currentTheme.textSecondary} focus:${currentTheme.bgSecondary} focus:${currentTheme.text}`} value="newest">Newest</SelectItem>
-                      <SelectItem className={`rounded-lg ${currentTheme.textSecondary} focus:${currentTheme.bgSecondary} focus:${currentTheme.text}`} value="nameAsc">Name A-Z</SelectItem>
-                      <SelectItem className={`rounded-lg ${currentTheme.textSecondary} focus:${currentTheme.bgSecondary} focus:${currentTheme.text}`} value="nameDesc">Name Z-A</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </label>
-              </div>
-
               <div className={`rounded-xl border ${currentTheme.border} ${currentTheme.bgSecondary} px-4 py-4`}>
-                <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                  <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-end">
+                  <div className="flex min-w-0 flex-col gap-2 xl:flex-[1.35]">
+                    <span className={`mb-2 block text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Search</span>
+                    <div className="relative min-w-0 flex-1">
+                      <Search className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${currentTheme.textMuted}`} />
+                      <input
+                        type="text"
+                        value={searchInput}
+                        onChange={(event) => setSearchInput(event.target.value)}
+                        placeholder="Search by board name or description"
+                        className={`h-11 w-full rounded-xl border ${currentTheme.inputBorder} ${currentTheme.inputBg} pl-10 pr-4 text-sm ${currentTheme.text} placeholder:${currentTheme.textMuted} focus:outline-none focus:ring-2 ${currentTheme.focus}`}
+                      />
+                    </div>
+                  </div>
+
+                  <label className="block xl:w-52 xl:flex-none">
+                    <span className={`mb-2 block text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Sort by</span>
+                    <Select value={queryState.sort} onValueChange={(value) => handleQueryStateChange({ sort: value as BoardSort, page: 1 })}>
+                      <SelectTrigger
+                        className={`h-11 rounded-xl border ${workspaceSurface.inputSurfaceClassName} ${currentTheme.text} data-[size=default]:h-11 px-4 py-0 shadow-none transition-colors hover:${currentTheme.borderHover} focus:ring-2 ${currentTheme.focus} [&_[data-slot=select-value]]:text-left dark:!bg-zinc-950 dark:hover:!bg-zinc-950`}
+                        style={{
+                          ...workspaceSurface.inputSurfaceStyle,
+                          backgroundColor: isDarkMode ? "#09090b" : "#ffffff",
+                        }}
+                      >
+                        <SelectValue placeholder="Sort boards" />
+                      </SelectTrigger>
+                      <SelectContent
+                        className={`rounded-xl border ${currentTheme.border} ${currentTheme.cardBg} shadow-xl`}
+                      >
+                        <SelectItem className={`rounded-lg ${currentTheme.textSecondary} focus:${currentTheme.bgSecondary} focus:${currentTheme.text}`} value="newest">Newest</SelectItem>
+                        <SelectItem className={`rounded-lg ${currentTheme.textSecondary} focus:${currentTheme.bgSecondary} focus:${currentTheme.text}`} value="nameAsc">Name A-Z</SelectItem>
+                        <SelectItem className={`rounded-lg ${currentTheme.textSecondary} focus:${currentTheme.bgSecondary} focus:${currentTheme.text}`} value="nameDesc">Name Z-A</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </label>
+
+                  <div className="flex min-w-0 flex-col gap-2 xl:flex-1">
                     <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
                       Quick filters
                     </p>
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 xl:min-h-11">
                       {([
-                        { label: "All", value: "all" },
-                        { label: "Owned by me", value: "owned" },
-                        { label: "Shared with me", value: "shared" },
-                      ] as Array<{ label: string; value: BoardMembershipFilter }>).map((filter) => {
+                        { label: "All", value: "all", shortcut: null },
+                        { label: "Owned by me", value: "owned", shortcut: "1" },
+                        { label: "Shared with me", value: "shared", shortcut: "2" },
+                      ] as Array<{ label: string; value: BoardMembershipFilter; shortcut: string | null }>).map((filter) => {
                         const isActive = queryState.membership === filter.value;
                         return (
                           <Tooltip key={filter.value}>
@@ -748,9 +675,11 @@ export function Projects() {
                               >
                                 <span className="inline-flex items-center gap-2">
                                   <span>{filter.label}</span>
-                                  <kbd className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${currentTheme.border} ${currentTheme.textMuted}`}>
-                                    {filter.value === "all" ? "1" : filter.value === "owned" ? "2" : "3"}
-                                  </kbd>
+                                  {filter.shortcut && (
+                                    <kbd className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${currentTheme.border} ${currentTheme.textMuted}`}>
+                                      {filter.shortcut}
+                                    </kbd>
+                                  )}
                                 </span>
                               </button>
                             </TooltipTrigger>
@@ -768,31 +697,32 @@ export function Projects() {
                     </div>
                   </div>
 
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={clearFilters}
-                        disabled={!hasActiveFilters}
-                        className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium transition-all xl:self-end ${
-                          hasActiveFilters
-                            ? `${currentTheme.bg} ${currentTheme.textSecondary} ${currentTheme.border} hover:${currentTheme.borderHover}`
-                            : `${currentTheme.bg} ${currentTheme.textMuted} ${currentTheme.border}`
-                        }`}
-                      >
-                        <FilterX className="h-4 w-4" />
-                        <span className="inline-flex items-center gap-2">
-                          <span>Clear filters</span>
-                          <kbd className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${currentTheme.border} ${currentTheme.textMuted}`}>Esc</kbd>
-                        </span>
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" sideOffset={8}>
-                      {hasActiveFilters
-                        ? "Reset search, filters, sorting, and return to the first page"
-                        : "No filters are active right now"}
-                    </TooltipContent>
-                  </Tooltip>
+                  <div className="xl:ml-auto xl:pt-[1.625rem]">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={clearFilters}
+                          disabled={!hasActiveFilters}
+                          className={`inline-flex h-11 items-center justify-center gap-2 rounded-full border px-4 text-sm font-medium transition-all ${
+                            hasActiveFilters
+                              ? `${currentTheme.bg} ${currentTheme.textSecondary} ${currentTheme.border} hover:${currentTheme.borderHover}`
+                              : `${currentTheme.bg} ${currentTheme.textMuted} ${currentTheme.border}`
+                          }`}
+                        >
+                          <span className="inline-flex items-center gap-2">
+                            <span>Clear</span>
+                            <kbd className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${currentTheme.border} ${currentTheme.textMuted}`}>Esc</kbd>
+                          </span>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" sideOffset={8}>
+                        {hasActiveFilters
+                          ? "Reset search, filters, sorting, and return to the first page"
+                          : "No filters are active right now"}
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                 </div>
               </div>
 
@@ -841,7 +771,7 @@ export function Projects() {
         ) : (
           <>
             <div
-              className={`grid md:grid-cols-2 lg:grid-cols-3 gap-6 transition-opacity duration-200 ${isRefreshingBoards ? "opacity-70" : "opacity-100"}`}
+              className={`grid content-start gap-7 transition-opacity duration-200 md:grid-cols-2 lg:min-h-[57rem] lg:grid-cols-3 xl:min-h-[37.5rem] xl:grid-cols-4 ${isRefreshingBoards ? "opacity-70" : "opacity-100"}`}
               data-coachmark="projects-board-grid"
             >
               {boardList.items.map((board: BoardListItem, index) => {
@@ -851,7 +781,7 @@ export function Projects() {
                   <div
                     key={board.id}
                     data-coachmark={index === 0 ? "projects-board-card" : undefined}
-                    className={`relative min-h-[17.5rem] overflow-hidden ${currentTheme.cardBg} rounded-2xl border-2 ${currentTheme.border} p-6 hover:${currentTheme.primaryBorder} hover:shadow-xl hover:-translate-y-1 transition-all duration-300 text-left group`}
+                    className={`relative min-h-[17.5rem] w-full overflow-hidden ${currentTheme.cardBg} rounded-2xl border-2 ${currentTheme.border} p-6 hover:${currentTheme.primaryBorder} hover:shadow-xl hover:-translate-y-1 transition-all duration-300 text-left group`}
                   >
                     {canManageBoard && (
                       <>
@@ -1052,6 +982,7 @@ export function Projects() {
       <SettingsModal
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
+        onOpenProfile={() => navigate("/app/profile")}
       />
 
       <ConfirmDeleteProjectDialog

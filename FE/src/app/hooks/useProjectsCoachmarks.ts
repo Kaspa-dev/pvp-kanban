@@ -93,6 +93,7 @@ export function useProjectsCoachmarks({
   const [activeFlowId, setActiveFlowId] = useState<CoachmarkFlowId | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+  const [dismissedFlowId, setDismissedFlowId] = useState<CoachmarkFlowId | null>(null);
 
   const steps = useMemo(
     () =>
@@ -129,6 +130,10 @@ export function useProjectsCoachmarks({
 
   const closeFlow = useCallback((markCompleted: boolean) => {
     if (activeFlowId && markCompleted) {
+      setDismissedFlowId(activeFlowId);
+    }
+
+    if (activeFlowId && markCompleted) {
       onFlowCompleted(activeFlowId);
     }
 
@@ -142,6 +147,7 @@ export function useProjectsCoachmarks({
       return;
     }
 
+    setDismissedFlowId(null);
     setActiveFlowId(flowId);
     setStepIndex(0);
     setTargetRect(null);
@@ -246,7 +252,7 @@ export function useProjectsCoachmarks({
     }
 
     const flowId = getProjectsCoachmarkFlow(hasAnyBoards, hasVisibleBoardCards);
-    if (!flowId || completedFlows.includes(flowId)) {
+    if (!flowId || completedFlows.includes(flowId) || dismissedFlowId === flowId) {
       return;
     }
 
@@ -261,6 +267,7 @@ export function useProjectsCoachmarks({
     activeFlowId,
     coachmarksEnabled,
     completedFlows,
+    dismissedFlowId,
     hasAnyBoards,
     hasFetchedPreferences,
     hasVisibleBoardCards,

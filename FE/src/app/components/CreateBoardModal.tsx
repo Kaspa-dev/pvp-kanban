@@ -260,7 +260,7 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
           </CustomScrollArea>
         </div>
 
-        <div className={`border-t-2 ${currentTheme.border} ${currentTheme.bgSecondary} px-6 py-4 flex items-center justify-end gap-3 rounded-b-2xl shrink-0`}>
+        <div className={`border-t-2 ${currentTheme.border} ${currentTheme.cardBg} px-6 py-4 flex items-center justify-end gap-3 rounded-b-2xl shrink-0`}>
           <button
             type="button"
             onClick={handleClose}
