@@ -3,8 +3,12 @@ import { apiJson } from "./auth";
 export type CoachmarkFlowId =
   | "board-no-active-sprint"
   | "board-active-sprint"
+  | "list-no-active-sprint"
+  | "list-active-sprint"
   | "staging-planning"
   | "staging-active-sprint"
+  | "backlog-overview"
+  | "history-overview"
   | "projects-empty-state"
   | "projects-board-list";
 
@@ -18,14 +22,38 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   completedFlows: [],
 };
 
-function normalizePreferences(preferences: Partial<UserPreferences> | null | undefined): UserPreferences {
-  const completedFlows = Array.from(
-    new Set((preferences?.completedFlows ?? []).filter(Boolean)),
-  ) as CoachmarkFlowId[];
+const LEGACY_COACHMARK_FLOW_ALIASES: Record<string, CoachmarkFlowId> = {
+  "backlog-planning": "staging-planning",
+  "backlog-active-sprint": "staging-active-sprint",
+};
 
+const ALLOWED_COACHMARK_FLOWS = new Set<CoachmarkFlowId>([
+  "board-no-active-sprint",
+  "board-active-sprint",
+  "list-no-active-sprint",
+  "list-active-sprint",
+  "staging-planning",
+  "staging-active-sprint",
+  "backlog-overview",
+  "history-overview",
+  "projects-empty-state",
+  "projects-board-list",
+]);
+
+function normalizeCompletedFlows(completedFlows: string[] | null | undefined): CoachmarkFlowId[] {
+  return Array.from(
+    new Set(
+      (completedFlows ?? [])
+        .map((flowId) => LEGACY_COACHMARK_FLOW_ALIASES[flowId] ?? flowId)
+        .filter((flowId): flowId is CoachmarkFlowId => ALLOWED_COACHMARK_FLOWS.has(flowId as CoachmarkFlowId)),
+    ),
+  );
+}
+
+function normalizePreferences(preferences: Partial<UserPreferences> | null | undefined): UserPreferences {
   return {
     coachmarksEnabled: preferences?.coachmarksEnabled ?? DEFAULT_USER_PREFERENCES.coachmarksEnabled,
-    completedFlows,
+    completedFlows: normalizeCompletedFlows(preferences?.completedFlows),
   };
 }
 
@@ -56,5 +84,5 @@ export function getNextCompletedFlows(
   completedFlows: CoachmarkFlowId[],
   flowId: CoachmarkFlowId,
 ): CoachmarkFlowId[] {
-  return Array.from(new Set([...completedFlows, flowId])) as CoachmarkFlowId[];
+  return normalizeCompletedFlows([...completedFlows, flowId]);
 }

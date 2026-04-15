@@ -511,7 +511,11 @@ export function Projects() {
         onOpenSettings={() => setIsSettingsModalOpen(true)}
         onLogout={handleLogout}
         onProfileClick={() => navigate("/app/profile")}
-        onReplayCurrentHints={currentProjectsFlow ? handleReplayCoachmarks : undefined}
+        onReplayCurrentHints={
+          preferences.coachmarksEnabled && currentProjectsFlow
+            ? handleReplayCoachmarks
+            : undefined
+        }
         helpCoachmarkId="projects-settings-help"
         userProfile={{
           username: user.displayName,
@@ -520,6 +524,7 @@ export function Projects() {
       />
 
       <main className="relative z-10 w-full px-6 py-12">
+        <div className="mx-auto w-full max-w-[1850px]">
         <div className={`${currentTheme.cardBg} rounded-3xl border ${currentTheme.border} p-10 mb-10 relative overflow-hidden shadow-lg`}>
           <div className={`absolute top-0 right-0 w-96 h-96 bg-gradient-to-br ${currentTheme.primarySoftStrong} rounded-full blur-3xl animate-pulse`} style={{ animationDuration: "6s" }} />
           <div className={`absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr ${currentTheme.primarySoft} rounded-full blur-3xl animate-pulse`} style={{ animationDuration: "8s", animationDelay: "1s" }} />
@@ -963,6 +968,7 @@ export function Projects() {
             </div>
           </>
         )}
+        </div>
       </main>
 
       <CreateBoardModal

@@ -22,11 +22,20 @@ public class UsersController : ControllerBase
     [
         "board-no-active-sprint",
         "board-active-sprint",
-        "backlog-planning",
-        "backlog-active-sprint",
+        "list-no-active-sprint",
+        "list-active-sprint",
+        "staging-planning",
+        "staging-active-sprint",
+        "backlog-overview",
+        "history-overview",
         "projects-empty-state",
         "projects-board-list",
     ];
+    private static readonly Dictionary<string, string> LegacyCoachmarkFlowAliases = new(StringComparer.Ordinal)
+    {
+        ["backlog-planning"] = "staging-planning",
+        ["backlog-active-sprint"] = "staging-active-sprint",
+    };
 
     private readonly AppDbContext _context;
     private readonly AuthOptions _authOptions;
@@ -456,6 +465,9 @@ public class UsersController : ControllerBase
     private static UserPreferencesDto NormalizePreferences(UserPreferencesDto? preferences)
     {
         List<string> completedFlows = preferences?.CompletedFlows?
+            .Select(flowId => LegacyCoachmarkFlowAliases.TryGetValue(flowId, out string? normalizedFlowId)
+                ? normalizedFlowId
+                : flowId)
             .Where(flowId => !string.IsNullOrWhiteSpace(flowId) && AllowedCoachmarkFlows.Contains(flowId))
             .Distinct(StringComparer.Ordinal)
             .ToList() ?? new List<string>();

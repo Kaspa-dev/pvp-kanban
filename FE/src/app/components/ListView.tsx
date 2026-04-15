@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import {
   Trash2,
@@ -13,6 +13,7 @@ import {
   Search,
   Tag,
   Plus,
+  Loader2,
 } from "lucide-react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { AssigneePopover } from "./AssigneePopover";
@@ -41,10 +42,12 @@ interface ListViewProps {
   filters: TaskWorkspaceFilters | BacklogWorkspaceFilters;
   onFiltersChange: (filters: TaskWorkspaceFilters | BacklogWorkspaceFilters) => void;
   currentUserId: number | null;
-  onAssigneeChange: (cardId: number, assignee: TaskAssignee | null) => void;
+  onAssigneeChange: (cardId: number, assignee: TaskAssignee | null) => void | Promise<void>;
   onDelete: (cardId: number, title: string) => void;
   onEdit?: (cardId: number) => void;
-  onMoveToBacklog?: (cardId: number) => void;
+  onMoveToBacklog?: (cardId: number) => void | Promise<void>;
+  onAddToQueue?: (cardId: number) => void | Promise<void>;
+  onRemoveFromQueue?: (cardId: number) => void | Promise<void>;
   availableAssignees: TaskAssignee[];
   labels: Label[];
   onCreateTask?: () => void;
@@ -60,6 +63,8 @@ export function ListView({
   onDelete,
   onEdit,
   onMoveToBacklog,
+  onAddToQueue,
+  onRemoveFromQueue,
   availableAssignees,
   labels,
   onCreateTask,
@@ -67,6 +72,8 @@ export function ListView({
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const isBacklogMode = mode === "backlog";
+  const [pendingRowIds, setPendingRowIds] = useState<number[]>([]);
+  const workspaceWidthClassName = "mx-auto w-full max-w-[1850px]";
 
   const filteredCards = useMemo(
     () =>
@@ -105,6 +112,15 @@ export function ListView({
     setStageFilter("all");
   };
   const primaryActionButtonClassName = `group relative inline-flex items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r font-bold text-white shadow-lg transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} ${currentTheme.primary}`;
+  const stagingRowActionButtonClassName = `inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-0 ${currentTheme.border} ${currentTheme.textSecondary} ${isDarkMode ? "bg-white/[0.03] hover:bg-white/[0.06]" : "bg-slate-50 hover:bg-white"} hover:${currentTheme.primaryText} ${currentTheme.focus}`;
+  const runRowAction = async (cardId: number, action: () => void | Promise<void>) => {
+    setPendingRowIds((current) => (current.includes(cardId) ? current : [...current, cardId]));
+    try {
+      await Promise.resolve(action());
+    } finally {
+      setPendingRowIds((current) => current.filter((value) => value !== cardId));
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     const statusMap: { [key: string]: { label: string; className: string } } = {
@@ -158,10 +174,10 @@ export function ListView({
 
   return (
     <div className={`${currentTheme.bgSecondary} h-full overflow-auto`}>
-      <div className="flex w-full flex-col gap-6 px-8 py-6 lg:px-10 xl:px-12">
+      <div className={`${workspaceWidthClassName} flex flex-col gap-6 px-8 py-6 lg:px-10 xl:px-12`}>
         {isBacklogMode ? (
           <>
-            <div className="shrink-0">
+            <div className="shrink-0" data-coachmark="backlog-header">
               <div className="mb-2 flex items-center justify-between gap-4">
                 <h1 className={`text-3xl font-bold ${currentTheme.text}`}>Backlog</h1>
                 {onCreateTask && (
@@ -188,7 +204,7 @@ export function ListView({
               </p>
             </div>
 
-            <div className={`rounded-xl border ${currentTheme.border} ${currentTheme.bgSecondary} px-4 py-4`}>
+            <div className={`rounded-xl border ${currentTheme.border} ${currentTheme.bgSecondary} px-4 py-4`} data-coachmark="backlog-filters">
               <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-end">
                 <div className="flex min-w-0 flex-col gap-2 2xl:min-w-0 2xl:flex-[1.35]">
                   <span className={`mb-2 block text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Search tasks</span>
@@ -237,7 +253,7 @@ export function ListView({
 
                   <div className="flex min-w-0 flex-col gap-2 2xl:flex-none">
                     <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
-                      Queue state
+                    Readiness
                     </p>
                     <div className="flex flex-wrap items-center gap-2 2xl:min-h-11">
                       {[
@@ -387,7 +403,7 @@ export function ListView({
           </>
         ) : (
           <>
-            <div className="shrink-0">
+            <div className="shrink-0" data-coachmark="list-header">
               <div className="mb-2 flex items-center justify-between gap-4">
                 <h1 className={`text-3xl font-bold ${currentTheme.text}`}>List</h1>
               </div>
@@ -396,7 +412,7 @@ export function ListView({
               </p>
             </div>
 
-            <div className={`rounded-xl border ${currentTheme.border} ${currentTheme.bgSecondary} px-4 py-4`}>
+            <div className={`rounded-xl border ${currentTheme.border} ${currentTheme.bgSecondary} px-4 py-4`} data-coachmark="list-filters">
               <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-end">
                 <div className="flex min-w-0 flex-col gap-2 2xl:min-w-0 2xl:flex-[1.35]">
                   <span className={`mb-2 block text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Search tasks</span>
@@ -569,7 +585,10 @@ export function ListView({
           </>
         )}
 
-        <div className={`${currentTheme.cardBg} rounded-[28px] border-2 ${currentTheme.border} shadow-sm overflow-hidden`}>
+        <div
+          className={`${currentTheme.cardBg} rounded-[28px] border-2 ${currentTheme.border} shadow-sm overflow-hidden`}
+          data-coachmark={isBacklogMode ? "backlog-table" : "list-table"}
+        >
           <div className={`border-b px-6 py-4 ${currentTheme.border} ${currentTheme.bgSecondary}`}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -597,7 +616,7 @@ export function ListView({
                     Title
                   </th>
                   <th className={`px-6 py-4 text-left text-xs font-bold uppercase tracking-wider ${currentTheme.textMuted}`}>
-                    {isBacklogMode ? "Queue State" : "Status"}
+                    {isBacklogMode ? "Readiness" : "Status"}
                   </th>
                   <th className={`px-6 py-4 text-left text-xs font-bold uppercase tracking-wider ${currentTheme.textMuted}`}>
                     Labels
@@ -630,9 +649,14 @@ export function ListView({
                     const taskTypeDisplay = getTaskTypeDisplay(card.taskType);
                     const priorityIndicator = getPriorityIndicator(card.priority);
                     const formattedDueDate = card.dueDate ? format(parseISO(card.dueDate), "MMM d") : null;
+                    const isRowPending = pendingRowIds.includes(card.id);
 
                     return (
-                      <tr key={card.id} className={`transition-colors hover:${currentTheme.bgSecondary}`}>
+                      <tr
+                        key={card.id}
+                        aria-busy={isRowPending}
+                        className={`transition-colors hover:${currentTheme.bgSecondary} ${isRowPending ? "opacity-55" : ""}`}
+                      >
                         <td className="px-6 py-4 align-top">
                           {card.priority ? (
                             <Tooltip>
@@ -665,6 +689,15 @@ export function ListView({
                                     <span className="text-xs font-medium">{formattedDueDate}</span>
                                   </div>
                                 )}
+                                {isBacklogMode && (
+                                  <div className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                    card.isQueued
+                                      ? `${currentTheme.primaryBg} ${currentTheme.primaryText}`
+                                      : `${currentTheme.bgSecondary} ${currentTheme.textMuted} border ${currentTheme.border}`
+                                  }`}>
+                                    <span>{card.isQueued ? "Queued" : "Waiting"}</span>
+                                  </div>
+                                )}
                               </div>
                             )}
                             <div className={`font-bold text-[15px] ${currentTheme.text}`}>{card.title}</div>
@@ -691,11 +724,13 @@ export function ListView({
                           </div>
                         </td>
                         <td className="px-6 py-4 align-top">
-                          <AssigneePopover
-                            currentAssignee={card.assignee}
-                            onAssigneeChange={(newAssignee) => onAssigneeChange(card.id, newAssignee)}
-                            availableAssignees={availableAssignees}
-                          />
+                          <div className={isRowPending ? "pointer-events-none" : ""}>
+                            <AssigneePopover
+                              currentAssignee={card.assignee}
+                              onAssigneeChange={(newAssignee) => void runRowAction(card.id, () => onAssigneeChange(card.id, newAssignee))}
+                              availableAssignees={availableAssignees}
+                            />
+                          </div>
                         </td>
                         <td className="px-6 py-4 align-top">
                           {card.storyPoints ? (
@@ -713,12 +748,45 @@ export function ListView({
                           )}
                         </td>
                         <td className="px-6 py-4 align-top">
-                          <div className="flex items-center gap-2">
-                            {!isBacklogMode && onMoveToBacklog && (
+                          <div className="flex flex-wrap items-center gap-2">
+                            {isRowPending ? (
+                              <div className={`inline-flex h-8 items-center justify-center rounded-lg px-3 ${currentTheme.textMuted}`}>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              </div>
+                            ) : null}
+                            {isBacklogMode && onAddToQueue && !card.isQueued && !isRowPending && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <button
-                                    onClick={() => onMoveToBacklog(card.id)}
+                                    type="button"
+                                    onClick={() => void runRowAction(card.id, () => onAddToQueue(card.id))}
+                                    className={stagingRowActionButtonClassName}
+                                  >
+                                    <span className="leading-none">Add to Queue</span>
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" sideOffset={8}>Stage task in the queue batch</TooltipContent>
+                              </Tooltip>
+                            )}
+                            {isBacklogMode && onRemoveFromQueue && card.isQueued && !isRowPending && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type="button"
+                                    onClick={() => void runRowAction(card.id, () => onRemoveFromQueue(card.id))}
+                                    className={stagingRowActionButtonClassName}
+                                  >
+                                    <span className="leading-none">Back to Staging</span>
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" sideOffset={8}>Return task to staging</TooltipContent>
+                              </Tooltip>
+                            )}
+                            {!isBacklogMode && onMoveToBacklog && !isRowPending && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    onClick={() => void runRowAction(card.id, () => onMoveToBacklog(card.id))}
                                     className={`${currentTheme.textMuted} hover:${currentTheme.primaryText} p-2 rounded-lg transition-all ${isDarkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"}`}
                                     type="button"
                                   >
@@ -728,7 +796,7 @@ export function ListView({
                                 <TooltipContent side="top" sideOffset={8}>Move to staging</TooltipContent>
                               </Tooltip>
                             )}
-                            {onEdit && (
+                            {onEdit && !isRowPending && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <button
@@ -746,7 +814,7 @@ export function ListView({
                               <TooltipTrigger asChild>
                                 <button
                                   onClick={() => onDelete(card.id, card.title)}
-                                  className={`text-red-500 hover:text-red-700 p-2 rounded-lg transition-all ${isDarkMode ? "hover:bg-red-950" : "hover:bg-red-50"}`}
+                                  className={`${currentTheme.textMuted} hover:${currentTheme.primaryText} p-2 rounded-lg transition-all ${isDarkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"}`}
                                   type="button"
                                 >
                                   <Trash2 className="w-4 h-4" />

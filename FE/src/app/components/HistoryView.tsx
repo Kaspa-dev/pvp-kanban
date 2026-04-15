@@ -32,6 +32,7 @@ export function HistoryView({
 }: HistoryViewProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const workspaceWidthClassName = "mx-auto w-full max-w-[1850px]";
 
   // Filter to only show completed tasks
   const completedCards = cards.filter(card => card.status === "done");
@@ -52,8 +53,8 @@ export function HistoryView({
 
   return (
     <div className={`${currentTheme.bgSecondary} h-full overflow-auto`}>
-      <div className="w-full px-8 py-6 lg:px-10 xl:px-12">
-        <div className="mb-6">
+      <div className={`${workspaceWidthClassName} px-8 py-6 lg:px-10 xl:px-12`}>
+        <div className="mb-6" data-coachmark="history-header">
           <h1 className={`text-3xl font-bold ${currentTheme.text} mb-2`}>History</h1>
           <p className={currentTheme.textSecondary}>Completed tasks and activity summary</p>
         </div>
@@ -101,7 +102,7 @@ export function HistoryView({
         </div>
 
         {/* Completed Tasks */}
-        <div className={`${currentTheme.cardBg} rounded-2xl border-2 ${currentTheme.border} shadow-sm p-6`}>
+        <div className={`${currentTheme.cardBg} rounded-2xl border-2 ${currentTheme.border} shadow-sm p-6`} data-coachmark="history-list">
           <h2 className={`text-xl font-bold ${currentTheme.text} mb-4`}>Completed Tasks</h2>
           
           {completedCards.length === 0 ? (

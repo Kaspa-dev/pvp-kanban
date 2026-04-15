@@ -1,4 +1,4 @@
-import { Archive, CircleDot, ClipboardList, Play, Plus, Rows4, Zap } from "lucide-react";
+import { Archive, ClipboardList, Play, Plus } from "lucide-react";
 import { useDrop } from "react-dnd";
 import { KanbanCard } from "./KanbanCard";
 import { CustomScrollArea } from "./CustomScrollArea";
@@ -78,11 +78,9 @@ export function BacklogView2({
 }: BacklogViewProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const workspaceWidthClassName = "mx-auto w-full max-w-[1850px]";
 
-  const queuedPoints = queuedCards.reduce((sum, card) => sum + (card.storyPoints || 0), 0);
-  const backlogPoints = backlogCards.reduce((sum, card) => sum + (card.storyPoints || 0), 0);
-  const sectionCardClassName = `${currentTheme.cardBg} rounded-[28px] border-2 shadow-[0_20px_50px_-34px_rgba(15,23,42,0.55)] transition-all`;
-  const sectionStatClassName = `rounded-2xl border px-4 py-3 ${currentTheme.border} ${isDarkMode ? "bg-black/20" : "bg-white/75"} backdrop-blur-sm`;
+  const sectionCardClassName = `${currentTheme.cardBg} overflow-hidden rounded-[28px] border-2 shadow-[0_20px_50px_-34px_rgba(15,23,42,0.55)] transition-all`;
   const primaryActionButtonClassName = `group relative inline-flex items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r font-bold text-white shadow-lg transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} ${currentTheme.primary}`;
   const queueActionButtonClassName = `${primaryActionButtonClassName} gap-2 px-5 py-3 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-lg`;
   const [{ isOverQueue }, queueDrop] = useDrop<DragCardItem, void, { isOverQueue: boolean }>({
@@ -113,7 +111,7 @@ export function BacklogView2({
 
   return (
     <div className={`${currentTheme.bgSecondary} h-full min-h-0 overflow-visible`}>
-      <div className="flex h-full min-h-0 w-full flex-col gap-8 overflow-visible px-8 py-8 lg:px-10 xl:px-12">
+      <div className={`${workspaceWidthClassName} flex h-full min-h-0 flex-col gap-8 overflow-visible px-8 py-8 lg:px-10 xl:px-12`}>
         <div className="shrink-0">
           <div className="mb-2 flex items-center justify-between">
             <h1 className={`text-3xl font-bold ${currentTheme.text}`}>Staging</h1>
@@ -148,44 +146,11 @@ export function BacklogView2({
             data-coachmark="staging-list"
           >
             <div className={`relative overflow-hidden border-b px-6 py-6 ${currentTheme.border} ${currentTheme.bgSecondary}`}>
-              <div className={`pointer-events-none absolute -left-12 bottom-0 h-40 w-40 rounded-full bg-gradient-to-tr ${currentTheme.primarySoft} blur-3xl`} />
-              <div className="relative flex flex-col gap-5">
-                <div className="flex items-start gap-3">
-                  <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${currentTheme.primary}`}>
-                    <Archive className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="min-w-0">
-                    <h2 className={`text-lg font-bold ${currentTheme.text}`}>Staging Tasks</h2>
-                    <p className={`mt-1 text-sm ${currentTheme.textMuted}`}>
-                      Keep upcoming work grounded here until each task is ready to be staged forward.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className={sectionStatClassName}>
-                    <div className={`mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
-                      <CircleDot className="h-3.5 w-3.5" />
-                      <span>Staging tasks</span>
-                    </div>
-                    <div className="flex items-end gap-2">
-                      <span className={`text-3xl font-bold leading-none ${currentTheme.text}`}>{backlogCards.length}</span>
-                      <span className={`pb-1 text-xs ${currentTheme.textMuted}`}>
-                        {backlogCards.length === 1 ? "task waiting" : "tasks waiting"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className={sectionStatClassName}>
-                    <div className={`mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
-                      <Zap className="h-3.5 w-3.5" />
-                      <span>Story points</span>
-                    </div>
-                    <div className="flex items-end gap-2">
-                      <span className={`text-3xl font-bold leading-none ${currentTheme.text}`}>{backlogPoints}</span>
-                      <span className={`pb-1 text-xs ${currentTheme.textMuted}`}>total effort</span>
-                    </div>
-                  </div>
-                </div>
+              <div className="relative min-w-0">
+                <h2 className={`text-lg font-bold ${currentTheme.text}`}>Staging Tasks</h2>
+                <p className={`mt-1 text-sm ${currentTheme.textMuted}`}>
+                  Keep upcoming work grounded here until each task is ready to be staged forward.
+                </p>
               </div>
             </div>
 
@@ -278,46 +243,15 @@ export function BacklogView2({
             }`}
           >
             <div className={`relative overflow-hidden border-b px-6 py-6 ${currentTheme.border} ${currentTheme.bgSecondary}`}>
-              <div className={`pointer-events-none absolute -right-12 top-0 h-40 w-40 rounded-full bg-gradient-to-br ${currentTheme.primarySoftStrong} blur-3xl`} />
               <div className="relative flex flex-col gap-5">
-                <div className="flex items-start gap-3">
-                  <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${currentTheme.primary}`}>
-                    <Rows4 className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="min-w-0">
-                    <h2 className={`text-lg font-bold ${currentTheme.text}`}>Queue Batch</h2>
-                    <p className={`mt-1 text-sm ${currentTheme.textMuted}`}>
-                      Stage ready tasks here, then launch the whole batch forward together.
-                    </p>
-                  </div>
+                <div className="min-w-0">
+                  <h2 className={`text-lg font-bold ${currentTheme.text}`}>Queue Batch</h2>
+                  <p className={`mt-1 text-sm ${currentTheme.textMuted}`}>
+                    Stage ready tasks here, then launch the whole batch forward together.
+                  </p>
                 </div>
 
                 <div className="grid gap-3">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className={sectionStatClassName}>
-                      <div className={`mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
-                        <CircleDot className="h-3.5 w-3.5" />
-                        <span>Queued tasks</span>
-                      </div>
-                      <div className="flex items-end gap-2">
-                        <span className={`text-3xl font-bold leading-none ${currentTheme.text}`}>{queuedCards.length}</span>
-                        <span className={`pb-1 text-xs ${currentTheme.textMuted}`}>
-                          {queuedCards.length === 1 ? "task staged" : "tasks staged"}
-                        </span>
-                      </div>
-                    </div>
-                    <div className={sectionStatClassName}>
-                      <div className={`mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
-                        <Zap className="h-3.5 w-3.5" />
-                        <span>Story points</span>
-                      </div>
-                      <div className="flex items-end gap-2">
-                        <span className={`text-3xl font-bold leading-none ${currentTheme.text}`}>{queuedPoints}</span>
-                        <span className={`pb-1 text-xs ${currentTheme.textMuted}`}>total effort</span>
-                      </div>
-                    </div>
-                  </div>
-
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button

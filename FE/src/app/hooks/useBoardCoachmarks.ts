@@ -5,17 +5,29 @@ export type BoardWorkspaceView = "board" | "list" | "staging" | "backlog" | "his
 type BoardCoachmarkFlowId =
   | "board-no-active-sprint"
   | "board-active-sprint"
+  | "list-no-active-sprint"
+  | "list-active-sprint"
   | "staging-planning"
-  | "staging-active-sprint";
+  | "staging-active-sprint"
+  | "backlog-overview"
+  | "history-overview";
 
 export type CoachmarkTargetId =
   | "toolbar-view-switcher"
   | "board-empty-state-cta"
-  | "workflow-summary"
   | "board-columns-grid"
+  | "list-header"
+  | "list-filters"
+  | "list-table"
+  | "list-empty-state-cta"
   | "staging-new-task"
   | "staging-overview"
-  | "staging-list";
+  | "staging-list"
+  | "backlog-header"
+  | "backlog-filters"
+  | "backlog-table"
+  | "history-header"
+  | "history-list";
 
 export interface CoachmarkStep {
   targetId: CoachmarkTargetId;
@@ -53,14 +65,38 @@ const FLOW_STEPS: Record<BoardCoachmarkFlowId, CoachmarkStep[]> = {
       description: "Use these tabs to swap between the board, list, staging, backlog, and task history without losing context.",
     },
     {
-      targetId: "workflow-summary",
-      title: "Monitor The Flow",
-      description: "This summary shows how much work is active, how much is done, and how much is still waiting in staging.",
-    },
-    {
       targetId: "board-columns-grid",
       title: "Move Tasks Through The Board",
       description: "Drag tasks between To Do, In Progress, In Review, and Done as work advances.",
+    },
+  ],
+  "list-no-active-sprint": [
+    {
+      targetId: "toolbar-view-switcher",
+      title: "List Is Ready When Work Starts",
+      description: "The list tab stays in the same workspace row, so you can jump here whenever tasks leave staging and enter active work.",
+    },
+    {
+      targetId: "list-empty-state-cta",
+      title: "Fill The List From Staging",
+      description: "There are no active tasks yet. Open Staging and move a ready item into the workflow to populate this view.",
+    },
+  ],
+  "list-active-sprint": [
+    {
+      targetId: "list-header",
+      title: "Scan Active Work Fast",
+      description: "The list tab shows every task already in motion, so you can review the workflow without switching columns.",
+    },
+    {
+      targetId: "list-filters",
+      title: "Narrow The Active List",
+      description: "Search, quick filters, and labels help you focus on the exact tasks that need attention right now.",
+    },
+    {
+      targetId: "list-table",
+      title: "Review The Details",
+      description: "This table keeps priority, labels, assignee, and actions in one place for quick triage.",
     },
   ],
   "staging-planning": [
@@ -97,6 +133,35 @@ const FLOW_STEPS: Record<BoardCoachmarkFlowId, CoachmarkStep[]> = {
       description: "Continue adding future work here so the queue always has strong candidates when the team has capacity.",
     },
   ],
+  "backlog-overview": [
+    {
+      targetId: "backlog-header",
+      title: "Keep Backlog Separate From Active Work",
+      description: "This tab is focused on tasks still in backlog, so waiting and queued work stay visible without mixing into the live workflow.",
+    },
+    {
+      targetId: "backlog-filters",
+      title: "Refine What Is Ready",
+      description: "Use search, readiness, and label filters to narrow backlog work before you queue the next batch.",
+    },
+    {
+      targetId: "backlog-table",
+      title: "See Queue Status Clearly",
+      description: "The backlog table keeps readiness, labels, assignee, and queue actions together so grooming stays quick.",
+    },
+  ],
+  "history-overview": [
+    {
+      targetId: "history-header",
+      title: "Review Completed Work",
+      description: "History gives you a dedicated place to inspect finished tasks and understand what has already moved through the board.",
+    },
+    {
+      targetId: "history-list",
+      title: "Browse The Completed Timeline",
+      description: "Completed tasks stay grouped here so you can revisit earlier work without disturbing the active workflow.",
+    },
+  ],
 };
 
 export function getCoachmarkFlowForView(
@@ -107,8 +172,20 @@ export function getCoachmarkFlowForView(
     return hasWorkflowCards ? "board-active-sprint" : "board-no-active-sprint";
   }
 
+  if (view === "list") {
+    return hasWorkflowCards ? "list-active-sprint" : "list-no-active-sprint";
+  }
+
   if (view === "staging") {
     return hasWorkflowCards ? "staging-active-sprint" : "staging-planning";
+  }
+
+  if (view === "backlog") {
+    return "backlog-overview";
+  }
+
+  if (view === "history") {
+    return "history-overview";
   }
 
   return null;

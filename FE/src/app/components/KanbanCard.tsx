@@ -61,6 +61,8 @@ export function KanbanCard({
   const cardLabels = labelIds
     .map((labelId) => labels.find((label) => label.id === labelId))
     .filter((label): label is Label => label !== undefined);
+  const visibleLabels = cardLabels.slice(0, 2);
+  const hiddenLabelCount = Math.max(cardLabels.length - visibleLabels.length, 0);
 
   const priorityIndicator = getPriorityIndicator(priority);
   const formattedDueDate = dueDate ? format(parseISO(dueDate), "MMM d") : null;
@@ -81,7 +83,7 @@ export function KanbanCard({
   };
 
   const taskTypeDisplay = getTaskTypeDisplay();
-  const hasTopMeta = Boolean(taskTypeDisplay || formattedDueDate || priorityIndicator);
+  const hasTopMeta = Boolean(storyPoints || cardLabels.length > 0 || taskTypeDisplay || formattedDueDate || priorityIndicator);
   const canMoveToBacklog = columnId !== "backlog" && columnId !== "queue" && Boolean(onMoveToBacklog);
   const actionButtonClassName = `${currentTheme.textMuted} hover:${currentTheme.primaryText} cursor-pointer transition-colors p-1 rounded hover:${isDarkMode ? "bg-gray-700" : "bg-gray-100"}`;
   const deleteButtonClassName = actionButtonClassName;
@@ -109,15 +111,26 @@ export function KanbanCard({
           <div className="relative flex-1 min-w-0">
             <div>
               {hasTopMeta && (
-                <div className={`mb-2 flex min-w-0 items-center gap-2 flex-wrap ${currentTheme.textMuted}`}>
+                <div className={`mb-2 flex min-w-0 items-center gap-2 overflow-hidden ${currentTheme.textMuted}`}>
+                  {storyPoints !== undefined && storyPoints > 0 && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className={`flex shrink-0 items-center gap-1 font-medium ${currentTheme.textMuted}`}>
+                          <Zap className="h-4 w-4" />
+                          <span className="text-sm">{storyPoints}</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" sideOffset={8}>{storyPoints} story points</TooltipContent>
+                    </Tooltip>
+                  )}
                   {taskTypeDisplay && (
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex shrink-0 items-center gap-1.5">
                       {taskTypeDisplay.icon}
                       <span className="text-xs font-medium">{taskTypeDisplay.label}</span>
                     </div>
                   )}
                   {formattedDueDate && (
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex shrink-0 items-center gap-1.5">
                       <CalendarDays className="w-3.5 h-3.5" />
                       <span className="text-xs font-medium">{formattedDueDate}</span>
                     </div>
@@ -125,36 +138,41 @@ export function KanbanCard({
                   {priorityIndicator && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <div className="cursor-help">
+                        <div className="shrink-0 cursor-help">
                           <PriorityBadge priority={priority!} isDarkMode={isDarkMode} />
                         </div>
                       </TooltipTrigger>
                       <TooltipContent side="top" sideOffset={8}>{priorityIndicator.tooltip}</TooltipContent>
                     </Tooltip>
                   )}
+                  {cardLabels.length > 0 && (
+                    <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
+                      {visibleLabels.map((label) => (
+                        <span
+                          key={label.id}
+                          className="max-w-[6.5rem] truncate rounded-md px-2 py-0.5 text-xs font-medium text-white"
+                          style={{ backgroundColor: label.color }}
+                          title={label.name}
+                        >
+                          {label.name}
+                        </span>
+                      ))}
+                      {hiddenLabelCount > 0 && (
+                        <span className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-medium ${isDarkMode ? "bg-white/[0.08] text-zinc-300" : "bg-black/[0.05] text-slate-600"}`}>
+                          +{hiddenLabelCount} labels
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
               <h3
                 title={title}
-                className={`${cardLabels.length > 0 ? "mb-3" : "mb-4"} truncate font-bold text-[15px] leading-tight ${currentTheme.text}`}
+                className={`mb-4 truncate font-bold text-[15px] leading-tight ${currentTheme.text}`}
               >
                 {title}
               </h3>
-
-              {cardLabels.length > 0 && (
-                <div className="mb-4 flex gap-1.5 flex-wrap">
-                  {cardLabels.map((label) => (
-                    <span
-                      key={label.id}
-                      className="px-2 py-0.5 rounded-md text-xs font-medium text-white pointer-events-none"
-                      style={{ backgroundColor: label.color }}
-                    >
-                      {label.name}
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
 
             <div className="flex items-center justify-between gap-3">
@@ -169,18 +187,6 @@ export function KanbanCard({
               </div>
 
               <div className="flex items-center gap-2 flex-wrap justify-end">
-                {storyPoints !== undefined && storyPoints > 0 && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className={`flex items-center gap-1 font-medium ${currentTheme.textSecondary}`}>
-                        <Zap className="w-4 h-4" />
-                        <span className="text-sm">{storyPoints}</span>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" sideOffset={8}>{storyPoints} story points</TooltipContent>
-                  </Tooltip>
-                )}
-
                 {canMoveToBacklog && (
                   <Tooltip>
                     <TooltipTrigger asChild>

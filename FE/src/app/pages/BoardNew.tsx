@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useNavigate, useParams } from "react-router";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import { Archive, ArrowRight, ClipboardList, Clock, LayoutGrid, List as ListIcon } from "lucide-react";
+import { Archive, ArrowRight, ClipboardList, Clock, LayoutGrid, List as ListIcon, LoaderCircle, RotateCw } from "lucide-react";
 import { KanbanColumn } from "../components/KanbanColumn";
 import { AddCardModal } from "../components/AddCardModal";
 import { EditTaskModal } from "../components/EditTaskModal";
@@ -111,7 +111,12 @@ export function Board() {
   const [boardAccessState, setBoardAccessState] = useState<"available" | "forbidden" | "notFound">("available");
   const [loadError, setLoadError] = useState("");
   const [actionError, setActionError] = useState("");
-  const [workspaceReloadCount, setWorkspaceReloadCount] = useState(0);
+  const [workspaceReloadState, setWorkspaceReloadState] = useState<{ count: number; mode: "hard" | "soft" }>({
+    count: 0,
+    mode: "hard",
+  });
+  const [isRefreshingWorkspace, setIsRefreshingWorkspace] = useState(false);
+  const activeBoardIdRef = useRef<number | null>(null);
 
   const [userProgress, setUserProgress] = useState<UserProgress>(() => {
     if (!user) {
@@ -146,6 +151,8 @@ export function Board() {
 
   useEffect(() => {
     let isActive = true;
+    const preserveExistingWorkspace =
+      workspaceReloadState.mode === "soft" && activeBoardIdRef.current === numericBoardId;
 
     const loadBoardWorkspace = async () => {
       if (!user) {
@@ -153,6 +160,7 @@ export function Board() {
       }
 
       if (!Number.isFinite(numericBoardId)) {
+        activeBoardIdRef.current = null;
         setCurrentBoard(null);
         setLabels([]);
         setCards(createEmptyCards());
@@ -164,10 +172,14 @@ export function Board() {
       }
 
       try {
-        setIsLoadingBoard(true);
-        setCurrentBoard(null);
-        setLabels([]);
-        setCards(createEmptyCards());
+        if (preserveExistingWorkspace) {
+          setIsRefreshingWorkspace(true);
+        } else {
+          setIsLoadingBoard(true);
+          setCurrentBoard(null);
+          setLabels([]);
+          setCards(createEmptyCards());
+        }
         setBoardAccessState("available");
         setLoadError("");
         setActionError("");
@@ -179,12 +191,20 @@ export function Board() {
         }
 
         if (boardResult.status === "forbidden" || boardResult.status === "notFound") {
+          activeBoardIdRef.current = null;
           setBoardAccessState(boardResult.status);
+          setCurrentBoard(null);
+          setLabels([]);
+          setCards(createEmptyCards());
           return;
         }
 
         if (boardResult.status === "error") {
+          activeBoardIdRef.current = null;
           setLoadError(boardResult.error);
+          setCurrentBoard(null);
+          setLabels([]);
+          setCards(createEmptyCards());
           return;
         }
 
@@ -199,6 +219,7 @@ export function Board() {
         }
 
         setBoardAccessState("available");
+        activeBoardIdRef.current = boardResult.board.id;
         setCurrentBoard(boardResult.board);
         setLabels(boardLabels);
         setCards(boardCards);
@@ -215,11 +236,15 @@ export function Board() {
         }
 
         const message = error instanceof Error ? error.message : "Unable to load this board right now.";
+        activeBoardIdRef.current = null;
         setLoadError(message);
         setCurrentBoard(null);
+        setLabels([]);
+        setCards(createEmptyCards());
       } finally {
         if (isActive) {
           setIsLoadingBoard(false);
+          setIsRefreshingWorkspace(false);
         }
       }
     };
@@ -229,7 +254,7 @@ export function Board() {
     return () => {
       isActive = false;
     };
-  }, [numericBoardId, user, workspaceReloadCount]);
+  }, [numericBoardId, user, workspaceReloadState]);
 
   const availableAssignees: TaskAssignee[] = useMemo(
     () =>
@@ -254,8 +279,11 @@ export function Board() {
     setCards((prevCards) => groupCards(flattenCards(prevCards).filter((task) => task.id !== taskId)));
   };
 
-  const refreshWorkspace = () => {
-    setWorkspaceReloadCount((prevCount) => prevCount + 1);
+  const refreshWorkspace = (mode: "hard" | "soft" = "hard") => {
+    setWorkspaceReloadState((prevState) => ({
+      count: prevState.count + 1,
+      mode,
+    }));
   };
 
   const handleLogout = async () => {
@@ -361,6 +389,12 @@ export function Board() {
     [workflowCards],
   );
 
+  const currentBoardFlow = useMemo(
+    () => getCoachmarkFlowForView(view, workflowCards.length > 0),
+    [view, workflowCards.length],
+  );
+  const boardWorkspaceWidthClassName = "mx-auto w-full max-w-[1850px]";
+
   const coachmarks = useBoardCoachmarks({
     view,
     hasWorkflowCards: workflowCards.length > 0,
@@ -417,11 +451,18 @@ export function Board() {
       }
 
       const key = event.key.toLowerCase();
-      if (key !== "q" && key !== "e") {
+      if (key !== "q" && key !== "e" && key !== "r") {
         return;
       }
 
       event.preventDefault();
+      if (key === "r") {
+        if (!isRefreshingWorkspace && !isLoadingBoard) {
+          refreshWorkspace("soft");
+        }
+        return;
+      }
+
       setView((currentView) => {
         const currentIndex = WORKSPACE_VIEW_ORDER.indexOf(currentView);
         if (currentIndex === -1) {
@@ -445,6 +486,7 @@ export function Board() {
     currentBoard,
     deleteDialog.isOpen,
     editingTask,
+    isRefreshingWorkspace,
     isLoadingBoard,
     isModalOpen,
     isSettingsOpen,
@@ -702,7 +744,7 @@ export function Board() {
             </button>
             {loadError && (
               <button
-                onClick={refreshWorkspace}
+                onClick={() => refreshWorkspace("hard")}
                 className={`rounded-xl bg-gradient-to-r px-5 py-3 font-semibold text-white transition-all ${currentTheme.primary}`}
               >
                 Retry
@@ -740,7 +782,11 @@ export function Board() {
             onOpenSettings={() => setIsSettingsOpen(true)}
             onLogout={handleLogout}
             onProfileClick={() => navigate("/app/profile")}
-            onReplayCurrentHints={() => replayFlowForView(view)}
+            onReplayCurrentHints={
+              preferences.coachmarksEnabled && currentBoardFlow
+                ? () => replayFlowForView(view)
+                : undefined
+            }
             userProfile={{
               username: userProgress.username,
               subtitle: `Level ${userProgress.level}`,
@@ -758,7 +804,7 @@ export function Board() {
 
             <SidebarInset className="relative flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden bg-transparent">
               <div className={`shrink-0 border-b ${currentTheme.border} ${isDarkMode ? "bg-zinc-950/45" : "bg-white/72"} backdrop-blur-xl`}>
-                <div className="flex w-full items-center gap-2 pl-9 pr-6 py-2">
+                <div className={`${boardWorkspaceWidthClassName} flex items-center gap-2 pl-9 pr-6 py-2`}>
                   <kbd className={`hidden rounded-md border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] ${currentTheme.border} ${currentTheme.textMuted} md:inline-flex`}>
                     Q
                   </kbd>
@@ -789,15 +835,48 @@ export function Board() {
                   <kbd className={`hidden rounded-md border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] ${currentTheme.border} ${currentTheme.textMuted} md:inline-flex`}>
                     E
                   </kbd>
-                  <div className="ml-auto text-[11px] font-medium md:hidden">
-                    <span className={currentTheme.textMuted}>Q / E</span>
+                  <div className="ml-auto flex items-center gap-3">
+                    <div className="text-[11px] font-medium md:hidden">
+                      <span className={currentTheme.textMuted}>Q / E</span>
+                    </div>
+                    <kbd className={`hidden rounded-md border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] ${currentTheme.border} ${currentTheme.textMuted} md:inline-flex`}>
+                      R
+                    </kbd>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => refreshWorkspace("soft")}
+                          className={`inline-flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} ${
+                            isRefreshingWorkspace || isLoadingBoard
+                              ? isDarkMode
+                                ? "cursor-default bg-white/[0.06] text-zinc-400"
+                                : "cursor-default bg-black/[0.05] text-slate-500"
+                              : isDarkMode
+                                ? "bg-transparent text-zinc-400 hover:bg-white/[0.05]"
+                                : "bg-transparent text-slate-500 hover:bg-black/[0.04]"
+                          }`}
+                          disabled={isRefreshingWorkspace || isLoadingBoard}
+                          aria-label={isRefreshingWorkspace ? "Refreshing board data" : "Refresh current view"}
+                          type="button"
+                        >
+                          {isRefreshingWorkspace ? (
+                            <LoaderCircle className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <RotateCw className="h-4 w-4" />
+                          )}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" sideOffset={8}>
+                        {isRefreshingWorkspace ? "Refreshing..." : "Refresh current view (R)"}
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
                 </div>
               </div>
 
               {actionError && (
                 <div className="shrink-0 px-8 pt-4 lg:px-10 xl:px-12">
-                  <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+                  <div className={`${boardWorkspaceWidthClassName} rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700`}>
                     {actionError}
                   </div>
                 </div>
@@ -805,7 +884,7 @@ export function Board() {
 
               {preferencesError && !actionError && (
                 <div className="shrink-0 px-8 pt-4 lg:px-10 xl:px-12">
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
+                  <div className={`${boardWorkspaceWidthClassName} rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800`}>
                     {preferencesError}
                   </div>
                 </div>
@@ -815,7 +894,7 @@ export function Board() {
                 <>
                   {workflowCards.length > 0 ? (
                     <main className={`flex-1 min-h-0 overflow-y-auto ${currentTheme.bgSecondary}`}>
-                      <div className="w-full px-8 py-8 lg:px-10 xl:px-12">
+                      <div className={`${boardWorkspaceWidthClassName} px-8 py-8 lg:px-10 xl:px-12`}>
                         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4" data-coachmark="board-columns-grid">
                           <KanbanColumn id="todo" title="To Do" count={workflowColumns.todo.length} cards={workflowColumns.todo} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
                           <KanbanColumn id="inProgress" title="In Progress" count={workflowColumns.inProgress.length} cards={workflowColumns.inProgress} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
@@ -860,7 +939,7 @@ export function Board() {
                       onAssigneeChange={handleAssigneeChange}
                       onDelete={handleDeleteRequest}
                       onEdit={handleEditTask}
-                      onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)}
+                      onMoveToBacklog={handleMoveToBacklog}
                       availableAssignees={availableAssignees}
                       labels={labels}
                     />
@@ -876,6 +955,7 @@ export function Board() {
                         </p>
                         <button
                           onClick={() => setView("staging")}
+                          data-coachmark="list-empty-state-cta"
                           className={`inline-flex items-center gap-2 rounded-lg bg-gradient-to-r px-6 py-3 font-bold text-white transition-all hover:scale-[1.02] hover:shadow-lg ${currentTheme.primary}`}
                         >
                           Go to Staging
@@ -915,6 +995,8 @@ export function Board() {
                   onAssigneeChange={handleAssigneeChange}
                   onDelete={handleDeleteRequest}
                   onEdit={handleEditTask}
+                  onAddToQueue={handleAddToQueue}
+                  onRemoveFromQueue={handleRemoveFromQueue}
                   availableAssignees={availableAssignees}
                   labels={labels}
                   onCreateTask={() => setIsModalOpen(true)}
