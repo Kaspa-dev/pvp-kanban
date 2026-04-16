@@ -6,6 +6,7 @@ interface PriorityBadgeProps {
   priority: Priority;
   isDarkMode?: boolean;
   compact?: boolean;
+  variant?: "card" | "table";
 }
 
 function hexToRgba(hex: string, alpha: number) {
@@ -25,22 +26,39 @@ export function PriorityBadge({
   priority,
   isDarkMode = false,
   compact = false,
+  variant,
 }: PriorityBadgeProps) {
   const color = getPriorityColor(priority, isDarkMode);
   const label = PRIORITY_COLORS[priority].label;
+  const resolvedVariant = variant ?? (compact ? "table" : "card");
+  const isTableVariant = resolvedVariant === "table";
+  const textColor = isDarkMode && priority === "critical" ? "#e2e8f0" : color;
+  const backgroundAlpha = isTableVariant
+    ? (isDarkMode ? 0.08 : 0.045)
+    : (isDarkMode ? 0.12 : 0.07);
+  const borderAlpha = isTableVariant
+    ? (isDarkMode ? 0.24 : 0.16)
+    : (isDarkMode ? 0.28 : 0.2);
 
   return (
     <span
-      className={`inline-flex items-center rounded-full border font-semibold ${
-        compact ? "gap-1.5 px-2.5 py-1 text-[11px]" : "gap-1.5 px-2.5 py-1 text-xs"
+      className={`inline-flex items-center whitespace-nowrap border font-medium leading-none ${
+        isTableVariant
+          ? "h-6 gap-1.5 rounded-md px-2.5 text-[11px] tracking-[0.01em]"
+          : "h-7 gap-1.5 rounded-lg px-2.5 text-xs tracking-[0.01em]"
       }`}
       style={{
-        color,
-        backgroundColor: hexToRgba(color, isDarkMode ? 0.18 : 0.12),
-        borderColor: hexToRgba(color, isDarkMode ? 0.3 : 0.2),
+        color: textColor,
+        backgroundColor: hexToRgba(color, backgroundAlpha),
+        borderColor: hexToRgba(color, borderAlpha),
       }}
     >
-      <PriorityIcon priority={priority} isDarkMode={isDarkMode} className="h-3.5 w-3.5" />
+      <PriorityIcon
+        priority={priority}
+        isDarkMode={isDarkMode}
+        className={isTableVariant ? "h-3.5 w-3.5" : "h-3.5 w-3.5"}
+        colorOverride={textColor}
+      />
       <span>{label}</span>
     </span>
   );

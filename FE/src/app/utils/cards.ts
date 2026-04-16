@@ -80,6 +80,41 @@ export interface Cards {
   backlog: Card[];
 }
 
+export type TaskQuickFilter = "all" | "assigned" | "due";
+export type BacklogStageFilter = "all" | "waiting" | "queued";
+export type BoardTaskListScope = "active" | "backlog";
+export type BoardTaskSortKey = "priority" | "title" | "status" | "storyPoints" | "assignee" | "readiness";
+export type BoardTaskSortDirection = "asc" | "desc";
+
+interface PagedBoardTaskListResponse {
+  items: ApiTask[];
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+export interface BoardTaskListPage {
+  items: Card[];
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+export interface GetBoardTaskPageInput {
+  scope: BoardTaskListScope;
+  q?: string;
+  quickFilter?: TaskQuickFilter;
+  labelIds?: number[];
+  stageFilter?: BacklogStageFilter;
+  sort?: BoardTaskSortKey;
+  direction?: BoardTaskSortDirection;
+  page?: number;
+  pageSize?: number;
+  signal?: AbortSignal;
+}
+
 export const UNASSIGNED_ASSIGNEE: TaskAssignee = {
   userId: 0,
   username: "",
@@ -159,6 +194,63 @@ export async function getBoardCards(boardId: number | string): Promise<Cards> {
   );
 
   return groupCards(tasks.map(normalizeTask));
+}
+
+export async function getBoardTaskPage(
+  boardId: number | string,
+  input: GetBoardTaskPageInput,
+): Promise<BoardTaskListPage> {
+  const params = new URLSearchParams();
+  params.set("scope", input.scope);
+
+  if (input.q?.trim()) {
+    params.set("q", input.q.trim());
+  }
+
+  if (input.quickFilter && input.quickFilter !== "all") {
+    params.set("quickFilter", input.quickFilter);
+  }
+
+  if (input.stageFilter && input.stageFilter !== "all") {
+    params.set("stageFilter", input.stageFilter);
+  }
+
+  if (input.sort) {
+    params.set("sort", input.sort);
+  }
+
+  if (input.direction) {
+    params.set("direction", input.direction);
+  }
+
+  if (typeof input.page === "number" && input.page > 0) {
+    params.set("page", String(input.page));
+  }
+
+  if (typeof input.pageSize === "number" && input.pageSize > 0) {
+    params.set("pageSize", String(input.pageSize));
+  }
+
+  input.labelIds?.forEach((labelId) => {
+    params.append("labelIds", String(labelId));
+  });
+
+  const response = await apiJson<PagedBoardTaskListResponse>(
+    `/api/boards/${Number(boardId)}/tasks/index?${params.toString()}`,
+    {
+      method: "GET",
+      signal: input.signal,
+    },
+    "Unable to load tasks right now.",
+  );
+
+  return {
+    items: response.items.map(normalizeTask),
+    page: response.page,
+    pageSize: response.pageSize,
+    totalItems: response.totalItems,
+    totalPages: response.totalPages,
+  };
 }
 
 export async function createBoardTask(

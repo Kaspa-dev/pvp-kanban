@@ -9,6 +9,7 @@ import { getPriorityIndicator } from "../utils/priorityColors";
 import { format, parseISO } from "date-fns";
 import { PriorityBadge } from "./PriorityBadge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { TaskLabelSummary } from "./TaskLabelSummary";
 
 interface KanbanCardProps {
   id: number;
@@ -49,6 +50,7 @@ export function KanbanCard({
 }: KanbanCardProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const taskSurfaceClassName = isDarkMode ? "bg-zinc-900/90" : "bg-white/95";
 
   const [{ isDragging }, drag] = useDrag({
     type: "CARD",
@@ -61,8 +63,6 @@ export function KanbanCard({
   const cardLabels = labelIds
     .map((labelId) => labels.find((label) => label.id === labelId))
     .filter((label): label is Label => label !== undefined);
-  const visibleLabels = cardLabels.slice(0, 2);
-  const hiddenLabelCount = Math.max(cardLabels.length - visibleLabels.length, 0);
 
   const priorityIndicator = getPriorityIndicator(priority);
   const formattedDueDate = dueDate ? format(parseISO(dueDate), "MMM d") : null;
@@ -99,7 +99,7 @@ export function KanbanCard({
       }}
     >
       <div
-        className={`overflow-hidden rounded-lg border-2 ${currentTheme.border} ${currentTheme.cardBg} shadow-md transition-all duration-200 hover:-translate-y-1 hover:shadow-2xl hover:${currentTheme.primaryBorder}`}
+        className={`overflow-hidden rounded-lg border-2 ${currentTheme.border} ${taskSurfaceClassName} shadow-md transition-all duration-200 hover:-translate-y-1 hover:shadow-2xl hover:${currentTheme.primaryBorder}`}
       >
         <div className="flex items-start gap-2 p-4">
           <div
@@ -139,30 +139,18 @@ export function KanbanCard({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <div className="shrink-0 cursor-help">
-                          <PriorityBadge priority={priority!} isDarkMode={isDarkMode} />
+                          <PriorityBadge priority={priority!} isDarkMode={isDarkMode} variant="card" />
                         </div>
                       </TooltipTrigger>
                       <TooltipContent side="top" sideOffset={8}>{priorityIndicator.tooltip}</TooltipContent>
                     </Tooltip>
                   )}
                   {cardLabels.length > 0 && (
-                    <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
-                      {visibleLabels.map((label) => (
-                        <span
-                          key={label.id}
-                          className="max-w-[6.5rem] truncate rounded-md px-2 py-0.5 text-xs font-medium text-white"
-                          style={{ backgroundColor: label.color }}
-                          title={label.name}
-                        >
-                          {label.name}
-                        </span>
-                      ))}
-                      {hiddenLabelCount > 0 && (
-                        <span className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-medium ${isDarkMode ? "bg-white/[0.08] text-zinc-300" : "bg-black/[0.05] text-slate-600"}`}>
-                          +{hiddenLabelCount} labels
-                        </span>
-                      )}
-                    </div>
+                    <TaskLabelSummary
+                      labels={cardLabels}
+                      maxVisible={2}
+                      overflowText={(hiddenCount) => `+${hiddenCount} labels`}
+                    />
                   )}
                 </div>
               )}

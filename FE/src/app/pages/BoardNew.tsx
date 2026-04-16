@@ -116,7 +116,13 @@ export function Board() {
     mode: "hard",
   });
   const [isRefreshingWorkspace, setIsRefreshingWorkspace] = useState(false);
+  const [taskDataVersion, setTaskDataVersion] = useState(0);
+  const [taskIndexRefreshToken, setTaskIndexRefreshToken] = useState(0);
+  const [isTaskIndexRefreshing, setIsTaskIndexRefreshing] = useState(false);
+  const [isRefreshIndicatorPinned, setIsRefreshIndicatorPinned] = useState(false);
   const activeBoardIdRef = useRef<number | null>(null);
+  const refreshIndicatorTimeoutRef = useRef<number | null>(null);
+  const refreshIndicatorMinUntilRef = useRef<number>(0);
 
   const [userProgress, setUserProgress] = useState<UserProgress>(() => {
     if (!user) {
@@ -148,6 +154,18 @@ export function Board() {
       email: user.email,
     }));
   }, [user]);
+
+  useEffect(() => {
+    setTaskDataVersion((current) => current + 1);
+  }, [cards]);
+
+  useEffect(() => {
+    return () => {
+      if (refreshIndicatorTimeoutRef.current !== null) {
+        window.clearTimeout(refreshIndicatorTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let isActive = true;
@@ -266,7 +284,6 @@ export function Board() {
   );
 
   const allCards = useMemo(() => flattenCards(cards), [cards]);
-  const currentUserId = user ? Number(user.id) : null;
 
   const setTaskInState = (task: Card) => {
     setCards((prevCards) => {
@@ -284,6 +301,22 @@ export function Board() {
       count: prevState.count + 1,
       mode,
     }));
+  };
+
+  const refreshCurrentView = (mode: "hard" | "soft" = "soft") => {
+    setIsRefreshIndicatorPinned(true);
+    refreshIndicatorMinUntilRef.current = Date.now() + 120;
+    if (refreshIndicatorTimeoutRef.current !== null) {
+      window.clearTimeout(refreshIndicatorTimeoutRef.current);
+      refreshIndicatorTimeoutRef.current = null;
+    }
+
+    if (view === "list" || view === "backlog") {
+      setTaskIndexRefreshToken((current) => current + 1);
+      return;
+    }
+
+    refreshWorkspace(mode);
   };
 
   const handleLogout = async () => {
@@ -394,6 +427,46 @@ export function Board() {
     [view, workflowCards.length],
   );
   const boardWorkspaceWidthClassName = "mx-auto w-full max-w-[1850px]";
+  const isCurrentViewDataRefreshing =
+    isLoadingBoard ||
+    isRefreshingWorkspace ||
+    ((view === "list" || view === "backlog") && isTaskIndexRefreshing);
+
+  const isCurrentViewRefreshing = isCurrentViewDataRefreshing || isRefreshIndicatorPinned;
+
+  useEffect(() => {
+    if (!isCurrentViewDataRefreshing) {
+      return;
+    }
+
+    setIsRefreshIndicatorPinned(true);
+    refreshIndicatorMinUntilRef.current = Date.now() + 120;
+    if (refreshIndicatorTimeoutRef.current !== null) {
+      window.clearTimeout(refreshIndicatorTimeoutRef.current);
+      refreshIndicatorTimeoutRef.current = null;
+    }
+  }, [isCurrentViewDataRefreshing]);
+
+  useEffect(() => {
+    if (!isRefreshIndicatorPinned) {
+      return;
+    }
+
+    if (refreshIndicatorTimeoutRef.current !== null) {
+      window.clearTimeout(refreshIndicatorTimeoutRef.current);
+      refreshIndicatorTimeoutRef.current = null;
+    }
+
+    if (isCurrentViewDataRefreshing) {
+      return;
+    }
+
+    const remainingMinimum = Math.max(0, refreshIndicatorMinUntilRef.current - Date.now());
+    refreshIndicatorTimeoutRef.current = window.setTimeout(() => {
+      setIsRefreshIndicatorPinned(false);
+      refreshIndicatorTimeoutRef.current = null;
+    }, remainingMinimum + 150);
+  }, [isCurrentViewDataRefreshing, isRefreshIndicatorPinned]);
 
   const coachmarks = useBoardCoachmarks({
     view,
@@ -457,8 +530,8 @@ export function Board() {
 
       event.preventDefault();
       if (key === "r") {
-        if (!isRefreshingWorkspace && !isLoadingBoard) {
-          refreshWorkspace("soft");
+        if (!isRefreshingWorkspace && !isLoadingBoard && !isTaskIndexRefreshing) {
+          refreshCurrentView("soft");
         }
         return;
       }
@@ -486,10 +559,12 @@ export function Board() {
     currentBoard,
     deleteDialog.isOpen,
     editingTask,
+    isTaskIndexRefreshing,
     isRefreshingWorkspace,
     isLoadingBoard,
     isModalOpen,
     isSettingsOpen,
+    view,
   ]);
 
   const handleCardDrop = async (cardId: number, _fromColumnId: string, toColumnId: string) => {
@@ -845,29 +920,27 @@ export function Board() {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button
-                          onClick={() => refreshWorkspace("soft")}
+                          onClick={() => refreshCurrentView("soft")}
                           className={`inline-flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} ${
-                            isRefreshingWorkspace || isLoadingBoard
-                              ? isDarkMode
-                                ? "cursor-default bg-white/[0.06] text-zinc-400"
-                                : "cursor-default bg-black/[0.05] text-slate-500"
+                            isCurrentViewRefreshing
+                              ? `${currentTheme.primaryText} bg-transparent`
                               : isDarkMode
                                 ? "bg-transparent text-zinc-400 hover:bg-white/[0.05]"
                                 : "bg-transparent text-slate-500 hover:bg-black/[0.04]"
                           }`}
-                          disabled={isRefreshingWorkspace || isLoadingBoard}
-                          aria-label={isRefreshingWorkspace ? "Refreshing board data" : "Refresh current view"}
+                          disabled={isCurrentViewRefreshing}
+                          aria-label={isCurrentViewRefreshing ? "Refreshing board data" : "Refresh current view"}
                           type="button"
-                        >
-                          {isRefreshingWorkspace ? (
-                            <LoaderCircle className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <RotateCw className="h-4 w-4" />
-                          )}
+                          >
+                            {isCurrentViewRefreshing ? (
+                              <LoaderCircle className={`h-4 w-4 animate-spin [animation-duration:650ms] ${isDarkMode ? "brightness-125 saturate-125" : "brightness-110 saturate-125"}`} />
+                            ) : (
+                              <RotateCw className="h-4 w-4" />
+                            )}
                         </button>
                       </TooltipTrigger>
                       <TooltipContent side="bottom" sideOffset={8}>
-                        {isRefreshingWorkspace ? "Refreshing..." : "Refresh current view (R)"}
+                        {isCurrentViewRefreshing ? "Refreshing..." : "Refresh current view (R)"}
                       </TooltipContent>
                     </Tooltip>
                   </div>
@@ -893,36 +966,68 @@ export function Board() {
               {view === "board" && (
                 <>
                   {workflowCards.length > 0 ? (
-                    <main className={`flex-1 min-h-0 overflow-y-auto ${currentTheme.bgSecondary}`}>
-                      <div className={`${boardWorkspaceWidthClassName} px-8 py-8 lg:px-10 xl:px-12`}>
-                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4" data-coachmark="board-columns-grid">
+                    <main className={`flex-1 min-h-0 overflow-hidden ${currentTheme.bgSecondary}`}>
+                      <div className={`${boardWorkspaceWidthClassName} flex h-full min-h-0 flex-col gap-6 px-8 py-6 lg:px-10 xl:px-12`}>
+                        <div className="shrink-0" data-coachmark="board-header">
+                          <h1 className={`font-ui-condensed text-[2rem] font-semibold tracking-[0.01em] ${currentTheme.text}`}>
+                            Board
+                          </h1>
+                          <p className={`mt-1 text-base ${currentTheme.textMuted}`}>
+                            Keep active work moving across the workflow, surface bottlenecks early, and give each column a stable operating lane.
+                          </p>
+                        </div>
+
+                        <div className={`shrink-0 border-t ${currentTheme.border}`} />
+
+                        <div className="flex-1 min-h-0">
+                          <div className="grid h-full min-h-0 grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4" data-coachmark="board-columns-grid">
                           <KanbanColumn id="todo" title="To Do" count={workflowColumns.todo.length} cards={workflowColumns.todo} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
                           <KanbanColumn id="inProgress" title="In Progress" count={workflowColumns.inProgress.length} cards={workflowColumns.inProgress} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
                           <KanbanColumn id="inReview" title="In Review" count={workflowColumns.inReview.length} cards={workflowColumns.inReview} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
-                          <KanbanColumn id="done" title="Done" count={workflowColumns.done.length} cards={workflowColumns.done} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                            <KanbanColumn id="done" title="Done" count={workflowColumns.done.length} cards={workflowColumns.done} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                          </div>
                         </div>
+
+                        <div className={`shrink-0 border-t ${currentTheme.border}`} />
                       </div>
                     </main>
                   ) : (
-                    <div className={`flex min-h-0 flex-1 items-center justify-center ${currentTheme.bgSecondary}`}>
-                      <div className="max-w-md px-6 text-center">
-                        <div className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl ${currentTheme.primarySoftStrong}`}>
-                          <ClipboardList className={`h-10 w-10 ${currentTheme.primaryText}`} />
+                    <main className={`flex-1 min-h-0 overflow-hidden ${currentTheme.bgSecondary}`}>
+                      <div className={`${boardWorkspaceWidthClassName} flex h-full min-h-0 flex-col gap-6 px-8 py-6 lg:px-10 xl:px-12`}>
+                        <div className="shrink-0" data-coachmark="board-header">
+                          <h1 className={`font-ui-condensed text-[2rem] font-semibold tracking-[0.01em] ${currentTheme.text}`}>
+                            Board
+                          </h1>
+                          <p className={`mt-1 text-base ${currentTheme.textMuted}`}>
+                            Keep active work moving across the workflow, surface bottlenecks early, and give each column a stable operating lane.
+                          </p>
                         </div>
-                        <h2 className={`mb-3 text-2xl font-bold ${currentTheme.text}`}>No active workflow yet</h2>
-                        <p className={`mb-8 text-base ${currentTheme.textMuted}`}>
-                          Tasks stay in Staging until your team pulls them into To Do. Open Staging to create work or promote a ready item.
-                        </p>
-                        <button
-                          onClick={() => setView("staging")}
-                          data-coachmark="board-empty-state-cta"
-                          className={`inline-flex items-center gap-2 rounded-lg bg-gradient-to-r px-6 py-3 font-bold text-white transition-all hover:scale-[1.02] hover:shadow-lg ${currentTheme.primary}`}
-                        >
-                          Go to Staging
-                          <ArrowRight className="h-4 w-4" />
-                        </button>
+
+                        <div className={`shrink-0 border-t ${currentTheme.border}`} />
+
+                        <div className="flex min-h-0 flex-1 items-center justify-center">
+                          <div className="max-w-md px-6 text-center">
+                            <div className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl ${currentTheme.primarySoftStrong}`}>
+                              <ClipboardList className={`h-10 w-10 ${currentTheme.primaryText}`} />
+                            </div>
+                            <h2 className={`mb-3 text-2xl font-bold ${currentTheme.text}`}>No active workflow yet</h2>
+                            <p className={`mb-8 text-base ${currentTheme.textMuted}`}>
+                              Tasks stay in Staging until your team pulls them into To Do. Open Staging to create work or promote a ready item.
+                            </p>
+                            <button
+                              onClick={() => setView("staging")}
+                              data-coachmark="board-empty-state-cta"
+                              className={`inline-flex items-center gap-2 rounded-lg bg-gradient-to-r px-6 py-3 font-bold text-white transition-all hover:scale-[1.02] hover:shadow-lg ${currentTheme.primary}`}
+                            >
+                              Go to Staging
+                              <ArrowRight className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className={`shrink-0 border-t ${currentTheme.border}`} />
                       </div>
-                    </div>
+                    </main>
                   )}
                 </>
               )}
@@ -932,10 +1037,12 @@ export function Board() {
                   {workflowCards.length > 0 ? (
                     <ListView
                       mode="active"
-                      cards={workflowCards}
+                      boardId={numericBoardId}
+                      taskDataVersion={taskDataVersion}
+                      refreshToken={taskIndexRefreshToken}
+                      onRefreshingChange={setIsTaskIndexRefreshing}
                       filters={listFilters}
                       onFiltersChange={(filters) => setListFilters(filters as TaskWorkspaceFilters)}
-                      currentUserId={currentUserId}
                       onAssigneeChange={handleAssigneeChange}
                       onDelete={handleDeleteRequest}
                       onEdit={handleEditTask}
@@ -988,10 +1095,12 @@ export function Board() {
               {view === "backlog" && (
                 <ListView
                   mode="backlog"
-                  cards={stagingCards}
+                  boardId={numericBoardId}
+                  taskDataVersion={taskDataVersion}
+                  refreshToken={taskIndexRefreshToken}
+                  onRefreshingChange={setIsTaskIndexRefreshing}
                   filters={backlogFilters}
                   onFiltersChange={(filters) => setBacklogFilters(filters as BacklogWorkspaceFilters)}
-                  currentUserId={currentUserId}
                   onAssigneeChange={handleAssigneeChange}
                   onDelete={handleDeleteRequest}
                   onEdit={handleEditTask}

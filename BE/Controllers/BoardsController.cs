@@ -22,6 +22,8 @@ public class BoardsController(AppDbContext context) : ControllerBase
     private const int MaxBoardDescriptionLength = 500;
     private const int DefaultBoardPageSize = 6;
     private const int MaxBoardPageSize = 48;
+    private const int DefaultTaskPageSize = 10;
+    private const int MaxTaskPageSize = 24;
 
     private static readonly string[] StatusKeys =
     [
@@ -432,6 +434,61 @@ public class BoardsController(AppDbContext context) : ControllerBase
             .ToListAsync(cancellationToken);
 
         return Ok(tasks.Select(task => ToTaskDto(task, memberLookup)));
+    }
+
+    [HttpGet("{boardId:int}/tasks/index")]
+    public async Task<ActionResult<PagedBoardTaskListResponseDto>> GetTaskIndex(
+        int boardId,
+        [FromQuery] BoardTaskListQueryDto query,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        var (accessContext, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
+        if (failure is not null)
+        {
+            return failure;
+        }
+
+        Board board = accessContext!.Board;
+        Dictionary<int, BoardMemberDto> memberLookup = board.Memberships.ToDictionary(
+            membership => membership.UserId,
+            ToBoardMemberDto);
+
+        IQueryable<TaskEntity> tasksQuery = _context.Tasks
+            .Where(task => task.BoardId == boardId)
+            .Include(task => task.Status)
+            .Include(task => task.Assignee)
+            .Include(task => task.LabeledTasks)
+            .AsQueryable();
+
+        tasksQuery = ApplyBoardTaskListFilters(tasksQuery, userId, query);
+
+        int pageSize = Math.Clamp(query.PageSize <= 0 ? DefaultTaskPageSize : query.PageSize, 1, MaxTaskPageSize);
+        int totalItems = await tasksQuery.CountAsync(cancellationToken);
+        int totalPages = totalItems == 0 ? 0 : (int)Math.Ceiling(totalItems / (double)pageSize);
+        int page = Math.Max(query.Page, 1);
+        if (totalPages > 0 && page > totalPages)
+        {
+            page = totalPages;
+        }
+
+        var items = await ApplyBoardTaskListSorting(tasksQuery, query)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return Ok(new PagedBoardTaskListResponseDto
+        {
+            Items = items.Select(task => ToTaskDto(task, memberLookup)).ToList(),
+            Page = page,
+            PageSize = pageSize,
+            TotalItems = totalItems,
+            TotalPages = totalPages,
+        });
     }
 
     [HttpPost("{boardId:int}/tasks")]
@@ -1078,6 +1135,113 @@ public class BoardsController(AppDbContext context) : ControllerBase
             "nameAsc" => query.OrderBy(board => board.Title).ThenByDescending(board => board.CreatedAt),
             "nameDesc" => query.OrderByDescending(board => board.Title).ThenByDescending(board => board.CreatedAt),
             _ => query.OrderByDescending(board => board.CreatedAt),
+        };
+    }
+
+    private static IQueryable<TaskEntity> ApplyBoardTaskListFilters(
+        IQueryable<TaskEntity> query,
+        int currentUserId,
+        BoardTaskListQueryDto request)
+    {
+        bool isBacklogScope = string.Equals(request.Scope, "backlog", StringComparison.OrdinalIgnoreCase);
+        query = isBacklogScope
+            ? query.Where(task => task.Status.Title == "backlog")
+            : query.Where(task => task.Status.Title != "backlog");
+
+        if (!string.IsNullOrWhiteSpace(request.Q))
+        {
+            string search = request.Q.Trim();
+            query = query.Where(task =>
+                EF.Functions.Like(task.Title, $"%{search}%") ||
+                task.LabeledTasks.Any(labeledTask => EF.Functions.Like(labeledTask.Label.Title, $"%{search}%")));
+        }
+
+        if (request.LabelIds.Count > 0)
+        {
+            query = query.Where(task => task.LabeledTasks.Any(labeledTask => request.LabelIds.Contains(labeledTask.LabelId)));
+        }
+
+        if (string.Equals(request.QuickFilter, "assigned", StringComparison.OrdinalIgnoreCase))
+        {
+            query = query.Where(task => task.AssigneeId == currentUserId);
+        }
+        else if (string.Equals(request.QuickFilter, "due", StringComparison.OrdinalIgnoreCase))
+        {
+            DateTime utcToday = DateTime.UtcNow.Date;
+            int daysSinceMonday = ((int)utcToday.DayOfWeek + 6) % 7;
+            DateTime startOfWeek = utcToday.AddDays(-daysSinceMonday);
+            DateTime endOfWeek = startOfWeek.AddDays(7);
+
+            query = query.Where(task =>
+                task.DueDate.HasValue &&
+                task.DueDate.Value >= startOfWeek &&
+                task.DueDate.Value < endOfWeek);
+        }
+
+        if (isBacklogScope)
+        {
+            if (string.Equals(request.StageFilter, "waiting", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(task => !task.IsQueued);
+            }
+            else if (string.Equals(request.StageFilter, "queued", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(task => task.IsQueued);
+            }
+        }
+
+        return query;
+    }
+
+    private static IQueryable<TaskEntity> ApplyBoardTaskListSorting(
+        IQueryable<TaskEntity> query,
+        BoardTaskListQueryDto request)
+    {
+        bool isDescending = string.Equals(request.Direction, "desc", StringComparison.OrdinalIgnoreCase);
+        string sortKey = string.IsNullOrWhiteSpace(request.Sort)
+            ? "updated"
+            : request.Sort.Trim().ToLowerInvariant();
+
+        return sortKey switch
+        {
+            "priority" => isDescending
+                ? query
+                    .OrderByDescending(task => task.Priority == Priority.Critical)
+                    .ThenByDescending(task => task.Priority == Priority.High)
+                    .ThenByDescending(task => task.Priority == Priority.Medium)
+                    .ThenBy(task => task.Title)
+                : query
+                    .OrderByDescending(task => task.Priority == null)
+                    .ThenByDescending(task => task.Priority == Priority.Low)
+                    .ThenByDescending(task => task.Priority == Priority.Medium)
+                    .ThenByDescending(task => task.Priority == Priority.High)
+                    .ThenBy(task => task.Title),
+            "title" => isDescending
+                ? query.OrderByDescending(task => task.Title).ThenByDescending(task => task.Id)
+                : query.OrderBy(task => task.Title).ThenByDescending(task => task.Id),
+            "status" => isDescending
+                ? query
+                    .OrderByDescending(task => task.Status.Title == "done")
+                    .ThenByDescending(task => task.Status.Title == "inReview")
+                    .ThenByDescending(task => task.Status.Title == "inProgress")
+                    .ThenByDescending(task => task.Status.Title == "todo")
+                    .ThenByDescending(task => task.Id)
+                : query
+                    .OrderByDescending(task => task.Status.Title == "backlog")
+                    .ThenByDescending(task => task.Status.Title == "todo")
+                    .ThenByDescending(task => task.Status.Title == "inProgress")
+                    .ThenByDescending(task => task.Status.Title == "inReview")
+                    .ThenByDescending(task => task.Id),
+            "readiness" => isDescending
+                ? query.OrderByDescending(task => task.IsQueued).ThenByDescending(task => task.Id)
+                : query.OrderBy(task => task.IsQueued).ThenByDescending(task => task.Id),
+            "storypoints" => isDescending
+                ? query.OrderByDescending(task => task.StoryPoints ?? int.MinValue).ThenBy(task => task.Title)
+                : query.OrderBy(task => task.StoryPoints ?? int.MaxValue).ThenBy(task => task.Title),
+            "assignee" => isDescending
+                ? query.OrderByDescending(task => task.Assignee != null ? task.Assignee.FirstName + " " + task.Assignee.LastName : "zzzzzz").ThenBy(task => task.Title)
+                : query.OrderBy(task => task.Assignee != null ? task.Assignee.FirstName + " " + task.Assignee.LastName : "zzzzzz").ThenBy(task => task.Title),
+            _ => query.OrderByDescending(task => task.Id),
         };
     }
 

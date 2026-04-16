@@ -30,6 +30,7 @@ import {
 import { CreateBoardModal } from "../components/CreateBoardModal";
 import { BoardLogo } from "../components/BoardLogo";
 import { EditProjectModal } from "../components/EditProjectModal";
+import { OverflowTooltip } from "../components/OverflowTooltip";
 import { SettingsModal } from "../components/SettingsModal";
 import { ConfirmDeleteProjectDialog } from "../components/ConfirmDeleteProjectDialog";
 import { CoachmarkOverlay } from "../components/CoachmarkOverlay";
@@ -845,9 +846,11 @@ export function Projects() {
                           />
                         </div>
 
-                        <h3 className={`text-xl font-bold ${currentTheme.text} mb-2 truncate group-hover:${currentTheme.primaryText} transition-colors duration-300`}>
-                          {board.name}
-                        </h3>
+                        <OverflowTooltip
+                          as="h3"
+                          text={board.name}
+                          className={`mb-2 text-xl font-bold ${currentTheme.text} truncate transition-colors duration-300 group-hover:${currentTheme.primaryText}`}
+                        />
                         <p
                           className={`text-sm ${currentTheme.textSecondary} mb-4 min-h-[2.5rem] overflow-hidden text-ellipsis`}
                           style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}

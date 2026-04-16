@@ -3,6 +3,7 @@ import { useDrop } from "react-dnd";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { Label } from "../utils/labels";
 import { Card, Priority, TaskAssignee, TaskType } from "../utils/cards";
+import { CustomScrollArea } from "./CustomScrollArea";
 
 type ColumnCard = Card & {
   priority?: Priority;
@@ -38,6 +39,8 @@ export function KanbanColumn({
 }: KanbanColumnProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const columnSurfaceClassName = isDarkMode ? "bg-zinc-950/52" : "bg-slate-50/88";
+  const columnHeaderSurfaceClassName = isDarkMode ? "bg-zinc-900/46" : "bg-white/78";
 
   const [{ isOver }, drop] = useDrop({
     accept: "CARD",
@@ -54,15 +57,15 @@ export function KanbanColumn({
   const badgeColor = currentTheme.badge[id as keyof typeof currentTheme.badge] || currentTheme.badge.todo;
 
   return (
-    <div className="w-full">
+    <div className="w-full min-h-0 lg:h-full">
       <div
         ref={drop}
-        className={`${currentTheme.cardBg} rounded-2xl border-2 transition-all min-h-[600px] flex flex-col shadow-sm ${
+        className={`${columnSurfaceClassName} rounded-2xl border-2 transition-all flex min-h-[34rem] flex-col shadow-sm lg:h-full lg:min-h-0 ${
           isOver ? `${currentTheme.primaryBorder} ring-4 ${currentTheme.ring} scale-[1.01]` : currentTheme.border
         }`}
       >
         {/* Column Header */}
-        <div className={`px-5 py-4 border-b-2 ${currentTheme.border} ${currentTheme.bgSecondary} rounded-t-2xl`}>
+        <div className={`px-5 py-4 border-b-2 ${currentTheme.border} ${columnHeaderSurfaceClassName} rounded-t-2xl`}>
           <div className="flex items-center justify-between">
             <h2 className={`font-bold text-lg ${currentTheme.text}`}>{title}</h2>
             <span className={`px-3 py-1.5 ${badgeColor} text-white rounded-full text-sm font-bold shadow-sm`}>
@@ -72,7 +75,10 @@ export function KanbanColumn({
         </div>
         
         {/* Cards Container */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <CustomScrollArea
+          className="flex-1 min-h-0"
+          viewportClassName="h-full min-h-0 px-4 py-4"
+        >
           {cards.length > 0 ? (
             <div className="space-y-3">
               {cards.map((card) => (
@@ -97,12 +103,12 @@ export function KanbanColumn({
               ))}
             </div>
           ) : (
-            <div className={`flex flex-col items-center justify-center h-full ${currentTheme.textMuted}`}>
-              <p className="text-sm mb-1">No tasks</p>
+            <div className={`flex min-h-[14rem] flex-col items-center justify-center text-center ${currentTheme.textMuted}`}>
+              <p className="mb-1 text-sm">No tasks</p>
               <p className="text-xs opacity-60">Drag & drop tasks here</p>
             </div>
           )}
-        </div>
+        </CustomScrollArea>
       </div>
     </div>
   );

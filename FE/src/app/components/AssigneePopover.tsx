@@ -120,32 +120,14 @@ export function AssigneePopover({
                 type="button"
                 className={`relative flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-all ${
                   isUnassigned
-                    ? `${currentTheme.textMuted} ${isDarkMode ? "bg-zinc-900/40 hover:bg-zinc-800/50" : "bg-white/85 hover:bg-white"}`
+                    ? `${currentTheme.textMuted} border ${currentTheme.border} ${isDarkMode ? "bg-white/[0.03] hover:bg-white/[0.06]" : "bg-white hover:bg-slate-50"}`
                     : `text-white shadow-sm ring-1 ${isDarkMode ? "ring-zinc-600 hover:ring-zinc-500" : "ring-slate-200 hover:ring-slate-300"} hover:ring-2 hover:shadow-md`
                 }`}
                 style={isUnassigned ? undefined : { backgroundColor: currentAssignee.color }}
                 aria-label={isUnassigned ? "Assign task" : `Assigned to ${currentAssignee.name}`}
               >
                 {isUnassigned ? (
-                  <>
-                    <svg
-                      viewBox="0 0 32 32"
-                      aria-hidden="true"
-                      className={`absolute inset-0 h-full w-full ${currentTheme.textMuted}`}
-                    >
-                      <circle
-                        cx="16"
-                        cy="16"
-                        r="14"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeDasharray="3 6"
-                      />
-                    </svg>
-                    <Plus className="relative z-10 h-3.5 w-3.5" />
-                  </>
+                  <Plus className="h-3.5 w-3.5" />
                 ) : (
                   currentAssignee.name.charAt(0).toUpperCase()
                 )}
