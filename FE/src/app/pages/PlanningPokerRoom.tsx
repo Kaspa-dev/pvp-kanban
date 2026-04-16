@@ -125,7 +125,7 @@ function getConnectionBannerLabel(value: ConnectionBannerState) {
     case "connected":
       return "Live updates connected.";
     case "reconnecting":
-      return "Connection lost. Trying to reconnect...";
+      return "Connection lost. Trying to reconnect and rejoin the room...";
     case "disconnected":
       return "Disconnected from the room. Rejoin to keep voting.";
     default:
@@ -137,6 +137,9 @@ export function PlanningPokerRoom() {
   const { joinToken } = useParams();
   const { isAuthenticated, user } = useAuth();
   const connectionRef = useRef<HubConnection | null>(null);
+  const participantTokenRef = useRef("");
+  const guestDisplayNameRef = useRef("");
+  const isAuthenticatedRef = useRef(isAuthenticated);
   const [session, setSession] = useState<PlanningPokerSession | null>(null);
   const [participantToken, setParticipantToken] = useState("");
   const [guestDisplayName, setGuestDisplayName] = useState("");
@@ -180,6 +183,18 @@ export function PlanningPokerRoom() {
     session && session.activeTask.sessionTaskId > 0 ? session.activeTask : null;
 
   useEffect(() => {
+    participantTokenRef.current = participantToken;
+  }, [participantToken]);
+
+  useEffect(() => {
+    guestDisplayNameRef.current = guestDisplayName;
+  }, [guestDisplayName]);
+
+  useEffect(() => {
+    isAuthenticatedRef.current = isAuthenticated;
+  }, [isAuthenticated]);
+
+  useEffect(() => {
     if (!participantStorageKey || !guestNameStorageKey) {
       return;
     }
@@ -197,6 +212,7 @@ export function PlanningPokerRoom() {
       onSessionUpdated: (nextSession) => {
         setSession(nextSession);
         setRoomError("");
+        setJoinError("");
         setConnectionBannerState("connected");
       },
       onVotingUpdated: (nextSession) => {
@@ -212,9 +228,36 @@ export function PlanningPokerRoom() {
       setRoomError("The room connection dropped. Reconnecting now.");
     });
 
-    connection.onreconnected(() => {
-      setConnectionBannerState("connected");
-      setRoomError("");
+    connection.onreconnected(async () => {
+      setConnectionBannerState("connecting");
+      setRoomError("Connection restored. Rejoining the planning poker room.");
+
+      try {
+        const response = await joinPlanningPokerSession(
+          connection,
+          normalizedJoinToken,
+          participantTokenRef.current || null,
+          isAuthenticatedRef.current ? null : guestDisplayNameRef.current.trim() || null,
+        );
+
+        setSession(response.session);
+        setParticipantToken(response.participantToken);
+        writeStorageValue(participantStorageKey, response.participantToken);
+
+        if (!isAuthenticatedRef.current && guestDisplayNameRef.current.trim()) {
+          writeStorageValue(guestNameStorageKey, guestDisplayNameRef.current.trim());
+        }
+
+        setJoinError("");
+        setRoomError("");
+        setConnectionBannerState("connected");
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unable to rejoin the planning poker room.";
+        setJoinError(message);
+        setRoomError(message);
+        setConnectionBannerState("disconnected");
+      }
     });
 
     connectionRef.current = connection;
@@ -223,7 +266,7 @@ export function PlanningPokerRoom() {
       connectionRef.current = null;
       void stopPlanningPokerConnection(connection);
     };
-  }, [normalizedJoinToken]);
+  }, [normalizedJoinToken, participantStorageKey, guestNameStorageKey]);
 
   useEffect(() => {
     if (!session?.isRevealed) {
@@ -443,7 +486,7 @@ export function PlanningPokerRoom() {
                     ? `${votedCount} of ${session.participants.length} votes are in.`
                     : "Join the room to start receiving live updates."}
                 </div>
-                {connectionBannerState === "disconnected" && !session ? (
+                {connectionBannerState !== "connected" && normalizedJoinToken ? (
                   <Button
                     type="button"
                     variant="outline"
@@ -452,7 +495,7 @@ export function PlanningPokerRoom() {
                     disabled={isJoining}
                   >
                     <RefreshCcw className="h-4 w-4" aria-hidden="true" />
-                    Retry connection
+                    {session ? "Rejoin room" : "Retry connection"}
                   </Button>
                 ) : null}
               </CardContent>
