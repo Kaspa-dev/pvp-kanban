@@ -135,14 +135,15 @@ public class PlanningPokerHub(IPlanningPokerSessionService service, AppDbContext
         {
             try
             {
-                PlanningPokerSessionDto session = await _service.GetSessionByTokenAsync(
+                PlanningPokerSessionDto? session = await LoadSessionSnapshotByJoinTokenAsync(
                     participant.JoinToken,
-                    participant.UserId,
-                    participant.ParticipantToken,
                     CancellationToken.None);
 
-                await Clients.Group(GetGroupName(participant.SessionId))
-                    .SendAsync("SessionUpdated", session, CancellationToken.None);
+                if (session is not null)
+                {
+                    await Clients.Group(GetGroupName(participant.SessionId))
+                        .SendAsync("SessionUpdated", session, CancellationToken.None);
+                }
             }
             catch (PlanningPokerException)
             {
@@ -164,4 +165,87 @@ public class PlanningPokerHub(IPlanningPokerSessionService service, AppDbContext
         string JoinToken,
         string ParticipantToken,
         int? UserId);
+
+    private async System.Threading.Tasks.Task<PlanningPokerSessionDto?> LoadSessionSnapshotByJoinTokenAsync(
+        string joinToken,
+        CancellationToken cancellationToken)
+    {
+        string token = joinToken.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return null;
+        }
+
+        BE.Models.PlanningPokerSession? session = await _context.PlanningPokerSessions
+            .Include(item => item.ActiveSessionTask)
+            .ThenInclude(task => task!.Task)
+            .Include(item => item.ActiveSessionTask)
+            .ThenInclude(task => task!.Votes)
+            .Include(item => item.Tasks)
+            .ThenInclude(task => task.Task)
+            .Include(item => item.Tasks)
+            .ThenInclude(task => task.Votes)
+            .Include(item => item.Participants)
+            .AsSplitQuery()
+            .FirstOrDefaultAsync(item => item.JoinToken == token && item.Status == "active", cancellationToken);
+
+        return session is null ? null : ToSessionDto(session);
+    }
+
+    private static PlanningPokerSessionDto ToSessionDto(BE.Models.PlanningPokerSession session)
+    {
+        BE.Models.PlanningPokerSessionTask? activeTask = session.ActiveSessionTask
+            ?? session.Tasks
+                .OrderBy(task => task.Position)
+                .FirstOrDefault(task => task.RoundState.Equals("voting", StringComparison.OrdinalIgnoreCase))
+            ?? session.Tasks.OrderBy(task => task.Position).FirstOrDefault();
+
+        HashSet<int> votedParticipantIds = activeTask?.Votes
+            .Select(vote => vote.ParticipantId)
+            .ToHashSet() ?? new HashSet<int>();
+
+        return new PlanningPokerSessionDto
+        {
+            SessionId = session.Id,
+            BoardId = session.BoardId,
+            JoinToken = session.JoinToken,
+            JoinUrl = $"/planning-poker/{session.JoinToken}",
+            Status = session.Status,
+            ActiveTask = activeTask is null ? new PlanningPokerSessionTaskDto() : ToSessionTaskDto(activeTask),
+            Queue = session.Tasks
+                .OrderBy(task => task.Position)
+                .Where(task => activeTask is null || task.Id != activeTask.Id)
+                .Select(ToSessionTaskDto)
+                .ToList(),
+            Participants = session.Participants
+                .OrderByDescending(item => item.IsHost)
+                .ThenBy(item => item.DisplayName)
+                .Select(item => new PlanningPokerParticipantDto
+                {
+                    ParticipantId = item.Id,
+                    DisplayName = item.DisplayName,
+                    IsHost = item.IsHost,
+                    IsGuest = item.IsGuest,
+                    HasVoted = votedParticipantIds.Contains(item.Id),
+                })
+                .ToList(),
+            IsRevealed = activeTask is not null &&
+                activeTask.RoundState.Equals("revealed", StringComparison.OrdinalIgnoreCase),
+        };
+    }
+
+    private static PlanningPokerSessionTaskDto ToSessionTaskDto(BE.Models.PlanningPokerSessionTask sessionTask)
+    {
+        return new PlanningPokerSessionTaskDto
+        {
+            SessionTaskId = sessionTask.Id,
+            TaskId = sessionTask.TaskId,
+            Title = sessionTask.Task.Title,
+            Description = sessionTask.Task.Description,
+            Position = sessionTask.Position,
+            RoundState = sessionTask.RoundState,
+            RecommendedStoryPoints = sessionTask.RecommendedStoryPoints,
+            AppliedStoryPoints = sessionTask.Task.StoryPoints,
+        };
+    }
 }

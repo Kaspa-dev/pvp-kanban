@@ -11,6 +11,7 @@ import type { PlanningPokerSession } from "./planningPoker";
 export interface PlanningPokerJoinSessionResponse {
   session: PlanningPokerSession;
   participantToken: string;
+  participantId: number;
 }
 
 export interface PlanningPokerConnectionOptions {

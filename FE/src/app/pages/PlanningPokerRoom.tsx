@@ -222,11 +222,9 @@ export function PlanningPokerRoom() {
           isAuthenticatedRef.current ? null : guestDisplayNameRef.current.trim() || null,
         );
 
-        const nextParticipantId =
-          (response as { participantId?: number }).participantId ?? null;
         setSession(response.session);
         setParticipantToken(response.participantToken);
-        setParticipantId(nextParticipantId);
+        setParticipantId(response.participantId);
         writeStorageValue(participantStorageKey, response.participantToken);
 
         if (!isAuthenticatedRef.current && guestDisplayNameRef.current.trim()) {
@@ -322,11 +320,9 @@ export function PlanningPokerRoom() {
           isAuthenticated ? null : attemptedGuestName.trim(),
         );
 
-        const nextParticipantId =
-          (response as { participantId?: number }).participantId ?? null;
         setSession(response.session);
         setParticipantToken(response.participantToken);
-        setParticipantId(nextParticipantId);
+        setParticipantId(response.participantId);
         writeStorageValue(participantStorageKey, response.participantToken);
 
         if (!isAuthenticated) {
