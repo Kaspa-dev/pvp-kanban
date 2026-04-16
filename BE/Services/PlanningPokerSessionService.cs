@@ -29,7 +29,7 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
         Board board = await GetBoardWithMembershipsAsync(boardId, hostUserId, cancellationToken);
         if (await _context.PlanningPokerSessions.AnyAsync(session => session.BoardId == boardId && session.Status == ActiveSessionStatus, cancellationToken))
         {
-            throw new InvalidOperationException("There is already an active planning poker session for this board.");
+            throw new PlanningPokerValidationException("There is already an active planning poker session for this board.");
         }
 
         var backlogTasks = await _context.Tasks
@@ -44,7 +44,7 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
 
         if (backlogTasks.Count == 0)
         {
-            throw new InvalidOperationException("There are no unestimated backlog tasks for planning poker.");
+            throw new PlanningPokerValidationException("There are no unestimated backlog tasks for planning poker.");
         }
 
         DateTime now = DateTime.UtcNow;
@@ -92,17 +92,64 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
         return await LoadSessionDtoByIdAsync(session.Id, cancellationToken);
     }
 
-    public async System.Threading.Tasks.Task<PlanningPokerSessionDto> GetSessionByTokenAsync(string joinToken, CancellationToken cancellationToken)
+    public async System.Threading.Tasks.Task<PlanningPokerSessionDto> GetSessionByTokenAsync(
+        string joinToken,
+        int? userId,
+        string? participantToken,
+        CancellationToken cancellationToken)
     {
         string token = joinToken.Trim().ToLowerInvariant();
         if (string.IsNullOrWhiteSpace(token))
         {
-            throw new InvalidOperationException("Join token is required.");
+            throw new PlanningPokerValidationException("Join token is required.");
+        }
+
+        string normalizedParticipantToken = participantToken?.Trim().ToLowerInvariant() ?? string.Empty;
+        if (!userId.HasValue && string.IsNullOrWhiteSpace(normalizedParticipantToken))
+        {
+            throw new PlanningPokerValidationException("A user id or participant token is required to access a planning poker session.");
         }
 
         PlanningPokerSession session = await LoadSessionForDtoQuery()
             .FirstOrDefaultAsync(candidate => candidate.JoinToken == token, cancellationToken)
-            ?? throw new InvalidOperationException("Planning poker session was not found.");
+            ?? throw new PlanningPokerNotFoundException("Planning poker session was not found.");
+
+        PlanningPokerParticipant? participant = null;
+        if (userId.HasValue)
+        {
+            participant = session.Participants.FirstOrDefault(item => item.UserId == userId.Value);
+            if (participant is null)
+            {
+                Board board = await GetBoardWithMembershipsAsync(session.BoardId, userId.Value, cancellationToken);
+                participant = new PlanningPokerParticipant
+                {
+                    SessionId = session.Id,
+                    UserId = userId.Value,
+                    ParticipantToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(24)).ToLowerInvariant(),
+                    DisplayName = BuildDisplayName(board.Memberships.Single(membership => membership.UserId == userId.Value).User),
+                    IsHost = session.HostUserId == userId.Value,
+                    IsGuest = false,
+                    LastSeenAtUtc = DateTime.UtcNow,
+                };
+                session.Participants.Add(participant);
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+        }
+
+        if (participant is null && !string.IsNullOrWhiteSpace(normalizedParticipantToken))
+        {
+            participant = session.Participants.FirstOrDefault(item => item.ParticipantToken == normalizedParticipantToken);
+            if (participant is not null)
+            {
+                participant.LastSeenAtUtc = DateTime.UtcNow;
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+        }
+
+        if (participant is null)
+        {
+            throw new PlanningPokerAccessDeniedException("The session token does not match a known participant.");
+        }
 
         return ToSessionDto(session);
     }
@@ -113,18 +160,24 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
         PlanningPokerSessionTask sessionTask = await _context.PlanningPokerSessionTasks
             .Include(item => item.Task)
             .Include(item => item.Session)
+            .ThenInclude(session => session.Participants)
             .FirstAsync(item => item.Id == sessionTaskId, cancellationToken);
 
         if (sessionTask.Session.BoardId != boardId ||
             sessionTask.Session.Status != ActiveSessionStatus ||
             sessionTask.Session.ActiveSessionTaskId != sessionTask.Id)
         {
-            throw new InvalidOperationException("There is no recommendation to apply.");
+            throw new PlanningPokerValidationException("There is no recommendation to apply.");
         }
 
         if (sessionTask.RecommendedStoryPoints is null)
         {
-            throw new InvalidOperationException("There is no recommendation to apply.");
+            throw new PlanningPokerValidationException("There is no recommendation to apply.");
+        }
+
+        if (!sessionTask.Session.Participants.Any(participant => participant.UserId == userId))
+        {
+            throw new PlanningPokerAccessDeniedException("You must be part of the planning poker session to apply a recommendation.");
         }
 
         sessionTask.Task.StoryPoints = sessionTask.RecommendedStoryPoints;
@@ -143,12 +196,12 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
 
         if (board is null)
         {
-            throw new InvalidOperationException("Board was not found.");
+            throw new PlanningPokerNotFoundException("Board was not found.");
         }
 
         if (!board.Memberships.Any(membership => membership.UserId == userId))
         {
-            throw new InvalidOperationException("You do not have access to this board.");
+            throw new PlanningPokerAccessDeniedException("You do not have access to this board.");
         }
 
         return board;
@@ -160,7 +213,7 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
             .Where(session => session.BoardId == boardId && session.Status == ActiveSessionStatus)
             .OrderByDescending(session => session.CreatedAtUtc)
             .FirstOrDefaultAsync(cancellationToken)
-            ?? throw new InvalidOperationException("No active planning poker session exists for this board.");
+            ?? throw new PlanningPokerNotFoundException("No active planning poker session exists for this board.");
     }
 
     private async System.Threading.Tasks.Task EnsureBoardMemberParticipantAsync(
@@ -328,5 +381,25 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
     {
         string displayName = $"{user.FirstName} {user.LastName}".Trim();
         return string.IsNullOrWhiteSpace(displayName) ? user.Username : displayName;
+    }
+
+    public abstract class PlanningPokerServiceException : Exception
+    {
+        protected PlanningPokerServiceException(string message) : base(message) { }
+    }
+
+    public sealed class PlanningPokerNotFoundException : PlanningPokerServiceException
+    {
+        public PlanningPokerNotFoundException(string message) : base(message) { }
+    }
+
+    public sealed class PlanningPokerAccessDeniedException : PlanningPokerServiceException
+    {
+        public PlanningPokerAccessDeniedException(string message) : base(message) { }
+    }
+
+    public sealed class PlanningPokerValidationException : PlanningPokerServiceException
+    {
+        public PlanningPokerValidationException(string message) : base(message) { }
     }
 }
