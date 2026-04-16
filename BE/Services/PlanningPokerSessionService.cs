@@ -115,7 +115,17 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
             ?? throw new PlanningPokerNotFoundException("Planning poker session was not found.");
 
         PlanningPokerParticipant? participant = null;
-        if (userId.HasValue)
+        if (!string.IsNullOrWhiteSpace(normalizedParticipantToken))
+        {
+            participant = session.Participants.FirstOrDefault(item => item.ParticipantToken == normalizedParticipantToken);
+            if (participant is not null)
+            {
+                participant.LastSeenAtUtc = DateTime.UtcNow;
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+        }
+
+        if (participant is null && userId.HasValue)
         {
             participant = session.Participants.FirstOrDefault(item => item.UserId == userId.Value);
             if (participant is null)
@@ -136,16 +146,6 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
             }
         }
 
-        if (participant is null && !string.IsNullOrWhiteSpace(normalizedParticipantToken))
-        {
-            participant = session.Participants.FirstOrDefault(item => item.ParticipantToken == normalizedParticipantToken);
-            if (participant is not null)
-            {
-                participant.LastSeenAtUtc = DateTime.UtcNow;
-                await _context.SaveChangesAsync(cancellationToken);
-            }
-        }
-
         if (participant is null)
         {
             throw new PlanningPokerAccessDeniedException("The session token does not match a known participant.");
@@ -157,11 +157,16 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
     public async System.Threading.Tasks.Task<BoardTaskDto> ApplyRecommendationAsync(int boardId, int sessionTaskId, int userId, CancellationToken cancellationToken)
     {
         Board board = await GetBoardWithMembershipsAsync(boardId, userId, cancellationToken);
-        PlanningPokerSessionTask sessionTask = await _context.PlanningPokerSessionTasks
+        PlanningPokerSessionTask? sessionTask = await _context.PlanningPokerSessionTasks
             .Include(item => item.Task)
             .Include(item => item.Session)
             .ThenInclude(session => session.Participants)
-            .FirstAsync(item => item.Id == sessionTaskId, cancellationToken);
+            .FirstOrDefaultAsync(item => item.Id == sessionTaskId, cancellationToken);
+
+        if (sessionTask is null)
+        {
+            throw new PlanningPokerNotFoundException("Planning poker session task was not found.");
+        }
 
         if (sessionTask.Session.BoardId != boardId ||
             sessionTask.Session.Status != ActiveSessionStatus ||
