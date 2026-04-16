@@ -158,6 +158,7 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
             allowGuestCreation: false,
             cancellationToken);
         PlanningPokerSessionTask activeTask = GetActiveVotingTask(session);
+        EnsureTaskIsStillEligibleForVoting(activeTask);
 
         PlanningPokerVote? existingVote = activeTask.Votes.FirstOrDefault(vote => vote.ParticipantId == participant.Id);
         if (existingVote is null)
@@ -195,13 +196,9 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
             guestDisplayName: null,
             allowGuestCreation: false,
             cancellationToken);
-
-        if (!participant.IsHost)
-        {
-            throw new PlanningPokerAccessDeniedException("Only the host can reveal votes.");
-        }
-
+        EnsureParticipantIsHost(session, participant);
         PlanningPokerSessionTask activeTask = GetActiveVotingTask(session);
+        EnsureTaskIsStillEligibleForVoting(activeTask);
         if (activeTask.Votes.Count == 0)
         {
             throw new PlanningPokerValidationException("At least one vote is required before revealing.");
@@ -435,6 +432,23 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
         }
 
         return activeTask;
+    }
+
+    private static void EnsureParticipantIsHost(PlanningPokerSession session, PlanningPokerParticipant participant)
+    {
+        if (!participant.IsHost || participant.IsGuest || participant.UserId != session.HostUserId)
+        {
+            throw new PlanningPokerAccessDeniedException("Only the host can reveal votes.");
+        }
+    }
+
+    private static void EnsureTaskIsStillEligibleForVoting(PlanningPokerSessionTask sessionTask)
+    {
+        if (sessionTask.Task.StoryPoints.HasValue)
+        {
+            throw new PlanningPokerValidationException(
+                "The active task has already been estimated. Refresh the room to continue.");
+        }
     }
 
     private static string NormalizeGuestDisplayName(string? guestDisplayName)

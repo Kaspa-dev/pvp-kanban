@@ -95,27 +95,13 @@ function removeStorageValue(key: string) {
 
 function getCurrentParticipant(
   participants: PlanningPokerParticipant[],
-  userDisplayName: string,
-  guestDisplayName: string,
-  isAuthenticated: boolean,
+  participantId: number | null,
 ) {
-  if (isAuthenticated && userDisplayName) {
-    return (
-      participants.find(
-        (participant) => !participant.isGuest && participant.displayName === userDisplayName,
-      ) ?? null
-    );
+  if (!participantId) {
+    return null;
   }
 
-  if (guestDisplayName) {
-    return (
-      participants.find(
-        (participant) => participant.isGuest && participant.displayName === guestDisplayName,
-      ) ?? null
-    );
-  }
-
-  return null;
+  return participants.find((participant) => participant.participantId === participantId) ?? null;
 }
 
 function getConnectionBannerLabel(value: ConnectionBannerState) {
@@ -137,11 +123,13 @@ export function PlanningPokerRoom() {
   const { joinToken } = useParams();
   const { isAuthenticated, user } = useAuth();
   const connectionRef = useRef<HubConnection | null>(null);
+  const activeTaskIdRef = useRef<number | null>(null);
   const participantTokenRef = useRef("");
   const guestDisplayNameRef = useRef("");
   const isAuthenticatedRef = useRef(isAuthenticated);
   const [session, setSession] = useState<PlanningPokerSession | null>(null);
   const [participantToken, setParticipantToken] = useState("");
+  const [participantId, setParticipantId] = useState<number | null>(null);
   const [guestDisplayName, setGuestDisplayName] = useState("");
   const [selectedVote, setSelectedVote] = useState<number | null>(null);
   const [joinError, setJoinError] = useState("");
@@ -167,14 +155,8 @@ export function PlanningPokerRoom() {
   const authenticatedLabel =
     user?.displayName?.trim() || user?.username?.trim() || "your account";
   const currentParticipant = useMemo(
-    () =>
-      getCurrentParticipant(
-        session?.participants ?? [],
-        user?.displayName?.trim() ?? "",
-        guestDisplayName.trim(),
-        isAuthenticated,
-      ),
-    [guestDisplayName, isAuthenticated, session?.participants, user?.displayName],
+    () => getCurrentParticipant(session?.participants ?? [], participantId),
+    [participantId, session?.participants],
   );
   const votedCount =
     session?.participants.filter((participant) => participant.hasVoted).length ?? 0;
@@ -240,8 +222,11 @@ export function PlanningPokerRoom() {
           isAuthenticatedRef.current ? null : guestDisplayNameRef.current.trim() || null,
         );
 
+        const nextParticipantId =
+          (response as { participantId?: number }).participantId ?? null;
         setSession(response.session);
         setParticipantToken(response.participantToken);
+        setParticipantId(nextParticipantId);
         writeStorageValue(participantStorageKey, response.participantToken);
 
         if (!isAuthenticatedRef.current && guestDisplayNameRef.current.trim()) {
@@ -254,9 +239,19 @@ export function PlanningPokerRoom() {
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Unable to rejoin the planning poker room.";
+        const shouldResetParticipantIdentity =
+          participantTokenRef.current.length > 0 && /participant|token/i.test(message);
+
+        if (shouldResetParticipantIdentity) {
+          setParticipantToken("");
+          setParticipantId(null);
+          removeStorageValue(participantStorageKey);
+        }
+
         setJoinError(message);
         setRoomError(message);
         setConnectionBannerState("disconnected");
+        setSession(null);
       }
     });
 
@@ -275,6 +270,16 @@ export function PlanningPokerRoom() {
 
     setSelectedVote(null);
   }, [session?.isRevealed]);
+
+  useEffect(() => {
+    const nextActiveTaskId = activeTask?.sessionTaskId ?? null;
+    if (activeTaskIdRef.current === nextActiveTaskId) {
+      return;
+    }
+
+    activeTaskIdRef.current = nextActiveTaskId;
+    setSelectedVote(null);
+  }, [activeTask]);
 
   useEffect(() => {
     if (!session || copyFeedback === "") {
@@ -317,8 +322,11 @@ export function PlanningPokerRoom() {
           isAuthenticated ? null : attemptedGuestName.trim(),
         );
 
+        const nextParticipantId =
+          (response as { participantId?: number }).participantId ?? null;
         setSession(response.session);
         setParticipantToken(response.participantToken);
+        setParticipantId(nextParticipantId);
         writeStorageValue(participantStorageKey, response.participantToken);
 
         if (!isAuthenticated) {
@@ -339,6 +347,7 @@ export function PlanningPokerRoom() {
 
         if (participantToken && /participant|token/i.test(message)) {
           setParticipantToken("");
+          setParticipantId(null);
           removeStorageValue(participantStorageKey);
         }
       } finally {
