@@ -3,6 +3,7 @@ using System.Security.Claims;
 using BE.Data;
 using BE.DTOs;
 using BE.Models;
+using BE.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,9 +15,10 @@ namespace BE.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/[controller]")]
-public class BoardsController(AppDbContext context) : ControllerBase
+public class BoardsController(AppDbContext context, IPlanningPokerSessionService planningPokerSessionService) : ControllerBase
 {
     private readonly AppDbContext _context = context;
+    private readonly IPlanningPokerSessionService _planningPokerSessionService = planningPokerSessionService;
     private const int MaxBoardMembers = 20;
     private const int MaxBoardNameLength = 128;
     private const int MaxBoardDescriptionLength = 500;
@@ -258,6 +260,94 @@ public class BoardsController(AppDbContext context) : ControllerBase
         }
 
         return Ok(ToBoardDto(context!.Board));
+    }
+
+    [HttpPost("{boardId:int}/planning-poker/session")]
+    public async Task<ActionResult<PlanningPokerSessionDto>> CreatePlanningPokerSession(int boardId, CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            PlanningPokerSessionDto session = await _planningPokerSessionService.CreateSessionAsync(boardId, userId, cancellationToken);
+            return Ok(session);
+        }
+        catch (PlanningPokerSessionService.PlanningPokerNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (PlanningPokerSessionService.PlanningPokerAccessDeniedException)
+        {
+            return Forbid();
+        }
+        catch (PlanningPokerSessionService.PlanningPokerValidationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
+
+    [HttpGet("{boardId:int}/planning-poker/session")]
+    public async Task<ActionResult<PlanningPokerSessionDto>> GetPlanningPokerSession(int boardId, CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            PlanningPokerSessionDto session = await _planningPokerSessionService.GetBoardSessionAsync(boardId, userId, cancellationToken);
+            return Ok(session);
+        }
+        catch (PlanningPokerSessionService.PlanningPokerNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (PlanningPokerSessionService.PlanningPokerAccessDeniedException)
+        {
+            return Forbid();
+        }
+        catch (PlanningPokerSessionService.PlanningPokerValidationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
+
+    [HttpPost("{boardId:int}/planning-poker/apply")]
+    public async Task<ActionResult<BoardTaskDto>> ApplyPlanningPokerRecommendation(
+        int boardId,
+        ApplyPlanningPokerRecommendationRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            BoardTaskDto task = await _planningPokerSessionService.ApplyRecommendationAsync(
+                boardId,
+                request.SessionTaskId,
+                userId,
+                cancellationToken);
+            return Ok(task);
+        }
+        catch (PlanningPokerSessionService.PlanningPokerNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (PlanningPokerSessionService.PlanningPokerAccessDeniedException)
+        {
+            return Forbid();
+        }
+        catch (PlanningPokerSessionService.PlanningPokerValidationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
     }
 
     [HttpPatch("{boardId:int}")]
