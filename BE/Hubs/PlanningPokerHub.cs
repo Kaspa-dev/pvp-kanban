@@ -33,7 +33,7 @@ public class PlanningPokerHub(IPlanningPokerSessionService service) : Hub
                 ParticipantToken = result.ParticipantToken,
             };
         }
-        catch (PlanningPokerSessionService.PlanningPokerServiceException exception)
+        catch (PlanningPokerException exception)
         {
             throw new HubException(exception.Message);
         }
@@ -60,7 +60,7 @@ public class PlanningPokerHub(IPlanningPokerSessionService service) : Hub
 
             return session;
         }
-        catch (PlanningPokerSessionService.PlanningPokerServiceException exception)
+        catch (PlanningPokerException exception)
         {
             throw new HubException(exception.Message);
         }
@@ -83,7 +83,7 @@ public class PlanningPokerHub(IPlanningPokerSessionService service) : Hub
 
             return session;
         }
-        catch (PlanningPokerSessionService.PlanningPokerServiceException exception)
+        catch (PlanningPokerException exception)
         {
             throw new HubException(exception.Message);
         }

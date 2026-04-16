@@ -14,3 +14,23 @@ public interface IPlanningPokerSessionService
 }
 
 public sealed record PlanningPokerJoinResult(PlanningPokerSessionDto Session, string ParticipantToken);
+
+public abstract class PlanningPokerException : Exception
+{
+    protected PlanningPokerException(string message) : base(message) { }
+}
+
+public sealed class PlanningPokerNotFoundException : PlanningPokerException
+{
+    public PlanningPokerNotFoundException(string message) : base(message) { }
+}
+
+public sealed class PlanningPokerAccessDeniedException : PlanningPokerException
+{
+    public PlanningPokerAccessDeniedException(string message) : base(message) { }
+}
+
+public sealed class PlanningPokerValidationException : PlanningPokerException
+{
+    public PlanningPokerValidationException(string message) : base(message) { }
+}

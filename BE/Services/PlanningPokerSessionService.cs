@@ -107,42 +107,13 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
 
         PlanningPokerSession session = await GetSessionByJoinTokenAsync(joinToken, cancellationToken);
 
-        PlanningPokerParticipant? participant = null;
-        if (!string.IsNullOrWhiteSpace(normalizedParticipantToken))
-        {
-            participant = session.Participants.FirstOrDefault(item => item.ParticipantToken == normalizedParticipantToken);
-            if (participant is not null)
-            {
-                participant.LastSeenAtUtc = DateTime.UtcNow;
-                await _context.SaveChangesAsync(cancellationToken);
-            }
-        }
-
-        if (participant is null && userId.HasValue)
-        {
-            participant = session.Participants.FirstOrDefault(item => item.UserId == userId.Value);
-            if (participant is null)
-            {
-                Board board = await GetBoardWithMembershipsAsync(session.BoardId, userId.Value, cancellationToken);
-                participant = new PlanningPokerParticipant
-                {
-                    SessionId = session.Id,
-                    UserId = userId.Value,
-                    ParticipantToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(24)).ToLowerInvariant(),
-                    DisplayName = BuildDisplayName(board.Memberships.Single(membership => membership.UserId == userId.Value).User),
-                    IsHost = session.HostUserId == userId.Value,
-                    IsGuest = false,
-                    LastSeenAtUtc = DateTime.UtcNow,
-                };
-                session.Participants.Add(participant);
-                await _context.SaveChangesAsync(cancellationToken);
-            }
-        }
-
-        if (participant is null)
-        {
-            throw new PlanningPokerAccessDeniedException("The session token does not match a known participant.");
-        }
+        await ResolveParticipantAsync(
+            session,
+            userId,
+            participantToken,
+            guestDisplayName: null,
+            allowGuestCreation: false,
+            cancellationToken);
 
         return ToSessionDto(session);
     }
@@ -236,7 +207,6 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
             throw new PlanningPokerValidationException("At least one vote is required before revealing.");
         }
 
-        activeTask.RecommendedStoryPoints = CalculateRecommendation(activeTask.Votes);
         activeTask.RoundState = RevealedRoundState;
         session.UpdatedAtUtc = DateTime.UtcNow;
         await _context.SaveChangesAsync(cancellationToken);
@@ -368,51 +338,59 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
         CancellationToken cancellationToken)
     {
         string normalizedParticipantToken = participantToken?.Trim().ToLowerInvariant() ?? string.Empty;
-        PlanningPokerParticipant? participant = null;
+        PlanningPokerParticipant? tokenParticipant = null;
 
         if (!string.IsNullOrWhiteSpace(normalizedParticipantToken))
         {
-            participant = session.Participants.FirstOrDefault(item => item.ParticipantToken == normalizedParticipantToken);
-            if (participant is null)
+            tokenParticipant = session.Participants.FirstOrDefault(item => item.ParticipantToken == normalizedParticipantToken);
+            if (tokenParticipant is null)
             {
                 throw new PlanningPokerAccessDeniedException("The session token does not match a known participant.");
             }
         }
 
-        if (participant is null && userId.HasValue)
+        if (userId.HasValue)
         {
             Board board = await GetBoardWithMembershipsAsync(session.BoardId, userId.Value, cancellationToken);
             await EnsureBoardMemberParticipantAsync(session, board, userId.Value, cancellationToken);
-            participant = session.Participants.First(item => item.UserId == userId.Value);
-        }
+            PlanningPokerParticipant participant = session.Participants.First(item => item.UserId == userId.Value);
 
-        if (participant is null)
-        {
-            if (!allowGuestCreation)
+            if (tokenParticipant is not null && tokenParticipant.UserId != userId.Value)
             {
-                throw new PlanningPokerAccessDeniedException("You must join the planning poker session before voting.");
+                throw new PlanningPokerAccessDeniedException("Authenticated users cannot act as a different planning poker participant.");
             }
 
-            string displayName = NormalizeGuestDisplayName(guestDisplayName);
-            participant = new PlanningPokerParticipant
-            {
-                SessionId = session.Id,
-                ParticipantToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(24)).ToLowerInvariant(),
-                DisplayName = displayName,
-                IsHost = false,
-                IsGuest = true,
-                LastSeenAtUtc = DateTime.UtcNow,
-            };
-            session.Participants.Add(participant);
-            await _context.SaveChangesAsync(cancellationToken);
-        }
-        else
-        {
             participant.LastSeenAtUtc = DateTime.UtcNow;
             await _context.SaveChangesAsync(cancellationToken);
+            return participant;
         }
 
-        return participant;
+        if (tokenParticipant is not null)
+        {
+            tokenParticipant.LastSeenAtUtc = DateTime.UtcNow;
+            await _context.SaveChangesAsync(cancellationToken);
+            return tokenParticipant;
+        }
+
+        if (!allowGuestCreation)
+        {
+            throw new PlanningPokerAccessDeniedException("You must join the planning poker session before voting.");
+        }
+
+        string displayName = NormalizeGuestDisplayName(guestDisplayName);
+        var guestParticipant = new PlanningPokerParticipant
+        {
+            SessionId = session.Id,
+            ParticipantToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(24)).ToLowerInvariant(),
+            DisplayName = displayName,
+            IsHost = false,
+            IsGuest = true,
+            LastSeenAtUtc = DateTime.UtcNow,
+        };
+        session.Participants.Add(guestParticipant);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return guestParticipant;
     }
 
     private async System.Threading.Tasks.Task<BoardTaskDto> LoadBoardTaskDtoAsync(Board board, int taskId, CancellationToken cancellationToken)
@@ -457,32 +435,6 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
         }
 
         return activeTask;
-    }
-
-    private static int CalculateRecommendation(IEnumerable<PlanningPokerVote> votes)
-    {
-        List<int> orderedVotes = votes
-            .Select(vote => vote.CardValue)
-            .OrderBy(value => value)
-            .ToList();
-
-        var groupedVotes = orderedVotes
-            .GroupBy(value => value)
-            .Select(group => new { Value = group.Key, Count = group.Count() })
-            .OrderByDescending(group => group.Count)
-            .ThenBy(group => group.Value)
-            .ToList();
-
-        if (groupedVotes.Count == 1 || groupedVotes[0].Count > groupedVotes[1].Count)
-        {
-            return groupedVotes[0].Value;
-        }
-
-        double average = orderedVotes.Average();
-        return orderedVotes
-            .OrderBy(value => Math.Abs(value - average))
-            .ThenBy(value => value)
-            .First();
     }
 
     private static string NormalizeGuestDisplayName(string? guestDisplayName)
@@ -616,23 +568,4 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
         return string.IsNullOrWhiteSpace(displayName) ? user.Username : displayName;
     }
 
-    public abstract class PlanningPokerServiceException : Exception
-    {
-        protected PlanningPokerServiceException(string message) : base(message) { }
-    }
-
-    public sealed class PlanningPokerNotFoundException : PlanningPokerServiceException
-    {
-        public PlanningPokerNotFoundException(string message) : base(message) { }
-    }
-
-    public sealed class PlanningPokerAccessDeniedException : PlanningPokerServiceException
-    {
-        public PlanningPokerAccessDeniedException(string message) : base(message) { }
-    }
-
-    public sealed class PlanningPokerValidationException : PlanningPokerServiceException
-    {
-        public PlanningPokerValidationException(string message) : base(message) { }
-    }
 }

@@ -275,15 +275,15 @@ public class BoardsController(AppDbContext context, IPlanningPokerSessionService
             PlanningPokerSessionDto session = await _planningPokerSessionService.CreateSessionAsync(boardId, userId, cancellationToken);
             return Ok(session);
         }
-        catch (PlanningPokerSessionService.PlanningPokerNotFoundException)
+        catch (PlanningPokerNotFoundException)
         {
             return NotFound();
         }
-        catch (PlanningPokerSessionService.PlanningPokerAccessDeniedException)
+        catch (PlanningPokerAccessDeniedException)
         {
             return Forbid();
         }
-        catch (PlanningPokerSessionService.PlanningPokerValidationException exception)
+        catch (PlanningPokerValidationException exception)
         {
             return BadRequest(new { message = exception.Message });
         }
@@ -302,15 +302,15 @@ public class BoardsController(AppDbContext context, IPlanningPokerSessionService
             PlanningPokerSessionDto session = await _planningPokerSessionService.GetBoardSessionAsync(boardId, userId, cancellationToken);
             return Ok(session);
         }
-        catch (PlanningPokerSessionService.PlanningPokerNotFoundException)
+        catch (PlanningPokerNotFoundException)
         {
             return NotFound();
         }
-        catch (PlanningPokerSessionService.PlanningPokerAccessDeniedException)
+        catch (PlanningPokerAccessDeniedException)
         {
             return Forbid();
         }
-        catch (PlanningPokerSessionService.PlanningPokerValidationException exception)
+        catch (PlanningPokerValidationException exception)
         {
             return BadRequest(new { message = exception.Message });
         }
@@ -336,15 +336,15 @@ public class BoardsController(AppDbContext context, IPlanningPokerSessionService
                 cancellationToken);
             return Ok(task);
         }
-        catch (PlanningPokerSessionService.PlanningPokerNotFoundException)
+        catch (PlanningPokerNotFoundException)
         {
             return NotFound();
         }
-        catch (PlanningPokerSessionService.PlanningPokerAccessDeniedException)
+        catch (PlanningPokerAccessDeniedException)
         {
             return Forbid();
         }
-        catch (PlanningPokerSessionService.PlanningPokerValidationException exception)
+        catch (PlanningPokerValidationException exception)
         {
             return BadRequest(new { message = exception.Message });
         }
