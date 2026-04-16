@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useNavigate, useParams } from "react-router";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
@@ -25,6 +25,7 @@ import {
   fetchCurrentUserProgress,
   getDefaultUserProgress,
 } from "../utils/gamification";
+import { isApiError } from "../utils/auth";
 import { getBoard, Board as BoardType } from "../utils/boards";
 import {
   addTaskToQueue,
@@ -49,6 +50,12 @@ import {
   createLabel,
   getBoardLabels,
 } from "../utils/labels";
+import {
+  applyPlanningPokerRecommendation,
+  createPlanningPokerSession,
+  getPlanningPokerSession,
+  type PlanningPokerSession,
+} from "../utils/planningPoker";
 import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
 import {
   BacklogWorkspaceFilters,
@@ -106,6 +113,10 @@ export function Board() {
 
   const [labels, setLabels] = useState<Label[]>([]);
   const [cards, setCards] = useState<Cards>(createEmptyCards());
+  const [planningPokerSession, setPlanningPokerSession] = useState<PlanningPokerSession | null>(null);
+  const [isPlanningPokerLoading, setIsPlanningPokerLoading] = useState(false);
+  const [isPlanningPokerCreating, setIsPlanningPokerCreating] = useState(false);
+  const [isPlanningPokerApplying, setIsPlanningPokerApplying] = useState(false);
   const [currentBoard, setCurrentBoard] = useState<BoardType | null>(null);
   const [isLoadingBoard, setIsLoadingBoard] = useState(true);
   const [boardAccessState, setBoardAccessState] = useState<"available" | "forbidden" | "notFound">("available");
@@ -149,6 +160,18 @@ export function Board() {
     }));
   }, [user]);
 
+  const loadPlanningPokerSession = useCallback(async (boardId: number): Promise<PlanningPokerSession | null> => {
+    try {
+      return await getPlanningPokerSession(boardId);
+    } catch (error) {
+      if (isApiError(error) && error.status === 404) {
+        return null;
+      }
+
+      throw error;
+    }
+  }, []);
+
   useEffect(() => {
     let isActive = true;
     const preserveExistingWorkspace =
@@ -164,9 +187,11 @@ export function Board() {
         setCurrentBoard(null);
         setLabels([]);
         setCards(createEmptyCards());
+        setPlanningPokerSession(null);
         setBoardAccessState("notFound");
         setLoadError("");
         setActionError("");
+        setIsPlanningPokerLoading(false);
         setIsLoadingBoard(false);
         return;
       }
@@ -179,7 +204,9 @@ export function Board() {
           setCurrentBoard(null);
           setLabels([]);
           setCards(createEmptyCards());
+          setPlanningPokerSession(null);
         }
+        setIsPlanningPokerLoading(true);
         setBoardAccessState("available");
         setLoadError("");
         setActionError("");
@@ -196,6 +223,7 @@ export function Board() {
           setCurrentBoard(null);
           setLabels([]);
           setCards(createEmptyCards());
+          setPlanningPokerSession(null);
           return;
         }
 
@@ -205,13 +233,15 @@ export function Board() {
           setCurrentBoard(null);
           setLabels([]);
           setCards(createEmptyCards());
+          setPlanningPokerSession(null);
           return;
         }
 
-        const [boardLabels, boardCards, progress] = await Promise.all([
+        const [boardLabels, boardCards, progress, session] = await Promise.all([
           getBoardLabels(numericBoardId),
           getBoardCards(numericBoardId),
           fetchCurrentUserProgress(),
+          loadPlanningPokerSession(numericBoardId),
         ]);
 
         if (!isActive) {
@@ -223,6 +253,7 @@ export function Board() {
         setCurrentBoard(boardResult.board);
         setLabels(boardLabels);
         setCards(boardCards);
+        setPlanningPokerSession(session);
         setUserProgress({
           username: user.displayName,
           email: user.email,
@@ -241,10 +272,12 @@ export function Board() {
         setCurrentBoard(null);
         setLabels([]);
         setCards(createEmptyCards());
+        setPlanningPokerSession(null);
       } finally {
         if (isActive) {
           setIsLoadingBoard(false);
           setIsRefreshingWorkspace(false);
+          setIsPlanningPokerLoading(false);
         }
       }
     };
@@ -254,7 +287,7 @@ export function Board() {
     return () => {
       isActive = false;
     };
-  }, [numericBoardId, user, workspaceReloadState]);
+  }, [loadPlanningPokerSession, numericBoardId, user, workspaceReloadState]);
 
   const availableAssignees: TaskAssignee[] = useMemo(
     () =>
@@ -362,6 +395,11 @@ export function Board() {
   const stagingCards = useMemo(
     () => allCards.filter((card) => card.status === "backlog"),
     [allCards],
+  );
+
+  const planningPokerEligibleTaskCount = useMemo(
+    () => stagingCards.filter((card) => card.storyPoints === null).length,
+    [stagingCards],
   );
 
   const queuedStagingCards = useMemo(
@@ -651,6 +689,62 @@ export function Board() {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to start the queue right now.";
       setActionError(message);
+    }
+  };
+
+  const handleRefreshPlanningPokerSession = async () => {
+    if (!Number.isFinite(numericBoardId)) {
+      return;
+    }
+
+    try {
+      setActionError("");
+      setIsPlanningPokerLoading(true);
+      const session = await loadPlanningPokerSession(numericBoardId);
+      setPlanningPokerSession(session);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to refresh the planning poker session right now.";
+      setActionError(message);
+    } finally {
+      setIsPlanningPokerLoading(false);
+    }
+  };
+
+  const handleCreatePlanningPokerSession = async () => {
+    if (!Number.isFinite(numericBoardId)) {
+      return;
+    }
+
+    try {
+      setActionError("");
+      setIsPlanningPokerCreating(true);
+      const session = await createPlanningPokerSession(numericBoardId);
+      setPlanningPokerSession(session);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to create the planning poker session right now.";
+      setActionError(message);
+    } finally {
+      setIsPlanningPokerCreating(false);
+    }
+  };
+
+  const handleApplyPlanningPokerRecommendation = async (sessionTaskId: number) => {
+    if (!Number.isFinite(numericBoardId)) {
+      return;
+    }
+
+    try {
+      setActionError("");
+      setIsPlanningPokerApplying(true);
+      const updatedTask = await applyPlanningPokerRecommendation(numericBoardId, sessionTaskId);
+      setTaskInState(updatedTask);
+      const session = await loadPlanningPokerSession(numericBoardId);
+      setPlanningPokerSession(session);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to apply the planning poker recommendation right now.";
+      setActionError(message);
+    } finally {
+      setIsPlanningPokerApplying(false);
     }
   };
 
@@ -981,6 +1075,14 @@ export function Board() {
                     availableAssignees={availableAssignees}
                     labels={labels}
                     onCreateTask={() => setIsModalOpen(true)}
+                    planningPokerSession={planningPokerSession}
+                    planningPokerEligibleTaskCount={planningPokerEligibleTaskCount}
+                    isPlanningPokerLoading={isPlanningPokerLoading}
+                    isPlanningPokerCreating={isPlanningPokerCreating}
+                    isPlanningPokerApplying={isPlanningPokerApplying}
+                    onCreatePlanningPokerSession={() => void handleCreatePlanningPokerSession()}
+                    onRefreshPlanningPokerSession={() => void handleRefreshPlanningPokerSession()}
+                    onApplyPlanningPokerRecommendation={(sessionTaskId) => void handleApplyPlanningPokerRecommendation(sessionTaskId)}
                   />
                 </main>
               )}

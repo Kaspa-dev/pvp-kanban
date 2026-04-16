@@ -6,6 +6,8 @@ import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { Label } from "../utils/labels";
 import { Card, TaskAssignee } from "../utils/cards";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { PlanningPokerLaunchCard } from "./planning-poker/PlanningPokerLaunchCard";
+import type { PlanningPokerSession } from "../utils/planningPoker";
 
 interface BacklogViewProps {
   backlogCards: Card[];
@@ -19,6 +21,14 @@ interface BacklogViewProps {
   availableAssignees: TaskAssignee[];
   labels: Label[];
   onCreateTask: () => void;
+  planningPokerSession: PlanningPokerSession | null;
+  planningPokerEligibleTaskCount: number;
+  isPlanningPokerLoading: boolean;
+  isPlanningPokerCreating: boolean;
+  isPlanningPokerApplying: boolean;
+  onCreatePlanningPokerSession: () => void;
+  onRefreshPlanningPokerSession: () => void;
+  onApplyPlanningPokerRecommendation: (sessionTaskId: number) => void;
 }
 
 interface DragCardItem {
@@ -75,6 +85,14 @@ export function BacklogView2({
   availableAssignees,
   labels,
   onCreateTask,
+  planningPokerSession,
+  planningPokerEligibleTaskCount,
+  isPlanningPokerLoading,
+  isPlanningPokerCreating,
+  isPlanningPokerApplying,
+  onCreatePlanningPokerSession,
+  onRefreshPlanningPokerSession,
+  onApplyPlanningPokerRecommendation,
 }: BacklogViewProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
@@ -135,6 +153,19 @@ export function BacklogView2({
           <p className={`text-base ${currentTheme.textMuted}`}>
             Stage upcoming work in the queue, then batch-start it into To Do when the team is ready.
           </p>
+        </div>
+
+        <div className="shrink-0">
+          <PlanningPokerLaunchCard
+            session={planningPokerSession}
+            eligibleTaskCount={planningPokerEligibleTaskCount}
+            isLoading={isPlanningPokerLoading}
+            isCreating={isPlanningPokerCreating}
+            isApplyingRecommendation={isPlanningPokerApplying}
+            onCreateSession={onCreatePlanningPokerSession}
+            onRefreshSession={onRefreshPlanningPokerSession}
+            onApplyRecommendation={onApplyPlanningPokerRecommendation}
+          />
         </div>
 
         <div className="grid flex-1 min-h-0 grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-5 overflow-visible lg:grid-cols-[minmax(0,1fr)_7rem_minmax(0,1fr)] lg:grid-rows-1 lg:items-stretch">
