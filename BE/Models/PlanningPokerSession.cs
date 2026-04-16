@@ -7,7 +7,7 @@ public class PlanningPokerSession
     public int HostUserId { get; set; }
     public string JoinToken { get; set; } = string.Empty;
     public string Status { get; set; } = "active";
-    public int ActiveSessionTaskId { get; set; }
+    public int? ActiveSessionTaskId { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 

@@ -22,7 +22,7 @@ namespace BE.Migrations
                     HostUserId = table.Column<int>(type: "int", nullable: false),
                     JoinToken = table.Column<string>(type: "varchar(64)", maxLength: 64, nullable: false),
                     Status = table.Column<string>(type: "varchar(16)", maxLength: 16, nullable: false),
-                    ActiveSessionTaskId = table.Column<int>(type: "int", nullable: false),
+                    ActiveSessionTaskId = table.Column<int>(type: "int", nullable: true),
                     CreatedAtUtc = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     UpdatedAtUtc = table.Column<DateTime>(type: "datetime(6)", nullable: false)
                 },
@@ -52,7 +52,7 @@ namespace BE.Migrations
                         .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
                     SessionId = table.Column<int>(type: "int", nullable: false),
                     UserId = table.Column<int>(type: "int", nullable: true),
-                    GuestToken = table.Column<string>(type: "varchar(64)", maxLength: 64, nullable: false),
+                    ParticipantToken = table.Column<string>(type: "varchar(64)", maxLength: 64, nullable: true),
                     DisplayName = table.Column<string>(type: "varchar(80)", maxLength: 80, nullable: false),
                     IsHost = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     IsGuest = table.Column<bool>(type: "tinyint(1)", nullable: false),
@@ -135,20 +135,21 @@ namespace BE.Migrations
                 .Annotation("MySQL:Charset", "utf8mb4");
 
             migrationBuilder.CreateIndex(
-                name: "IX_PlanningPokerParticipants_GuestToken",
-                table: "PlanningPokerParticipants",
-                column: "GuestToken",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
                 name: "IX_PlanningPokerParticipants_SessionId",
                 table: "PlanningPokerParticipants",
                 column: "SessionId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_PlanningPokerParticipants_UserId",
+                name: "IX_PlanningPokerParticipants_SessionId_UserId",
                 table: "PlanningPokerParticipants",
-                column: "UserId");
+                columns: new[] { "SessionId", "UserId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PlanningPokerParticipants_SessionId_ParticipantToken",
+                table: "PlanningPokerParticipants",
+                columns: new[] { "SessionId", "ParticipantToken" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_PlanningPokerSessions_BoardId",

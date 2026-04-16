@@ -282,8 +282,7 @@ namespace BE.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("varchar(80)");
 
-                    b.Property<string>("GuestToken")
-                        .IsRequired()
+                    b.Property<string>("ParticipantToken")
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)");
 
@@ -304,12 +303,13 @@ namespace BE.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("GuestToken")
-                        .IsUnique();
-
                     b.HasIndex("SessionId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("SessionId", "ParticipantToken")
+                        .IsUnique();
+
+                    b.HasIndex("SessionId", "UserId")
+                        .IsUnique();
 
                     b.ToTable("PlanningPokerParticipants");
                 });
@@ -320,7 +320,7 @@ namespace BE.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    b.Property<int>("ActiveSessionTaskId")
+                    b.Property<int?>("ActiveSessionTaskId")
                         .HasColumnType("int");
 
                     b.Property<int>("BoardId")

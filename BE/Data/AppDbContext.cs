@@ -109,8 +109,9 @@ public class AppDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.DisplayName).IsRequired().HasMaxLength(80);
-            entity.Property(e => e.GuestToken).IsRequired().HasMaxLength(64);
-            entity.HasIndex(e => e.GuestToken).IsUnique();
+            entity.Property(e => e.ParticipantToken).HasMaxLength(64);
+            entity.HasIndex(e => new { e.SessionId, e.UserId }).IsUnique();
+            entity.HasIndex(e => new { e.SessionId, e.ParticipantToken }).IsUnique();
         });
 
         modelBuilder.Entity<PlanningPokerVote>(entity =>
