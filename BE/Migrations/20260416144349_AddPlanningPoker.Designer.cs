@@ -283,6 +283,7 @@ namespace BE.Migrations
                         .HasColumnType("varchar(80)");
 
                     b.Property<string>("ParticipantToken")
+                        .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)");
 
@@ -348,6 +349,8 @@ namespace BE.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BoardId");
+
+                    b.HasIndex("ActiveSessionTaskId");
 
                     b.HasIndex("HostUserId");
 
@@ -747,6 +750,11 @@ namespace BE.Migrations
 
             modelBuilder.Entity("BE.Models.PlanningPokerSession", b =>
                 {
+                    b.HasOne("BE.Models.PlanningPokerSessionTask", "ActiveSessionTask")
+                        .WithMany()
+                        .HasForeignKey("ActiveSessionTaskId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("BE.Models.Board", "Board")
                         .WithMany("PlanningPokerSessions")
                         .HasForeignKey("BoardId")
@@ -899,6 +907,8 @@ namespace BE.Migrations
 
             modelBuilder.Entity("BE.Models.PlanningPokerSession", b =>
                 {
+                    b.Navigation("ActiveSessionTask");
+
                     b.Navigation("Participants");
 
                     b.Navigation("Tasks");

@@ -52,7 +52,7 @@ namespace BE.Migrations
                         .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
                     SessionId = table.Column<int>(type: "int", nullable: false),
                     UserId = table.Column<int>(type: "int", nullable: true),
-                    ParticipantToken = table.Column<string>(type: "varchar(64)", maxLength: 64, nullable: true),
+                    ParticipantToken = table.Column<string>(type: "varchar(64)", maxLength: 64, nullable: false),
                     DisplayName = table.Column<string>(type: "varchar(80)", maxLength: 80, nullable: false),
                     IsHost = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     IsGuest = table.Column<bool>(type: "tinyint(1)", nullable: false),
@@ -168,6 +168,11 @@ namespace BE.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_PlanningPokerSessions_ActiveSessionTaskId",
+                table: "PlanningPokerSessions",
+                column: "ActiveSessionTaskId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_PlanningPokerSessionTasks_SessionId_Position",
                 table: "PlanningPokerSessionTasks",
                 columns: new[] { "SessionId", "Position" },
@@ -194,11 +199,23 @@ namespace BE.Migrations
                 table: "PlanningPokerVotes",
                 columns: new[] { "SessionTaskId", "ParticipantId" },
                 unique: true);
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_PlanningPokerSessions_PlanningPokerSessionTasks_ActiveSessionTaskId",
+                table: "PlanningPokerSessions",
+                column: "ActiveSessionTaskId",
+                principalTable: "PlanningPokerSessionTasks",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.SetNull);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropForeignKey(
+                name: "FK_PlanningPokerSessions_PlanningPokerSessionTasks_ActiveSessionTaskId",
+                table: "PlanningPokerSessions");
+
             migrationBuilder.DropTable(
                 name: "PlanningPokerVotes");
 

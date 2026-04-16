@@ -95,6 +95,11 @@ public class AppDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.HostUserId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.ActiveSessionTask)
+                .WithMany()
+                .HasForeignKey(e => e.ActiveSessionTaskId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<PlanningPokerSessionTask>(entity =>
@@ -109,7 +114,7 @@ public class AppDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.DisplayName).IsRequired().HasMaxLength(80);
-            entity.Property(e => e.ParticipantToken).HasMaxLength(64);
+            entity.Property(e => e.ParticipantToken).IsRequired().HasMaxLength(64);
             entity.HasIndex(e => new { e.SessionId, e.UserId }).IsUnique();
             entity.HasIndex(e => new { e.SessionId, e.ParticipantToken }).IsUnique();
         });

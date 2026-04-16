@@ -13,6 +13,7 @@ public class PlanningPokerSession
 
     public Board Board { get; set; } = null!;
     public User HostUser { get; set; } = null!;
+    public PlanningPokerSessionTask? ActiveSessionTask { get; set; }
     public ICollection<PlanningPokerSessionTask> Tasks { get; set; } = new List<PlanningPokerSessionTask>();
     public ICollection<PlanningPokerParticipant> Participants { get; set; } = new List<PlanningPokerParticipant>();
 }
