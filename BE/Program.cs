@@ -19,6 +19,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection(AuthOptions.SectionName));
 builder.Services.AddSingleton<ITokenService, TokenService>();
+builder.Services.AddScoped<IPlanningPokerSessionService, PlanningPokerSessionService>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
