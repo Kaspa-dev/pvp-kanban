@@ -3,6 +3,7 @@ import { Landing } from './pages/Landing';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { ForgotPassword } from './pages/ForgotPassword';
+import { PlanningPokerRoom } from './pages/PlanningPokerRoom';
 import { Projects } from './pages/Projects';
 import { Board } from './pages/BoardNew';
 import { Profile } from './pages/Profile';
@@ -44,6 +45,7 @@ function AppRoutes() {
         path="/forgot-password"
         element={isAuthenticated ? <Navigate to="/app" replace /> : <ForgotPassword />}
       />
+      <Route path="/planning-poker/:joinToken" element={<PlanningPokerRoom />} />
 
       {/* Protected app routes */}
       <Route
