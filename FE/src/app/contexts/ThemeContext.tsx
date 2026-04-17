@@ -106,7 +106,7 @@ export function useTheme() {
 export function getThemeColors(theme: Theme, isDarkMode: boolean) {
   const accentThemes = {
     purple: {
-      name: "Purple/Pink",
+      name: "Violet Rose",
       primary: "from-purple-500 to-pink-500",
       primaryHover: "from-purple-600 to-pink-600",
       primarySoft: "from-purple-500/10 to-pink-500/10",

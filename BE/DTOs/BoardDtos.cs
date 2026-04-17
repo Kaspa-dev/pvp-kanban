@@ -97,6 +97,28 @@ public class BoardTaskDto
     public string? TaskType { get; set; }
 }
 
+public class PagedBoardTaskListResponseDto
+{
+    public List<BoardTaskDto> Items { get; set; } = new();
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalItems { get; set; }
+    public int TotalPages { get; set; }
+}
+
+public class BoardTaskListQueryDto
+{
+    public string Scope { get; set; } = "active";
+    public string? Q { get; set; }
+    public string QuickFilter { get; set; } = "all";
+    public List<int> LabelIds { get; set; } = new();
+    public string StageFilter { get; set; } = "all";
+    public string? Sort { get; set; }
+    public string? Direction { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 10;
+}
+
 public class PlanningPokerParticipantDto
 {
     public int ParticipantId { get; set; }

@@ -1,5 +1,4 @@
 using BE.Data;
-using BE.Hubs;
 using BE.Options;
 using BE.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -18,10 +17,8 @@ var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(authOptions.Sig
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddSignalR();
 builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection(AuthOptions.SectionName));
 builder.Services.AddSingleton<ITokenService, TokenService>();
-builder.Services.AddScoped<IPlanningPokerSessionService, PlanningPokerSessionService>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
@@ -45,22 +42,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = authOptions.Audience,
             IssuerSigningKey = signingKey,
             ClockSkew = TimeSpan.FromMinutes(1)
-        };
-        options.Events = new JwtBearerEvents
-        {
-            OnMessageReceived = context =>
-            {
-                string? accessToken = context.Request.Query["access_token"];
-                PathString requestPath = context.HttpContext.Request.Path;
-
-                if (!string.IsNullOrWhiteSpace(accessToken) &&
-                    requestPath.StartsWithSegments("/hubs/planning-poker"))
-                {
-                    context.Token = accessToken;
-                }
-
-                return Task.CompletedTask;
-            }
         };
     });
 builder.Services.AddAuthorization();
@@ -97,6 +78,5 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHub<PlanningPokerHub>("/hubs/planning-poker");
 
 app.Run();
