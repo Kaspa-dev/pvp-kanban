@@ -6,6 +6,8 @@ import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { Label } from "../utils/labels";
 import { Card, TaskAssignee } from "../utils/cards";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { PlanningPokerLaunchCard } from "./planning-poker/PlanningPokerLaunchCard";
+import type { PlanningPokerSession } from "../utils/planningPoker";
 
 interface BacklogViewProps {
   backlogCards: Card[];
@@ -19,6 +21,16 @@ interface BacklogViewProps {
   availableAssignees: TaskAssignee[];
   labels: Label[];
   onCreateTask: () => void;
+  planningPokerSession: PlanningPokerSession | null;
+  planningPokerEligibleTaskCount: number;
+  isPlanningPokerLoading: boolean;
+  isPlanningPokerCreating: boolean;
+  isPlanningPokerApplying: boolean;
+  isPlanningPokerDeleting: boolean;
+  onCreatePlanningPokerSession: () => void;
+  onRefreshPlanningPokerSession: () => void;
+  onApplyPlanningPokerRecommendation: (sessionTaskId: number) => void;
+  onDeletePlanningPokerSession: () => void;
 }
 
 interface DragCardItem {
@@ -38,6 +50,16 @@ export function BacklogView2({
   availableAssignees,
   labels,
   onCreateTask,
+  planningPokerSession,
+  planningPokerEligibleTaskCount,
+  isPlanningPokerLoading,
+  isPlanningPokerCreating,
+  isPlanningPokerApplying,
+  isPlanningPokerDeleting,
+  onCreatePlanningPokerSession,
+  onRefreshPlanningPokerSession,
+  onApplyPlanningPokerRecommendation,
+  onDeletePlanningPokerSession,
 }: BacklogViewProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
@@ -107,7 +129,20 @@ export function BacklogView2({
           </p>
         </div>
 
-        <div className={`shrink-0 border-t ${currentTheme.border}`} />
+        <div className="shrink-0">
+          <PlanningPokerLaunchCard
+            session={planningPokerSession}
+            eligibleTaskCount={planningPokerEligibleTaskCount}
+            isLoading={isPlanningPokerLoading}
+            isCreating={isPlanningPokerCreating}
+            isApplyingRecommendation={isPlanningPokerApplying}
+            isDeleting={isPlanningPokerDeleting}
+            onCreateSession={onCreatePlanningPokerSession}
+            onRefreshSession={onRefreshPlanningPokerSession}
+            onApplyRecommendation={onApplyPlanningPokerRecommendation}
+            onDeleteSession={onDeletePlanningPokerSession}
+          />
+        </div>
 
         <div className="grid flex-1 min-h-0 grid-cols-1 gap-0 overflow-visible lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <section

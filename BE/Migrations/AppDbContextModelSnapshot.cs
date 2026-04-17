@@ -268,6 +268,159 @@ namespace BE.Migrations
                     b.ToTable("OrganizationalUnitMembers");
                 });
 
+            modelBuilder.Entity("BE.Models.PlanningPokerParticipant", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("varchar(80)");
+
+                    b.Property<bool>("IsGuest")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsHost")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime>("LastSeenAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("ParticipantToken")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("SessionId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("SessionId", "ParticipantToken")
+                        .IsUnique();
+
+                    b.HasIndex("SessionId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("PlanningPokerParticipants");
+                });
+
+            modelBuilder.Entity("BE.Models.PlanningPokerSession", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ActiveSessionTaskId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BoardId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("HostUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("JoinToken")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActiveSessionTaskId");
+
+                    b.HasIndex("BoardId");
+
+                    b.HasIndex("HostUserId");
+
+                    b.HasIndex("JoinToken")
+                        .IsUnique();
+
+                    b.ToTable("PlanningPokerSessions");
+                });
+
+            modelBuilder.Entity("BE.Models.PlanningPokerSessionTask", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RecommendedStoryPoints")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RoundState")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<int>("SessionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TaskId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TaskId");
+
+                    b.HasIndex("SessionId", "Position")
+                        .IsUnique();
+
+                    b.HasIndex("SessionId", "TaskId")
+                        .IsUnique();
+
+                    b.ToTable("PlanningPokerSessionTasks");
+                });
+
+            modelBuilder.Entity("BE.Models.PlanningPokerVote", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<int>("CardValue")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ParticipantId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SessionTaskId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("SubmittedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParticipantId");
+
+                    b.HasIndex("SessionTaskId", "ParticipantId")
+                        .IsUnique();
+
+                    b.ToTable("PlanningPokerVotes");
+                });
+
             modelBuilder.Entity("BE.Models.RefreshToken", b =>
                 {
                     b.Property<int>("Id")
@@ -575,6 +728,87 @@ namespace BE.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("BE.Models.PlanningPokerParticipant", b =>
+                {
+                    b.HasOne("BE.Models.PlanningPokerSession", "Session")
+                        .WithMany("Participants")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("BE.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId");
+
+                    b.Navigation("Session");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("BE.Models.PlanningPokerSession", b =>
+                {
+                    b.HasOne("BE.Models.PlanningPokerSessionTask", "ActiveSessionTask")
+                        .WithMany()
+                        .HasForeignKey("ActiveSessionTaskId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("BE.Models.Board", "Board")
+                        .WithMany("PlanningPokerSessions")
+                        .HasForeignKey("BoardId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("BE.Models.User", "HostUser")
+                        .WithMany()
+                        .HasForeignKey("HostUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ActiveSessionTask");
+
+                    b.Navigation("Board");
+
+                    b.Navigation("HostUser");
+                });
+
+            modelBuilder.Entity("BE.Models.PlanningPokerSessionTask", b =>
+                {
+                    b.HasOne("BE.Models.PlanningPokerSession", "Session")
+                        .WithMany("Tasks")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("BE.Models.Task", "Task")
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Session");
+
+                    b.Navigation("Task");
+                });
+
+            modelBuilder.Entity("BE.Models.PlanningPokerVote", b =>
+                {
+                    b.HasOne("BE.Models.PlanningPokerParticipant", "Participant")
+                        .WithMany()
+                        .HasForeignKey("ParticipantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("BE.Models.PlanningPokerSessionTask", "SessionTask")
+                        .WithMany("Votes")
+                        .HasForeignKey("SessionTaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Participant");
+
+                    b.Navigation("SessionTask");
+                });
+
             modelBuilder.Entity("BE.Models.RefreshToken", b =>
                 {
                     b.HasOne("BE.Models.User", "User")
@@ -646,6 +880,8 @@ namespace BE.Migrations
 
                     b.Navigation("Memberships");
 
+                    b.Navigation("PlanningPokerSessions");
+
                     b.Navigation("TaskStatuses");
 
                     b.Navigation("Teams");
@@ -666,6 +902,18 @@ namespace BE.Migrations
                     b.Navigation("AssignedTasks");
 
                     b.Navigation("Members");
+                });
+
+            modelBuilder.Entity("BE.Models.PlanningPokerSession", b =>
+                {
+                    b.Navigation("Participants");
+
+                    b.Navigation("Tasks");
+                });
+
+            modelBuilder.Entity("BE.Models.PlanningPokerSessionTask", b =>
+                {
+                    b.Navigation("Votes");
                 });
 
             modelBuilder.Entity("BE.Models.Task", b =>

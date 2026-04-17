@@ -119,6 +119,55 @@ public class BoardTaskListQueryDto
     public int PageSize { get; set; } = 10;
 }
 
+public class PlanningPokerParticipantDto
+{
+    public int ParticipantId { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
+    public bool IsHost { get; set; }
+    public bool IsGuest { get; set; }
+    public bool HasVoted { get; set; }
+    public int? RevealedCardValue { get; set; }
+}
+
+public class PlanningPokerVoteSummaryDto
+{
+    public int CardValue { get; set; }
+    public int Count { get; set; }
+}
+
+public class PlanningPokerSessionTaskDto
+{
+    public int SessionTaskId { get; set; }
+    public int TaskId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public int Position { get; set; }
+    public string RoundState { get; set; } = string.Empty;
+    public int? RecommendedStoryPoints { get; set; }
+    public int? AppliedStoryPoints { get; set; }
+    public List<PlanningPokerVoteSummaryDto> VoteSummary { get; set; } = new();
+}
+
+public class PlanningPokerSessionDto
+{
+    public int SessionId { get; set; }
+    public int BoardId { get; set; }
+    public string JoinToken { get; set; } = string.Empty;
+    public string JoinUrl { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public bool IsCurrentUserHost { get; set; }
+    public PlanningPokerSessionTaskDto ActiveTask { get; set; } = new();
+    public List<PlanningPokerSessionTaskDto> Queue { get; set; } = new();
+    public List<PlanningPokerParticipantDto> Participants { get; set; } = new();
+    public bool IsRevealed { get; set; }
+}
+
+public class PlanningPokerSessionDeletedDto
+{
+    public int BoardId { get; set; }
+    public string Message { get; set; } = string.Empty;
+}
+
 public class CreateTaskRequestDto
 {
     public string Title { get; set; } = string.Empty;
@@ -143,6 +192,16 @@ public class UpdateTaskRequestDto
     public string? DueDate { get; set; }
     public string? Priority { get; set; }
     public string? TaskType { get; set; }
+}
+
+public class CreatePlanningPokerSessionRequestDto
+{
+    public string? Name { get; set; }
+}
+
+public class ApplyPlanningPokerRecommendationRequestDto
+{
+    public int SessionTaskId { get; set; }
 }
 
 public class BoardLabelDto
