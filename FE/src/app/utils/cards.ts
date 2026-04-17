@@ -28,7 +28,7 @@ export function getStoryPointsValidationError(value: string): string | null {
   return null;
 }
 
-interface ApiTask {
+export interface ApiTask {
   id: number;
   title: string;
   description: string;
@@ -141,7 +141,7 @@ function normalizeAssignee(assignee: ApiAssignee | null): TaskAssignee {
   };
 }
 
-function normalizeTask(task: ApiTask): Card {
+export function normalizeTask(task: ApiTask): Card {
   return {
     id: task.id,
     title: task.title,
