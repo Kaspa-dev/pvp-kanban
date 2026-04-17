@@ -133,11 +133,7 @@ async function parseJson<T>(response: Response): Promise<T | null> {
     return null;
   }
 
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    return null;
-  }
+  return JSON.parse(text) as T;
 }
 
 async function authRequest(

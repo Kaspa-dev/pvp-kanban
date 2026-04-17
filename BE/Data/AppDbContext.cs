@@ -15,10 +15,6 @@ public class AppDbContext : DbContext
     // Board & Task related tables
     public DbSet<Board> Boards => Set<Board>();
     public DbSet<BoardMembership> BoardMemberships => Set<BoardMembership>();
-    public DbSet<PlanningPokerSession> PlanningPokerSessions => Set<PlanningPokerSession>();
-    public DbSet<PlanningPokerSessionTask> PlanningPokerSessionTasks => Set<PlanningPokerSessionTask>();
-    public DbSet<PlanningPokerParticipant> PlanningPokerParticipants => Set<PlanningPokerParticipant>();
-    public DbSet<PlanningPokerVote> PlanningPokerVotes => Set<PlanningPokerVote>();
     public DbSet<BE.Models.Task> Tasks => Set<BE.Models.Task>();
     public DbSet<BE.Models.TaskStatus> TaskStatuses => Set<BE.Models.TaskStatus>();
     public DbSet<Label> Labels => Set<Label>();
@@ -75,54 +71,6 @@ public class AppDbContext : DbContext
                 .WithMany(u => u.Boards)
                 .HasForeignKey(e => e.CreatorId)
                 .OnDelete(DeleteBehavior.Restrict);
-        });
-
-        modelBuilder.Entity<PlanningPokerSession>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.JoinToken).IsRequired().HasMaxLength(64);
-            entity.Property(e => e.Status).IsRequired().HasMaxLength(16);
-            entity.Property(e => e.CreatedAtUtc).IsRequired();
-            entity.Property(e => e.UpdatedAtUtc).IsRequired();
-            entity.HasIndex(e => e.JoinToken).IsUnique();
-
-            entity.HasOne(e => e.Board)
-                .WithMany(b => b.PlanningPokerSessions)
-                .HasForeignKey(e => e.BoardId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(e => e.HostUser)
-                .WithMany()
-                .HasForeignKey(e => e.HostUserId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(e => e.ActiveSessionTask)
-                .WithMany()
-                .HasForeignKey(e => e.ActiveSessionTaskId)
-                .OnDelete(DeleteBehavior.SetNull);
-        });
-
-        modelBuilder.Entity<PlanningPokerSessionTask>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.RoundState).IsRequired().HasMaxLength(16);
-            entity.HasIndex(e => new { e.SessionId, e.TaskId }).IsUnique();
-            entity.HasIndex(e => new { e.SessionId, e.Position }).IsUnique();
-        });
-
-        modelBuilder.Entity<PlanningPokerParticipant>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.DisplayName).IsRequired().HasMaxLength(80);
-            entity.Property(e => e.ParticipantToken).IsRequired().HasMaxLength(64);
-            entity.HasIndex(e => new { e.SessionId, e.UserId }).IsUnique();
-            entity.HasIndex(e => new { e.SessionId, e.ParticipantToken }).IsUnique();
-        });
-
-        modelBuilder.Entity<PlanningPokerVote>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.HasIndex(e => new { e.SessionTaskId, e.ParticipantId }).IsUnique();
         });
 
         modelBuilder.Entity<BoardMembership>(entity =>
