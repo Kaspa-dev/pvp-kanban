@@ -19,5 +19,4 @@ public class Board
     public ICollection<Models.TaskStatus> TaskStatuses { get; set; } = new List<Models.TaskStatus>();
     public ICollection<Models.Task> Backlog { get; set; } = new List<Models.Task>();
     public ICollection<Label> Labels { get; set; } = new List<Label>();
-    public ICollection<PlanningPokerSession> PlanningPokerSessions { get; set; } = new List<PlanningPokerSession>();
 }

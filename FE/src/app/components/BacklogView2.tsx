@@ -6,8 +6,6 @@ import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { Label } from "../utils/labels";
 import { Card, TaskAssignee } from "../utils/cards";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
-import { PlanningPokerLaunchCard } from "./planning-poker/PlanningPokerLaunchCard";
-import type { PlanningPokerSession } from "../utils/planningPoker";
 
 interface BacklogViewProps {
   backlogCards: Card[];
@@ -21,16 +19,6 @@ interface BacklogViewProps {
   availableAssignees: TaskAssignee[];
   labels: Label[];
   onCreateTask: () => void;
-  planningPokerSession: PlanningPokerSession | null;
-  planningPokerEligibleTaskCount: number;
-  isPlanningPokerLoading: boolean;
-  isPlanningPokerCreating: boolean;
-  isPlanningPokerApplying: boolean;
-  isPlanningPokerDeleting: boolean;
-  onCreatePlanningPokerSession: () => void;
-  onRefreshPlanningPokerSession: () => void;
-  onApplyPlanningPokerRecommendation: (sessionTaskId: number) => void;
-  onDeletePlanningPokerSession: () => void;
 }
 
 interface DragCardItem {
@@ -50,16 +38,6 @@ export function BacklogView2({
   availableAssignees,
   labels,
   onCreateTask,
-  planningPokerSession,
-  planningPokerEligibleTaskCount,
-  isPlanningPokerLoading,
-  isPlanningPokerCreating,
-  isPlanningPokerApplying,
-  isPlanningPokerDeleting,
-  onCreatePlanningPokerSession,
-  onRefreshPlanningPokerSession,
-  onApplyPlanningPokerRecommendation,
-  onDeletePlanningPokerSession,
 }: BacklogViewProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
@@ -128,27 +106,13 @@ export function BacklogView2({
             Stage upcoming work in the queue, then batch-start it into To Do when the team is ready.
           </p>
         </div>
+
         <div className={`shrink-0 border-t ${currentTheme.border}`} />
 
         <div className="grid flex-1 min-h-0 grid-cols-1 gap-0 overflow-visible lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <div className="shrink-0 lg:col-span-2 pb-6">
-            <PlanningPokerLaunchCard
-              session={planningPokerSession}
-              eligibleTaskCount={planningPokerEligibleTaskCount}
-              isLoading={isPlanningPokerLoading}
-              isCreating={isPlanningPokerCreating}
-              isApplyingRecommendation={isPlanningPokerApplying}
-              isDeleting={isPlanningPokerDeleting}
-              onCreateSession={onCreatePlanningPokerSession}
-              onRefreshSession={onRefreshPlanningPokerSession}
-              onApplyRecommendation={onApplyPlanningPokerRecommendation}
-              onDeleteSession={onDeletePlanningPokerSession}
-            />
-          </div>
-
           <section
             ref={backlogDrop}
-            className={`flex min-h-0 flex-col lg:row-start-2 ${isOverBacklog ? activeDropRegionClassName : ""}`}
+            className={`flex min-h-0 flex-col ${isOverBacklog ? activeDropRegionClassName : ""}`}
             data-coachmark="staging-list"
           >
             <div className={`min-w-0 border-b pb-5 pr-0 ${regionDividerClassName} lg:pr-8`}>
@@ -228,7 +192,7 @@ export function BacklogView2({
           <section
             ref={queueDrop}
             data-coachmark="staging-overview"
-            className={`flex min-h-0 flex-col border-t pt-6 ${regionDividerClassName} ${isOverQueue ? activeDropRegionClassName : ""} lg:row-start-2 lg:border-l lg:border-t-0 lg:pt-0`}
+            className={`flex min-h-0 flex-col border-t pt-6 ${regionDividerClassName} ${isOverQueue ? activeDropRegionClassName : ""} lg:border-l lg:border-t-0 lg:pt-0`}
           >
             <div className={`min-w-0 border-b pb-5 ${regionDividerClassName}`}>
               <div className="flex flex-wrap items-start justify-between gap-4 lg:pl-8">
