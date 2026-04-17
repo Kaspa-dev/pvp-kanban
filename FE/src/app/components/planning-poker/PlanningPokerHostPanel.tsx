@@ -1,4 +1,4 @@
-import { Copy, Crown, LoaderCircle, RadioTower, ShieldCheck } from "lucide-react";
+import { Copy, Crown, LoaderCircle, RadioTower, ShieldCheck, Trash2 } from "lucide-react";
 
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -17,11 +17,13 @@ interface PlanningPokerHostPanelProps {
   participantCount: number;
   isRevealed: boolean;
   isRevealing: boolean;
+  isDeleting: boolean;
   copyFeedback: string;
   statusMessage: string;
   errorMessage: string;
   onCopyLink: () => void;
   onReveal: () => void | Promise<void>;
+  onDelete: () => void | Promise<void>;
 }
 
 export function PlanningPokerHostPanel({
@@ -31,11 +33,13 @@ export function PlanningPokerHostPanel({
   participantCount,
   isRevealed,
   isRevealing,
+  isDeleting,
   copyFeedback,
   statusMessage,
   errorMessage,
   onCopyLink,
   onReveal,
+  onDelete,
 }: PlanningPokerHostPanelProps) {
   const canReveal = isHost && !isRevealed && votedCount > 0 && !isRevealing;
 
@@ -132,6 +136,28 @@ export function PlanningPokerHostPanel({
             "Reveal votes"
           ) : (
             "Host can reveal votes"
+          )}
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          disabled={!isHost || isDeleting}
+          onClick={() => void onDelete()}
+          className="h-11 w-full rounded-xl border-rose-400/30 bg-rose-500/10 text-rose-100 hover:bg-rose-500/20 disabled:border-white/10 disabled:bg-slate-900 disabled:text-slate-400"
+        >
+          {isDeleting ? (
+            <>
+              <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+              Deleting session...
+            </>
+          ) : isHost ? (
+            <>
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
+              Delete session
+            </>
+          ) : (
+            "Host can delete session"
           )}
         </Button>
       </CardContent>

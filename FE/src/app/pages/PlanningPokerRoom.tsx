@@ -2,29 +2,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HubConnection, HubConnectionState } from "@microsoft/signalr";
 import {
   AlertTriangle,
-  Link2,
   LoaderCircle,
   RefreshCcw,
-  Signal,
-  UsersRound,
-  Vote,
 } from "lucide-react";
 import { useParams } from "react-router";
 
 import { PlanningPokerHostPanel } from "../components/planning-poker/PlanningPokerHostPanel";
+import { PlanningPokerDeleteSessionDialog } from "../components/planning-poker/PlanningPokerDeleteSessionDialog";
 import { PlanningPokerJoinForm } from "../components/planning-poker/PlanningPokerJoinForm";
 import { PlanningPokerParticipantList } from "../components/planning-poker/PlanningPokerParticipantList";
 import { PlanningPokerTaskQueue } from "../components/planning-poker/PlanningPokerTaskQueue";
 import { PlanningPokerVoteDeck } from "../components/planning-poker/PlanningPokerVoteDeck";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Skeleton } from "../components/ui/skeleton";
 import { useAuth } from "../contexts/AuthContext";
 import type {
@@ -34,8 +25,10 @@ import type {
 } from "../utils/planningPoker";
 import {
   createPlanningPokerConnection,
+  deletePlanningPokerSessionFromRoom,
   joinPlanningPokerSession,
   revealPlanningPokerVotes,
+  selectPlanningPokerRecommendation,
   stopPlanningPokerConnection,
   submitPlanningPokerVote,
 } from "../utils/planningPokerGuest";
@@ -138,6 +131,10 @@ export function PlanningPokerRoom() {
   const [isJoining, setIsJoining] = useState(false);
   const [isVoteSubmitting, setIsVoteSubmitting] = useState(false);
   const [isRevealing, setIsRevealing] = useState(false);
+  const [isSelectingRecommendation, setIsSelectingRecommendation] = useState(false);
+  const [isDeletingSession, setIsDeletingSession] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletedSessionMessage, setDeletedSessionMessage] = useState("");
   const [connectionBannerState, setConnectionBannerState] =
     useState<ConnectionBannerState>("idle");
   const [hasAttemptedAutoJoin, setHasAttemptedAutoJoin] = useState(false);
@@ -199,6 +196,20 @@ export function PlanningPokerRoom() {
       },
       onVotingUpdated: (nextSession) => {
         setSession(nextSession);
+      },
+      onSessionDeleted: (event) => {
+        setDeletedSessionMessage(
+          event.message || "This planning poker session was deleted by the host.",
+        );
+        setSession(null);
+        setParticipantId(null);
+        setParticipantToken("");
+        removeStorageValue(participantStorageKey);
+        removeStorageValue(guestNameStorageKey);
+        setJoinError("");
+        setRoomError("");
+        setConnectionBannerState("disconnected");
+        void stopPlanningPokerConnection(connection);
       },
       onClosed: () => {
         setConnectionBannerState("disconnected");
@@ -439,18 +450,70 @@ export function PlanningPokerRoom() {
     }
   };
 
+  const handleDeleteSession = async () => {
+    const connection = connectionRef.current;
+    if (!connection || !normalizedJoinToken) {
+      return;
+    }
+
+    setIsDeletingSession(true);
+    setRoomError("");
+
+    try {
+      await deletePlanningPokerSessionFromRoom(
+        connection,
+        normalizedJoinToken,
+        participantToken || null,
+      );
+      setIsDeleteDialogOpen(false);
+    } catch (error) {
+      setRoomError(
+        error instanceof Error ? error.message : "Unable to delete the planning poker session.",
+      );
+    } finally {
+      setIsDeletingSession(false);
+    }
+  };
+
   const revealStatusMessage = session?.isRevealed
     ? "This round is already revealed."
     : votedCount > 0
       ? "Reveal is available once the host is ready."
       : "At least one vote is needed before reveal.";
 
+  const handleSelectRecommendation = async (storyPoints: number) => {
+    const connection = connectionRef.current;
+    if (!connection || !normalizedJoinToken) {
+      return;
+    }
+
+    setIsSelectingRecommendation(true);
+    setRoomError("");
+
+    try {
+      const nextSession = await selectPlanningPokerRecommendation(
+        connection,
+        normalizedJoinToken,
+        storyPoints,
+        participantToken || null,
+      );
+
+      setSession(nextSession);
+    } catch (error) {
+      setRoomError(
+        error instanceof Error ? error.message : "Unable to select the planning poker recommendation.",
+      );
+    } finally {
+      setIsSelectingRecommendation(false);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.14),_transparent_30%),linear-gradient(180deg,_#020617_0%,_#0f172a_48%,_#020617_100%)] px-4 py-8 text-slate-100 sm:px-6 lg:px-8">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
-        <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-slate-900/75 shadow-2xl shadow-slate-950/30 backdrop-blur">
-          <div className="grid gap-6 px-6 py-8 lg:grid-cols-[minmax(0,1fr)_18rem] lg:px-8">
-            <div className="space-y-4">
+        <section className="rounded-[1.6rem] border border-white/10 bg-slate-900/75 px-5 py-5 shadow-2xl shadow-slate-950/30 backdrop-blur sm:px-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-3">
                 <Badge className="bg-cyan-400 text-slate-950 hover:bg-cyan-300">
                   Planning Poker
@@ -459,52 +522,33 @@ export function PlanningPokerRoom() {
                   variant="outline"
                   className="border-white/10 bg-slate-950/50 text-slate-300"
                 >
-                  <Link2 className="mr-1 h-3 w-3" aria-hidden="true" />
                   Token {normalizedJoinToken || "missing"}
                 </Badge>
               </div>
-
-              <div className="space-y-3">
-                <h1 className="max-w-3xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-                  Shared planning poker room
-                </h1>
-                <p className="max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-                  Join through the shared link, vote live with the team, and follow the
-                  active task queue without relying on the protected app shell.
-                </p>
-              </div>
+              <h1 className="mt-3 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                Shared planning poker room
+              </h1>
             </div>
 
-            <Card className="border-white/10 bg-slate-950/40">
-              <CardHeader className="space-y-2">
-                <CardTitle className="flex items-center gap-2 text-base text-white">
-                  <Signal className="h-4 w-4 text-cyan-200" aria-hidden="true" />
-                  Connection
-                </CardTitle>
-                <CardDescription className="text-sm leading-6 text-slate-300">
-                  {getConnectionBannerLabel(connectionBannerState)}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-slate-300">
-                  {session
-                    ? `${votedCount} of ${session.participants.length} votes are in.`
-                    : "Join the room to start receiving live updates."}
-                </div>
-                {connectionBannerState !== "connected" && normalizedJoinToken ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full border-white/10 bg-slate-900 text-slate-100 hover:bg-slate-800"
-                    onClick={() => void handleJoin()}
-                    disabled={isJoining}
-                  >
-                    <RefreshCcw className="h-4 w-4" aria-hidden="true" />
-                    {session ? "Rejoin room" : "Retry connection"}
-                  </Button>
-                ) : null}
-              </CardContent>
-            </Card>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-300">
+                {session
+                  ? `${votedCount} of ${session.participants.length} votes are in`
+                  : getConnectionBannerLabel(connectionBannerState)}
+              </div>
+              {connectionBannerState !== "connected" && normalizedJoinToken ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-white/10 bg-slate-900 text-slate-100 hover:bg-slate-800"
+                  onClick={() => void handleJoin()}
+                  disabled={isJoining}
+                >
+                  <RefreshCcw className="h-4 w-4" aria-hidden="true" />
+                  {session ? "Rejoin room" : "Retry"}
+                </Button>
+              ) : null}
+            </div>
           </div>
         </section>
 
@@ -524,8 +568,8 @@ export function PlanningPokerRoom() {
           </Card>
         ) : null}
 
-        {normalizedJoinToken && !session ? (
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        {normalizedJoinToken && !session && !deletedSessionMessage ? (
+          <div className="max-w-2xl">
             <PlanningPokerJoinForm
               displayName={guestDisplayName}
               isAuthenticated={isAuthenticated}
@@ -535,51 +579,36 @@ export function PlanningPokerRoom() {
               onDisplayNameChange={setGuestDisplayName}
               onSubmit={() => handleJoin()}
             />
-
-            <Card className="border-white/10 bg-slate-900/70">
-              <CardHeader className="space-y-2">
-                <CardTitle className="text-white">What happens next</CardTitle>
-                <CardDescription className="text-sm leading-6 text-slate-300">
-                  The room joins immediately once your identity is confirmed.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-slate-300">
-                  Live updates arrive through SignalR as soon as the room accepts your join.
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-slate-300">
-                  Your participant token is kept locally so you can reconnect through the
-                  shared link.
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-slate-300">
-                  The current backend only supports joining, voting, and revealing the round.
-                </div>
-              </CardContent>
-            </Card>
           </div>
         ) : null}
 
+        {normalizedJoinToken && !session && deletedSessionMessage ? (
+          <Card className="border-rose-400/20 bg-rose-400/10">
+            <CardContent className="px-6 py-6">
+              <div className="flex items-start gap-3 text-rose-100">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+                <div>
+                  <h2 className="text-lg font-semibold">Session deleted</h2>
+                  <p className="mt-2 text-sm leading-6">{deletedSessionMessage}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
+
         {normalizedJoinToken && isJoining && !session ? (
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-            <Card className="border-white/10 bg-slate-900/80">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-white">
-                  <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
-                  Joining room
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Skeleton className="h-24 rounded-3xl bg-slate-800" />
-                <Skeleton className="h-44 rounded-3xl bg-slate-800" />
-              </CardContent>
-            </Card>
-            <Card className="border-white/10 bg-slate-900/80">
-              <CardContent className="space-y-4 px-6 py-6">
-                <Skeleton className="h-24 rounded-3xl bg-slate-800" />
-                <Skeleton className="h-40 rounded-3xl bg-slate-800" />
-              </CardContent>
-            </Card>
-          </div>
+          <Card className="max-w-2xl border-white/10 bg-slate-900/80">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-white">
+                <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+                Joining room
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Skeleton className="h-24 rounded-3xl bg-slate-800" />
+              <Skeleton className="h-44 rounded-3xl bg-slate-800" />
+            </CardContent>
+          </Card>
         ) : null}
 
         {session ? (
@@ -599,6 +628,10 @@ export function PlanningPokerRoom() {
                   activeTask={activeTask}
                   queue={session.queue}
                   isRevealed={session.isRevealed}
+                  isHost={Boolean(currentParticipant?.isHost)}
+                  recommendationOptions={VOTE_DECK_VALUES}
+                  isSelectingRecommendation={isSelectingRecommendation}
+                  onSelectRecommendation={handleSelectRecommendation}
                 />
 
                 <PlanningPokerVoteDeck
@@ -623,11 +656,13 @@ export function PlanningPokerRoom() {
                   participantCount={session.participants.length}
                   isRevealed={session.isRevealed}
                   isRevealing={isRevealing}
+                  isDeleting={isDeletingSession}
                   copyFeedback={copyFeedback}
                   statusMessage={revealStatusMessage}
                   errorMessage={currentParticipant?.isHost ? "" : roomError}
                   onCopyLink={handleCopyLink}
                   onReveal={handleReveal}
+                  onDelete={() => setIsDeleteDialogOpen(true)}
                 />
 
                 <PlanningPokerParticipantList
@@ -635,39 +670,18 @@ export function PlanningPokerRoom() {
                   isRevealed={session.isRevealed}
                 />
 
-                <Card className="border-white/10 bg-slate-900/80 shadow-xl shadow-slate-950/20">
-                  <CardHeader className="space-y-2">
-                    <CardTitle className="flex items-center gap-2 text-white">
-                      <UsersRound className="h-4 w-4 text-cyan-200" aria-hidden="true" />
-                      Session snapshot
-                    </CardTitle>
-                    <CardDescription className="text-sm leading-6 text-slate-300">
-                      Current room metadata from the shared session snapshot.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                        Session
-                      </p>
-                      <p className="mt-2 text-sm font-medium text-white">{session.status}</p>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                        Active votes
-                      </p>
-                      <p className="mt-2 flex items-center gap-2 text-sm font-medium text-white">
-                        <Vote className="h-4 w-4 text-cyan-200" aria-hidden="true" />
-                        {votedCount}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
               </div>
             </div>
           </>
         ) : null}
       </div>
+
+      <PlanningPokerDeleteSessionDialog
+        isOpen={isDeleteDialogOpen}
+        isDeleting={isDeletingSession}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={() => void handleDeleteSession()}
+      />
     </main>
   );
 }

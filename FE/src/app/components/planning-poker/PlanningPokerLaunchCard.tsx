@@ -6,6 +6,7 @@ import {
   RadioTower,
   RefreshCw,
   Sparkles,
+  Trash2,
   UsersRound,
 } from "lucide-react";
 
@@ -18,9 +19,11 @@ interface PlanningPokerLaunchCardProps {
   isLoading: boolean;
   isCreating: boolean;
   isApplyingRecommendation: boolean;
+  isDeleting: boolean;
   onCreateSession: () => void;
   onRefreshSession: () => void;
   onApplyRecommendation: (sessionTaskId: number) => void;
+  onDeleteSession: () => void;
 }
 
 export function PlanningPokerLaunchCard({
@@ -29,9 +32,11 @@ export function PlanningPokerLaunchCard({
   isLoading,
   isCreating,
   isApplyingRecommendation,
+  isDeleting,
   onCreateSession,
   onRefreshSession,
   onApplyRecommendation,
+  onDeleteSession,
 }: PlanningPokerLaunchCardProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
@@ -175,6 +180,21 @@ export function PlanningPokerLaunchCard({
                 <ExternalLink className="h-4 w-4" aria-hidden="true" />
                 Open room
               </a>
+              {session.isCurrentUserHost ? (
+                <button
+                  type="button"
+                  onClick={onDeleteSession}
+                  disabled={isDeleting}
+                  className={`${primaryButtonClassName} border border-rose-300/30 bg-rose-500/10 text-rose-600 disabled:cursor-not-allowed disabled:opacity-60 ${isDarkMode ? "hover:bg-rose-500/20" : "hover:bg-rose-50"}`}
+                >
+                  {isDeleting ? (
+                    <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  )}
+                  {isDeleting ? "Deleting..." : "Delete session"}
+                </button>
+              ) : null}
             </>
           ) : (
             <button

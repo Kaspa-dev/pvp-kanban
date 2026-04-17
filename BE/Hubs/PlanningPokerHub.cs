@@ -11,9 +11,14 @@ namespace BE.Hubs;
 public class PlanningPokerHub(IPlanningPokerSessionService service, AppDbContext context) : Hub
 {
     private static readonly ConcurrentDictionary<string, ConnectedPlanningPokerParticipant> ConnectedParticipants = new();
+    public const string SessionUpdatedEventName = "SessionUpdated";
+    public const string VotingUpdatedEventName = "VotingUpdated";
+    public const string SessionDeletedEventName = "SessionDeleted";
 
     private readonly IPlanningPokerSessionService _service = service;
     private readonly AppDbContext _context = context;
+
+    public static string GetGroupNameForSession(int sessionId) => $"planning-poker-session:{sessionId}";
 
     public async Task<PlanningPokerHubJoinResponse> JoinSession(
         string joinToken,
@@ -36,13 +41,13 @@ public class PlanningPokerHub(IPlanningPokerSessionService service, AppDbContext
                 .Select(item => item.Id)
                 .SingleAsync(Context.ConnectionAborted);
 
-            string groupName = GetGroupName(result.Session.SessionId);
+            string groupName = GetGroupNameForSession(result.Session.SessionId);
             if (ConnectedParticipants.TryGetValue(Context.ConnectionId, out ConnectedPlanningPokerParticipant? previousParticipant) &&
                 previousParticipant.SessionId != result.Session.SessionId)
             {
                 await Groups.RemoveFromGroupAsync(
                     Context.ConnectionId,
-                    GetGroupName(previousParticipant.SessionId),
+                    GetGroupNameForSession(previousParticipant.SessionId),
                     Context.ConnectionAborted);
             }
 
@@ -52,7 +57,7 @@ public class PlanningPokerHub(IPlanningPokerSessionService service, AppDbContext
                 joinToken.Trim().ToLowerInvariant(),
                 result.ParticipantToken,
                 TryGetCurrentUserId());
-            await Clients.Group(groupName).SendAsync("SessionUpdated", result.Session, Context.ConnectionAborted);
+            await Clients.Group(groupName).SendAsync(SessionUpdatedEventName, result.Session, Context.ConnectionAborted);
 
             return new PlanningPokerHubJoinResponse
             {
@@ -81,10 +86,10 @@ public class PlanningPokerHub(IPlanningPokerSessionService service, AppDbContext
                 cardValue,
                 Context.ConnectionAborted);
 
-            string groupName = GetGroupName(session.SessionId);
+            string groupName = GetGroupNameForSession(session.SessionId);
             await Groups.AddToGroupAsync(Context.ConnectionId, groupName, Context.ConnectionAborted);
-            await Clients.Group(groupName).SendAsync("VotingUpdated", session, Context.ConnectionAborted);
-            await Clients.Group(groupName).SendAsync("SessionUpdated", session, Context.ConnectionAborted);
+            await Clients.Group(groupName).SendAsync(VotingUpdatedEventName, session, Context.ConnectionAborted);
+            await Clients.Group(groupName).SendAsync(SessionUpdatedEventName, session, Context.ConnectionAborted);
 
             return session;
         }
@@ -104,12 +109,63 @@ public class PlanningPokerHub(IPlanningPokerSessionService service, AppDbContext
                 participantToken,
                 Context.ConnectionAborted);
 
-            string groupName = GetGroupName(session.SessionId);
+            string groupName = GetGroupNameForSession(session.SessionId);
             await Groups.AddToGroupAsync(Context.ConnectionId, groupName, Context.ConnectionAborted);
-            await Clients.Group(groupName).SendAsync("VotingUpdated", session, Context.ConnectionAborted);
-            await Clients.Group(groupName).SendAsync("SessionUpdated", session, Context.ConnectionAborted);
+            await Clients.Group(groupName).SendAsync(VotingUpdatedEventName, session, Context.ConnectionAborted);
+            await Clients.Group(groupName).SendAsync(SessionUpdatedEventName, session, Context.ConnectionAborted);
 
             return session;
+        }
+        catch (PlanningPokerException exception)
+        {
+            throw new HubException(exception.Message);
+        }
+    }
+
+    public async Task<PlanningPokerSessionDto> SelectRecommendation(
+        string joinToken,
+        int storyPoints,
+        string? participantToken = null)
+    {
+        try
+        {
+            PlanningPokerSessionDto session = await _service.SelectRecommendationAsync(
+                joinToken,
+                TryGetCurrentUserId(),
+                participantToken,
+                storyPoints,
+                Context.ConnectionAborted);
+
+            string groupName = GetGroupNameForSession(session.SessionId);
+            await Groups.AddToGroupAsync(Context.ConnectionId, groupName, Context.ConnectionAborted);
+            await Clients.Group(groupName).SendAsync(SessionUpdatedEventName, session, Context.ConnectionAborted);
+
+            return session;
+        }
+        catch (PlanningPokerException exception)
+        {
+            throw new HubException(exception.Message);
+        }
+    }
+
+    public async Task DeleteSession(string joinToken, string? participantToken = null)
+    {
+        try
+        {
+            PlanningPokerDeletedSessionResult result = await _service.DeleteSessionAsync(
+                joinToken,
+                TryGetCurrentUserId(),
+                participantToken,
+                Context.ConnectionAborted);
+            string groupName = GetGroupNameForSession(result.SessionId);
+            await Clients.Group(groupName).SendAsync(
+                SessionDeletedEventName,
+                new PlanningPokerSessionDeletedDto
+                {
+                    BoardId = result.BoardId,
+                    Message = "This planning poker session was deleted by the host.",
+                },
+                Context.ConnectionAborted);
         }
         catch (PlanningPokerException exception)
         {
@@ -127,8 +183,6 @@ public class PlanningPokerHub(IPlanningPokerSessionService service, AppDbContext
         return int.TryParse(value, out int userId) ? userId : null;
     }
 
-    private static string GetGroupName(int sessionId) => $"planning-poker-session:{sessionId}";
-
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         if (ConnectedParticipants.TryRemove(Context.ConnectionId, out ConnectedPlanningPokerParticipant? participant))
@@ -141,8 +195,8 @@ public class PlanningPokerHub(IPlanningPokerSessionService service, AppDbContext
 
                 if (session is not null)
                 {
-                    await Clients.Group(GetGroupName(participant.SessionId))
-                        .SendAsync("SessionUpdated", session, CancellationToken.None);
+                    await Clients.Group(GetGroupNameForSession(participant.SessionId))
+                        .SendAsync(SessionUpdatedEventName, session, CancellationToken.None);
                 }
             }
             catch (PlanningPokerException)
@@ -203,6 +257,10 @@ public class PlanningPokerHub(IPlanningPokerSessionService service, AppDbContext
         HashSet<int> votedParticipantIds = activeTask?.Votes
             .Select(vote => vote.ParticipantId)
             .ToHashSet() ?? new HashSet<int>();
+        Dictionary<int, int> revealedVoteLookup = activeTask is not null &&
+            activeTask.RoundState.Equals("revealed", StringComparison.OrdinalIgnoreCase)
+                ? activeTask.Votes.ToDictionary(vote => vote.ParticipantId, vote => vote.CardValue)
+                : new Dictionary<int, int>();
 
         return new PlanningPokerSessionDto
         {
@@ -227,6 +285,9 @@ public class PlanningPokerHub(IPlanningPokerSessionService service, AppDbContext
                     IsHost = item.IsHost,
                     IsGuest = item.IsGuest,
                     HasVoted = votedParticipantIds.Contains(item.Id),
+                    RevealedCardValue = revealedVoteLookup.TryGetValue(item.Id, out int cardValue)
+                        ? cardValue
+                        : null,
                 })
                 .ToList(),
             IsRevealed = activeTask is not null &&
@@ -246,6 +307,15 @@ public class PlanningPokerHub(IPlanningPokerSessionService service, AppDbContext
             RoundState = sessionTask.RoundState,
             RecommendedStoryPoints = sessionTask.RecommendedStoryPoints,
             AppliedStoryPoints = sessionTask.Task.StoryPoints,
+            VoteSummary = sessionTask.Votes
+                .GroupBy(vote => vote.CardValue)
+                .OrderBy(group => group.Key)
+                .Select(group => new PlanningPokerVoteSummaryDto
+                {
+                    CardValue = group.Key,
+                    Count = group.Count(),
+                })
+                .ToList(),
         };
     }
 }

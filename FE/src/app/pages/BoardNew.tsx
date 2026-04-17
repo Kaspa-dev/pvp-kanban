@@ -14,6 +14,7 @@ import { ListView } from "../components/ListView";
 import { BacklogView2 } from "../components/BacklogView2";
 import { HistoryView } from "../components/HistoryView";
 import { CoachmarkOverlay } from "../components/CoachmarkOverlay";
+import { PlanningPokerDeleteSessionDialog } from "../components/planning-poker/PlanningPokerDeleteSessionDialog";
 import { SidebarInset, SidebarProvider } from "../components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../components/ui/tooltip";
 import { useAuth } from "../contexts/AuthContext";
@@ -53,6 +54,7 @@ import {
 import {
   applyPlanningPokerRecommendation,
   createPlanningPokerSession,
+  deletePlanningPokerSession,
   getPlanningPokerSession,
   type PlanningPokerSession,
 } from "../utils/planningPoker";
@@ -117,6 +119,8 @@ export function Board() {
   const [isPlanningPokerLoading, setIsPlanningPokerLoading] = useState(false);
   const [isPlanningPokerCreating, setIsPlanningPokerCreating] = useState(false);
   const [isPlanningPokerApplying, setIsPlanningPokerApplying] = useState(false);
+  const [isPlanningPokerDeleting, setIsPlanningPokerDeleting] = useState(false);
+  const [isDeletePlanningPokerDialogOpen, setIsDeletePlanningPokerDialogOpen] = useState(false);
   const [currentBoard, setCurrentBoard] = useState<BoardType | null>(null);
   const [isLoadingBoard, setIsLoadingBoard] = useState(true);
   const [boardAccessState, setBoardAccessState] = useState<"available" | "forbidden" | "notFound">("available");
@@ -748,6 +752,25 @@ export function Board() {
     }
   };
 
+  const handleDeletePlanningPokerSession = async () => {
+    if (!Number.isFinite(numericBoardId)) {
+      return;
+    }
+
+    try {
+      setActionError("");
+      setIsPlanningPokerDeleting(true);
+      await deletePlanningPokerSession(numericBoardId);
+      setPlanningPokerSession(null);
+      setIsDeletePlanningPokerDialogOpen(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to delete the planning poker session right now.";
+      setActionError(message);
+    } finally {
+      setIsPlanningPokerDeleting(false);
+    }
+  };
+
   const handleCreateLabel = async (name: string, color: string) => {
     if (!Number.isFinite(numericBoardId)) {
       return;
@@ -1080,9 +1103,11 @@ export function Board() {
                     isPlanningPokerLoading={isPlanningPokerLoading}
                     isPlanningPokerCreating={isPlanningPokerCreating}
                     isPlanningPokerApplying={isPlanningPokerApplying}
+                    isPlanningPokerDeleting={isPlanningPokerDeleting}
                     onCreatePlanningPokerSession={() => void handleCreatePlanningPokerSession()}
                     onRefreshPlanningPokerSession={() => void handleRefreshPlanningPokerSession()}
                     onApplyPlanningPokerRecommendation={(sessionTaskId) => void handleApplyPlanningPokerRecommendation(sessionTaskId)}
+                    onDeletePlanningPokerSession={() => setIsDeletePlanningPokerDialogOpen(true)}
                   />
                 </main>
               )}
@@ -1149,6 +1174,13 @@ export function Board() {
               onClose={() => setDeleteDialog({ isOpen: false, cardId: null, title: "" })}
               onConfirm={() => void handleDeleteConfirm()}
               taskTitle={deleteDialog.title}
+            />
+
+            <PlanningPokerDeleteSessionDialog
+              isOpen={isDeletePlanningPokerDialogOpen}
+              isDeleting={isPlanningPokerDeleting}
+              onClose={() => setIsDeletePlanningPokerDialogOpen(false)}
+              onConfirm={() => void handleDeletePlanningPokerSession()}
             />
 
             <CoachmarkOverlay
