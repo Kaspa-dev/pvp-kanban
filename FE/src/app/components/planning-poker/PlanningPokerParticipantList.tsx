@@ -84,7 +84,9 @@ export function PlanningPokerParticipantList({
                   variant="outline"
                   className={
                     participant.hasVoted
-                      ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100"
+                      ? isRevealed
+                        ? "border-cyan-300/30 bg-cyan-400/10 text-cyan-100"
+                        : "border-emerald-400/30 bg-emerald-400/10 text-emerald-100"
                       : "border-white/10 bg-slate-900 text-slate-300"
                   }
                   aria-label={
@@ -96,7 +98,11 @@ export function PlanningPokerParticipantList({
                   }
                 >
                   <Vote className="h-3 w-3" aria-hidden="true" />
-                  {participant.hasVoted ? "Ready" : "Waiting"}
+                  {participant.hasVoted
+                    ? isRevealed
+                      ? participant.revealedCardValue ?? "Voted"
+                      : "Ready"
+                    : "Waiting"}
                 </Badge>
               </li>
             ))}

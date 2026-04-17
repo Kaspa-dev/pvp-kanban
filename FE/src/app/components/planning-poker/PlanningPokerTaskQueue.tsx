@@ -71,14 +71,35 @@ export function PlanningPokerTaskQueue({
               </div>
 
               {isRevealed ? (
-                <div className="min-w-44 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
-                  <div className="flex items-center gap-2 font-medium">
-                    <Sparkles className="h-4 w-4" aria-hidden="true" />
-                    Recommendation
+                <div className="min-w-56 space-y-3">
+                  <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
+                    <div className="flex items-center gap-2 font-medium">
+                      <Sparkles className="h-4 w-4" aria-hidden="true" />
+                      Recommendation
+                    </div>
+                    <p className="mt-2 text-2xl font-semibold">
+                      {activeTask.recommendedStoryPoints ?? "Pending"}
+                    </p>
                   </div>
-                  <p className="mt-2 text-2xl font-semibold">
-                    {activeTask.recommendedStoryPoints ?? "Pending"}
-                  </p>
+
+                  {activeTask.voteSummary.length > 0 ? (
+                    <div className="rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                        Revealed votes
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {activeTask.voteSummary.map((entry) => (
+                          <span
+                            key={entry.cardValue}
+                            className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1.5 text-xs font-semibold text-cyan-100"
+                          >
+                            <span>{entry.cardValue}</span>
+                            <span className="text-cyan-200/80">x{entry.count}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </div>

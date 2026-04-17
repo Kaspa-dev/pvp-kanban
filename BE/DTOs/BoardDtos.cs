@@ -104,6 +104,13 @@ public class PlanningPokerParticipantDto
     public bool IsHost { get; set; }
     public bool IsGuest { get; set; }
     public bool HasVoted { get; set; }
+    public int? RevealedCardValue { get; set; }
+}
+
+public class PlanningPokerVoteSummaryDto
+{
+    public int CardValue { get; set; }
+    public int Count { get; set; }
 }
 
 public class PlanningPokerSessionTaskDto
@@ -116,6 +123,7 @@ public class PlanningPokerSessionTaskDto
     public string RoundState { get; set; } = string.Empty;
     public int? RecommendedStoryPoints { get; set; }
     public int? AppliedStoryPoints { get; set; }
+    public List<PlanningPokerVoteSummaryDto> VoteSummary { get; set; } = new();
 }
 
 public class PlanningPokerSessionDto
@@ -125,10 +133,17 @@ public class PlanningPokerSessionDto
     public string JoinToken { get; set; } = string.Empty;
     public string JoinUrl { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
+    public bool IsCurrentUserHost { get; set; }
     public PlanningPokerSessionTaskDto ActiveTask { get; set; } = new();
     public List<PlanningPokerSessionTaskDto> Queue { get; set; } = new();
     public List<PlanningPokerParticipantDto> Participants { get; set; } = new();
     public bool IsRevealed { get; set; }
+}
+
+public class PlanningPokerSessionDeletedDto
+{
+    public int BoardId { get; set; }
+    public string Message { get; set; } = string.Empty;
 }
 
 public class CreateTaskRequestDto

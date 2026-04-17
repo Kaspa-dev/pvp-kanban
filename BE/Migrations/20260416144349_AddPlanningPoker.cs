@@ -201,7 +201,7 @@ namespace BE.Migrations
                 unique: true);
 
             migrationBuilder.AddForeignKey(
-                name: "FK_PlanningPokerSessions_PlanningPokerSessionTasks_ActiveSessionTaskId",
+                name: "FK_PPSessions_PPSessionTasks_ActiveTaskId",
                 table: "PlanningPokerSessions",
                 column: "ActiveSessionTaskId",
                 principalTable: "PlanningPokerSessionTasks",
@@ -213,7 +213,7 @@ namespace BE.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropForeignKey(
-                name: "FK_PlanningPokerSessions_PlanningPokerSessionTasks_ActiveSessionTaskId",
+                name: "FK_PPSessions_PPSessionTasks_ActiveTaskId",
                 table: "PlanningPokerSessions");
 
             migrationBuilder.DropTable(

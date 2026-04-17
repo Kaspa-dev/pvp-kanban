@@ -65,7 +65,6 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
             Position = index,
             RoundState = index == 0 ? VotingRoundState : PendingRoundState,
         }).ToList();
-        session.ActiveSessionTask = session.Tasks.First();
         session.Participants.Add(new PlanningPokerParticipant
         {
             UserId = hostUserId,
@@ -79,7 +78,13 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
         _context.PlanningPokerSessions.Add(session);
         await _context.SaveChangesAsync(cancellationToken);
 
-        return await LoadSessionDtoByIdAsync(session.Id, cancellationToken);
+        session.ActiveSessionTaskId = session.Tasks
+            .OrderBy(task => task.Position)
+            .Select(task => (int?)task.Id)
+            .FirstOrDefault();
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return await LoadSessionDtoByIdAsync(session.Id, hostUserId, null, cancellationToken);
     }
 
     public async System.Threading.Tasks.Task<PlanningPokerSessionDto> GetBoardSessionAsync(int boardId, int userId, CancellationToken cancellationToken)
@@ -90,7 +95,7 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
         await EnsureBoardMemberParticipantAsync(session, board, userId, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
 
-        return await LoadSessionDtoByIdAsync(session.Id, cancellationToken);
+        return await LoadSessionDtoByIdAsync(session.Id, userId, null, cancellationToken);
     }
 
     public async System.Threading.Tasks.Task<PlanningPokerSessionDto> GetSessionByTokenAsync(
@@ -115,7 +120,7 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
             allowGuestCreation: false,
             cancellationToken);
 
-        return ToSessionDto(session);
+        return ToSessionDto(session, GetCurrentParticipant(session, userId, normalizedParticipantToken));
     }
 
     public async System.Threading.Tasks.Task<PlanningPokerJoinResult> JoinSessionAsync(
@@ -134,7 +139,7 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
             allowGuestCreation: true,
             cancellationToken);
 
-        return new PlanningPokerJoinResult(ToSessionDto(session), participant.ParticipantToken);
+        return new PlanningPokerJoinResult(ToSessionDto(session, participant), participant.ParticipantToken);
     }
 
     public async System.Threading.Tasks.Task<PlanningPokerSessionDto> SubmitVoteAsync(
@@ -179,7 +184,7 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
         session.UpdatedAtUtc = DateTime.UtcNow;
         await _context.SaveChangesAsync(cancellationToken);
 
-        return ToSessionDto(session);
+        return ToSessionDto(session, participant);
     }
 
     public async System.Threading.Tasks.Task<PlanningPokerSessionDto> RevealVotesAsync(
@@ -208,7 +213,98 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
         session.UpdatedAtUtc = DateTime.UtcNow;
         await _context.SaveChangesAsync(cancellationToken);
 
-        return ToSessionDto(session);
+        return ToSessionDto(session, participant);
+    }
+
+    public async System.Threading.Tasks.Task<PlanningPokerSessionDto> SelectRecommendationAsync(
+        string joinToken,
+        int? userId,
+        string? participantToken,
+        int storyPoints,
+        CancellationToken cancellationToken)
+    {
+        if (storyPoints < 0)
+        {
+            throw new PlanningPokerValidationException("Recommended story points must be zero or greater.");
+        }
+
+        PlanningPokerSession session = await GetSessionByJoinTokenAsync(joinToken, cancellationToken);
+        PlanningPokerParticipant participant = await ResolveParticipantAsync(
+            session,
+            userId,
+            participantToken,
+            guestDisplayName: null,
+            allowGuestCreation: false,
+            cancellationToken);
+        EnsureParticipantIsHost(session, participant);
+
+        PlanningPokerSessionTask activeTask = session.ActiveSessionTask
+            ?? session.Tasks
+                .OrderBy(task => task.Position)
+                .FirstOrDefault(task => task.RoundState.Equals(RevealedRoundState, StringComparison.OrdinalIgnoreCase))
+            ?? throw new PlanningPokerValidationException("There is no active planning poker task.");
+
+        if (!activeTask.RoundState.Equals(RevealedRoundState, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new PlanningPokerValidationException("Reveal votes before choosing a recommendation.");
+        }
+
+        EnsureTaskIsStillEligibleForVoting(activeTask);
+        activeTask.RecommendedStoryPoints = storyPoints;
+        session.UpdatedAtUtc = DateTime.UtcNow;
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return ToSessionDto(session, participant);
+    }
+
+    public async System.Threading.Tasks.Task<PlanningPokerDeletedSessionResult> DeleteBoardSessionAsync(
+        int boardId,
+        int userId,
+        CancellationToken cancellationToken)
+    {
+        Board board = await GetBoardWithMembershipsAsync(boardId, userId, cancellationToken);
+        PlanningPokerSession session = await GetActiveSessionForBoardAsync(boardId, cancellationToken);
+
+        PlanningPokerParticipant participant = session.Participants
+            .FirstOrDefault(item => item.UserId == userId)
+            ?? throw new PlanningPokerAccessDeniedException("You must join the planning poker session before deleting it.");
+
+        EnsureParticipantIsHost(session, participant);
+
+        PlanningPokerDeletedSessionResult result = new(session.Id, session.BoardId, session.JoinToken);
+        session.ActiveSessionTaskId = null;
+        session.ActiveSessionTask = null;
+        await _context.SaveChangesAsync(cancellationToken);
+        _context.PlanningPokerSessions.Remove(session);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return result;
+    }
+
+    public async System.Threading.Tasks.Task<PlanningPokerDeletedSessionResult> DeleteSessionAsync(
+        string joinToken,
+        int? userId,
+        string? participantToken,
+        CancellationToken cancellationToken)
+    {
+        PlanningPokerSession session = await GetSessionByJoinTokenAsync(joinToken, cancellationToken);
+        PlanningPokerParticipant participant = await ResolveParticipantAsync(
+            session,
+            userId,
+            participantToken,
+            guestDisplayName: null,
+            allowGuestCreation: false,
+            cancellationToken);
+        EnsureParticipantIsHost(session, participant);
+
+        PlanningPokerDeletedSessionResult result = new(session.Id, session.BoardId, session.JoinToken);
+        session.ActiveSessionTaskId = null;
+        session.ActiveSessionTask = null;
+        await _context.SaveChangesAsync(cancellationToken);
+        _context.PlanningPokerSessions.Remove(session);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return result;
     }
 
     public async System.Threading.Tasks.Task<BoardTaskDto> ApplyRecommendationAsync(int boardId, int sessionTaskId, int userId, CancellationToken cancellationToken)
@@ -406,12 +502,16 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
         return ToTaskDto(task, memberLookup);
     }
 
-    private async System.Threading.Tasks.Task<PlanningPokerSessionDto> LoadSessionDtoByIdAsync(int sessionId, CancellationToken cancellationToken)
+    private async System.Threading.Tasks.Task<PlanningPokerSessionDto> LoadSessionDtoByIdAsync(
+        int sessionId,
+        int? currentUserId,
+        string? participantToken,
+        CancellationToken cancellationToken)
     {
         PlanningPokerSession session = await LoadSessionForDtoQuery()
             .FirstAsync(item => item.Id == sessionId, cancellationToken);
 
-        return ToSessionDto(session);
+        return ToSessionDto(session, GetCurrentParticipant(session, currentUserId, participantToken));
     }
 
     private static PlanningPokerSessionTask GetActiveVotingTask(PlanningPokerSession session)
@@ -482,7 +582,28 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
             .AsSplitQuery();
     }
 
-    private static PlanningPokerSessionDto ToSessionDto(PlanningPokerSession session)
+    private static PlanningPokerParticipant? GetCurrentParticipant(
+        PlanningPokerSession session,
+        int? userId,
+        string? participantToken)
+    {
+        if (userId.HasValue)
+        {
+            return session.Participants.FirstOrDefault(item => item.UserId == userId.Value);
+        }
+
+        string normalizedParticipantToken = participantToken?.Trim().ToLowerInvariant() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(normalizedParticipantToken))
+        {
+            return null;
+        }
+
+        return session.Participants.FirstOrDefault(item => item.ParticipantToken == normalizedParticipantToken);
+    }
+
+    private static PlanningPokerSessionDto ToSessionDto(
+        PlanningPokerSession session,
+        PlanningPokerParticipant? currentParticipant)
     {
         PlanningPokerSessionTask? activeTask = session.ActiveSessionTask
             ?? session.Tasks
@@ -493,6 +614,10 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
         HashSet<int> votedParticipantIds = activeTask?.Votes
             .Select(vote => vote.ParticipantId)
             .ToHashSet() ?? new HashSet<int>();
+        Dictionary<int, int> revealedVoteLookup = activeTask is not null &&
+            activeTask.RoundState.Equals(RevealedRoundState, StringComparison.OrdinalIgnoreCase)
+                ? activeTask.Votes.ToDictionary(vote => vote.ParticipantId, vote => vote.CardValue)
+                : new Dictionary<int, int>();
 
         return new PlanningPokerSessionDto
         {
@@ -501,6 +626,7 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
             JoinToken = session.JoinToken,
             JoinUrl = $"/planning-poker/{session.JoinToken}",
             Status = session.Status,
+            IsCurrentUserHost = currentParticipant is not null && currentParticipant.IsHost,
             ActiveTask = activeTask is null ? new PlanningPokerSessionTaskDto() : ToSessionTaskDto(activeTask),
             Queue = session.Tasks
                 .OrderBy(task => task.Position)
@@ -517,6 +643,9 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
                     IsHost = participant.IsHost,
                     IsGuest = participant.IsGuest,
                     HasVoted = votedParticipantIds.Contains(participant.Id),
+                    RevealedCardValue = revealedVoteLookup.TryGetValue(participant.Id, out int cardValue)
+                        ? cardValue
+                        : null,
                 })
                 .ToList(),
             IsRevealed = activeTask is not null && activeTask.RoundState.Equals(RevealedRoundState, StringComparison.OrdinalIgnoreCase),
@@ -535,6 +664,15 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
             RoundState = sessionTask.RoundState,
             RecommendedStoryPoints = sessionTask.RecommendedStoryPoints,
             AppliedStoryPoints = sessionTask.Task.StoryPoints,
+            VoteSummary = sessionTask.Votes
+                .GroupBy(vote => vote.CardValue)
+                .OrderBy(group => group.Key)
+                .Select(group => new PlanningPokerVoteSummaryDto
+                {
+                    CardValue = group.Key,
+                    Count = group.Count(),
+                })
+                .ToList(),
         };
     }
 

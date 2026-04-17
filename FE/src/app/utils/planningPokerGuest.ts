@@ -17,8 +17,14 @@ export interface PlanningPokerJoinSessionResponse {
 export interface PlanningPokerConnectionOptions {
   onSessionUpdated?: (session: PlanningPokerSession) => void;
   onVotingUpdated?: (session: PlanningPokerSession) => void;
+  onSessionDeleted?: (event: PlanningPokerSessionDeletedEvent) => void;
   onClosed?: (error?: Error) => void;
   logger?: LogLevel;
+}
+
+export interface PlanningPokerSessionDeletedEvent {
+  boardId: number;
+  message: string;
 }
 
 export function createPlanningPokerConnection(
@@ -40,6 +46,10 @@ export function createPlanningPokerConnection(
 
   if (options.onVotingUpdated) {
     connection.on("VotingUpdated", options.onVotingUpdated);
+  }
+
+  if (options.onSessionDeleted) {
+    connection.on("SessionDeleted", options.onSessionDeleted);
   }
 
   if (options.onClosed) {
@@ -96,6 +106,36 @@ export async function revealPlanningPokerVotes(
 
   return connection.invoke<PlanningPokerSession>(
     "RevealVotes",
+    joinToken,
+    participantToken ?? null,
+  );
+}
+
+export async function selectPlanningPokerRecommendation(
+  connection: HubConnection,
+  joinToken: string,
+  storyPoints: number,
+  participantToken?: string | null,
+): Promise<PlanningPokerSession> {
+  await ensurePlanningPokerConnection(connection);
+
+  return connection.invoke<PlanningPokerSession>(
+    "SelectRecommendation",
+    joinToken,
+    storyPoints,
+    participantToken ?? null,
+  );
+}
+
+export async function deletePlanningPokerSessionFromRoom(
+  connection: HubConnection,
+  joinToken: string,
+  participantToken?: string | null,
+): Promise<void> {
+  await ensurePlanningPokerConnection(connection);
+
+  await connection.invoke(
+    "DeleteSession",
     joinToken,
     participantToken ?? null,
   );

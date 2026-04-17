@@ -10,10 +10,14 @@ public interface IPlanningPokerSessionService
     Task<PlanningPokerJoinResult> JoinSessionAsync(string joinToken, int? userId, string? participantToken, string? guestDisplayName, CancellationToken cancellationToken);
     Task<PlanningPokerSessionDto> SubmitVoteAsync(string joinToken, int? userId, string? participantToken, int cardValue, CancellationToken cancellationToken);
     Task<PlanningPokerSessionDto> RevealVotesAsync(string joinToken, int? userId, string? participantToken, CancellationToken cancellationToken);
+    Task<PlanningPokerSessionDto> SelectRecommendationAsync(string joinToken, int? userId, string? participantToken, int storyPoints, CancellationToken cancellationToken);
+    Task<PlanningPokerDeletedSessionResult> DeleteBoardSessionAsync(int boardId, int userId, CancellationToken cancellationToken);
+    Task<PlanningPokerDeletedSessionResult> DeleteSessionAsync(string joinToken, int? userId, string? participantToken, CancellationToken cancellationToken);
     Task<BoardTaskDto> ApplyRecommendationAsync(int boardId, int sessionTaskId, int userId, CancellationToken cancellationToken);
 }
 
 public sealed record PlanningPokerJoinResult(PlanningPokerSessionDto Session, string ParticipantToken);
+public sealed record PlanningPokerDeletedSessionResult(int SessionId, int BoardId, string JoinToken);
 
 public abstract class PlanningPokerException : Exception
 {

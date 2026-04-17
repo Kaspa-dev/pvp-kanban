@@ -1,4 +1,4 @@
-import { Copy, Crown, LoaderCircle, RadioTower, ShieldCheck } from "lucide-react";
+import { Copy, Crown, LoaderCircle, RadioTower, ShieldCheck, Trash2 } from "lucide-react";
 
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -17,11 +17,17 @@ interface PlanningPokerHostPanelProps {
   participantCount: number;
   isRevealed: boolean;
   isRevealing: boolean;
+  isDeleting: boolean;
+  recommendation: number | null;
+  recommendationOptions: number[];
+  isSelectingRecommendation: boolean;
   copyFeedback: string;
   statusMessage: string;
   errorMessage: string;
   onCopyLink: () => void;
   onReveal: () => void | Promise<void>;
+  onDelete: () => void | Promise<void>;
+  onSelectRecommendation: (storyPoints: number) => void | Promise<void>;
 }
 
 export function PlanningPokerHostPanel({
@@ -31,13 +37,20 @@ export function PlanningPokerHostPanel({
   participantCount,
   isRevealed,
   isRevealing,
+  isDeleting,
+  recommendation,
+  recommendationOptions,
+  isSelectingRecommendation,
   copyFeedback,
   statusMessage,
   errorMessage,
   onCopyLink,
   onReveal,
+  onDelete,
+  onSelectRecommendation,
 }: PlanningPokerHostPanelProps) {
   const canReveal = isHost && !isRevealed && votedCount > 0 && !isRevealing;
+  const canSelectRecommendation = isHost && isRevealed && !isSelectingRecommendation;
 
   return (
     <Card className="border-white/10 bg-slate-900/80 shadow-xl shadow-slate-950/20">
@@ -115,6 +128,46 @@ export function PlanningPokerHostPanel({
           </div>
         ) : null}
 
+        {isRevealed ? (
+          <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              Host recommendation
+            </p>
+            <p className="mt-2 text-sm text-slate-300">
+              Choose the final estimate for this task after discussing the revealed votes.
+            </p>
+            <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-8">
+              {recommendationOptions.map((value) => {
+                const isSelected = recommendation === value;
+
+                return (
+                  <Button
+                    key={value}
+                    type="button"
+                    variant="outline"
+                    disabled={!canSelectRecommendation}
+                    onClick={() => void onSelectRecommendation(value)}
+                    className={`h-11 rounded-xl border-white/10 ${
+                      isSelected
+                        ? "border-cyan-300 bg-cyan-400/15 text-cyan-100"
+                        : "bg-slate-950 text-slate-100 hover:bg-slate-900"
+                    }`}
+                  >
+                    {value}
+                  </Button>
+                );
+              })}
+            </div>
+            <p className="mt-3 text-sm text-slate-400">
+              {recommendation !== null
+                ? `Selected recommendation: ${recommendation}`
+                : isHost
+                  ? "No recommendation selected yet."
+                  : "The host chooses the final recommendation."}
+            </p>
+          </div>
+        ) : null}
+
         <Button
           type="button"
           disabled={!canReveal}
@@ -132,6 +185,28 @@ export function PlanningPokerHostPanel({
             "Reveal votes"
           ) : (
             "Host can reveal votes"
+          )}
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          disabled={!isHost || isDeleting}
+          onClick={() => void onDelete()}
+          className="h-11 w-full rounded-xl border-rose-400/30 bg-rose-500/10 text-rose-100 hover:bg-rose-500/20 disabled:border-white/10 disabled:bg-slate-900 disabled:text-slate-400"
+        >
+          {isDeleting ? (
+            <>
+              <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+              Deleting session...
+            </>
+          ) : isHost ? (
+            <>
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
+              Delete session
+            </>
+          ) : (
+            "Host can delete session"
           )}
         </Button>
       </CardContent>

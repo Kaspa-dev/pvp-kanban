@@ -12,19 +12,14 @@ import {
 import { useParams } from "react-router";
 
 import { PlanningPokerHostPanel } from "../components/planning-poker/PlanningPokerHostPanel";
+import { PlanningPokerDeleteSessionDialog } from "../components/planning-poker/PlanningPokerDeleteSessionDialog";
 import { PlanningPokerJoinForm } from "../components/planning-poker/PlanningPokerJoinForm";
 import { PlanningPokerParticipantList } from "../components/planning-poker/PlanningPokerParticipantList";
 import { PlanningPokerTaskQueue } from "../components/planning-poker/PlanningPokerTaskQueue";
 import { PlanningPokerVoteDeck } from "../components/planning-poker/PlanningPokerVoteDeck";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Skeleton } from "../components/ui/skeleton";
 import { useAuth } from "../contexts/AuthContext";
 import type {
@@ -34,8 +29,10 @@ import type {
 } from "../utils/planningPoker";
 import {
   createPlanningPokerConnection,
+  deletePlanningPokerSessionFromRoom,
   joinPlanningPokerSession,
   revealPlanningPokerVotes,
+  selectPlanningPokerRecommendation,
   stopPlanningPokerConnection,
   submitPlanningPokerVote,
 } from "../utils/planningPokerGuest";
@@ -138,6 +135,10 @@ export function PlanningPokerRoom() {
   const [isJoining, setIsJoining] = useState(false);
   const [isVoteSubmitting, setIsVoteSubmitting] = useState(false);
   const [isRevealing, setIsRevealing] = useState(false);
+  const [isSelectingRecommendation, setIsSelectingRecommendation] = useState(false);
+  const [isDeletingSession, setIsDeletingSession] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletedSessionMessage, setDeletedSessionMessage] = useState("");
   const [connectionBannerState, setConnectionBannerState] =
     useState<ConnectionBannerState>("idle");
   const [hasAttemptedAutoJoin, setHasAttemptedAutoJoin] = useState(false);
@@ -199,6 +200,20 @@ export function PlanningPokerRoom() {
       },
       onVotingUpdated: (nextSession) => {
         setSession(nextSession);
+      },
+      onSessionDeleted: (event) => {
+        setDeletedSessionMessage(
+          event.message || "This planning poker session was deleted by the host.",
+        );
+        setSession(null);
+        setParticipantId(null);
+        setParticipantToken("");
+        removeStorageValue(participantStorageKey);
+        removeStorageValue(guestNameStorageKey);
+        setJoinError("");
+        setRoomError("");
+        setConnectionBannerState("disconnected");
+        void stopPlanningPokerConnection(connection);
       },
       onClosed: () => {
         setConnectionBannerState("disconnected");
@@ -439,11 +454,63 @@ export function PlanningPokerRoom() {
     }
   };
 
+  const handleDeleteSession = async () => {
+    const connection = connectionRef.current;
+    if (!connection || !normalizedJoinToken) {
+      return;
+    }
+
+    setIsDeletingSession(true);
+    setRoomError("");
+
+    try {
+      await deletePlanningPokerSessionFromRoom(
+        connection,
+        normalizedJoinToken,
+        participantToken || null,
+      );
+      setIsDeleteDialogOpen(false);
+    } catch (error) {
+      setRoomError(
+        error instanceof Error ? error.message : "Unable to delete the planning poker session.",
+      );
+    } finally {
+      setIsDeletingSession(false);
+    }
+  };
+
   const revealStatusMessage = session?.isRevealed
     ? "This round is already revealed."
     : votedCount > 0
       ? "Reveal is available once the host is ready."
       : "At least one vote is needed before reveal.";
+
+  const handleSelectRecommendation = async (storyPoints: number) => {
+    const connection = connectionRef.current;
+    if (!connection || !normalizedJoinToken) {
+      return;
+    }
+
+    setIsSelectingRecommendation(true);
+    setRoomError("");
+
+    try {
+      const nextSession = await selectPlanningPokerRecommendation(
+        connection,
+        normalizedJoinToken,
+        storyPoints,
+        participantToken || null,
+      );
+
+      setSession(nextSession);
+    } catch (error) {
+      setRoomError(
+        error instanceof Error ? error.message : "Unable to select the planning poker recommendation.",
+      );
+    } finally {
+      setIsSelectingRecommendation(false);
+    }
+  };
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.14),_transparent_30%),linear-gradient(180deg,_#020617_0%,_#0f172a_48%,_#020617_100%)] px-4 py-8 text-slate-100 sm:px-6 lg:px-8">
@@ -524,7 +591,7 @@ export function PlanningPokerRoom() {
           </Card>
         ) : null}
 
-        {normalizedJoinToken && !session ? (
+        {normalizedJoinToken && !session && !deletedSessionMessage ? (
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
             <PlanningPokerJoinForm
               displayName={guestDisplayName}
@@ -557,6 +624,20 @@ export function PlanningPokerRoom() {
               </CardContent>
             </Card>
           </div>
+        ) : null}
+
+        {normalizedJoinToken && !session && deletedSessionMessage ? (
+          <Card className="border-rose-400/20 bg-rose-400/10">
+            <CardContent className="px-6 py-6">
+              <div className="flex items-start gap-3 text-rose-100">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+                <div>
+                  <h2 className="text-lg font-semibold">Session deleted</h2>
+                  <p className="mt-2 text-sm leading-6">{deletedSessionMessage}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         ) : null}
 
         {normalizedJoinToken && isJoining && !session ? (
@@ -623,11 +704,17 @@ export function PlanningPokerRoom() {
                   participantCount={session.participants.length}
                   isRevealed={session.isRevealed}
                   isRevealing={isRevealing}
+                  isDeleting={isDeletingSession}
+                  recommendation={activeTask?.recommendedStoryPoints ?? null}
+                  recommendationOptions={VOTE_DECK_VALUES}
+                  isSelectingRecommendation={isSelectingRecommendation}
                   copyFeedback={copyFeedback}
                   statusMessage={revealStatusMessage}
                   errorMessage={currentParticipant?.isHost ? "" : roomError}
                   onCopyLink={handleCopyLink}
                   onReveal={handleReveal}
+                  onDelete={() => setIsDeleteDialogOpen(true)}
+                  onSelectRecommendation={handleSelectRecommendation}
                 />
 
                 <PlanningPokerParticipantList
@@ -635,39 +722,18 @@ export function PlanningPokerRoom() {
                   isRevealed={session.isRevealed}
                 />
 
-                <Card className="border-white/10 bg-slate-900/80 shadow-xl shadow-slate-950/20">
-                  <CardHeader className="space-y-2">
-                    <CardTitle className="flex items-center gap-2 text-white">
-                      <UsersRound className="h-4 w-4 text-cyan-200" aria-hidden="true" />
-                      Session snapshot
-                    </CardTitle>
-                    <CardDescription className="text-sm leading-6 text-slate-300">
-                      Current room metadata from the shared session snapshot.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                        Session
-                      </p>
-                      <p className="mt-2 text-sm font-medium text-white">{session.status}</p>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                        Active votes
-                      </p>
-                      <p className="mt-2 flex items-center gap-2 text-sm font-medium text-white">
-                        <Vote className="h-4 w-4 text-cyan-200" aria-hidden="true" />
-                        {votedCount}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
               </div>
             </div>
           </>
         ) : null}
       </div>
+
+      <PlanningPokerDeleteSessionDialog
+        isOpen={isDeleteDialogOpen}
+        isDeleting={isDeletingSession}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={() => void handleDeleteSession()}
+      />
     </main>
   );
 }

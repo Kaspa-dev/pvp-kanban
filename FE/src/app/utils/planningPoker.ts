@@ -1,4 +1,4 @@
-import { apiJson } from "./auth";
+import { apiJson, apiVoid } from "./auth";
 import { normalizeTask } from "./cards";
 import type { ApiTask, Card } from "./cards";
 
@@ -8,6 +8,12 @@ export interface PlanningPokerParticipant {
   isHost: boolean;
   isGuest: boolean;
   hasVoted: boolean;
+  revealedCardValue: number | null;
+}
+
+export interface PlanningPokerVoteSummary {
+  cardValue: number;
+  count: number;
 }
 
 export interface PlanningPokerSessionTask {
@@ -19,6 +25,7 @@ export interface PlanningPokerSessionTask {
   roundState: string;
   recommendedStoryPoints: number | null;
   appliedStoryPoints: number | null;
+  voteSummary: PlanningPokerVoteSummary[];
 }
 
 export interface PlanningPokerSession {
@@ -27,6 +34,7 @@ export interface PlanningPokerSession {
   joinToken: string;
   joinUrl: string;
   status: string;
+  isCurrentUserHost: boolean;
   activeTask: PlanningPokerSessionTask;
   queue: PlanningPokerSessionTask[];
   participants: PlanningPokerParticipant[];
@@ -67,4 +75,14 @@ export async function applyPlanningPokerRecommendation(
   );
 
   return normalizeTask(task);
+}
+
+export async function deletePlanningPokerSession(
+  boardId: number | string,
+): Promise<void> {
+  await apiVoid(
+    `/api/boards/${Number(boardId)}/planning-poker/session`,
+    { method: "DELETE" },
+    "Unable to delete the planning poker session right now.",
+  );
 }

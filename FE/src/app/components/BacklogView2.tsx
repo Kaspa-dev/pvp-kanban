@@ -26,9 +26,11 @@ interface BacklogViewProps {
   isPlanningPokerLoading: boolean;
   isPlanningPokerCreating: boolean;
   isPlanningPokerApplying: boolean;
+  isPlanningPokerDeleting: boolean;
   onCreatePlanningPokerSession: () => void;
   onRefreshPlanningPokerSession: () => void;
   onApplyPlanningPokerRecommendation: (sessionTaskId: number) => void;
+  onDeletePlanningPokerSession: () => void;
 }
 
 interface DragCardItem {
@@ -90,9 +92,11 @@ export function BacklogView2({
   isPlanningPokerLoading,
   isPlanningPokerCreating,
   isPlanningPokerApplying,
+  isPlanningPokerDeleting,
   onCreatePlanningPokerSession,
   onRefreshPlanningPokerSession,
   onApplyPlanningPokerRecommendation,
+  onDeletePlanningPokerSession,
 }: BacklogViewProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
@@ -162,9 +166,11 @@ export function BacklogView2({
             isLoading={isPlanningPokerLoading}
             isCreating={isPlanningPokerCreating}
             isApplyingRecommendation={isPlanningPokerApplying}
+            isDeleting={isPlanningPokerDeleting}
             onCreateSession={onCreatePlanningPokerSession}
             onRefreshSession={onRefreshPlanningPokerSession}
             onApplyRecommendation={onApplyPlanningPokerRecommendation}
+            onDeleteSession={onDeletePlanningPokerSession}
           />
         </div>
 

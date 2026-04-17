@@ -2,9 +2,11 @@ using System.Globalization;
 using System.Security.Claims;
 using BE.Data;
 using BE.DTOs;
+using BE.Hubs;
 using BE.Models;
 using BE.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BoardTaskStatus = BE.Models.TaskStatus;
@@ -15,10 +17,14 @@ namespace BE.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/[controller]")]
-public class BoardsController(AppDbContext context, IPlanningPokerSessionService planningPokerSessionService) : ControllerBase
+public class BoardsController(
+    AppDbContext context,
+    IPlanningPokerSessionService planningPokerSessionService,
+    IHubContext<PlanningPokerHub> planningPokerHubContext) : ControllerBase
 {
     private readonly AppDbContext _context = context;
     private readonly IPlanningPokerSessionService _planningPokerSessionService = planningPokerSessionService;
+    private readonly IHubContext<PlanningPokerHub> _planningPokerHubContext = planningPokerHubContext;
     private const int MaxBoardMembers = 20;
     private const int MaxBoardNameLength = 128;
     private const int MaxBoardDescriptionLength = 500;
@@ -287,6 +293,13 @@ public class BoardsController(AppDbContext context, IPlanningPokerSessionService
         {
             return BadRequest(new { message = exception.Message });
         }
+        catch (Exception)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                message = "Unable to create the planning poker session right now."
+            });
+        }
     }
 
     [HttpGet("{boardId:int}/planning-poker/session")]
@@ -313,6 +326,61 @@ public class BoardsController(AppDbContext context, IPlanningPokerSessionService
         catch (PlanningPokerValidationException exception)
         {
             return BadRequest(new { message = exception.Message });
+        }
+        catch (Exception)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                message = "Unable to load the planning poker session right now."
+            });
+        }
+    }
+
+    [HttpDelete("{boardId:int}/planning-poker/session")]
+    public async Task<IActionResult> DeletePlanningPokerSession(int boardId, CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            PlanningPokerDeletedSessionResult result = await _planningPokerSessionService.DeleteBoardSessionAsync(
+                boardId,
+                userId,
+                cancellationToken);
+            await _planningPokerHubContext.Clients
+                .Group(PlanningPokerHub.GetGroupNameForSession(result.SessionId))
+                .SendAsync(
+                    PlanningPokerHub.SessionDeletedEventName,
+                    new PlanningPokerSessionDeletedDto
+                    {
+                        BoardId = result.BoardId,
+                        Message = "This planning poker session was deleted by the host.",
+                    },
+                    cancellationToken);
+
+            return NoContent();
+        }
+        catch (PlanningPokerNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (PlanningPokerAccessDeniedException)
+        {
+            return Forbid();
+        }
+        catch (PlanningPokerValidationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+        catch (Exception)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                message = "Unable to delete the planning poker session right now."
+            });
         }
     }
 
@@ -347,6 +415,13 @@ public class BoardsController(AppDbContext context, IPlanningPokerSessionService
         catch (PlanningPokerValidationException exception)
         {
             return BadRequest(new { message = exception.Message });
+        }
+        catch (Exception)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                message = "Unable to apply the planning poker recommendation right now."
+            });
         }
     }
 
