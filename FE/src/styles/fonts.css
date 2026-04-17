@@ -1,0 +1,8 @@
+@import url("https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@500;600;700&display=swap");
+
+@layer utilities {
+  .font-ui-condensed {
+    font-family: "Roboto Condensed", "Arial Narrow", "Aptos Narrow", "Helvetica Neue", Arial, sans-serif;
+    font-kerning: normal;
+  }
+}

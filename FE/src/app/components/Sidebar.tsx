@@ -1,6 +1,7 @@
 import { Plus } from "lucide-react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { BoardLogo } from "./BoardLogo";
+import { OverflowTooltip } from "./OverflowTooltip";
 import { BoardLogoColorKey, BoardLogoIconKey } from "../utils/boardIdentity";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
@@ -76,9 +77,11 @@ export function Sidebar({
             ) : (
               <div className="flex w-full min-w-0 items-center gap-2.5">
                 <BoardLogo iconKey={boardLogoIconKey} colorKey={boardLogoColorKey} size="md" />
-                <h2 className={`min-w-0 flex-1 truncate text-sm font-semibold ${currentTheme.text}`}>
-                  {boardName ?? "Untitled Board"}
-                </h2>
+                <OverflowTooltip
+                  as="h2"
+                  text={boardName ?? "Untitled Board"}
+                  className={`min-w-0 flex-1 truncate text-sm font-semibold ${currentTheme.text}`}
+                />
               </div>
             )}
           </div>
