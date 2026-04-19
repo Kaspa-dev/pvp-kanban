@@ -190,13 +190,14 @@ export function UserSearchPicker({
       </div>
 
       {isOpen && normalizedQuery && (
-        <div className={`absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-2xl border ${currentTheme.border} ${currentTheme.cardBg} shadow-2xl`}>
+        <div className={`mt-3 overflow-hidden rounded-2xl border ${currentTheme.border} ${currentTheme.cardBg} shadow-lg`}>
           {error ? (
             <div className="px-4 py-3 text-sm text-red-600">{error}</div>
           ) : !isLoading && visibleResults.length === 0 ? (
             <div className={`px-4 py-3 text-sm ${currentTheme.textMuted}`}>No users found.</div>
           ) : (
-            <CustomScrollArea viewportClassName="max-h-64 py-2 pr-1">
+            <CustomScrollArea viewportClassName="max-h-64 py-2">
+              <div className="-mr-3">
               {visibleResults.map((user, index) => {
                 const isHighlighted = index === highlightedIndex;
 
@@ -205,11 +206,12 @@ export function UserSearchPicker({
                     key={user.id}
                     type="button"
                     onMouseDown={(event) => event.preventDefault()}
+                    onMouseEnter={() => setHighlightedIndex(index)}
                     onClick={() => handleSelectUser(user)}
                     className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors ${
                       isHighlighted
                         ? `${currentTheme.primaryBg} ${currentTheme.primaryText}`
-                        : `${currentTheme.text} hover:${currentTheme.bgSecondary}`
+                        : `${currentTheme.text} ${isDarkMode ? "hover:bg-zinc-800/80" : "hover:bg-slate-50"}`
                     }`}
                   >
                     <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${currentTheme.primary} text-sm font-bold text-white`}>
@@ -224,6 +226,7 @@ export function UserSearchPicker({
                   </button>
                 );
               })}
+              </div>
             </CustomScrollArea>
           )}
         </div>

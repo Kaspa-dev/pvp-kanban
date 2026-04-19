@@ -7,7 +7,9 @@ type OverflowTooltipProps<T extends ElementType = "span"> = {
   className?: string;
   tooltipClassName?: string;
   side?: "top" | "right" | "bottom" | "left";
+  align?: "start" | "center" | "end";
   sideOffset?: number;
+  delayDuration?: number;
 } & Omit<ComponentPropsWithoutRef<T>, "as" | "children" | "className">;
 
 export function OverflowTooltip<T extends ElementType = "span">({
@@ -16,13 +18,15 @@ export function OverflowTooltip<T extends ElementType = "span">({
   className,
   tooltipClassName,
   side = "top",
+  align = "center",
   sideOffset = 8,
+  delayDuration,
   ...rest
 }: OverflowTooltipProps<T>) {
   const Component = (as ?? "span") as ElementType;
 
   return (
-    <Tooltip>
+    <Tooltip delayDuration={delayDuration}>
       <TooltipTrigger asChild>
         <Component className={className} {...rest}>
           {text}
@@ -30,6 +34,7 @@ export function OverflowTooltip<T extends ElementType = "span">({
       </TooltipTrigger>
       <TooltipContent
         side={side}
+        align={align}
         sideOffset={sideOffset}
         className={tooltipClassName ?? "max-w-none whitespace-nowrap"}
       >

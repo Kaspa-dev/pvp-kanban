@@ -52,6 +52,8 @@ import {
 import { TaskLabelSummary } from "./TaskLabelSummary";
 import { TaskIndexHeaderCell } from "./TaskIndexHeaderCell";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
+import { getIconActionButtonClassName } from "./iconActionButtonStyles";
+import { WorkspaceClearButton, WorkspaceFilterChip } from "./WorkspaceFilterChip";
 
 type ListCard = Card & {
   priority?: Priority;
@@ -458,7 +460,7 @@ export function ListView({
   const toolbarLabelClassName = `text-[11px] font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`;
   const toolbarControlClassName = `h-11 rounded-xl border ${currentTheme.inputBorder} ${currentTheme.inputBg} ${currentTheme.text}`;
   const primaryActionButtonClassName = `group relative inline-flex items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r font-bold text-white shadow-lg transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} ${currentTheme.primary}`;
-  const iconActionButtonClassName = `${currentTheme.textMuted} hover:${currentTheme.text} inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${isDarkMode ? "hover:bg-white/[0.05]" : "hover:bg-slate-100"}`;
+  const iconActionButtonClassName = getIconActionButtonClassName(currentTheme);
   const rowTextActionButtonClassName = `inline-flex h-8 items-center justify-center rounded-lg border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-0 ${currentTheme.focus} ${currentTheme.border} ${currentTheme.textSecondary} ${isDarkMode ? "bg-white/[0.03] hover:bg-white/[0.06]" : "bg-slate-50 hover:bg-white"} hover:${currentTheme.text}`;
   const tableSectionTitleClassName = `text-sm font-semibold tracking-[0.01em] ${currentTheme.text}`;
   const taskIndexHeaderTextClassName = currentTheme.textSecondary;
@@ -524,25 +526,19 @@ export function ListView({
                 <span className={toolbarLabelClassName}>Quick filters</span>
                 <div className="flex flex-wrap items-center gap-2 xl:min-h-11">
                   {[
-                    { id: "all" as const, label: "All tasks" },
-                    { id: "assigned" as const, label: "Assigned to me" },
-                    { id: "due" as const, label: "Due this week" },
+                    { id: "all" as const, label: "All tasks", tooltip: "Show every task in this view" },
+                    { id: "assigned" as const, label: "Assigned to me", tooltip: "Show only tasks assigned to you" },
+                    { id: "due" as const, label: "Due this week", tooltip: "Show tasks due within the next 7 days" },
                   ].map((filter) => {
                     const isActive = filters.quickFilter === filter.id;
                     return (
-                      <button
+                      <WorkspaceFilterChip
                         key={filter.id}
-                        type="button"
+                        label={filter.label}
+                        isActive={isActive}
                         onClick={() => setQuickFilter(filter.id)}
-                        className={`rounded-full border px-4 py-2 text-sm font-medium transition-all ${
-                          isActive
-                            ? `${currentTheme.primaryBg} ${currentTheme.primaryText} ${currentTheme.primaryBorder}`
-                            : `${currentTheme.bg} ${currentTheme.textSecondary} ${currentTheme.border} hover:${currentTheme.borderHover}`
-                        }`}
-                        aria-pressed={isActive}
-                      >
-                        {filter.label}
-                      </button>
+                        tooltip={filter.tooltip}
+                      />
                     );
                   })}
                 </div>
@@ -553,25 +549,19 @@ export function ListView({
                   <span className={toolbarLabelClassName}>Queue</span>
                   <div className="flex flex-wrap items-center gap-2 xl:min-h-11">
                     {[
-                      { id: "all" as const, label: "All" },
-                      { id: "waiting" as const, label: "Waiting" },
-                      { id: "queued" as const, label: "Queued" },
+                      { id: "all" as const, label: "All", tooltip: "Show every backlog task" },
+                      { id: "waiting" as const, label: "Waiting", tooltip: "Show backlog tasks not yet queued" },
+                      { id: "queued" as const, label: "Queued", tooltip: "Show backlog tasks already staged in the queue" },
                     ].map((filter) => {
                       const isActive = (filters as BacklogWorkspaceFilters).stageFilter === filter.id;
                       return (
-                        <button
+                        <WorkspaceFilterChip
                           key={filter.id}
-                          type="button"
+                          label={filter.label}
+                          isActive={isActive}
                           onClick={() => setStageFilter(filter.id)}
-                          className={`rounded-full border px-4 py-2 text-sm font-medium transition-all ${
-                            isActive
-                              ? `${currentTheme.primaryBg} ${currentTheme.primaryText} ${currentTheme.primaryBorder}`
-                              : `${currentTheme.bg} ${currentTheme.textSecondary} ${currentTheme.border} hover:${currentTheme.borderHover}`
-                          }`}
-                          aria-pressed={isActive}
-                        >
-                          {filter.label}
-                        </button>
+                          tooltip={filter.tooltip}
+                        />
                       );
                     })}
                   </div>
@@ -647,26 +637,12 @@ export function ListView({
             </div>
 
             <div className="xl:ml-auto xl:pt-[1.625rem]">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={clearCurrentFilters}
-                    className={`inline-flex h-11 items-center justify-center gap-2 rounded-full border px-4 text-sm font-medium transition-all ${
-                      hasActiveFilters
-                        ? `${currentTheme.bg} ${currentTheme.textSecondary} ${currentTheme.border} hover:${currentTheme.borderHover}`
-                        : `${currentTheme.bg} ${currentTheme.textMuted} ${currentTheme.border}`
-                    }`}
-                    disabled={!hasActiveFilters}
-                  >
-                    <span>Clear</span>
-                    <kbd className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${currentTheme.border} ${currentTheme.textMuted}`}>Esc</kbd>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={8}>
-                  {isBacklogMode ? "Reset backlog filters" : "Reset list filters"}
-                </TooltipContent>
-              </Tooltip>
+              <WorkspaceClearButton
+                onClick={clearCurrentFilters}
+                disabled={!hasActiveFilters}
+                tooltip={isBacklogMode ? "Reset backlog filters" : "Reset list filters"}
+                shortcut={<kbd className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${currentTheme.border} ${currentTheme.textMuted}`}>Esc</kbd>}
+              />
             </div>
           </div>
 

@@ -10,6 +10,7 @@ import { format, parseISO } from "date-fns";
 import { PriorityBadge } from "./PriorityBadge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { TaskLabelSummary } from "./TaskLabelSummary";
+import { getIconActionButtonClassName } from "./iconActionButtonStyles";
 
 interface KanbanCardProps {
   id: number;
@@ -85,7 +86,7 @@ export function KanbanCard({
   const taskTypeDisplay = getTaskTypeDisplay();
   const hasTopMeta = Boolean(storyPoints || cardLabels.length > 0 || taskTypeDisplay || formattedDueDate || priorityIndicator);
   const canMoveToBacklog = columnId !== "backlog" && columnId !== "queue" && Boolean(onMoveToBacklog);
-  const actionButtonClassName = `${currentTheme.textMuted} hover:${currentTheme.primaryText} cursor-pointer transition-colors p-1 rounded hover:${isDarkMode ? "bg-gray-700" : "bg-gray-100"}`;
+  const actionButtonClassName = getIconActionButtonClassName(currentTheme);
   const deleteButtonClassName = actionButtonClassName;
 
   return (

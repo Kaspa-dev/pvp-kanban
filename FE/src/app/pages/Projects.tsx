@@ -35,6 +35,12 @@ import { SettingsModal } from "../components/SettingsModal";
 import { ConfirmDeleteProjectDialog } from "../components/ConfirmDeleteProjectDialog";
 import { CoachmarkOverlay } from "../components/CoachmarkOverlay";
 import { Toolbar } from "../components/Toolbar";
+import { getIconActionButtonClassName } from "../components/iconActionButtonStyles";
+import { WorkspaceClearButton, WorkspaceFilterChip } from "../components/WorkspaceFilterChip";
+import {
+  getNeutralElevatedCardHoverClassName,
+  getNeutralElevatedCardSurfaceClassName,
+} from "../components/cardSurfaceStyles";
 import { getProjectsCoachmarkFlow, useProjectsCoachmarks } from "../hooks/useProjectsCoachmarks";
 import {
   Select,
@@ -57,6 +63,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "../components/ui/tooltip";
+import { Skeleton } from "../components/ui/skeleton";
 import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
 
 function isEditableKeyboardTarget(target: EventTarget | null): boolean {
@@ -77,6 +84,7 @@ function isEditableKeyboardTarget(target: EventTarget | null): boolean {
 const BOARD_PAGE_SIZE = 8;
 const DEFAULT_MEMBERSHIP_FILTER: BoardMembershipFilter = "all";
 const DEFAULT_SORT: BoardSort = "newest";
+const PROJECTS_TOOLTIP_DELAY = 500;
 
 const EMPTY_BOARD_LIST_RESPONSE: PagedBoardListResponse = {
   items: [],
@@ -175,6 +183,36 @@ function getResultsSummaryText(page: number, pageSize: number, totalItems: numbe
   return `Showing ${start}-${end} of ${totalItems} boards`;
 }
 
+function BoardCardSkeleton({ isDarkMode }: { isDarkMode: boolean }) {
+  return (
+    <div
+      className={`relative min-h-[17.5rem] w-full overflow-hidden rounded-2xl border-2 p-6 ${
+        isDarkMode ? "border-white/8 bg-neutral-950/95" : "border-slate-200 bg-white"
+      }`}
+      aria-hidden="true"
+    >
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-14 w-14 rounded-2xl" />
+        </div>
+        <Skeleton className="h-5 w-5 rounded-md" />
+      </div>
+
+      <div className="space-y-3">
+        <Skeleton className="h-6 w-3/4 rounded-md" />
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-full rounded-md" />
+          <Skeleton className="h-4 w-2/3 rounded-md" />
+        </div>
+      </div>
+
+      <div className="mt-8">
+        <Skeleton className="h-8 w-28 rounded-full" />
+      </div>
+    </div>
+  );
+}
+
 export function Projects() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -187,6 +225,9 @@ export function Projects() {
   } = useUserPreferences();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
+  const boardCardActionButtonClassName = `${getIconActionButtonClassName(currentTheme)} ${currentTheme.bgSecondary} opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 hover:shadow-sm`;
+  const boardCardSurfaceClassName = getNeutralElevatedCardSurfaceClassName(isDarkMode);
+  const boardCardHoverClassName = getNeutralElevatedCardHoverClassName(currentTheme, isDarkMode);
 
   const queryState = useMemo(() => parseProjectsQueryState(searchParams), [searchParams]);
 
@@ -305,7 +346,11 @@ export function Projects() {
     isLoadingBoards || boardList.summary.activeProjects > 0 || hasActiveFilters;
   const isInitialBoardsLoad = isLoadingBoards && !hasLoadedBoardsOnce;
   const isRefreshingBoards = isLoadingBoards && hasLoadedBoardsOnce;
+  const renderInitialBoardsLoad = isInitialBoardsLoad;
+  const renderRefreshingBoards = isRefreshingBoards;
   const effectiveTotalPages = Math.max(boardList.totalPages, 1);
+  const shouldShowPaginationFooter = !renderInitialBoardsLoad && boardList.summary.activeProjects > 0;
+  const disablePaginationFooter = boardList.items.length === 0 || effectiveTotalPages <= 1;
 
   const paginationItems = useMemo(
     () => buildPaginationItems(effectiveTotalPages, boardList.page),
@@ -540,13 +585,10 @@ export function Projects() {
 
           <div className="relative z-10 flex items-center justify-between flex-wrap gap-6">
             <div className="flex-1 min-w-[280px]">
-              <div className="flex items-center gap-3 mb-3">
-                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${currentTheme.primary} flex items-center justify-center shadow-lg`}>
-                  <Users className="w-6 h-6 text-white" />
-                </div>
+              <div className="mb-3">
                 <h2 className={`text-4xl font-bold ${currentTheme.text}`}>Welcome back, {user.firstName}!</h2>
               </div>
-              <p className={`text-lg ${currentTheme.textSecondary} ml-[60px]`}>
+              <p className={`text-lg ${currentTheme.textSecondary}`}>
                 Manage your boards and bring your projects to life
               </p>
             </div>
@@ -555,7 +597,7 @@ export function Projects() {
               data-coachmark="projects-create-board"
               className={`flex items-center gap-2.5 px-7 py-3.5 bg-gradient-to-r ${currentTheme.primary} text-white font-bold rounded-xl hover:scale-105 hover:shadow-2xl transition-all shadow-lg group`}
             >
-              <Tooltip>
+              <Tooltip delayDuration={PROJECTS_TOOLTIP_DELAY}>
                 <TooltipTrigger asChild>
                   <span className="inline-flex items-center gap-2.5">
                     <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
@@ -579,7 +621,11 @@ export function Projects() {
                       <Icon className={`w-5 h-5 ${currentTheme.primaryText}`} />
                     </div>
                     <div>
-                      <p className={`text-2xl font-bold ${currentTheme.text}`}>{isInitialBoardsLoad ? "..." : indicator.value}</p>
+                      {renderInitialBoardsLoad ? (
+                        <Skeleton className="mb-1 h-7 w-14 rounded-md" />
+                      ) : (
+                        <p className={`text-2xl font-bold ${currentTheme.text}`}>{indicator.value}</p>
+                      )}
                       <p className={`text-xs ${currentTheme.textMuted}`}>{indicator.label}</p>
                     </div>
                   </div>
@@ -597,7 +643,7 @@ export function Projects() {
 
         {shouldShowToolbar && (
           <div
-            className={`${currentTheme.cardBg} rounded-2xl border ${currentTheme.border} p-5 mb-8 shadow-sm`}
+            className={`mb-8 border-y ${currentTheme.border} py-4`}
             data-coachmark="projects-search-filters"
           >
             <div className="flex flex-col gap-5">
@@ -605,134 +651,100 @@ export function Projects() {
                 <div>
                   <h3 className={`text-base font-semibold ${currentTheme.text}`}>Browse boards</h3>
                 </div>
-                <div className="flex items-center gap-3">
-                  {isRefreshingBoards && (
-                    <p className={`text-xs ${currentTheme.primaryText} animate-pulse`}>
-                      Updating results...
-                    </p>
-                  )}
-                  <p className={`text-xs ${currentTheme.textMuted}`}>
-                    Page {boardList.page}{boardList.totalPages > 0 ? ` of ${boardList.totalPages}` : ""}
-                  </p>
-                </div>
               </div>
 
-              <div className={`rounded-xl border ${currentTheme.border} ${currentTheme.bgSecondary} px-4 py-4`}>
-                <div className="flex flex-col gap-4 xl:flex-row xl:items-end">
-                  <div className="flex min-w-0 flex-col gap-2 xl:flex-[1.35]">
-                    <span className={`mb-2 block text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Search</span>
-                    <div className="relative min-w-0 flex-1">
-                      <Search className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${currentTheme.textMuted}`} />
-                      <input
-                        type="text"
-                        value={searchInput}
-                        onChange={(event) => setSearchInput(event.target.value)}
-                        placeholder="Search by board name or description"
-                        className={`h-11 w-full rounded-xl border ${currentTheme.inputBorder} ${currentTheme.inputBg} pl-10 pr-4 text-sm ${currentTheme.text} placeholder:${currentTheme.textMuted} focus:outline-none focus:ring-2 ${currentTheme.focus}`}
-                      />
-                    </div>
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-end">
+                <div className="flex min-w-0 flex-col gap-2 xl:flex-[1.35]">
+                  <span className={`mb-2 block text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Search</span>
+                  <div className="relative min-w-0 flex-1">
+                    <Search className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${currentTheme.textMuted}`} />
+                    <input
+                      type="text"
+                      value={searchInput}
+                      onChange={(event) => setSearchInput(event.target.value)}
+                      placeholder="Search by board name or description"
+                      className={`h-11 w-full rounded-xl border ${currentTheme.inputBorder} ${currentTheme.inputBg} pl-10 pr-4 text-sm ${currentTheme.text} placeholder:${currentTheme.textMuted} focus:outline-none focus:ring-2 ${currentTheme.focus}`}
+                    />
                   </div>
+                </div>
 
-                  <label className="block xl:w-52 xl:flex-none">
-                    <span className={`mb-2 block text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Sort by</span>
+                <label className="block xl:w-52 xl:flex-none">
+                  <span className={`mb-2 block text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Sort by</span>
                     <Select value={queryState.sort} onValueChange={(value) => handleQueryStateChange({ sort: value as BoardSort, page: 1 })}>
                       <SelectTrigger
-                        className={`h-11 rounded-xl border ${workspaceSurface.inputSurfaceClassName} ${currentTheme.text} data-[size=default]:h-11 px-4 py-0 shadow-none transition-colors hover:${currentTheme.borderHover} focus:ring-2 ${currentTheme.focus} [&_[data-slot=select-value]]:text-left dark:!bg-zinc-950 dark:hover:!bg-zinc-950`}
+                        className={`h-11 rounded-xl border ${workspaceSurface.inputSurfaceClassName} ${currentTheme.text} data-[size=default]:h-11 px-4 py-0 shadow-none transition-colors hover:${currentTheme.primaryBorder} hover:${currentTheme.primaryText} hover:${currentTheme.primaryBg} focus:ring-2 ${currentTheme.focus} [&_[data-slot=select-value]]:text-left dark:!bg-zinc-950 dark:hover:!bg-zinc-950`}
                         style={{
                           ...workspaceSurface.inputSurfaceStyle,
                           backgroundColor: isDarkMode ? "#09090b" : "#ffffff",
                         }}
                       >
-                        <SelectValue placeholder="Sort boards" />
-                      </SelectTrigger>
+                      <SelectValue placeholder="Sort boards" />
+                    </SelectTrigger>
                       <SelectContent
                         className={`rounded-xl border ${currentTheme.border} ${currentTheme.cardBg} shadow-xl`}
                       >
-                        <SelectItem className={`rounded-lg ${currentTheme.textSecondary} focus:${currentTheme.bgSecondary} focus:${currentTheme.text}`} value="newest">Newest</SelectItem>
-                        <SelectItem className={`rounded-lg ${currentTheme.textSecondary} focus:${currentTheme.bgSecondary} focus:${currentTheme.text}`} value="nameAsc">Name A-Z</SelectItem>
-                        <SelectItem className={`rounded-lg ${currentTheme.textSecondary} focus:${currentTheme.bgSecondary} focus:${currentTheme.text}`} value="nameDesc">Name Z-A</SelectItem>
+                      <SelectItem className={`rounded-lg ${currentTheme.textSecondary} focus:${currentTheme.primaryBg} focus:${currentTheme.primaryText} data-[highlighted]:${currentTheme.primaryBg} data-[highlighted]:${currentTheme.primaryText}`} value="newest">Newest</SelectItem>
+                      <SelectItem className={`rounded-lg ${currentTheme.textSecondary} focus:${currentTheme.primaryBg} focus:${currentTheme.primaryText} data-[highlighted]:${currentTheme.primaryBg} data-[highlighted]:${currentTheme.primaryText}`} value="nameAsc">Name A-Z</SelectItem>
+                      <SelectItem className={`rounded-lg ${currentTheme.textSecondary} focus:${currentTheme.primaryBg} focus:${currentTheme.primaryText} data-[highlighted]:${currentTheme.primaryBg} data-[highlighted]:${currentTheme.primaryText}`} value="nameDesc">Name Z-A</SelectItem>
                       </SelectContent>
                     </Select>
                   </label>
 
-                  <div className="flex min-w-0 flex-col gap-2 xl:flex-1">
-                    <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
-                      Quick filters
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2 xl:min-h-11">
-                      {([
-                        { label: "All", value: "all", shortcut: null },
-                        { label: "Owned by me", value: "owned", shortcut: "1" },
-                        { label: "Shared with me", value: "shared", shortcut: "2" },
-                      ] as Array<{ label: string; value: BoardMembershipFilter; shortcut: string | null }>).map((filter) => {
-                        const isActive = queryState.membership === filter.value;
-                        return (
-                          <Tooltip key={filter.value}>
-                            <TooltipTrigger asChild>
-                              <button
-                                type="button"
-                                onClick={() => handleQueryStateChange({ membership: filter.value, page: 1 })}
-                                className={`rounded-full border px-4 py-2 text-sm font-medium transition-all ${
-                                  isActive
-                                    ? `${currentTheme.primaryBg} ${currentTheme.primaryText} ${currentTheme.primaryBorder}`
-                                    : `${currentTheme.bg} ${currentTheme.textSecondary} ${currentTheme.border} hover:${currentTheme.borderHover}`
-                                }`}
-                                aria-pressed={isActive}
-                              >
-                                <span className="inline-flex items-center gap-2">
-                                  <span>{filter.label}</span>
-                                  {filter.shortcut && (
-                                    <kbd className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${currentTheme.border} ${currentTheme.textMuted}`}>
-                                      {filter.shortcut}
-                                    </kbd>
-                                  )}
-                                </span>
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" sideOffset={8}>
-                              {filter.value === "all"
-                                ? "Show every board you belong to"
-                                : filter.value === "owned"
-                                  ? "Show only boards you own"
-                                  : "Show boards shared with you by other owners"}
-                            </TooltipContent>
-                          </Tooltip>
-                        );
-                      })}
+                <div className="flex min-w-0 flex-col gap-2 xl:flex-1">
+                  <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+                    Quick filters
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 xl:min-h-11">
+                    {([
+                      { label: "All", value: "all", shortcut: null },
+                      { label: "Owned by me", value: "owned", shortcut: "1" },
+                      { label: "Shared with me", value: "shared", shortcut: "2" },
+                    ] as Array<{ label: string; value: BoardMembershipFilter; shortcut: string | null }>).map((filter) => {
+                      const isActive = queryState.membership === filter.value;
+                      return (
+                        <WorkspaceFilterChip
+                          key={filter.value}
+                          label={filter.label}
+                          isActive={isActive}
+                          onClick={() => handleQueryStateChange({ membership: filter.value, page: 1 })}
+                          delayDuration={PROJECTS_TOOLTIP_DELAY}
+                          tooltip={
+                            filter.value === "all"
+                              ? "Show every board you belong to"
+                              : filter.value === "owned"
+                                ? "Show only boards you own"
+                                : "Show boards shared with you by other owners"
+                          }
+                          shortcut={
+                            filter.shortcut ? (
+                              <kbd className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${currentTheme.border} ${currentTheme.textMuted}`}>
+                                {filter.shortcut}
+                              </kbd>
+                            ) : undefined
+                          }
+                        />
+                      );
+                    })}
 
-                    </div>
                   </div>
+                </div>
 
-                  <div className="xl:ml-auto xl:pt-[1.625rem]">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={clearFilters}
-                          disabled={!hasActiveFilters}
-                          className={`inline-flex h-11 items-center justify-center gap-2 rounded-full border px-4 text-sm font-medium transition-all ${
-                            hasActiveFilters
-                              ? `${currentTheme.bg} ${currentTheme.textSecondary} ${currentTheme.border} hover:${currentTheme.borderHover}`
-                              : `${currentTheme.bg} ${currentTheme.textMuted} ${currentTheme.border}`
-                          }`}
-                        >
-                          <span className="inline-flex items-center gap-2">
-                            <span>Clear</span>
-                            <kbd className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${currentTheme.border} ${currentTheme.textMuted}`}>Esc</kbd>
-                          </span>
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" sideOffset={8}>
-                        {hasActiveFilters
-                          ? "Reset search, filters, sorting, and return to the first page"
-                          : "No filters are active right now"}
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
+                <div className="xl:ml-auto xl:pt-[1.625rem]">
+                  <WorkspaceClearButton
+                    onClick={clearFilters}
+                    disabled={!hasActiveFilters}
+                    delayDuration={PROJECTS_TOOLTIP_DELAY}
+                    tooltip={
+                      hasActiveFilters
+                        ? "Reset search, filters, sorting, and return to the first page"
+                        : "No filters are active right now"
+                    }
+                    shortcut={<kbd className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${currentTheme.border} ${currentTheme.textMuted}`}>Esc</kbd>}
+                  />
                 </div>
               </div>
 
-              <div className={`flex flex-wrap items-center justify-between gap-3 border-t ${currentTheme.border} pt-4`}>
+              <div className={`flex flex-wrap items-center justify-end gap-3 border-t ${currentTheme.border} pt-4`}>
                 <p className={`text-xs ${currentTheme.textSecondary}`}>
                   {getResultsSummaryText(boardList.page, boardList.pageSize, boardList.totalItems)}
                 </p>
@@ -741,9 +753,14 @@ export function Projects() {
           </div>
         )}
 
-        {isInitialBoardsLoad ? (
-          <div className="text-center py-20">
-            <p className={currentTheme.textMuted}>Loading projects...</p>
+        {renderInitialBoardsLoad ? (
+          <div
+            className="grid content-start gap-7 md:grid-cols-2 lg:min-h-[57rem] lg:grid-cols-3 xl:min-h-[37.5rem] xl:grid-cols-4"
+            aria-label="Loading boards"
+          >
+            {Array.from({ length: BOARD_PAGE_SIZE }, (_, index) => (
+              <BoardCardSkeleton key={index} isDarkMode={isDarkMode} />
+            ))}
           </div>
         ) : boardList.summary.activeProjects === 0 ? (
           <div className="text-center py-20">
@@ -760,24 +777,19 @@ export function Projects() {
             </button>
           </div>
         ) : boardList.items.length === 0 ? (
-          <div className="text-center py-20">
-            <Folder className={`w-16 h-16 ${currentTheme.textMuted} mx-auto mb-4`} />
-            <h3 className={`text-xl font-semibold ${currentTheme.textSecondary} mb-2`}>No boards match these filters</h3>
-            <p className={`${currentTheme.textMuted} mb-6`}>
-              Try clearing a filter or broadening your search to see more boards.
-            </p>
-            <button
-              onClick={clearFilters}
-              className={`inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r ${currentTheme.primary} text-white font-bold rounded-xl hover:scale-105 transition-all shadow-lg`}
-            >
-              <FilterX className="w-5 h-5" />
-              Clear filters
-            </button>
+          <div className="flex min-h-[57rem] items-center justify-center xl:min-h-[37.5rem]">
+            <div className="text-center py-20">
+              <Folder className={`w-16 h-16 ${currentTheme.textMuted} mx-auto mb-4`} />
+              <h3 className={`text-xl font-semibold ${currentTheme.textSecondary} mb-2`}>No boards match these filters</h3>
+              <p className={`${currentTheme.textMuted} mb-6`}>
+                Try clearing a filter or broadening your search to see more boards.
+              </p>
+            </div>
           </div>
         ) : (
           <>
             <div
-              className={`grid content-start gap-7 transition-opacity duration-200 md:grid-cols-2 lg:min-h-[57rem] lg:grid-cols-3 xl:min-h-[37.5rem] xl:grid-cols-4 ${isRefreshingBoards ? "opacity-70" : "opacity-100"}`}
+              className={`grid content-start gap-7 transition-opacity duration-200 md:grid-cols-2 lg:min-h-[57rem] lg:grid-cols-3 xl:min-h-[37.5rem] xl:grid-cols-4 ${renderRefreshingBoards ? "opacity-70" : "opacity-100"}`}
               data-coachmark="projects-board-grid"
             >
               {boardList.items.map((board: BoardListItem, index) => {
@@ -787,7 +799,7 @@ export function Projects() {
                   <div
                     key={board.id}
                     data-coachmark={index === 0 ? "projects-board-card" : undefined}
-                    className={`relative min-h-[17.5rem] w-full overflow-hidden ${currentTheme.cardBg} rounded-2xl border-2 ${currentTheme.border} p-6 hover:${currentTheme.primaryBorder} hover:shadow-xl hover:-translate-y-1 transition-all duration-300 text-left group`}
+                    className={`relative min-h-[17.5rem] w-full overflow-hidden ${boardCardSurfaceClassName} rounded-2xl border-2 ${currentTheme.border} p-6 transition-all duration-300 text-left group ${boardCardHoverClassName}`}
                   >
                     {canManageBoard && (
                       <>
@@ -796,9 +808,9 @@ export function Projects() {
                             event.stopPropagation();
                             handleEditBoard(board);
                           }}
-                          className={`absolute top-4 right-4 p-2 ${currentTheme.bgSecondary} ${currentTheme.textSecondary} rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 hover:shadow-sm ${currentTheme.accentIconButtonHover}`}
+                          className={`absolute top-4 right-4 ${boardCardActionButtonClassName}`}
                         >
-                          <Tooltip>
+                          <Tooltip delayDuration={PROJECTS_TOOLTIP_DELAY}>
                             <TooltipTrigger asChild>
                               <span className="inline-flex">
                                 <Edit3 className="w-4 h-4" />
@@ -814,9 +826,9 @@ export function Projects() {
                             setBoardToDelete(board);
                             setIsDeleteDialogOpen(true);
                           }}
-                          className={`absolute top-4 right-14 p-2 ${currentTheme.bgSecondary} ${currentTheme.textSecondary} rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 hover:shadow-sm ${currentTheme.accentIconButtonHover}`}
+                          className={`absolute top-4 right-14 ${boardCardActionButtonClassName}`}
                         >
-                          <Tooltip>
+                          <Tooltip delayDuration={PROJECTS_TOOLTIP_DELAY}>
                             <TooltipTrigger asChild>
                               <span className="inline-flex">
                                 <Trash2 className="w-4 h-4 transition-colors" />
@@ -850,15 +862,26 @@ export function Projects() {
                           as="h3"
                           text={board.name}
                           className={`mb-2 text-xl font-bold ${currentTheme.text} truncate transition-colors duration-300 group-hover:${currentTheme.primaryText}`}
+                          align="start"
+                          delayDuration={PROJECTS_TOOLTIP_DELAY}
                         />
-                        <p
-                          className={`text-sm ${currentTheme.textSecondary} mb-4 min-h-[2.5rem] overflow-hidden text-ellipsis`}
-                          style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}
-                        >
-                          {board.description || "No description"}
-                        </p>
+                        <OverflowTooltip
+                          as="p"
+                          text={board.description || "No description"}
+                          className={`text-sm ${currentTheme.textSecondary} mb-4 min-h-[3.75rem] overflow-hidden break-all`}
+                          style={{
+                            display: "-webkit-box",
+                            WebkitLineClamp: 3,
+                            WebkitBoxOrient: "vertical",
+                            overflowWrap: "anywhere",
+                            wordBreak: "break-word",
+                          }}
+                          tooltipClassName="max-w-md whitespace-normal break-words"
+                          align="start"
+                          delayDuration={PROJECTS_TOOLTIP_DELAY}
+                        />
 
-                        <Tooltip>
+                        <Tooltip delayDuration={PROJECTS_TOOLTIP_DELAY}>
                           <TooltipTrigger asChild>
                             <div
                               className={`mt-4 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-all ${
@@ -887,89 +910,98 @@ export function Projects() {
               })}
             </div>
 
-            <div className="mt-10 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-              <div className="flex items-center gap-2 whitespace-nowrap">
-                <kbd className={`rounded-md border px-2 py-1 text-[10px] font-semibold ${currentTheme.border} ${currentTheme.textMuted}`}>Shift</kbd>
-                <span className={`text-xs ${currentTheme.textMuted}`}>Previous page</span>
-                <kbd className={`ml-2 rounded-md border px-2 py-1 text-[10px] font-semibold ${currentTheme.border} ${currentTheme.textMuted}`}>Tab</kbd>
-                <span className={`text-xs ${currentTheme.textMuted}`}>Next page</span>
-              </div>
-              <div className="justify-self-center">
-                <Pagination>
-                  <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      href={createPageHref(Math.max(boardList.page - 1, 1))}
-                      aria-disabled={boardList.page === 1}
-                      className={`${
-                        boardList.page === 1
-                          ? "pointer-events-none opacity-50"
-                          : `${currentTheme.textSecondary} hover:${currentTheme.primaryText} hover:${currentTheme.primaryBg} border ${currentTheme.border}`
-                      }`}
-                      onClick={(event) => {
-                        if (boardList.page === 1) {
-                          event.preventDefault();
-                          return;
-                        }
-
-                        event.preventDefault();
-                        handlePageChange(boardList.page - 1);
-                      }}
-                    />
-                  </PaginationItem>
-
-                  {paginationItems.map((item, index) =>
-                    item === "ellipsis" ? (
-                      <PaginationItem key={`ellipsis-${index}`}>
-                        <PaginationEllipsis />
-                      </PaginationItem>
-                    ) : (
-                      <PaginationItem key={item}>
-                        <PaginationLink
-                          href={createPageHref(item)}
-                          isActive={item === boardList.page}
-                          className={
-                            item === boardList.page
-                              ? `border ${currentTheme.primaryBorder} ${currentTheme.primaryBg} ${currentTheme.primaryText} shadow-sm`
-                              : `${currentTheme.textSecondary} hover:${currentTheme.primaryText} hover:${currentTheme.primaryBg}`
-                          }
-                          onClick={(event) => {
-                            event.preventDefault();
-                            handlePageChange(item);
-                          }}
-                        >
-                          {item}
-                        </PaginationLink>
-                      </PaginationItem>
-                    ),
-                  )}
-
-                  <PaginationItem>
-                    <PaginationNext
-                      href={createPageHref(Math.min(boardList.page + 1, effectiveTotalPages))}
-                      aria-disabled={boardList.page === effectiveTotalPages}
-                      className={`${
-                        boardList.page === effectiveTotalPages
-                          ? "pointer-events-none opacity-50"
-                          : `${currentTheme.textSecondary} hover:${currentTheme.primaryText} hover:${currentTheme.primaryBg} border ${currentTheme.border}`
-                      }`}
-                      onClick={(event) => {
-                        if (boardList.page === effectiveTotalPages) {
-                          event.preventDefault();
-                          return;
-                        }
-
-                        event.preventDefault();
-                        handlePageChange(boardList.page + 1);
-                      }}
-                    />
-                  </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
-              </div>
-              <div />
-            </div>
           </>
+        )}
+
+        {shouldShowPaginationFooter && (
+          <div className={`mt-10 grid grid-cols-[1fr_auto_1fr] items-center gap-4 border-t pt-5 ${currentTheme.border} ${disablePaginationFooter ? "opacity-60" : ""}`}>
+            <div className="flex items-center gap-2 whitespace-nowrap">
+              <kbd className={`rounded-md border px-2 py-1 text-[10px] font-semibold ${currentTheme.border} ${currentTheme.textMuted}`}>Shift</kbd>
+              <span className={`text-xs ${currentTheme.textMuted}`}>Previous page</span>
+              <kbd className={`ml-2 rounded-md border px-2 py-1 text-[10px] font-semibold ${currentTheme.border} ${currentTheme.textMuted}`}>Tab</kbd>
+              <span className={`text-xs ${currentTheme.textMuted}`}>Next page</span>
+            </div>
+            <div className="justify-self-center">
+              <Pagination>
+                <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href={createPageHref(Math.max(boardList.page - 1, 1))}
+                    aria-disabled={disablePaginationFooter || boardList.page === 1}
+                    className={`${
+                      disablePaginationFooter || boardList.page === 1
+                        ? "pointer-events-none opacity-50"
+                        : `${currentTheme.textSecondary} hover:${currentTheme.primaryText} hover:${currentTheme.primaryBg} border ${currentTheme.border}`
+                    }`}
+                    onClick={(event) => {
+                      if (disablePaginationFooter || boardList.page === 1) {
+                        event.preventDefault();
+                        return;
+                      }
+
+                      event.preventDefault();
+                      handlePageChange(boardList.page - 1);
+                    }}
+                  />
+                </PaginationItem>
+
+                {paginationItems.map((item, index) =>
+                  item === "ellipsis" ? (
+                    <PaginationItem key={`ellipsis-${index}`}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  ) : (
+                    <PaginationItem key={item}>
+                      <PaginationLink
+                        href={createPageHref(item)}
+                        isActive={item === boardList.page}
+                        className={
+                          item === boardList.page
+                            ? `border ${currentTheme.primaryBorder} ${currentTheme.primaryBg} ${currentTheme.primaryText} shadow-sm`
+                            : `${currentTheme.textSecondary} hover:${currentTheme.primaryText} hover:${currentTheme.primaryBg}`
+                        }
+                        aria-disabled={disablePaginationFooter}
+                        onClick={(event) => {
+                          if (disablePaginationFooter) {
+                            event.preventDefault();
+                            return;
+                          }
+
+                          event.preventDefault();
+                          handlePageChange(item);
+                        }}
+                      >
+                        {item}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ),
+                )}
+
+                <PaginationItem>
+                  <PaginationNext
+                    href={createPageHref(Math.min(boardList.page + 1, effectiveTotalPages))}
+                    aria-disabled={disablePaginationFooter || boardList.page === effectiveTotalPages}
+                    className={`${
+                      disablePaginationFooter || boardList.page === effectiveTotalPages
+                        ? "pointer-events-none opacity-50"
+                        : `${currentTheme.textSecondary} hover:${currentTheme.primaryText} hover:${currentTheme.primaryBg} border ${currentTheme.border}`
+                    }`}
+                    onClick={(event) => {
+                      if (disablePaginationFooter || boardList.page === effectiveTotalPages) {
+                        event.preventDefault();
+                        return;
+                      }
+
+                      event.preventDefault();
+                      handlePageChange(boardList.page + 1);
+                    }}
+                  />
+                </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+            <div />
+          </div>
         )}
         </div>
       </main>

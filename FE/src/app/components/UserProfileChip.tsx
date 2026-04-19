@@ -1,5 +1,6 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
+import { AppAvatar } from "./AppAvatar";
 
 interface UserProfileChipProps {
   username: string;
@@ -25,9 +26,11 @@ export function UserProfileChip({
       }`}
       type="button"
     >
-      <div className={`flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br ${currentTheme.primary} text-sm font-bold text-white shadow-sm pointer-events-none`}>
-        {username.charAt(0).toUpperCase()}
-      </div>
+      <AppAvatar
+        name={username}
+        size={32}
+        className="pointer-events-none shadow-sm"
+      />
       <div className="hidden min-w-0 pointer-events-none sm:flex flex-col items-start">
         <span className={`max-w-[140px] truncate text-sm font-semibold leading-tight ${currentTheme.text}`}>
           {username}
@@ -39,9 +42,11 @@ export function UserProfileChip({
     </button>
   ) : (
     <div className="flex items-center gap-2.5 rounded-lg px-3 py-2">
-      <div className={`flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br ${currentTheme.primary} text-sm font-bold text-white shadow-sm`}>
-        {username.charAt(0).toUpperCase()}
-      </div>
+      <AppAvatar
+        name={username}
+        size={32}
+        className="shadow-sm"
+      />
       <div className="hidden min-w-0 sm:flex flex-col items-start">
         <span className={`max-w-[140px] truncate text-sm font-semibold leading-tight ${currentTheme.text}`}>
           {username}

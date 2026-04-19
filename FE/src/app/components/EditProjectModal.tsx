@@ -12,6 +12,8 @@ import { ProjectUser } from "../utils/users";
 import { BoardIdentityPicker } from "./BoardIdentityPicker";
 import { CustomScrollArea } from "./CustomScrollArea";
 import { UserSearchPicker } from "./UserSearchPicker";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { getIconActionButtonClassName } from "./iconActionButtonStyles";
 
 interface EditProjectModalProps {
   isOpen: boolean;
@@ -72,6 +74,7 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
   const [showError, setShowError] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const memberActionButtonClassName = getIconActionButtonClassName(currentTheme);
 
   const handleClose = () => {
     setShowError(false);
@@ -323,19 +326,20 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
                               </div>
                             </div>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveMember(member.userId)}
-                            disabled={isOwner}
-                            className={`p-2 rounded-lg transition-all ${
-                              isOwner
-                                ? "opacity-30 cursor-not-allowed"
-                                : "hover:bg-red-50 dark:hover:bg-red-950 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100"
-                            }`}
-                            title={isOwner ? "Project owner cannot be removed" : "Remove member"}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {!isOwner && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveMember(member.userId)}
+                                  className={memberActionButtonClassName}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" sideOffset={8}>Remove member</TooltipContent>
+                            </Tooltip>
+                          )}
                         </div>
                       );
                     })}

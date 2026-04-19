@@ -5,6 +5,7 @@ import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import { TaskAssignee } from "../utils/cards";
 import { CustomScrollArea } from "./CustomScrollArea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { getIconActionButtonClassName } from "./iconActionButtonStyles";
 
 interface AssigneePopoverProps {
   currentAssignee: TaskAssignee;
@@ -40,6 +41,7 @@ export function AssigneePopover({
   const idleSurfaceClassName = isDarkMode
     ? "border-zinc-700 bg-zinc-800 text-zinc-100 hover:bg-zinc-700"
     : "border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100";
+  const triggerButtonBaseClassName = getIconActionButtonClassName(currentTheme, { shape: "pill" });
   const visibleAssignees = useMemo(
     () =>
       availableAssignees
@@ -118,10 +120,10 @@ export function AssigneePopover({
             <Popover.Trigger asChild>
               <button
                 type="button"
-                className={`relative flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-all ${
+                className={`relative text-xs font-semibold transition-all ${
                   isUnassigned
-                    ? `${currentTheme.textMuted} border ${currentTheme.border} ${isDarkMode ? "bg-white/[0.03] hover:bg-white/[0.06]" : "bg-white hover:bg-slate-50"}`
-                    : `text-white shadow-sm ring-1 ${isDarkMode ? "ring-zinc-600 hover:ring-zinc-500" : "ring-slate-200 hover:ring-slate-300"} hover:ring-2 hover:shadow-md`
+                    ? `${triggerButtonBaseClassName} border ${currentTheme.border} ${isDarkMode ? "bg-white/[0.03]" : "bg-white"}`
+                    : `inline-flex h-8 w-8 items-center justify-center rounded-full text-white shadow-sm ring-1 ${isDarkMode ? "ring-zinc-600 hover:ring-zinc-500" : "ring-slate-200 hover:ring-slate-300"} hover:${currentTheme.primaryBorder} hover:ring-2 hover:shadow-md`
                 }`}
                 style={isUnassigned ? undefined : { backgroundColor: currentAssignee.color }}
                 aria-label={isUnassigned ? "Assign task" : `Assigned to ${currentAssignee.name}`}

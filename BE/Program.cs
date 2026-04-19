@@ -1,4 +1,5 @@
 using BE.Data;
+using BE.Hubs;
 using BE.Options;
 using BE.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -17,8 +18,10 @@ var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(authOptions.Sig
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddSignalR();
 builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection(AuthOptions.SectionName));
 builder.Services.AddSingleton<ITokenService, TokenService>();
+builder.Services.AddScoped<IPlanningPokerSessionService, PlanningPokerSessionService>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
@@ -78,5 +81,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<PlanningPokerHub>("/hubs/planning-poker");
 
 app.Run();

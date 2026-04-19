@@ -13,6 +13,8 @@ import { ProjectUser } from '../utils/users';
 import { BoardIdentityPicker } from './BoardIdentityPicker';
 import { CustomScrollArea } from './CustomScrollArea';
 import { UserSearchPicker } from './UserSearchPicker';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { getIconActionButtonClassName } from './iconActionButtonStyles';
 
 interface CreateBoardModalProps {
   isOpen: boolean;
@@ -38,6 +40,7 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
   const [memberDirectory, setMemberDirectory] = useState<Record<number, ProjectUser>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; submit?: string }>({});
+  const memberActionButtonClassName = getIconActionButtonClassName(currentTheme);
 
   const selectedMembers = useMemo(
     () =>
@@ -234,13 +237,18 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
                         <p className={`text-xs ${currentTheme.textMuted} truncate`}>@{member.username}</p>
                         <p className={`text-xs ${currentTheme.textMuted} truncate`}>{member.email}</p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveMember(member.id)}
-                        className={`p-2 hover:${currentTheme.bgTertiary} rounded-lg transition-colors`}
-                      >
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveMember(member.id)}
+                            className={memberActionButtonClassName}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" sideOffset={8}>Remove member</TooltipContent>
+                      </Tooltip>
                     </div>
                   ))}
                 </div>
