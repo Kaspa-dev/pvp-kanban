@@ -1,16 +1,34 @@
 type WorkspaceThemeColors = {
   bgSecondary: string;
   border: string;
+  borderHover: string;
   cardBg: string;
   inputBg: string;
   inputBorder: string;
+  textMuted: string;
   primarySoft: string;
 };
+
+export function getWorkspaceControlSurfaceClassName() {
+  return "bg-input-background bg-white dark:bg-input/30";
+}
+
+export function getWorkspaceControlHoverClassName(currentTheme: Pick<WorkspaceThemeColors, "borderHover">) {
+  return `hover:${currentTheme.borderHover} hover:ring-1 hover:ring-black/5 dark:hover:ring-white/10`;
+}
+
+export function getWorkspaceSubtleHoverSurfaceClassName(isDarkMode: boolean) {
+  return isDarkMode ? "hover:bg-white/[0.05]" : "hover:bg-black/[0.04]";
+}
 
 export function getWorkspaceSurfaceStyles(
   currentTheme: WorkspaceThemeColors,
   isDarkMode: boolean,
 ) {
+  const controlSurfaceClassName = getWorkspaceControlSurfaceClassName();
+  const controlSurfaceHoverClassName = getWorkspaceControlHoverClassName(currentTheme);
+  const subtleHoverSurfaceClassName = getWorkspaceSubtleHoverSurfaceClassName(isDarkMode);
+
   const backgroundBlobs = isDarkMode
     ? [
         {
@@ -52,8 +70,16 @@ export function getWorkspaceSurfaceStyles(
     glassHeaderStyle: {
       backgroundColor: isDarkMode ? "rgba(12, 12, 14, 0.88)" : "rgba(255, 255, 255, 0.9)",
     },
+    glassSidebarStyle: {
+      backgroundColor: isDarkMode ? "rgba(12, 12, 14, 0.96)" : "rgba(255, 255, 255, 0.96)",
+    },
+    elevatedPanelSurfaceClassName: `${currentTheme.cardBg} border ${currentTheme.border} shadow-lg`,
     elevatedSurfaceClassName: `${currentTheme.cardBg} ${currentTheme.border}`,
     subtleSurfaceClassName: `${currentTheme.bgSecondary} ${currentTheme.border}`,
+    controlSurfaceClassName,
+    controlSurfaceHoverClassName,
+    subtleHoverSurfaceClassName,
+    mutedIconButtonClassName: `bg-transparent ${currentTheme.textMuted} ${subtleHoverSurfaceClassName}`,
     inputSurfaceClassName: `${currentTheme.inputBg} ${currentTheme.inputBorder}`,
     inputSurfaceStyle: {
       backgroundColor: isDarkMode ? "#09090b" : "#ffffff",

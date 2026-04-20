@@ -195,6 +195,26 @@
     line-height: 1.5;
   }
 
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea {
+    transition:
+      border-color 300ms ease-out,
+      box-shadow 300ms ease-out,
+      color 300ms ease-out,
+      background-color 300ms ease-out;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not(:disabled):hover,
+  textarea:not(:disabled):hover {
+    border-color: var(--border);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--foreground) 10%, transparent);
+  }
+
+  .dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not(:disabled):hover,
+  .dark textarea:not(:disabled):hover {
+    box-shadow: 0 0 0 1px color-mix(in srgb, white 12%, transparent);
+  }
+
   /* Placeholder styles for better dark mode readability */
   input::placeholder,
   textarea::placeholder {

@@ -116,6 +116,8 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       primaryBg: isDarkMode ? "bg-purple-950/50" : "bg-purple-100",
       primaryText: isDarkMode ? "text-purple-400" : "text-purple-600",
       primaryBorder: "border-purple-500",
+      accentPaginationActive: isDarkMode ? "bg-purple-500/15 text-purple-300" : "bg-purple-100 text-purple-600",
+      accentInputFocus: "focus-visible:border-purple-500 focus-visible:ring-0",
       ring: isDarkMode ? "ring-purple-500" : "ring-purple-400",
       focus: isDarkMode ? "focus:ring-purple-500" : "focus:ring-purple-400",
       accentDivider: "border-purple-200/20 dark:border-purple-800/20",
@@ -123,6 +125,15 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       accentIconButtonHover: isDarkMode
         ? "hover:bg-purple-950/50 hover:text-purple-400"
         : "hover:bg-purple-100 hover:text-purple-600",
+      accentKeycapHover: isDarkMode
+        ? "group-hover:border-purple-500 group-hover:bg-purple-950/50 group-hover:text-purple-400"
+        : "group-hover:border-purple-500 group-hover:bg-purple-50 group-hover:text-purple-600",
+      accentSelectItemHover: isDarkMode
+        ? "data-[highlighted]:bg-purple-950/50 data-[highlighted]:text-purple-400"
+        : "data-[highlighted]:bg-purple-100 data-[highlighted]:text-purple-600",
+      accentSelectItemSelected: isDarkMode
+        ? "data-[state=checked]:bg-purple-950/40 data-[state=checked]:text-purple-300 data-[state=checked]:font-semibold"
+        : "data-[state=checked]:bg-purple-50 data-[state=checked]:text-purple-700 data-[state=checked]:font-semibold",
     },
     ocean: {
       name: "Ocean Blue",
@@ -135,6 +146,8 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       primaryBg: isDarkMode ? "bg-blue-950/50" : "bg-blue-100",
       primaryText: isDarkMode ? "text-blue-400" : "text-blue-600",
       primaryBorder: "border-blue-500",
+      accentPaginationActive: isDarkMode ? "bg-blue-500/15 text-blue-300" : "bg-blue-100 text-blue-600",
+      accentInputFocus: "focus-visible:border-blue-500 focus-visible:ring-0",
       ring: isDarkMode ? "ring-blue-500" : "ring-blue-400",
       focus: isDarkMode ? "focus:ring-blue-500" : "focus:ring-blue-400",
       accentDivider: "border-blue-200/20 dark:border-blue-800/20",
@@ -142,6 +155,15 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       accentIconButtonHover: isDarkMode
         ? "hover:bg-blue-950/50 hover:text-blue-400"
         : "hover:bg-blue-100 hover:text-blue-600",
+      accentKeycapHover: isDarkMode
+        ? "group-hover:border-blue-500 group-hover:bg-blue-950/50 group-hover:text-blue-400"
+        : "group-hover:border-blue-500 group-hover:bg-blue-50 group-hover:text-blue-600",
+      accentSelectItemHover: isDarkMode
+        ? "data-[highlighted]:bg-blue-950/50 data-[highlighted]:text-blue-400"
+        : "data-[highlighted]:bg-blue-100 data-[highlighted]:text-blue-600",
+      accentSelectItemSelected: isDarkMode
+        ? "data-[state=checked]:bg-blue-950/40 data-[state=checked]:text-blue-300 data-[state=checked]:font-semibold"
+        : "data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700 data-[state=checked]:font-semibold",
     },
     sunset: {
       name: "Sunset Orange",
@@ -154,6 +176,8 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       primaryBg: isDarkMode ? "bg-orange-950/50" : "bg-orange-100",
       primaryText: isDarkMode ? "text-orange-400" : "text-orange-600",
       primaryBorder: "border-orange-500",
+      accentPaginationActive: isDarkMode ? "bg-orange-500/15 text-orange-300" : "bg-orange-100 text-orange-600",
+      accentInputFocus: "focus-visible:border-orange-500 focus-visible:ring-0",
       ring: isDarkMode ? "ring-orange-500" : "ring-orange-400",
       focus: isDarkMode ? "focus:ring-orange-500" : "focus:ring-orange-400",
       accentDivider: "border-orange-200/20 dark:border-orange-800/20",
@@ -161,6 +185,15 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       accentIconButtonHover: isDarkMode
         ? "hover:bg-orange-950/50 hover:text-orange-400"
         : "hover:bg-orange-100 hover:text-orange-600",
+      accentKeycapHover: isDarkMode
+        ? "group-hover:border-orange-500 group-hover:bg-orange-950/50 group-hover:text-orange-400"
+        : "group-hover:border-orange-500 group-hover:bg-orange-50 group-hover:text-orange-600",
+      accentSelectItemHover: isDarkMode
+        ? "data-[highlighted]:bg-orange-950/50 data-[highlighted]:text-orange-400"
+        : "data-[highlighted]:bg-orange-100 data-[highlighted]:text-orange-600",
+      accentSelectItemSelected: isDarkMode
+        ? "data-[state=checked]:bg-orange-950/40 data-[state=checked]:text-orange-300 data-[state=checked]:font-semibold"
+        : "data-[state=checked]:bg-orange-50 data-[state=checked]:text-orange-700 data-[state=checked]:font-semibold",
     },
     forest: {
       name: "Forest Green",
@@ -173,6 +206,8 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       primaryBg: isDarkMode ? "bg-green-950/50" : "bg-green-100",
       primaryText: isDarkMode ? "text-green-400" : "text-green-600",
       primaryBorder: "border-green-600",
+      accentPaginationActive: isDarkMode ? "bg-green-500/15 text-green-300" : "bg-green-100 text-green-600",
+      accentInputFocus: "focus-visible:border-green-600 focus-visible:ring-0",
       ring: isDarkMode ? "ring-green-500" : "ring-green-400",
       focus: isDarkMode ? "focus:ring-green-500" : "focus:ring-green-400",
       accentDivider: "border-green-200/20 dark:border-green-800/20",
@@ -180,6 +215,15 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       accentIconButtonHover: isDarkMode
         ? "hover:bg-green-950/50 hover:text-green-400"
         : "hover:bg-green-100 hover:text-green-600",
+      accentKeycapHover: isDarkMode
+        ? "group-hover:border-green-600 group-hover:bg-green-950/50 group-hover:text-green-400"
+        : "group-hover:border-green-600 group-hover:bg-green-50 group-hover:text-green-600",
+      accentSelectItemHover: isDarkMode
+        ? "data-[highlighted]:bg-green-950/50 data-[highlighted]:text-green-400"
+        : "data-[highlighted]:bg-green-100 data-[highlighted]:text-green-600",
+      accentSelectItemSelected: isDarkMode
+        ? "data-[state=checked]:bg-green-950/40 data-[state=checked]:text-green-300 data-[state=checked]:font-semibold"
+        : "data-[state=checked]:bg-green-50 data-[state=checked]:text-green-700 data-[state=checked]:font-semibold",
     },
     mono: {
       name: "Mono Gray",
@@ -192,6 +236,8 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       primaryBg: isDarkMode ? "bg-gray-800" : "bg-gray-200",
       primaryText: isDarkMode ? "text-gray-400" : "text-gray-700",
       primaryBorder: "border-gray-700",
+      accentPaginationActive: isDarkMode ? "bg-gray-400/10 text-gray-300" : "bg-gray-200 text-gray-700",
+      accentInputFocus: "focus-visible:border-gray-700 focus-visible:ring-0",
       ring: isDarkMode ? "ring-gray-500" : "ring-gray-400",
       focus: isDarkMode ? "focus:ring-gray-500" : "focus:ring-gray-400",
       accentDivider: "border-gray-300/40 dark:border-gray-700/50",
@@ -199,6 +245,15 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       accentIconButtonHover: isDarkMode
         ? "hover:bg-gray-800 hover:text-gray-300"
         : "hover:bg-gray-200 hover:text-gray-700",
+      accentKeycapHover: isDarkMode
+        ? "group-hover:border-gray-500 group-hover:bg-gray-800 group-hover:text-gray-300"
+        : "group-hover:border-gray-700 group-hover:bg-gray-100 group-hover:text-gray-700",
+      accentSelectItemHover: isDarkMode
+        ? "data-[highlighted]:bg-gray-800 data-[highlighted]:text-gray-300"
+        : "data-[highlighted]:bg-gray-100 data-[highlighted]:text-gray-700",
+      accentSelectItemSelected: isDarkMode
+        ? "data-[state=checked]:bg-gray-800/90 data-[state=checked]:text-gray-200 data-[state=checked]:font-semibold"
+        : "data-[state=checked]:bg-gray-100 data-[state=checked]:text-gray-800 data-[state=checked]:font-semibold",
     },
     berry: {
       name: "Berry Bloom",
@@ -211,6 +266,8 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       primaryBg: isDarkMode ? "bg-fuchsia-950/40" : "bg-fuchsia-100",
       primaryText: isDarkMode ? "text-fuchsia-300" : "text-fuchsia-700",
       primaryBorder: "border-fuchsia-500",
+      accentPaginationActive: isDarkMode ? "bg-fuchsia-500/15 text-fuchsia-200" : "bg-fuchsia-100 text-fuchsia-700",
+      accentInputFocus: "focus-visible:border-fuchsia-500 focus-visible:ring-0",
       ring: isDarkMode ? "ring-fuchsia-500" : "ring-fuchsia-400",
       focus: isDarkMode ? "focus:ring-fuchsia-500" : "focus:ring-fuchsia-400",
       accentDivider: "border-fuchsia-200/20 dark:border-fuchsia-800/20",
@@ -218,6 +275,15 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       accentIconButtonHover: isDarkMode
         ? "hover:bg-fuchsia-950/40 hover:text-fuchsia-300"
         : "hover:bg-fuchsia-100 hover:text-fuchsia-700",
+      accentKeycapHover: isDarkMode
+        ? "group-hover:border-fuchsia-500 group-hover:bg-fuchsia-950/40 group-hover:text-fuchsia-300"
+        : "group-hover:border-fuchsia-500 group-hover:bg-fuchsia-50 group-hover:text-fuchsia-700",
+      accentSelectItemHover: isDarkMode
+        ? "data-[highlighted]:bg-fuchsia-950/40 data-[highlighted]:text-fuchsia-300"
+        : "data-[highlighted]:bg-fuchsia-100 data-[highlighted]:text-fuchsia-700",
+      accentSelectItemSelected: isDarkMode
+        ? "data-[state=checked]:bg-fuchsia-950/35 data-[state=checked]:text-fuchsia-200 data-[state=checked]:font-semibold"
+        : "data-[state=checked]:bg-fuchsia-50 data-[state=checked]:text-fuchsia-800 data-[state=checked]:font-semibold",
     },
     lagoon: {
       name: "Lagoon Teal",
@@ -230,6 +296,8 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       primaryBg: isDarkMode ? "bg-teal-950/40" : "bg-teal-100",
       primaryText: isDarkMode ? "text-teal-300" : "text-teal-700",
       primaryBorder: "border-teal-500",
+      accentPaginationActive: isDarkMode ? "bg-teal-500/15 text-teal-200" : "bg-teal-100 text-teal-700",
+      accentInputFocus: "focus-visible:border-teal-500 focus-visible:ring-0",
       ring: isDarkMode ? "ring-teal-500" : "ring-teal-400",
       focus: isDarkMode ? "focus:ring-teal-500" : "focus:ring-teal-400",
       accentDivider: "border-teal-200/20 dark:border-teal-800/20",
@@ -237,6 +305,15 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       accentIconButtonHover: isDarkMode
         ? "hover:bg-teal-950/40 hover:text-teal-300"
         : "hover:bg-teal-100 hover:text-teal-700",
+      accentKeycapHover: isDarkMode
+        ? "group-hover:border-teal-500 group-hover:bg-teal-950/40 group-hover:text-teal-300"
+        : "group-hover:border-teal-500 group-hover:bg-teal-50 group-hover:text-teal-700",
+      accentSelectItemHover: isDarkMode
+        ? "data-[highlighted]:bg-teal-950/40 data-[highlighted]:text-teal-300"
+        : "data-[highlighted]:bg-teal-100 data-[highlighted]:text-teal-700",
+      accentSelectItemSelected: isDarkMode
+        ? "data-[state=checked]:bg-teal-950/35 data-[state=checked]:text-teal-200 data-[state=checked]:font-semibold"
+        : "data-[state=checked]:bg-teal-50 data-[state=checked]:text-teal-800 data-[state=checked]:font-semibold",
     },
     citrus: {
       name: "Citrus Lime",
@@ -249,6 +326,8 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       primaryBg: isDarkMode ? "bg-lime-950/35" : "bg-lime-100",
       primaryText: isDarkMode ? "text-lime-300" : "text-lime-700",
       primaryBorder: "border-lime-500",
+      accentPaginationActive: isDarkMode ? "bg-lime-500/15 text-lime-200" : "bg-lime-100 text-lime-700",
+      accentInputFocus: "focus-visible:border-lime-500 focus-visible:ring-0",
       ring: isDarkMode ? "ring-lime-500" : "ring-lime-400",
       focus: isDarkMode ? "focus:ring-lime-500" : "focus:ring-lime-400",
       accentDivider: "border-lime-200/20 dark:border-lime-800/20",
@@ -256,6 +335,15 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       accentIconButtonHover: isDarkMode
         ? "hover:bg-lime-950/35 hover:text-lime-300"
         : "hover:bg-lime-100 hover:text-lime-700",
+      accentKeycapHover: isDarkMode
+        ? "group-hover:border-lime-500 group-hover:bg-lime-950/35 group-hover:text-lime-300"
+        : "group-hover:border-lime-500 group-hover:bg-lime-50 group-hover:text-lime-700",
+      accentSelectItemHover: isDarkMode
+        ? "data-[highlighted]:bg-lime-950/35 data-[highlighted]:text-lime-300"
+        : "data-[highlighted]:bg-lime-100 data-[highlighted]:text-lime-700",
+      accentSelectItemSelected: isDarkMode
+        ? "data-[state=checked]:bg-lime-950/30 data-[state=checked]:text-lime-200 data-[state=checked]:font-semibold"
+        : "data-[state=checked]:bg-lime-50 data-[state=checked]:text-lime-800 data-[state=checked]:font-semibold",
     },
     cobalt: {
       name: "Cobalt Night",
@@ -268,6 +356,8 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       primaryBg: isDarkMode ? "bg-indigo-950/40" : "bg-indigo-100",
       primaryText: isDarkMode ? "text-indigo-300" : "text-indigo-700",
       primaryBorder: "border-indigo-500",
+      accentPaginationActive: isDarkMode ? "bg-indigo-500/15 text-indigo-200" : "bg-indigo-100 text-indigo-700",
+      accentInputFocus: "focus-visible:border-indigo-500 focus-visible:ring-0",
       ring: isDarkMode ? "ring-indigo-500" : "ring-indigo-400",
       focus: isDarkMode ? "focus:ring-indigo-500" : "focus:ring-indigo-400",
       accentDivider: "border-indigo-200/20 dark:border-indigo-800/20",
@@ -275,6 +365,15 @@ export function getThemeColors(theme: Theme, isDarkMode: boolean) {
       accentIconButtonHover: isDarkMode
         ? "hover:bg-indigo-950/40 hover:text-indigo-300"
         : "hover:bg-indigo-100 hover:text-indigo-700",
+      accentKeycapHover: isDarkMode
+        ? "group-hover:border-indigo-500 group-hover:bg-indigo-950/40 group-hover:text-indigo-300"
+        : "group-hover:border-indigo-500 group-hover:bg-indigo-50 group-hover:text-indigo-700",
+      accentSelectItemHover: isDarkMode
+        ? "data-[highlighted]:bg-indigo-950/40 data-[highlighted]:text-indigo-300"
+        : "data-[highlighted]:bg-indigo-100 data-[highlighted]:text-indigo-700",
+      accentSelectItemSelected: isDarkMode
+        ? "data-[state=checked]:bg-indigo-950/35 data-[state=checked]:text-indigo-200 data-[state=checked]:font-semibold"
+        : "data-[state=checked]:bg-indigo-50 data-[state=checked]:text-indigo-800 data-[state=checked]:font-semibold",
     },
   };
 

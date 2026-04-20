@@ -19,6 +19,7 @@ public class BoardDto
     public string LogoColorKey { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public int CreatorUserId { get; set; }
+    public bool IsFavorite { get; set; }
     public List<BoardMemberDto> Members { get; set; } = new();
 }
 
@@ -32,6 +33,7 @@ public class BoardListItemDto
     public DateTime CreatedAt { get; set; }
     public int CreatorUserId { get; set; }
     public int MemberCount { get; set; }
+    public bool IsFavorite { get; set; }
     public List<BoardMemberDto> Members { get; set; } = new();
 }
 
@@ -60,6 +62,12 @@ public class BoardListQueryDto
     public string? Sort { get; set; }
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 12;
+}
+
+public class BoardFavoriteStateDto
+{
+    public int BoardId { get; set; }
+    public bool IsFavorite { get; set; }
 }
 
 public class CreateBoardRequestDto

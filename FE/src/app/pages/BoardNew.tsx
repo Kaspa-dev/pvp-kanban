@@ -971,7 +971,8 @@ export function Board() {
                 : undefined
             }
             userProfile={{
-              username: userProgress.username,
+              username: user.username,
+              fullName: `${user.firstName} ${user.lastName}`.trim(),
               subtitle: `Level ${userProgress.level}`,
             }}
           />

@@ -15,6 +15,7 @@ public class AppDbContext : DbContext
     // Board & Task related tables
     public DbSet<Board> Boards => Set<Board>();
     public DbSet<BoardMembership> BoardMemberships => Set<BoardMembership>();
+    public DbSet<BoardFavorite> BoardFavorites => Set<BoardFavorite>();
     public DbSet<PlanningPokerSession> PlanningPokerSessions => Set<PlanningPokerSession>();
     public DbSet<PlanningPokerSessionTask> PlanningPokerSessionTasks => Set<PlanningPokerSessionTask>();
     public DbSet<PlanningPokerParticipant> PlanningPokerParticipants => Set<PlanningPokerParticipant>();
@@ -141,6 +142,23 @@ public class AppDbContext : DbContext
 
             entity.HasOne(e => e.User)
                 .WithMany(u => u.BoardMemberships)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<BoardFavorite>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.HasIndex(e => new { e.BoardId, e.UserId }).IsUnique();
+
+            entity.HasOne(e => e.Board)
+                .WithMany(b => b.Favorites)
+                .HasForeignKey(e => e.BoardId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.FavoriteBoards)
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });

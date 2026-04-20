@@ -10,7 +10,7 @@ import { format, parseISO } from "date-fns";
 import { PriorityBadge } from "./PriorityBadge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { TaskLabelSummary } from "./TaskLabelSummary";
-import { getIconActionButtonClassName } from "./iconActionButtonStyles";
+import { UtilityIconButton } from "./UtilityIconButton";
 
 interface KanbanCardProps {
   id: number;
@@ -86,9 +86,6 @@ export function KanbanCard({
   const taskTypeDisplay = getTaskTypeDisplay();
   const hasTopMeta = Boolean(storyPoints || cardLabels.length > 0 || taskTypeDisplay || formattedDueDate || priorityIndicator);
   const canMoveToBacklog = columnId !== "backlog" && columnId !== "queue" && Boolean(onMoveToBacklog);
-  const actionButtonClassName = getIconActionButtonClassName(currentTheme);
-  const deleteButtonClassName = actionButtonClassName;
-
   return (
     <div
       ref={drag}
@@ -179,14 +176,12 @@ export function KanbanCard({
                 {canMoveToBacklog && (
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <button
+                      <UtilityIconButton
                         onClick={() => onMoveToBacklog?.(id)}
                         onMouseDown={(e) => e.stopPropagation()}
-                        className={actionButtonClassName}
-                        type="button"
                       >
                         <Undo2 className="w-4 h-4" />
-                      </button>
+                      </UtilityIconButton>
                     </TooltipTrigger>
                     <TooltipContent side="top" sideOffset={8}>Move to staging</TooltipContent>
                   </Tooltip>
@@ -195,14 +190,12 @@ export function KanbanCard({
                 {onEdit && (
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <button
+                      <UtilityIconButton
                         onClick={() => onEdit(id)}
                         onMouseDown={(e) => e.stopPropagation()}
-                        className={actionButtonClassName}
-                        type="button"
                       >
                         <Edit className="w-4 h-4" />
-                      </button>
+                      </UtilityIconButton>
                     </TooltipTrigger>
                     <TooltipContent side="top" sideOffset={8}>Edit task</TooltipContent>
                   </Tooltip>
@@ -210,14 +203,12 @@ export function KanbanCard({
 
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button
+                    <UtilityIconButton
                       onClick={() => onDelete(id, title)}
                       onMouseDown={(e) => e.stopPropagation()}
-                      className={deleteButtonClassName}
-                      type="button"
                     >
                       <Trash2 className="w-4 h-4" />
-                    </button>
+                    </UtilityIconButton>
                   </TooltipTrigger>
                   <TooltipContent side="top" sideOffset={8}>Delete task</TooltipContent>
                 </Tooltip>

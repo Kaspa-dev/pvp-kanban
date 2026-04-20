@@ -2,6 +2,7 @@ import { Search, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import { ProjectUser, searchUsers } from "../utils/users";
+import { AppAvatar } from "./AppAvatar";
 import { CustomScrollArea } from "./CustomScrollArea";
 
 interface UserSearchPickerProps {
@@ -22,6 +23,7 @@ export function UserSearchPicker({
 }: UserSearchPickerProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const pickerSurfaceClassName = isDarkMode ? currentTheme.inputBg : "bg-gray-50";
 
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ProjectUser[]>([]);
@@ -182,7 +184,7 @@ export function UserSearchPicker({
           }}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className={`w-full rounded-xl border-2 ${currentTheme.inputBorder} ${currentTheme.inputBg} ${currentTheme.text} py-3 pl-10 pr-10 transition-all focus:border-transparent focus:outline-none focus:ring-2 ${currentTheme.focus} disabled:cursor-not-allowed disabled:opacity-60`}
+          className={`w-full rounded-xl border-2 ${currentTheme.inputBorder} ${pickerSurfaceClassName} ${currentTheme.text} py-3 pl-10 pr-10 transition-all focus:border-transparent focus:outline-none focus:ring-2 ${currentTheme.focus} disabled:cursor-not-allowed disabled:opacity-60`}
         />
         {isLoading && (
           <Loader2 className={`absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin ${currentTheme.textMuted}`} />
@@ -190,7 +192,7 @@ export function UserSearchPicker({
       </div>
 
       {isOpen && normalizedQuery && (
-        <div className={`mt-3 overflow-hidden rounded-2xl border ${currentTheme.border} ${currentTheme.cardBg} shadow-lg`}>
+        <div className={`mt-3 overflow-hidden rounded-2xl border ${currentTheme.border} ${pickerSurfaceClassName} shadow-lg`}>
           {error ? (
             <div className="px-4 py-3 text-sm text-red-600">{error}</div>
           ) : !isLoading && visibleResults.length === 0 ? (
@@ -214,9 +216,12 @@ export function UserSearchPicker({
                         : `${currentTheme.text} ${isDarkMode ? "hover:bg-zinc-800/80" : "hover:bg-slate-50"}`
                     }`}
                   >
-                    <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${currentTheme.primary} text-sm font-bold text-white`}>
-                      {user.displayName.charAt(0).toUpperCase()}
-                    </div>
+                    <AppAvatar
+                      username={user.username}
+                      fullName={user.displayName}
+                      size={36}
+                      className="mt-0.5"
+                    />
                     <div className="min-w-0">
                       <p className="truncate font-semibold">{user.displayName}</p>
                       <p className={`truncate text-xs ${isHighlighted ? "opacity-80" : currentTheme.textMuted}`}>

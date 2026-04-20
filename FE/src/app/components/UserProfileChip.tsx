@@ -1,9 +1,11 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import { AppAvatar } from "./AppAvatar";
+import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
 
 interface UserProfileChipProps {
   username: string;
+  fullName?: string;
   subtitle: string;
   onClick?: () => void;
   tooltip?: string;
@@ -11,23 +13,24 @@ interface UserProfileChipProps {
 
 export function UserProfileChip({
   username,
+  fullName,
   subtitle,
   onClick,
   tooltip,
 }: UserProfileChipProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
 
   const content = onClick ? (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2.5 rounded-2xl px-3 py-2 transition-all cursor-pointer ${
-        isDarkMode ? "hover:bg-white/[0.05]" : "hover:bg-black/[0.04]"
-      }`}
+      className={`flex cursor-pointer items-center gap-2.5 rounded-2xl px-3 py-2 transition-all ${workspaceSurface.subtleHoverSurfaceClassName}`}
       type="button"
     >
       <AppAvatar
-        name={username}
+        username={username}
+        fullName={fullName}
         size={32}
         className="pointer-events-none shadow-sm"
       />
@@ -43,7 +46,8 @@ export function UserProfileChip({
   ) : (
     <div className="flex items-center gap-2.5 rounded-lg px-3 py-2">
       <AppAvatar
-        name={username}
+        username={username}
+        fullName={fullName}
         size={32}
         className="shadow-sm"
       />
@@ -65,7 +69,7 @@ export function UserProfileChip({
   return (
     <Tooltip>
       <TooltipTrigger asChild>{content}</TooltipTrigger>
-      <TooltipContent side="bottom" sideOffset={8}>{tooltip}</TooltipContent>
+      <TooltipContent side="bottom" sideOffset={8}>{tooltip ?? fullName ?? username}</TooltipContent>
     </Tooltip>
   );
 }

@@ -37,15 +37,6 @@ import { PriorityBadge } from "./PriorityBadge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { CustomScrollArea } from "./CustomScrollArea";
 import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "./ui/pagination";
-import {
   BacklogWorkspaceFilters,
   TaskWorkspaceFilters,
 } from "../utils/taskWorkspaceFilters";
@@ -54,6 +45,7 @@ import { TaskIndexHeaderCell } from "./TaskIndexHeaderCell";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import { getIconActionButtonClassName } from "./iconActionButtonStyles";
 import { WorkspaceClearButton, WorkspaceFilterChip } from "./WorkspaceFilterChip";
+import { WorkspacePaginationFooter } from "./WorkspacePaginationFooter";
 
 type ListCard = Card & {
   priority?: Priority;
@@ -75,28 +67,6 @@ const EMPTY_TASK_PAGE: BoardTaskListPage = {
   totalItems: 0,
   totalPages: 0,
 };
-
-function buildPaginationItems(totalPages: number, currentPage: number): Array<number | "ellipsis"> {
-  if (totalPages <= 7) {
-    return Array.from({ length: totalPages }, (_, index) => index + 1);
-  }
-
-  const pages = new Set<number>([1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
-  const normalizedPages = Array.from(pages)
-    .filter((page) => page >= 1 && page <= totalPages)
-    .sort((left, right) => left - right);
-
-  const items: Array<number | "ellipsis"> = [];
-  normalizedPages.forEach((page, index) => {
-    if (index > 0 && page - normalizedPages[index - 1] > 1) {
-      items.push("ellipsis");
-    }
-
-    items.push(page);
-  });
-
-  return items;
-}
 
 function getResultsSummaryText(page: number, pageSize: number, totalItems: number): string {
   if (totalItems === 0) {
@@ -180,15 +150,13 @@ export function ListView({
   const workspaceWidthClassName = "mx-auto w-full max-w-[1850px]";
   const selectedLabelKey = [...filters.selectedLabelIds].sort((left, right) => left - right).join(",");
   const stageFilter = isBacklogMode ? (filters as BacklogWorkspaceFilters).stageFilter : "all";
-  const paginationItems = useMemo(
-    () => buildPaginationItems(Math.max(taskPage.totalPages, 1), taskPage.page),
-    [taskPage.page, taskPage.totalPages],
-  );
   const missingRowCount = Math.max(0, TASKS_PER_PAGE - taskPage.items.length);
   const reservedTableMinHeight =
     missingRowCount > 0
       ? `calc(${TASK_INDEX_HEADER_HEIGHT_REM + TASKS_PER_PAGE * TASK_INDEX_ROW_HEIGHT_REM}rem + 2px)`
       : undefined;
+  const disablePaginationFooter =
+    taskPage.items.length === 0 || Math.max(taskPage.totalPages, 1) <= 1;
   const hasActiveFilters =
     filters.searchQuery.length > 0 ||
     filters.quickFilter !== "all" ||
@@ -957,83 +925,22 @@ export function ListView({
           </div>
         </div>
 
-        <div className={`mt-6 flex flex-wrap items-center justify-between gap-4 border-t ${currentTheme.border} pt-4`}>
-          <div className="flex items-center gap-2 whitespace-nowrap">
-            <kbd className={`rounded-md border px-2 py-1 text-[10px] font-semibold ${currentTheme.border} ${currentTheme.textMuted}`}>Shift</kbd>
-            <span className={`text-xs ${currentTheme.textMuted}`}>Previous page</span>
-            <kbd className={`ml-2 rounded-md border px-2 py-1 text-[10px] font-semibold ${currentTheme.border} ${currentTheme.textMuted}`}>Tab</kbd>
-            <span className={`text-xs ${currentTheme.textMuted}`}>Next page</span>
-          </div>
-          <div className="ml-auto">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    aria-disabled={taskPage.page === 1}
-                    className={`${
-                      taskPage.page === 1
-                        ? "pointer-events-none opacity-50"
-                        : `${currentTheme.textSecondary} hover:${currentTheme.primaryText} hover:${currentTheme.primaryBg} border ${currentTheme.border}`
-                    }`}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      if (taskPage.page > 1) {
-                        setCurrentPage((page) => page - 1);
-                      }
-                    }}
-                  />
-                </PaginationItem>
-
-                {paginationItems.map((item, index) =>
-                  item === "ellipsis" ? (
-                    <PaginationItem key={`ellipsis-${index}`}>
-                      <PaginationEllipsis />
-                    </PaginationItem>
-                  ) : (
-                    <PaginationItem key={item}>
-                      <PaginationLink
-                        href="#"
-                        isActive={item === taskPage.page}
-                        className={
-                          item === taskPage.page
-                            ? `border ${currentTheme.primaryBorder} ${currentTheme.primaryBg} ${currentTheme.primaryText} shadow-sm`
-                            : `${currentTheme.textSecondary} hover:${currentTheme.primaryText} hover:${currentTheme.primaryBg}`
-                        }
-                        onClick={(event) => {
-                          event.preventDefault();
-                          if (item !== taskPage.page) {
-                            setCurrentPage(item);
-                          }
-                        }}
-                      >
-                        {item}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ),
-                )}
-
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    aria-disabled={taskPage.page >= Math.max(taskPage.totalPages, 1)}
-                    className={`${
-                      taskPage.page >= Math.max(taskPage.totalPages, 1)
-                        ? "pointer-events-none opacity-50"
-                        : `${currentTheme.textSecondary} hover:${currentTheme.primaryText} hover:${currentTheme.primaryBg} border ${currentTheme.border}`
-                    }`}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      if (taskPage.page < Math.max(taskPage.totalPages, 1)) {
-                        setCurrentPage((page) => page + 1);
-                      }
-                    }}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </div>
-        </div>
+        <WorkspacePaginationFooter
+          currentPage={taskPage.page}
+          totalPages={Math.max(taskPage.totalPages, 1)}
+          onPageChange={setCurrentPage}
+          disabled={disablePaginationFooter}
+          className={`mt-6 grid grid-cols-[1fr_auto_1fr] items-center gap-4 border-t ${currentTheme.border} pt-4`}
+          keycapClassName={`rounded-md border px-2 py-1 text-[10px] font-semibold ${currentTheme.border} ${currentTheme.textMuted}`}
+          mutedTextClassName={`text-xs ${currentTheme.textMuted}`}
+          pageActiveClassName={`pointer-events-none cursor-default border ${currentTheme.primaryBorder} ${currentTheme.accentPaginationActive} shadow-sm`}
+          pageInactiveClassName={`!border ${currentTheme.border} !bg-white dark:!bg-input/30 ${currentTheme.textSecondary} hover:${currentTheme.borderHover} hover:!bg-white dark:hover:!bg-input/30 hover:text-inherit hover:ring-1 hover:ring-black/5 dark:hover:ring-white/10`}
+          previousNextInactiveClassName={`!border ${currentTheme.border} !bg-white/75 dark:!bg-input/20 ${currentTheme.textSecondary} hover:${currentTheme.borderHover} hover:!bg-white/75 dark:hover:!bg-input/20 hover:text-inherit hover:ring-1 hover:ring-black/5 dark:hover:ring-white/10`}
+          previousNextDisabledClassName={`pointer-events-none !border-transparent !bg-transparent ${currentTheme.textMuted}`}
+          ellipsisClassName={currentTheme.textMuted}
+          summaryText={getResultsSummaryText(taskPage.page, taskPage.pageSize, taskPage.totalItems)}
+          summaryTextClassName={`text-xs ${currentTheme.textMuted}`}
+        />
       </div>
     </div>
   );

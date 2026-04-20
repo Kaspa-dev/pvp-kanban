@@ -1,68 +1,90 @@
-import Avatar from "boring-avatars";
+import { Facehash, type Intensity3D, type Variant } from "facehash";
 import * as React from "react";
-import { useTheme, type Theme } from "../contexts/ThemeContext";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { cn } from "./ui/utils";
 
-const APP_AVATAR_PALETTES: Record<Theme, string[]> = {
-  purple: ["#2f1a47", "#5b2a86", "#8b46c7", "#d946ef", "#f9a8d4"],
-  ocean: ["#0f2747", "#1d4ed8", "#0ea5e9", "#22d3ee", "#a5f3fc"],
-  sunset: ["#4c1d15", "#c2410c", "#f97316", "#ef4444", "#fdba74"],
-  forest: ["#13261b", "#166534", "#22c55e", "#10b981", "#86efac"],
-  mono: ["#18181b", "#3f3f46", "#71717a", "#a1a1aa", "#e4e4e7"],
-  berry: ["#3b0a45", "#a21caf", "#d946ef", "#f43f5e", "#fbcfe8"],
-  lagoon: ["#112e2b", "#0f766e", "#14b8a6", "#0ea5e9", "#99f6e4"],
-  citrus: ["#27330f", "#65a30d", "#a3e635", "#f59e0b", "#fef08a"],
-  cobalt: ["#172554", "#1d4ed8", "#2563eb", "#38bdf8", "#bfdbfe"],
-};
+const APP_AVATAR_COLORS = [
+  "#ff5d8f",
+  "#ff7a45",
+  "#ff9f1c",
+  "#c77d00",
+  "#7cb518",
+  "#38b000",
+  "#2dd4bf",
+  "#00c2ff",
+  "#3b82f6",
+  "#5b6cff",
+  "#7c4dff",
+  "#9c27b0",
+  "#d946ef",
+  "#ff4fa3",
+  "#ff6b6b",
+  "#e64980",
+  "#fb7185",
+  "#f97316",
+  "#06b6d4",
+  "#14b8a6",
+];
 
-export type AppAvatarProps = Omit<
-  React.ComponentProps<typeof Avatar>,
-  "variant" | "size" | "name" | "colors" | "title"
-> & {
-  name: string;
+const APP_AVATAR_FEATURE_COLOR = "#111827";
+
+export type AppAvatarProps = Omit<React.HTMLAttributes<HTMLDivElement>, "children"> & {
+  username: string;
+  fullName?: string;
   size: number;
-  className?: string;
   colors?: string[];
+  variant?: Variant;
+  intensity3d?: Intensity3D;
+  interactive?: boolean;
+  showInitial?: boolean;
+  enableBlink?: boolean;
   showTooltip?: boolean;
   tooltip?: string;
   tooltipDelay?: number;
+  square?: boolean;
 };
 
 export function AppAvatar({
-  name,
+  username,
+  fullName,
   size,
   className,
   colors,
-  square = false,
+  variant = "solid",
+  intensity3d = "subtle",
+  interactive = true,
+  showInitial = true,
+  enableBlink = true,
   showTooltip = false,
   tooltip,
   tooltipDelay,
-  ...avatarProps
+  square = false,
+  style,
+  ...props
 }: AppAvatarProps) {
-  const { theme } = useTheme();
-  const safeName = name.trim() || "Unknown User";
-  const resolvedColors = colors ?? APP_AVATAR_PALETTES[theme];
+  const safeUsername = username.trim() || "unknown";
+  const safeFullName = fullName?.trim() || "";
+  const resolvedColors = colors ?? APP_AVATAR_COLORS;
 
   const avatarNode = (
-    <span
+    <Facehash
+      {...props}
+      name={safeUsername}
+      size={size}
+      colors={resolvedColors}
+      variant={variant}
+      intensity3d={intensity3d}
+      interactive={interactive}
+      showInitial={showInitial}
+      enableBlink={enableBlink}
       className={cn(
-        "inline-flex shrink-0 overflow-hidden rounded-full",
+        "inline-flex shrink-0 overflow-hidden rounded-full shadow-sm",
         square && "rounded-xl",
         className,
       )}
-      style={{ width: size, height: size }}
-    >
-      <Avatar
-        {...avatarProps}
-        name={safeName}
-        size={size}
-        variant="marble"
-        colors={resolvedColors}
-        square={square}
-        className="block h-full w-full"
-      />
-    </span>
+      style={{ color: APP_AVATAR_FEATURE_COLOR, ...style }}
+      aria-label={safeFullName || safeUsername}
+    />
   );
 
   if (!showTooltip && !tooltip) {
@@ -73,7 +95,7 @@ export function AppAvatar({
     <Tooltip delayDuration={tooltipDelay}>
       <TooltipTrigger asChild>{avatarNode}</TooltipTrigger>
       <TooltipContent side="top" sideOffset={8}>
-        {tooltip ?? safeName}
+        {tooltip ?? (safeFullName || safeUsername)}
       </TooltipContent>
     </Tooltip>
   );

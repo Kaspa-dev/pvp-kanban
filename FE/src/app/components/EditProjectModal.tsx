@@ -1,4 +1,4 @@
-import { X, User, Trash2, Users, Crown } from "lucide-react";
+import { X, User, Trash2, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { Board } from "../utils/boards";
@@ -10,10 +10,15 @@ import {
 } from "../utils/boardIdentity";
 import { ProjectUser } from "../utils/users";
 import { BoardIdentityPicker } from "./BoardIdentityPicker";
+import { BoardMemberListItem } from "./BoardMemberListItem";
 import { CustomScrollArea } from "./CustomScrollArea";
 import { UserSearchPicker } from "./UserSearchPicker";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { getIconActionButtonClassName } from "./iconActionButtonStyles";
+import {
+  getPrimaryModalActionButtonClassName,
+  getSecondaryModalActionButtonClassName,
+} from "./modalActionButtonStyles";
 
 interface EditProjectModalProps {
   isOpen: boolean;
@@ -62,6 +67,13 @@ function getInitialMemberDirectory(board: Board | null): Record<number, ProjectU
 export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: EditProjectModalProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const modalFieldSurfaceClassName = isDarkMode ? currentTheme.inputBg : "bg-gray-50";
+  const modalSecondarySurfaceClassName = isDarkMode ? currentTheme.bgSecondary : "bg-gray-50";
+  const primaryActionButtonClassName = getPrimaryModalActionButtonClassName(currentTheme);
+  const secondaryActionButtonClassName = getSecondaryModalActionButtonClassName(
+    currentTheme,
+    currentTheme.text,
+  );
   const initialDraft = getInitialProjectDraft(board);
   const initialDirectory = getInitialMemberDirectory(board);
 
@@ -231,7 +243,7 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
                   }}
                   maxLength={MAX_BOARD_NAME_LENGTH}
                   placeholder="Enter project name..."
-                  className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent transition-all ${currentTheme.inputBg} ${currentTheme.text} ${
+                  className={`w-full px-4 py-3 border-2 rounded-xl transition-[border-color,box-shadow,color,background-color] duration-300 ease-out focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent ${modalFieldSurfaceClassName} ${currentTheme.text} ${
                     showError && !name.trim() ? "border-red-500" : currentTheme.inputBorder
                   }`}
                   autoFocus
@@ -255,7 +267,7 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
                   maxLength={MAX_BOARD_DESCRIPTION_LENGTH}
                   placeholder="Describe your project..."
                   rows={4}
-                  className={`w-full px-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent resize-y transition-all ${currentTheme.inputBg} ${currentTheme.text}`}
+                  className={`w-full px-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl transition-[border-color,box-shadow,color,background-color] duration-300 ease-out focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent resize-y ${modalFieldSurfaceClassName} ${currentTheme.text}`}
                 />
                 <p className={`mt-2 text-xs ${currentTheme.textMuted}`}>
                   Up to {MAX_BOARD_DESCRIPTION_LENGTH} characters.
@@ -296,7 +308,7 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
               </p>
 
                 {members.length === 0 ? (
-                  <div className={`mt-4 rounded-xl border ${currentTheme.border} ${currentTheme.bgSecondary} py-6 text-center ${currentTheme.textMuted}`}>
+                  <div className={`mt-4 rounded-xl border ${currentTheme.border} ${modalSecondarySurfaceClassName} py-6 text-center ${currentTheme.textMuted}`}>
                     <User className="w-8 h-8 mx-auto mb-2 opacity-50" />
                     <p className="text-sm">No members yet.</p>
                   </div>
@@ -306,27 +318,15 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
                       const isOwner = member.role === "owner";
 
                       return (
-                        <div
+                        <BoardMemberListItem
                           key={member.userId}
-                          className={`flex items-center justify-between p-3 ${currentTheme.bgSecondary} rounded-lg border ${currentTheme.border} group hover:${currentTheme.primaryBorder} transition-all`}
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div
-                              className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md shrink-0"
-                              style={{ backgroundColor: member.color }}
-                            >
-                              {member.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="min-w-0">
-                              <p className={`font-semibold ${currentTheme.text} truncate`}>{member.name}</p>
-                              <p className={`text-xs ${currentTheme.textMuted} truncate`}>@{member.username}</p>
-                              <div className="flex items-center gap-1.5">
-                                {isOwner && <Crown className="w-3.5 h-3.5 text-amber-500" />}
-                                <p className={`text-xs ${currentTheme.textMuted}`}>{isOwner ? "Owner" : "Team Member"}</p>
-                              </div>
-                            </div>
-                          </div>
-                          {!isOwner && (
+                          currentTheme={currentTheme}
+                          displayName={member.name}
+                          username={member.username}
+                          role={member.role}
+                          surfaceClassName={modalSecondarySurfaceClassName}
+                          hoverBorderClassName={`transition-all hover:${currentTheme.primaryBorder}`}
+                          action={!isOwner ? (
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <button
@@ -339,8 +339,8 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
                               </TooltipTrigger>
                               <TooltipContent side="top" sideOffset={8}>Remove member</TooltipContent>
                             </Tooltip>
-                          )}
-                        </div>
+                          ) : undefined}
+                        />
                       );
                     })}
                   </div>
@@ -360,14 +360,14 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
             <button
               type="button"
               onClick={handleClose}
-              className={`flex-1 px-5 py-3 border-2 ${currentTheme.border} ${currentTheme.text} font-semibold rounded-xl hover:${currentTheme.bgSecondary} transition-all hover:scale-105`}
+              className={`flex-1 px-5 py-3 font-semibold ${secondaryActionButtonClassName}`}
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`flex-1 px-5 py-3 bg-gradient-to-r ${currentTheme.primary} text-white font-semibold rounded-xl transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed`}
+              className={`flex-1 px-5 py-3 font-semibold ${primaryActionButtonClassName}`}
             >
               {isSubmitting ? "Saving..." : "Save Changes"}
             </button>

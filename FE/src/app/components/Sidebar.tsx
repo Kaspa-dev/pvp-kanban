@@ -54,7 +54,7 @@ export function Sidebar({
         className={`relative flex h-full w-full flex-col overflow-hidden border-t border-r ${currentTheme.border} backdrop-blur-xl`}
         style={{
           ...workspaceSurface.glassHeaderStyle,
-          backgroundColor: isDarkMode ? "rgba(12, 12, 14, 0.96)" : "rgba(255, 255, 255, 0.96)",
+          ...workspaceSurface.glassSidebarStyle,
         }}
       >
         <SidebarHeader className={`relative z-10 min-h-[7.25rem] gap-0 border-b ${isCollapsed ? "px-2 py-2.5" : "px-2.5 py-2.5"} ${currentTheme.border}`}>
@@ -63,7 +63,7 @@ export function Sidebar({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <SidebarTrigger
-                    className={`h-8 w-8 rounded-xl ${currentTheme.textMuted} transition-all ${isDarkMode ? "hover:bg-white/[0.05]" : "hover:bg-black/[0.04]"}`}
+                    className={`h-8 w-8 rounded-xl transition-all ${workspaceSurface.mutedIconButtonClassName}`}
                   />
                 </TooltipTrigger>
                 <TooltipContent side="right" sideOffset={8}>

@@ -1,9 +1,10 @@
 import { getThemeColors } from "../contexts/ThemeContext";
+import { getWorkspaceControlSurfaceClassName } from "../utils/workspaceSurfaceStyles";
 
 type ThemeColors = ReturnType<typeof getThemeColors>;
 
 export function getNeutralElevatedCardSurfaceClassName(isDarkMode: boolean) {
-  return isDarkMode ? "bg-neutral-950/95" : "bg-white";
+  return isDarkMode ? getWorkspaceControlSurfaceClassName() : "bg-white";
 }
 
 export function getNeutralElevatedCardHoverClassName(

@@ -15,6 +15,7 @@ public class Board
 
     public User Creator {get; set;} = null!;
     public ICollection<BoardMembership> Memberships { get; set; } = new List<BoardMembership>();
+    public ICollection<BoardFavorite> Favorites { get; set; } = new List<BoardFavorite>();
     public ICollection<OrganizationalUnit> Teams { get; set; } = new List<OrganizationalUnit>();
     public ICollection<Models.TaskStatus> TaskStatuses { get; set; } = new List<Models.TaskStatus>();
     public ICollection<Models.Task> Backlog { get; set; } = new List<Models.Task>();

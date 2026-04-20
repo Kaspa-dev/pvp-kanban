@@ -127,13 +127,14 @@ public class BoardsController(
             .Take(pageSize)
             .Include(board => board.Memberships)
             .ThenInclude(membership => membership.User)
+            .Include(board => board.Favorites)
             .AsSplitQuery()
             .ToListAsync(cancellationToken);
 
         return Ok(new PagedBoardListResponseDto
         {
             Items = boards
-                .Select(ToBoardListItemDto)
+                .Select(board => ToBoardListItemDto(board, userId))
                 .ToList(),
             Page = page,
             PageSize = pageSize,
@@ -248,9 +249,10 @@ public class BoardsController(
         var createdBoard = await _context.Boards
             .Include(item => item.Memberships)
             .ThenInclude(membership => membership.User)
+            .Include(item => item.Favorites)
             .SingleAsync(item => item.Id == board.Id, cancellationToken);
 
-        return CreatedAtAction(nameof(GetBoard), new { boardId = board.Id }, ToBoardDto(createdBoard));
+        return CreatedAtAction(nameof(GetBoard), new { boardId = board.Id }, ToBoardDto(createdBoard, userId));
     }
 
     [HttpGet("{boardId:int}")]
@@ -267,7 +269,72 @@ public class BoardsController(
             return failure;
         }
 
-        return Ok(ToBoardDto(context!.Board));
+        return Ok(ToBoardDto(context!.Board, userId));
+    }
+
+    [HttpPost("{boardId:int}/favorite")]
+    public async Task<ActionResult<BoardFavoriteStateDto>> FavoriteBoard(int boardId, CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        var (_, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
+        if (failure is not null)
+        {
+            return failure;
+        }
+
+        bool exists = await _context.BoardFavorites
+            .AnyAsync(item => item.BoardId == boardId && item.UserId == userId, cancellationToken);
+
+        if (!exists)
+        {
+            _context.BoardFavorites.Add(new BoardFavorite
+            {
+                BoardId = boardId,
+                UserId = userId,
+                CreatedAt = DateTime.UtcNow,
+            });
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+
+        return Ok(new BoardFavoriteStateDto
+        {
+            BoardId = boardId,
+            IsFavorite = true,
+        });
+    }
+
+    [HttpDelete("{boardId:int}/favorite")]
+    public async Task<ActionResult<BoardFavoriteStateDto>> UnfavoriteBoard(int boardId, CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        var (_, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
+        if (failure is not null)
+        {
+            return failure;
+        }
+
+        BoardFavorite? favorite = await _context.BoardFavorites
+            .FirstOrDefaultAsync(item => item.BoardId == boardId && item.UserId == userId, cancellationToken);
+
+        if (favorite is not null)
+        {
+            _context.BoardFavorites.Remove(favorite);
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+
+        return Ok(new BoardFavoriteStateDto
+        {
+            BoardId = boardId,
+            IsFavorite = false,
+        });
     }
 
     [HttpPost("{boardId:int}/planning-poker/session")]
@@ -545,9 +612,10 @@ public class BoardsController(
         var updatedBoard = await _context.Boards
             .Include(item => item.Memberships)
             .ThenInclude(membership => membership.User)
+            .Include(item => item.Favorites)
             .SingleAsync(item => item.Id == board.Id, cancellationToken);
 
-        return Ok(ToBoardDto(updatedBoard));
+        return Ok(ToBoardDto(updatedBoard, userId));
     }
 
     [HttpDelete("{boardId:int}")]
@@ -1133,6 +1201,7 @@ public class BoardsController(
         Board? board = await _context.Boards
             .Include(item => item.Memberships)
             .ThenInclude(membership => membership.User)
+            .Include(item => item.Favorites)
             .Include(item => item.TaskStatuses)
             .Include(item => item.Labels)
             .FirstOrDefaultAsync(item => item.Id == boardId, cancellationToken);
@@ -1250,7 +1319,7 @@ public class BoardsController(
         return false;
     }
 
-    private static BoardDto ToBoardDto(Board board)
+    private static BoardDto ToBoardDto(Board board, int currentUserId)
     {
         return new BoardDto
         {
@@ -1261,6 +1330,7 @@ public class BoardsController(
             LogoColorKey = board.LogoColorKey,
             CreatedAt = board.CreatedAt,
             CreatorUserId = board.CreatorId,
+            IsFavorite = board.Favorites.Any(favorite => favorite.UserId == currentUserId),
             Members = board.Memberships
                 .OrderBy(membership => membership.Role == BoardRole.Owner ? 0 : 1)
                 .ThenBy(membership => membership.User.FirstName)
@@ -1286,6 +1356,7 @@ public class BoardsController(
         {
             "owned" => query.Where(board => board.Memberships.Any(membership => membership.UserId == userId && membership.Role == BoardRole.Owner)),
             "shared" => query.Where(board => board.Memberships.Any(membership => membership.UserId == userId && membership.Role == BoardRole.Member)),
+            "favorites" => query.Where(board => board.Favorites.Any(favorite => favorite.UserId == userId)),
             _ => query,
         };
 
@@ -1415,6 +1486,7 @@ public class BoardsController(
         {
             "owned" => "owned",
             "shared" => "shared",
+            "favorites" => "favorites",
             _ => "all",
         };
     }
@@ -1429,7 +1501,7 @@ public class BoardsController(
         };
     }
 
-    private static BoardListItemDto ToBoardListItemDto(Board board)
+    private static BoardListItemDto ToBoardListItemDto(Board board, int currentUserId)
     {
         return new BoardListItemDto
         {
@@ -1441,6 +1513,7 @@ public class BoardsController(
             CreatedAt = board.CreatedAt,
             CreatorUserId = board.CreatorId,
             MemberCount = board.Memberships.Count,
+            IsFavorite = board.Favorites.Any(favorite => favorite.UserId == currentUserId),
             Members = board.Memberships
                 .OrderBy(membership => membership.Role == BoardRole.Owner ? 0 : 1)
                 .ThenBy(membership => membership.User.FirstName)

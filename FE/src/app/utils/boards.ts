@@ -25,6 +25,7 @@ interface ApiBoard {
   logoColorKey: string;
   createdAt: string;
   creatorUserId: number;
+  isFavorite: boolean;
   members: ApiBoardMember[];
 }
 
@@ -66,10 +67,11 @@ export interface Board {
   logoColorKey: BoardLogoColorKey;
   createdAt: string;
   creatorUserId: number;
+  isFavorite: boolean;
   members: BoardMember[];
 }
 
-export type BoardMembershipFilter = "all" | "owned" | "shared";
+export type BoardMembershipFilter = "all" | "owned" | "shared" | "favorites";
 export type BoardSort = "newest" | "nameAsc" | "nameDesc";
 
 export interface BoardListQuery {
@@ -122,6 +124,7 @@ function normalizeBoard(board: ApiBoard): Board {
     logoColorKey: normalizeBoardLogoColorKey(board.logoColorKey),
     createdAt: board.createdAt,
     creatorUserId: board.creatorUserId,
+    isFavorite: board.isFavorite,
     members: board.members.map(normalizeMember),
   };
 }
@@ -260,5 +263,21 @@ export async function deleteBoard(boardId: number | string): Promise<void> {
     `/api/boards/${Number(boardId)}`,
     { method: "DELETE" },
     "Unable to delete the project right now.",
+  );
+}
+
+export async function favoriteBoard(boardId: number | string): Promise<void> {
+  await apiVoid(
+    `/api/boards/${Number(boardId)}/favorite`,
+    { method: "POST" },
+    "Unable to favorite the project right now.",
+  );
+}
+
+export async function unfavoriteBoard(boardId: number | string): Promise<void> {
+  await apiVoid(
+    `/api/boards/${Number(boardId)}/favorite`,
+    { method: "DELETE" },
+    "Unable to remove the project from favorites right now.",
   );
 }

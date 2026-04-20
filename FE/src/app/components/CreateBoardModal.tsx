@@ -11,10 +11,15 @@ import {
 } from '../utils/boardIdentity';
 import { ProjectUser } from '../utils/users';
 import { BoardIdentityPicker } from './BoardIdentityPicker';
+import { BoardMemberListItem } from './BoardMemberListItem';
 import { CustomScrollArea } from './CustomScrollArea';
 import { UserSearchPicker } from './UserSearchPicker';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { getIconActionButtonClassName } from './iconActionButtonStyles';
+import {
+  getPrimaryModalActionButtonClassName,
+  getSecondaryModalActionButtonClassName,
+} from './modalActionButtonStyles';
 
 interface CreateBoardModalProps {
   isOpen: boolean;
@@ -31,6 +36,13 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const currentUserId = Number(user?.id ?? 0);
+  const modalFieldSurfaceClassName = isDarkMode ? currentTheme.inputBg : 'bg-gray-50';
+  const modalSecondarySurfaceClassName = isDarkMode ? currentTheme.bgSecondary : 'bg-gray-50';
+  const primaryActionButtonClassName = getPrimaryModalActionButtonClassName(currentTheme);
+  const secondaryActionButtonClassName = getSecondaryModalActionButtonClassName(
+    currentTheme,
+    currentTheme.textSecondary,
+  );
 
   const [boardName, setBoardName] = useState('');
   const [description, setDescription] = useState('');
@@ -158,7 +170,7 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
                 placeholder="e.g., Website Redesign, Q1 Marketing Campaign"
                 className={`w-full px-4 py-3 border-2 ${
                   errors.name ? 'border-red-300' : currentTheme.inputBorder
-                } rounded-xl focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent transition-all ${currentTheme.inputBg} ${currentTheme.text}`}
+                } rounded-xl transition-[border-color,box-shadow,color,background-color] duration-300 ease-out focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent ${modalFieldSurfaceClassName} ${currentTheme.text}`}
               />
               <p className={`mt-2 text-xs ${currentTheme.textMuted}`}>
                 Up to {MAX_BOARD_NAME_LENGTH} characters.
@@ -179,7 +191,7 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
                 maxLength={MAX_BOARD_DESCRIPTION_LENGTH}
                 placeholder="Brief description of what this project is about..."
                 rows={3}
-                className={`w-full px-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent transition-all resize-none ${currentTheme.inputBg} ${currentTheme.text}`}
+                className={`w-full px-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl transition-[border-color,box-shadow,color,background-color] duration-300 ease-out focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent resize-none ${modalFieldSurfaceClassName} ${currentTheme.text}`}
               />
               <p className={`mt-2 text-xs ${currentTheme.textMuted}`}>
                 Up to {MAX_BOARD_DESCRIPTION_LENGTH} characters.
@@ -222,34 +234,28 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
               {selectedMembers.length > 0 ? (
                 <div className="mt-4 space-y-2">
                   {selectedMembers.map((member) => (
-                    <div
+                    <BoardMemberListItem
                       key={member.id}
-                      className={`flex items-center gap-3 p-3 ${currentTheme.bgSecondary} rounded-xl border ${currentTheme.border}`}
-                    >
-                      <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
-                        style={{ backgroundColor: '#64748b' }}
-                      >
-                        {member.displayName.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <span className={`font-medium ${currentTheme.text}`}>{member.displayName}</span>
-                        <p className={`text-xs ${currentTheme.textMuted} truncate`}>@{member.username}</p>
-                        <p className={`text-xs ${currentTheme.textMuted} truncate`}>{member.email}</p>
-                      </div>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveMember(member.id)}
-                            className={memberActionButtonClassName}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" sideOffset={8}>Remove member</TooltipContent>
-                      </Tooltip>
-                    </div>
+                      currentTheme={currentTheme}
+                      displayName={member.displayName}
+                      username={member.username}
+                      email={member.email}
+                      surfaceClassName={modalSecondarySurfaceClassName}
+                      action={(
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveMember(member.id)}
+                              className={memberActionButtonClassName}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" sideOffset={8}>Remove member</TooltipContent>
+                        </Tooltip>
+                      )}
+                    />
                   ))}
                 </div>
               ) : (
@@ -268,11 +274,11 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
           </CustomScrollArea>
         </div>
 
-        <div className={`border-t-2 ${currentTheme.border} ${currentTheme.cardBg} px-6 py-4 flex items-center justify-end gap-3 rounded-b-2xl shrink-0`}>
+        <div className={`flex gap-3 p-6 border-t-2 ${currentTheme.border} ${currentTheme.cardBg} rounded-b-2xl shrink-0`}>
           <button
             type="button"
             onClick={handleClose}
-            className={`px-6 py-2.5 border-2 ${currentTheme.border} ${currentTheme.textSecondary} font-semibold rounded-xl hover:${currentTheme.bgTertiary} transition-colors`}
+            className={`flex-1 px-5 py-3 font-semibold ${secondaryActionButtonClassName}`}
           >
             Cancel
           </button>
@@ -280,7 +286,7 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
             type="button"
             onClick={() => void handleCreate()}
             disabled={isSubmitting}
-            className={`px-6 py-2.5 bg-gradient-to-r ${currentTheme.primary} text-white font-bold rounded-xl transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed`}
+            className={`flex-1 px-5 py-3 font-semibold ${primaryActionButtonClassName}`}
           >
             {isSubmitting ? 'Creating...' : 'Create Project'}
           </button>

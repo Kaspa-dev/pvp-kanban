@@ -23,6 +23,8 @@ export function BoardIdentityPicker({
 }: BoardIdentityPickerProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const pickerSurfaceClassName = isDarkMode ? currentTheme.bgSecondary : "bg-gray-50";
+  const optionSurfaceClassName = isDarkMode ? currentTheme.cardBg : "bg-gray-50";
   const selectedIconClasses = isDarkMode
     ? "border-slate-500 bg-white/5 shadow-sm"
     : "border-slate-400 bg-slate-100 shadow-sm";
@@ -32,7 +34,7 @@ export function BoardIdentityPicker({
 
   return (
     <section className="space-y-4" aria-labelledby="board-identity-heading">
-      <div className={`rounded-2xl border ${currentTheme.border} ${currentTheme.bgSecondary} p-4`}>
+      <div className={`rounded-2xl border ${currentTheme.border} ${pickerSurfaceClassName} p-4`}>
         <div className="flex items-center gap-4">
           <BoardLogo iconKey={iconKey} colorKey={colorKey} size="md" />
           <div>
@@ -64,7 +66,7 @@ export function BoardIdentityPicker({
                 className={`flex flex-col items-center gap-2 rounded-2xl border px-3 py-3 transition-all ${
                   isSelected
                     ? selectedIconClasses
-                    : `${currentTheme.border} ${currentTheme.cardBg} hover:${currentTheme.bgTertiary}`
+                    : `${currentTheme.border} ${optionSurfaceClassName} hover:${currentTheme.bgTertiary}`
                 }`}
               >
                 <BoardLogo iconKey={option.key} colorKey={colorKey} size="xs" />
