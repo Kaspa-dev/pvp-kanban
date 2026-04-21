@@ -442,7 +442,7 @@ export function Projects() {
       }
 
       const key = event.key;
-      if (!["1", "2", "Escape", "Tab", "Shift"].includes(key)) {
+      if (!["1", "2", "3", "Escape", "Tab", "Shift"].includes(key)) {
         return;
       }
 
@@ -699,16 +699,23 @@ export function Projects() {
               <div className="flex flex-col gap-4 xl:flex-row xl:items-end">
                 <div className="flex min-w-0 flex-col gap-2 xl:flex-[1.35]">
                   <span className={`mb-2 block text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Search</span>
-                  <div className="relative min-w-0 flex-1">
-                    <Search className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${currentTheme.textMuted}`} />
-                    <Input
-                      type="text"
-                      value={searchInput}
-                      onChange={(event) => setSearchInput(event.target.value)}
-                      placeholder="Search by board name or description"
-                      className={`h-11 w-full rounded-xl ${currentTheme.inputBorder} ${currentTheme.inputBg} pl-10 pr-4 text-sm ${currentTheme.text} placeholder:${currentTheme.textMuted} ${currentTheme.accentInputFocus}`}
-                    />
-                  </div>
+                  <Tooltip delayDuration={PROJECTS_TOOLTIP_DELAY}>
+                    <TooltipTrigger asChild>
+                      <div className="relative min-w-0 flex-1">
+                        <Search className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${currentTheme.textMuted}`} />
+                        <Input
+                          type="text"
+                          value={searchInput}
+                          onChange={(event) => setSearchInput(event.target.value)}
+                          placeholder="Search by board name or description"
+                          className={`h-11 w-full rounded-xl ${currentTheme.inputBorder} ${currentTheme.inputBg} pl-10 pr-4 text-sm ${currentTheme.text} placeholder:${currentTheme.textMuted} ${currentTheme.accentInputFocus}`}
+                        />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={8}>
+                      Search your boards by project name or description
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
 
                 <WorkspaceToolbarSelect
@@ -718,6 +725,8 @@ export function Projects() {
                   options={BOARD_SORT_OPTIONS}
                   onValueChange={(value) => handleQueryStateChange({ sort: value as BoardSort, page: 1 })}
                   hideSelectedOption
+                  delayDuration={PROJECTS_TOOLTIP_DELAY}
+                  tooltip="Choose how the board list is ordered"
                 />
 
                 <WorkspaceToolbarSelect
@@ -731,6 +740,8 @@ export function Projects() {
                   onValueChange={(value) => handleQueryStateChange({ pageSize: Number(value), page: 1 })}
                   widthClassName="xl:w-40 xl:flex-none"
                   hideSelectedOption
+                  delayDuration={PROJECTS_TOOLTIP_DELAY}
+                  tooltip="Choose how many boards to show per page"
                 />
 
                 <div className="flex min-w-0 flex-col gap-2 xl:flex-1">

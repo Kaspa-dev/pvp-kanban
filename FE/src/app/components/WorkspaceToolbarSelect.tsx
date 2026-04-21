@@ -5,6 +5,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
 
@@ -21,6 +22,8 @@ interface WorkspaceToolbarSelectProps {
   onValueChange: (value: string) => void;
   widthClassName?: string;
   hideSelectedOption?: boolean;
+  tooltip?: string;
+  delayDuration?: number;
 }
 
 export function WorkspaceToolbarSelect({
@@ -31,6 +34,8 @@ export function WorkspaceToolbarSelect({
   onValueChange,
   widthClassName = "xl:w-52 xl:flex-none",
   hideSelectedOption = false,
+  tooltip,
+  delayDuration,
 }: WorkspaceToolbarSelectProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
@@ -39,7 +44,7 @@ export function WorkspaceToolbarSelect({
     ? options.filter((option) => option.value !== value)
     : options;
 
-  return (
+  const content = (
     <label className={`block ${widthClassName}`}>
       <span className={`mb-2 block text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
         {label}
@@ -63,5 +68,18 @@ export function WorkspaceToolbarSelect({
         </SelectContent>
       </Select>
     </label>
+  );
+
+  if (!tooltip) {
+    return content;
+  }
+
+  return (
+    <Tooltip delayDuration={delayDuration}>
+      <TooltipTrigger asChild>{content}</TooltipTrigger>
+      <TooltipContent side="top" sideOffset={8}>
+        {tooltip}
+      </TooltipContent>
+    </Tooltip>
   );
 }
