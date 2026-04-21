@@ -1,7 +1,6 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import { AppAvatar } from "./AppAvatar";
-import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
 
 interface UserProfileChipProps {
   username: string;
@@ -20,12 +19,11 @@ export function UserProfileChip({
 }: UserProfileChipProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
-  const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
 
   const content = onClick ? (
     <button
       onClick={onClick}
-      className={`flex cursor-pointer items-center gap-2.5 rounded-2xl px-3 py-2 transition-all ${workspaceSurface.subtleHoverSurfaceClassName}`}
+      className={`group flex cursor-pointer items-center gap-2.5 rounded-2xl px-3 py-2 transition-all duration-200 hover:shadow-sm ${currentTheme.accentIconButtonHover}`}
       type="button"
     >
       <AppAvatar
@@ -35,10 +33,10 @@ export function UserProfileChip({
         className="pointer-events-none shadow-sm"
       />
       <div className="hidden min-w-0 pointer-events-none sm:flex flex-col items-start">
-        <span className={`max-w-[140px] truncate text-sm font-semibold leading-tight ${currentTheme.text}`}>
+        <span className={`max-w-[140px] truncate text-sm font-semibold leading-tight transition-colors ${currentTheme.text} group-hover:${currentTheme.primaryText}`}>
           {username}
         </span>
-        <span className={`text-xs leading-tight ${currentTheme.textMuted}`}>
+        <span className={`text-xs leading-tight transition-colors ${currentTheme.textMuted} group-hover:${currentTheme.primaryText}`}>
           {subtitle}
         </span>
       </div>

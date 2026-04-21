@@ -57,6 +57,7 @@ import {
 } from "../utils/workspaceSurfaceStyles";
 import { WorkspacePaginationFooter } from "../components/WorkspacePaginationFooter";
 import { UtilityIconButton } from "../components/UtilityIconButton";
+import { showErrorToast, showSuccessToast } from "../utils/toast";
 
 function isEditableKeyboardTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
@@ -550,8 +551,10 @@ export function Projects() {
     try {
       if (nextFavoriteState) {
         await favoriteBoard(board.id);
+        showSuccessToast("Added to favorites.");
       } else {
         await unfavoriteBoard(board.id);
+        showSuccessToast("Removed from favorites.");
       }
 
       if (!nextFavoriteState && queryState.membership === "favorites") {
@@ -559,7 +562,9 @@ export function Projects() {
       }
     } catch (error) {
       applyFavoriteStateToLocalBoard(board.id, board.isFavorite);
-      setLoadError(error instanceof Error ? error.message : "Unable to update favorites right now.");
+      const message = error instanceof Error ? error.message : "Unable to update favorites right now.";
+      setLoadError(message);
+      showErrorToast(message);
     }
   };
 
@@ -815,7 +820,7 @@ export function Projects() {
           </div>
         ) : boardList.items.length === 0 ? (
           <div
-            className="flex items-center justify-center md:min-h-[var(--boards-grid-min-height-md)] lg:min-h-[var(--boards-grid-min-height-lg)] xl:min-h-[var(--boards-grid-min-height-xl)]"
+            className="flex items-start justify-center pt-8 md:min-h-[var(--boards-grid-min-height-md)] lg:min-h-[var(--boards-grid-min-height-lg)] xl:min-h-[var(--boards-grid-min-height-xl)]"
             style={reservedBoardGridStyle}
           >
             <div className="text-center py-20">

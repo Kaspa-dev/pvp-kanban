@@ -19,6 +19,7 @@ import {
   getPrimaryModalActionButtonClassName,
   getSecondaryModalActionButtonClassName,
 } from "./modalActionButtonStyles";
+import { showErrorToast, showSuccessToast } from "../utils/toast";
 
 interface EditProjectModalProps {
   isOpen: boolean;
@@ -36,6 +37,7 @@ interface EditProjectModalProps {
 const MAX_BOARD_MEMBERS = 20;
 const MAX_BOARD_NAME_LENGTH = 128;
 const MAX_BOARD_DESCRIPTION_LENGTH = 500;
+const BOARD_DESCRIPTION_TEXTAREA_HEIGHT_CLASS = "min-h-24 max-h-48";
 
 function getInitialProjectDraft(board: Board | null) {
   return {
@@ -84,13 +86,11 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
   const [memberUserIds, setMemberUserIds] = useState<number[]>(initialDraft.memberUserIds);
   const [memberDirectory, setMemberDirectory] = useState<Record<number, ProjectUser>>(initialDirectory);
   const [showError, setShowError] = useState(false);
-  const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const memberActionButtonClassName = getIconActionButtonClassName(currentTheme);
 
   const handleClose = () => {
     setShowError(false);
-    setSubmitError("");
     setIsSubmitting(false);
     onClose();
   };
@@ -99,7 +99,6 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape" && isOpen) {
         setShowError(false);
-        setSubmitError("");
         setIsSubmitting(false);
         onClose();
       }
@@ -158,7 +157,6 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
 
     try {
       setIsSubmitting(true);
-      setSubmitError("");
       await onBoardUpdated(board.id, {
         name: name.trim(),
         description: description.trim(),
@@ -167,10 +165,11 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
         memberUserIds,
       });
 
+      showSuccessToast("Project changes saved.");
       handleClose();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to save project changes.";
-      setSubmitError(message);
+      showErrorToast(message);
       setIsSubmitting(false);
     }
   };
@@ -267,7 +266,7 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
                   maxLength={MAX_BOARD_DESCRIPTION_LENGTH}
                   placeholder="Describe your project..."
                   rows={4}
-                  className={`w-full px-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl transition-[border-color,box-shadow,color,background-color] duration-300 ease-out focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent resize-y ${modalFieldSurfaceClassName} ${currentTheme.text}`}
+                  className={`w-full px-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl transition-[border-color,box-shadow,color,background-color] duration-300 ease-out focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent resize-y ${BOARD_DESCRIPTION_TEXTAREA_HEIGHT_CLASS} ${modalFieldSurfaceClassName} ${currentTheme.text}`}
                 />
                 <p className={`mt-2 text-xs ${currentTheme.textMuted}`}>
                   Up to {MAX_BOARD_DESCRIPTION_LENGTH} characters.
@@ -346,12 +345,6 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
                   </div>
                 )}
               </div>
-
-                {submitError && (
-                  <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                    {submitError}
-                  </div>
-                )}
               </div>
             </CustomScrollArea>
           </div>

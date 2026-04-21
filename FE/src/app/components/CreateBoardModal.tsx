@@ -20,6 +20,7 @@ import {
   getPrimaryModalActionButtonClassName,
   getSecondaryModalActionButtonClassName,
 } from './modalActionButtonStyles';
+import { showErrorToast, showSuccessToast } from '../utils/toast';
 
 interface CreateBoardModalProps {
   isOpen: boolean;
@@ -30,6 +31,7 @@ interface CreateBoardModalProps {
 const MAX_BOARD_MEMBERS = 20;
 const MAX_BOARD_NAME_LENGTH = 128;
 const MAX_BOARD_DESCRIPTION_LENGTH = 500;
+const BOARD_DESCRIPTION_TEXTAREA_HEIGHT_CLASS = "min-h-24 max-h-48";
 
 export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoardModalProps) {
   const { user } = useAuth();
@@ -51,7 +53,9 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
   const [memberUserIds, setMemberUserIds] = useState<number[]>([]);
   const [memberDirectory, setMemberDirectory] = useState<Record<number, ProjectUser>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<{ name?: string; submit?: string }>({});
+  const [errors, setErrors] = useState<{ name?: string }>(
+    {},
+  );
   const memberActionButtonClassName = getIconActionButtonClassName(currentTheme);
 
   const selectedMembers = useMemo(
@@ -99,7 +103,7 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
   };
 
   const validateForm = () => {
-    const newErrors: { name?: string; submit?: string } = {};
+    const newErrors: { name?: string } = {};
 
     if (!boardName.trim()) {
       newErrors.name = 'Project name is required';
@@ -114,7 +118,6 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
 
     try {
       setIsSubmitting(true);
-      setErrors((previous) => ({ ...previous, submit: undefined }));
 
       const newBoard = await createBoard(
         boardName.trim(),
@@ -123,11 +126,12 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
         logoColorKey,
         memberUserIds,
       );
+      showSuccessToast("Project created successfully.");
       onBoardCreated(newBoard);
       handleClose();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to create the project.';
-      setErrors((previous) => ({ ...previous, submit: message }));
+      showErrorToast(message);
       setIsSubmitting(false);
     }
   };
@@ -159,7 +163,7 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
             <div className="space-y-6 px-1 py-1">
             <div>
               <label htmlFor="boardName" className={`block text-sm font-semibold ${currentTheme.textSecondary} mb-2`}>
-                Project Name *
+                Project Name <span className="text-red-500">*</span>
               </label>
               <input
                 id="boardName"
@@ -169,14 +173,14 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
                 maxLength={MAX_BOARD_NAME_LENGTH}
                 placeholder="e.g., Website Redesign, Q1 Marketing Campaign"
                 className={`w-full px-4 py-3 border-2 ${
-                  errors.name ? 'border-red-300' : currentTheme.inputBorder
+                  errors.name ? 'border-red-500' : currentTheme.inputBorder
                 } rounded-xl transition-[border-color,box-shadow,color,background-color] duration-300 ease-out focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent ${modalFieldSurfaceClassName} ${currentTheme.text}`}
               />
               <p className={`mt-2 text-xs ${currentTheme.textMuted}`}>
                 Up to {MAX_BOARD_NAME_LENGTH} characters.
               </p>
               {errors.name && (
-                <p className="mt-1 text-sm text-red-600">{errors.name}</p>
+                <p className="mt-1 text-sm text-red-500">{errors.name}</p>
               )}
             </div>
 
@@ -191,7 +195,7 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
                 maxLength={MAX_BOARD_DESCRIPTION_LENGTH}
                 placeholder="Brief description of what this project is about..."
                 rows={3}
-                className={`w-full px-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl transition-[border-color,box-shadow,color,background-color] duration-300 ease-out focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent resize-none ${modalFieldSurfaceClassName} ${currentTheme.text}`}
+                className={`w-full px-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl transition-[border-color,box-shadow,color,background-color] duration-300 ease-out focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent resize-y ${BOARD_DESCRIPTION_TEXTAREA_HEIGHT_CLASS} ${modalFieldSurfaceClassName} ${currentTheme.text}`}
               />
               <p className={`mt-2 text-xs ${currentTheme.textMuted}`}>
                 Up to {MAX_BOARD_DESCRIPTION_LENGTH} characters.
@@ -264,12 +268,6 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
                 </p>
               )}
             </div>
-
-              {errors.submit && (
-                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {errors.submit}
-                </div>
-              )}
             </div>
           </CustomScrollArea>
         </div>

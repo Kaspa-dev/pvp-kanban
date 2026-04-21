@@ -24,7 +24,8 @@ export function BoardIdentityPicker({
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const pickerSurfaceClassName = isDarkMode ? currentTheme.bgSecondary : "bg-gray-50";
-  const optionSurfaceClassName = isDarkMode ? currentTheme.cardBg : "bg-gray-50";
+  const optionSurfaceClassName = isDarkMode ? currentTheme.inputBg : "bg-gray-50";
+  const sectionLabelClassName = `mb-2 text-sm font-semibold ${currentTheme.textSecondary}`;
   const selectedIconClasses = isDarkMode
     ? "border-slate-500 bg-white/5 shadow-sm"
     : "border-slate-400 bg-slate-100 shadow-sm";
@@ -49,7 +50,7 @@ export function BoardIdentityPicker({
       </div>
 
       <div>
-        <p className={`mb-2 text-xs font-semibold uppercase tracking-wide ${currentTheme.textMuted}`}>
+        <p className={sectionLabelClassName}>
           Icon
         </p>
         <div className="grid grid-cols-4 gap-2">
@@ -80,7 +81,7 @@ export function BoardIdentityPicker({
       </div>
 
       <div>
-        <p className={`mb-2 text-xs font-semibold uppercase tracking-wide ${currentTheme.textMuted}`}>
+        <p className={sectionLabelClassName}>
           Color
         </p>
         <div className="flex flex-wrap gap-2">

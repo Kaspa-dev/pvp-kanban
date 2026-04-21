@@ -10,6 +10,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { UserPreferencesProvider } from './contexts/UserPreferencesContext';
+import { Toaster } from './components/ui/toast';
 
 // AppRoutes must be inside AuthProvider to use useAuth
 function AppRoutes() {
@@ -84,6 +85,7 @@ export default function App() {
         <AuthProvider>
           <UserPreferencesProvider>
             <AppRoutes />
+            <Toaster />
           </UserPreferencesProvider>
         </AuthProvider>
       </ThemeProvider>

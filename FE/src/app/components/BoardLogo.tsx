@@ -28,7 +28,7 @@ const ICON_MAP: Record<BoardLogoIconKey, LucideIcon> = {
   chartNoAxesColumn: ChartNoAxesColumn,
 };
 
-type BoardLogoSize = "xs" | "sm" | "md" | "lg";
+type BoardLogoSize = "xs" | "sm" | "md" | "lg" | "xl";
 
 const SIZE_CLASSES: Record<BoardLogoSize, { container: string; icon: string }> = {
   xs: {
@@ -46,6 +46,10 @@ const SIZE_CLASSES: Record<BoardLogoSize, { container: string; icon: string }> =
   lg: {
     container: "h-14 w-14 rounded-2xl",
     icon: "h-7 w-7",
+  },
+  xl: {
+    container: "h-24 w-24 rounded-[2rem]",
+    icon: "h-12 w-12",
   },
 };
 
