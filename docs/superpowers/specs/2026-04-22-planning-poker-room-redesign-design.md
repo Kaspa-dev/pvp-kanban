@@ -206,15 +206,11 @@ Deleted session feedback should remain noticeable, but should still use the same
 - Existing planning poker feature components can be preserved, but their framing and placement should be updated to match the new structure.
 - If one or more planning poker subcomponents still look visually detached after the page-level redesign, targeted style updates should be made within those components rather than creating parallel design primitives.
 
-## Testing
+## Validation
 
-Validation after implementation should include:
+This redesign should not add testing work as part of scope.
 
-- frontend build
-- frontend lint
-- manual check of the room on desktop and mobile widths
-- manual check of host and non-host room states
-- manual check of join, reconnect, reveal, recommendation, and deleted-session states
+Implementation can still be checked during development as needed, but no dedicated test-writing or test-expansion work is included in this redesign effort.
 
 ## Scope Boundaries
 
@@ -229,3 +225,4 @@ Not included:
 - planning poker feature behavior changes
 - backend protocol changes
 - unrelated board or backlog redesign work
+- dedicated testing additions or test refactors
