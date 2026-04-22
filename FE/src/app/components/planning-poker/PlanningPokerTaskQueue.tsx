@@ -55,15 +55,29 @@ export function PlanningPokerTaskQueue({
     "overflow-hidden rounded-[2rem] shadow-2xl shadow-slate-950/20",
     workspaceSurface.elevatedPanelSurfaceClassName,
   );
+  const heroAccentSurfaceClassName = cn(
+    "relative overflow-hidden rounded-[2rem] border p-5 sm:p-6",
+    currentTheme.border,
+    isDarkMode
+      ? `bg-gradient-to-br ${currentTheme.primarySoftStrong} via-slate-950/80 to-slate-900/90`
+      : `bg-gradient-to-br ${currentTheme.primarySoftStrong} via-white to-slate-100/80`,
+  );
+  const accentPillClassName = cn(
+    "text-[11px] font-semibold uppercase tracking-[0.18em]",
+    currentTheme.primaryText,
+    `border ${currentTheme.primaryBorder}`,
+    `bg-gradient-to-r ${currentTheme.primarySoftStrong}`,
+  );
+  const accentStateSurfaceClassName = cn(
+    "inline-flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm font-medium bg-gradient-to-r",
+    `border ${currentTheme.primaryBorder} ${currentTheme.primaryText} ${currentTheme.primarySoftStrong}`,
+  );
 
   return (
     <Card className={heroSurfaceClassName}>
       <CardHeader className={`space-y-3 border-b ${currentTheme.border} px-5 py-5 sm:px-6`}>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge
-            variant="outline"
-            className={`border ${currentTheme.primaryBorder} bg-gradient-to-r ${currentTheme.primarySoftStrong} ${currentTheme.primaryText} px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]`}
-          >
+          <Badge variant="outline" className={`${accentPillClassName} px-3 py-1`}>
             Task queue
           </Badge>
           <span className={`text-xs font-medium uppercase tracking-[0.2em] ${currentTheme.textMuted}`}>
@@ -78,23 +92,19 @@ export function PlanningPokerTaskQueue({
       </CardHeader>
       <CardContent className="space-y-6 px-5 py-5 sm:px-6">
         {activeTask ? (
-          <section
-            className={cn(
-              "relative overflow-hidden rounded-[2rem] border p-5 sm:p-6",
-              currentTheme.border,
-              isDarkMode
-                ? "bg-gradient-to-br from-cyan-400/10 via-slate-950/80 to-slate-900/90"
-                : "bg-gradient-to-br from-cyan-100/90 via-white to-slate-100/80",
-            )}
-          >
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/60 to-transparent" />
+          <section className={heroAccentSurfaceClassName}>
+            <div
+              className={cn(
+                "absolute inset-x-0 top-0 h-px",
+                currentTheme.primarySolid,
+                isDarkMode ? "opacity-30" : "opacity-20",
+              )}
+            />
 
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0 space-y-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge
-                    className={`px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${currentTheme.primaryText} bg-gradient-to-r ${currentTheme.primarySoftStrong} border ${currentTheme.primaryBorder}`}
-                  >
+                  <Badge className={accentPillClassName}>
                     Current task
                   </Badge>
                   <Badge
@@ -107,11 +117,6 @@ export function PlanningPokerTaskQueue({
                   >
                     {getRoundStateLabel(activeTask.roundState)}
                   </Badge>
-                  {activeTask.recommendedStoryPoints !== null ? (
-                    <Badge className="bg-emerald-400 text-slate-950 hover:bg-emerald-300">
-                      Recommendation set
-                    </Badge>
-                  ) : null}
                 </div>
 
                 <div className="max-w-4xl space-y-3">
@@ -147,28 +152,6 @@ export function PlanningPokerTaskQueue({
                       {getRoundStateLabel(activeTask.roundState)}
                     </dd>
                   </div>
-                  <div className="flex items-center justify-between gap-4">
-                    <dt className={`text-xs uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
-                      Recommendation
-                    </dt>
-                    <dd className={`text-sm font-medium ${currentTheme.text}`}>
-                      {activeTask.recommendedStoryPoints !== null
-                        ? `${activeTask.recommendedStoryPoints} points`
-                        : isHost
-                          ? "Needs selection"
-                          : "Waiting on host"}
-                    </dd>
-                  </div>
-                  <div className="flex items-center justify-between gap-4">
-                    <dt className={`text-xs uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
-                      Applied
-                    </dt>
-                    <dd className={`text-sm font-medium ${currentTheme.text}`}>
-                      {activeTask.appliedStoryPoints !== null
-                        ? `${activeTask.appliedStoryPoints} points`
-                        : "Not applied"}
-                    </dd>
-                  </div>
                 </dl>
               </div>
             </div>
@@ -197,15 +180,12 @@ export function PlanningPokerTaskQueue({
                         className={cn(
                           "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold",
                           currentTheme.border,
-                          isDarkMode
-                            ? "bg-cyan-400/10 text-cyan-100"
-                            : "bg-cyan-500/10 text-cyan-800",
+                          currentTheme.primaryText,
+                          `bg-gradient-to-r ${currentTheme.primarySoftStrong}`,
                         )}
                       >
                         <span>{entry.cardValue}</span>
-                        <span className={isDarkMode ? "text-cyan-100/70" : "text-cyan-900/70"}>
-                          x{entry.count}
-                        </span>
+                        <span className={currentTheme.textMuted}>x{entry.count}</span>
                       </span>
                     ))}
                   </div>
@@ -236,14 +216,7 @@ export function PlanningPokerTaskQueue({
                           : "Waiting for the host to choose the final estimate."}
                     </p>
                     {activeTask.recommendedStoryPoints !== null ? (
-                      <div
-                        className={cn(
-                          "inline-flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm font-medium",
-                          isDarkMode
-                            ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-100"
-                            : "border-emerald-500/20 bg-emerald-500/10 text-emerald-700",
-                        )}
-                      >
+                      <div className={accentStateSurfaceClassName}>
                         <Sparkles className="h-4 w-4" aria-hidden="true" />
                         Final estimate {activeTask.recommendedStoryPoints}
                       </div>
@@ -276,9 +249,11 @@ export function PlanningPokerTaskQueue({
                                 "h-11 rounded-xl border text-sm font-semibold transition-all",
                                 currentTheme.border,
                                 isSelected
-                                  ? isDarkMode
-                                    ? "border-cyan-300 bg-cyan-400/15 text-cyan-100"
-                                    : "border-cyan-500 bg-cyan-500/10 text-cyan-800"
+                                  ? cn(
+                                      currentTheme.primaryBorder,
+                                      currentTheme.primaryText,
+                                      `bg-gradient-to-r ${currentTheme.primarySoftStrong}`,
+                                    )
                                   : isDarkMode
                                     ? "bg-slate-950/80 text-slate-100 hover:bg-slate-900"
                                     : "bg-white/70 text-slate-700 hover:bg-white",
@@ -301,14 +276,7 @@ export function PlanningPokerTaskQueue({
             </div>
 
             {activeTask.appliedStoryPoints !== null ? (
-              <div
-                className={cn(
-                  "mt-5 inline-flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm",
-                  isDarkMode
-                    ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-100"
-                    : "border-emerald-500/20 bg-emerald-500/10 text-emerald-700",
-                )}
-              >
+              <div className={cn("mt-5", accentStateSurfaceClassName)}>
                 <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
                 Story points applied: {activeTask.appliedStoryPoints}
               </div>
