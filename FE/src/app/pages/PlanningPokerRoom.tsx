@@ -682,7 +682,7 @@ export function PlanningPokerRoom() {
                 </div>
               ) : null}
 
-              <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.9fr)]">
+              <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(20rem,0.8fr)]">
                 <div className="space-y-6">
                   <PlanningPokerTaskQueue
                     activeTask={activeTask}

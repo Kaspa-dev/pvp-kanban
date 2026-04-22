@@ -11,7 +11,10 @@ import {
 } from "../ui/card";
 import { ScrollArea } from "../ui/scroll-area";
 import { Separator } from "../ui/separator";
+import { cn } from "../ui/utils";
+import { useTheme, getThemeColors } from "../../contexts/ThemeContext";
 import type { PlanningPokerSessionTask } from "../../utils/planningPoker";
+import { getWorkspaceSurfaceStyles } from "../../utils/workspaceSurfaceStyles";
 
 interface PlanningPokerTaskQueueProps {
   activeTask: PlanningPokerSessionTask | null;
@@ -45,33 +48,77 @@ export function PlanningPokerTaskQueue({
   isSelectingRecommendation,
   onSelectRecommendation,
 }: PlanningPokerTaskQueueProps) {
+  const { theme, isDarkMode } = useTheme();
+  const currentTheme = getThemeColors(theme, isDarkMode);
+  const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
+  const heroSurfaceClassName = cn(
+    "overflow-hidden rounded-[2rem] shadow-2xl shadow-slate-950/20",
+    workspaceSurface.elevatedPanelSurfaceClassName,
+  );
+
   return (
-    <Card className="border-white/10 bg-slate-900/80 shadow-xl shadow-slate-950/20">
-      <CardHeader className="space-y-2">
-        <CardTitle className="text-white">Task queue</CardTitle>
-        <CardDescription className="text-sm leading-6 text-slate-300">
-          The active task is live now. Remaining backlog work stays visible for context.
+    <Card className={heroSurfaceClassName}>
+      <CardHeader className={`space-y-3 border-b ${currentTheme.border} px-5 py-5 sm:px-6`}>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge
+            variant="outline"
+            className={`border ${currentTheme.primaryBorder} bg-gradient-to-r ${currentTheme.primarySoftStrong} ${currentTheme.primaryText} px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]`}
+          >
+            Task queue
+          </Badge>
+          <span className={`text-xs font-medium uppercase tracking-[0.2em] ${currentTheme.textMuted}`}>
+            Current task first, next tasks second
+          </span>
+        </div>
+        <CardTitle className={`text-xl font-semibold ${currentTheme.text}`}>Board focus</CardTitle>
+        <CardDescription className={`text-sm leading-6 ${currentTheme.textMuted}`}>
+          The active task carries the round. Remaining backlog work stays visible as supporting
+          context underneath it.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-6 px-5 py-5 sm:px-6">
         {activeTask ? (
-          <section className="rounded-3xl border border-cyan-400/20 bg-cyan-400/8 p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="space-y-3">
+          <section
+            className={cn(
+              "relative overflow-hidden rounded-[2rem] border p-5 sm:p-6",
+              currentTheme.border,
+              isDarkMode
+                ? "bg-gradient-to-br from-cyan-400/10 via-slate-950/80 to-slate-900/90"
+                : "bg-gradient-to-br from-cyan-100/90 via-white to-slate-100/80",
+            )}
+          >
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/60 to-transparent" />
+
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0 space-y-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge className="bg-cyan-400 text-slate-950 hover:bg-cyan-300">
-                    Active task
+                  <Badge
+                    className={`px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${currentTheme.primaryText} bg-gradient-to-r ${currentTheme.primarySoftStrong} border ${currentTheme.primaryBorder}`}
+                  >
+                    Current task
                   </Badge>
                   <Badge
                     variant="outline"
-                    className="border-white/10 bg-slate-950/60 text-slate-200"
+                    className={cn(
+                      "px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]",
+                      currentTheme.border,
+                      isDarkMode ? "bg-white/[0.04] text-slate-100" : "bg-white/80 text-slate-700",
+                    )}
                   >
                     {getRoundStateLabel(activeTask.roundState)}
                   </Badge>
+                  {activeTask.recommendedStoryPoints !== null ? (
+                    <Badge className="bg-emerald-400 text-slate-950 hover:bg-emerald-300">
+                      Recommendation set
+                    </Badge>
+                  ) : null}
                 </div>
-                <div>
-                  <h2 className="text-2xl font-semibold text-white">{activeTask.title}</h2>
-                  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+
+                <div className="max-w-4xl space-y-3">
+                  <h2 className={`text-3xl font-semibold tracking-tight ${currentTheme.text} sm:text-4xl`}>
+                    {activeTask.title}
+                  </h2>
+                  <p className={`max-w-3xl text-sm leading-7 sm:text-base ${currentTheme.textMuted}`}>
                     {activeTask.description?.trim()
                       ? activeTask.description
                       : "No additional description was added for this task."}
@@ -79,119 +126,210 @@ export function PlanningPokerTaskQueue({
                 </div>
               </div>
 
-              {isRevealed && activeTask.voteSummary.length > 0 ? (
-                <div className="min-w-56">
-                  <div className="rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                      Revealed votes
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {activeTask.voteSummary.map((entry) => (
-                        <span
-                          key={entry.cardValue}
-                          className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1.5 text-xs font-semibold text-cyan-100"
-                        >
-                          <span>{entry.cardValue}</span>
-                          <span className="text-cyan-200/80">x{entry.count}</span>
-                        </span>
-                      ))}
-                    </div>
+              <div
+                className={cn(
+                  "min-w-[15rem] rounded-3xl border px-4 py-4 text-sm backdrop-blur",
+                  currentTheme.border,
+                  isDarkMode ? "bg-slate-950/55" : "bg-white/75",
+                )}
+              >
+                <p
+                  className={`text-xs font-semibold uppercase tracking-[0.2em] ${currentTheme.textMuted}`}
+                >
+                  Session metadata
+                </p>
+                <dl className="mt-3 space-y-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <dt className={`text-xs uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+                      Round
+                    </dt>
+                    <dd className={`text-sm font-medium ${currentTheme.text}`}>
+                      {getRoundStateLabel(activeTask.roundState)}
+                    </dd>
                   </div>
-                </div>
-              ) : null}
+                  <div className="flex items-center justify-between gap-4">
+                    <dt className={`text-xs uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+                      Recommendation
+                    </dt>
+                    <dd className={`text-sm font-medium ${currentTheme.text}`}>
+                      {activeTask.recommendedStoryPoints !== null
+                        ? `${activeTask.recommendedStoryPoints} points`
+                        : isHost
+                          ? "Needs selection"
+                          : "Waiting on host"}
+                    </dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <dt className={`text-xs uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+                      Applied
+                    </dt>
+                    <dd className={`text-sm font-medium ${currentTheme.text}`}>
+                      {activeTask.appliedStoryPoints !== null
+                        ? `${activeTask.appliedStoryPoints} points`
+                        : "Not applied"}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
             </div>
 
-            {isRevealed ? (
-              <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                      {activeTask.recommendedStoryPoints !== null
-                        ? "Final recommendation"
-                        : "Choose final estimate"}
-                    </p>
-                    <p className="mt-2 text-sm text-slate-300">
-                      {activeTask.recommendedStoryPoints !== null
-                        ? "This is the estimate selected for the task after the team discussion."
-                        : isHost
-                          ? "Pick the estimate that should carry back to the board."
-                          : "Waiting for the host to choose the final estimate."}
-                    </p>
-                  </div>
-                  {activeTask.recommendedStoryPoints !== null ? (
-                    <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
-                      <div className="flex items-center gap-2 font-medium">
-                        <Sparkles className="h-4 w-4" aria-hidden="true" />
-                        Final estimate
-                      </div>
-                      <p className="mt-2 text-2xl font-semibold">
-                        {activeTask.recommendedStoryPoints}
-                      </p>
-                    </div>
-                  ) : isHost ? (
-                    <div className="flex items-center gap-2 text-xs text-slate-400">
-                      {isSelectingRecommendation ? (
-                        <>
-                          <LoaderCircle className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                          Saving recommendation...
-                        </>
-                      ) : (
-                        "No final estimate selected yet."
-                      )}
-                    </div>
-                  ) : null}
-                </div>
-
-                {isHost ? (
-                  <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-8">
-                    {recommendationOptions.map((value) => {
-                      const isSelected = activeTask.recommendedStoryPoints === value;
-
-                      return (
-                        <Button
-                          key={value}
-                          type="button"
-                          variant="outline"
-                          disabled={isSelectingRecommendation}
-                          onClick={() => void onSelectRecommendation(value)}
-                          className={`h-11 rounded-xl border-white/10 ${
-                            isSelected
-                              ? "border-cyan-300 bg-cyan-400/15 text-cyan-100"
-                              : "bg-slate-950 text-slate-100 hover:bg-slate-900"
-                          }`}
-                        >
-                          {value}
-                        </Button>
-                      );
-                    })}
+            <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.9fr)]">
+              <div
+                className={cn(
+                  "rounded-[1.75rem] border px-4 py-4",
+                  currentTheme.border,
+                  isDarkMode ? "bg-white/[0.04]" : "bg-black/[0.03]",
+                )}
+              >
+                <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${currentTheme.textMuted}`}>
+                  Round context
+                </p>
+                <p className={`mt-2 text-sm leading-6 ${currentTheme.textMuted}`}>
+                  {isRevealed
+                    ? "The round is open and the team can inspect the reveal before choosing the recommendation."
+                    : "The task is active. Cast a vote, then wait for the reveal to compare estimates."}
+                </p>
+                {isRevealed && activeTask.voteSummary.length > 0 ? (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {activeTask.voteSummary.map((entry) => (
+                      <span
+                        key={entry.cardValue}
+                        className={cn(
+                          "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold",
+                          currentTheme.border,
+                          isDarkMode
+                            ? "bg-cyan-400/10 text-cyan-100"
+                            : "bg-cyan-500/10 text-cyan-800",
+                        )}
+                      >
+                        <span>{entry.cardValue}</span>
+                        <span className={isDarkMode ? "text-cyan-100/70" : "text-cyan-900/70"}>
+                          x{entry.count}
+                        </span>
+                      </span>
+                    ))}
                   </div>
                 ) : (
-                  <p className="mt-4 text-sm text-slate-400">
-                    {activeTask.recommendedStoryPoints !== null
-                      ? `Final estimate selected: ${activeTask.recommendedStoryPoints}`
-                      : "Waiting for the host to choose the final estimate."}
+                  <p className={`mt-4 text-xs ${currentTheme.textMuted}`}>
+                    Vote details stay hidden until reveal.
                   </p>
                 )}
               </div>
-            ) : null}
+
+              <div
+                className={cn(
+                  "rounded-[1.75rem] border px-4 py-4",
+                  currentTheme.border,
+                  isDarkMode ? "bg-slate-950/50" : "bg-white/75",
+                )}
+              >
+                <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${currentTheme.textMuted}`}>
+                  Recommendation
+                </p>
+                {isRevealed ? (
+                  <div className="mt-3 space-y-4">
+                    <p className={`text-sm leading-6 ${currentTheme.textMuted}`}>
+                      {activeTask.recommendedStoryPoints !== null
+                        ? "This estimate is selected for the task after discussion."
+                        : isHost
+                          ? "Choose the estimate that should carry back to the board."
+                          : "Waiting for the host to choose the final estimate."}
+                    </p>
+                    {activeTask.recommendedStoryPoints !== null ? (
+                      <div
+                        className={cn(
+                          "inline-flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm font-medium",
+                          isDarkMode
+                            ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-100"
+                            : "border-emerald-500/20 bg-emerald-500/10 text-emerald-700",
+                        )}
+                      >
+                        <Sparkles className="h-4 w-4" aria-hidden="true" />
+                        Final estimate {activeTask.recommendedStoryPoints}
+                      </div>
+                    ) : isHost ? (
+                      <div className={`flex items-center gap-2 text-xs ${currentTheme.textMuted}`}>
+                        {isSelectingRecommendation ? (
+                          <>
+                            <LoaderCircle className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                            Saving recommendation...
+                          </>
+                        ) : (
+                          "No final estimate selected yet."
+                        )}
+                      </div>
+                    ) : null}
+
+                    {isHost ? (
+                      <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
+                        {recommendationOptions.map((value) => {
+                          const isSelected = activeTask.recommendedStoryPoints === value;
+
+                          return (
+                            <Button
+                              key={value}
+                              type="button"
+                              variant="outline"
+                              disabled={isSelectingRecommendation}
+                              onClick={() => void onSelectRecommendation(value)}
+                              className={cn(
+                                "h-11 rounded-xl border text-sm font-semibold transition-all",
+                                currentTheme.border,
+                                isSelected
+                                  ? isDarkMode
+                                    ? "border-cyan-300 bg-cyan-400/15 text-cyan-100"
+                                    : "border-cyan-500 bg-cyan-500/10 text-cyan-800"
+                                  : isDarkMode
+                                    ? "bg-slate-950/80 text-slate-100 hover:bg-slate-900"
+                                    : "bg-white/70 text-slate-700 hover:bg-white",
+                              )}
+                            >
+                              {value}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className={`mt-2 text-sm leading-6 ${currentTheme.textMuted}`}>
+                    Recommendation actions stay attached to the active task once the round is
+                    revealed.
+                  </p>
+                )}
+              </div>
+            </div>
 
             {activeTask.appliedStoryPoints !== null ? (
-              <div className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
+              <div
+                className={cn(
+                  "mt-5 inline-flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm",
+                  isDarkMode
+                    ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-100"
+                    : "border-emerald-500/20 bg-emerald-500/10 text-emerald-700",
+                )}
+              >
                 <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
                 Story points applied: {activeTask.appliedStoryPoints}
               </div>
             ) : null}
           </section>
         ) : (
-          <div className="rounded-3xl border border-white/10 bg-slate-950/40 px-5 py-6 text-sm text-slate-300">
+          <div
+            className={cn(
+              "rounded-[2rem] border px-5 py-6 text-sm",
+              currentTheme.border,
+              isDarkMode ? "bg-slate-950/40 text-slate-300" : "bg-white/75 text-slate-600",
+            )}
+          >
             No active task is available in this session.
           </div>
         )}
 
-        <Separator className="bg-white/10" />
+        <Separator className={isDarkMode ? "bg-white/10" : "bg-black/10"} />
 
         <section className="space-y-3">
-          <div className="flex items-center gap-2 text-sm font-medium text-slate-200">
+          <div className={`flex items-center gap-2 text-sm font-medium ${currentTheme.text}`}>
             <Clock3 className="h-4 w-4" aria-hidden="true" />
             Up next
           </div>
@@ -201,12 +339,16 @@ export function PlanningPokerTaskQueue({
                 {queue.map((task) => (
                   <li
                     key={task.sessionTaskId}
-                    className="rounded-2xl border border-white/8 bg-slate-950/50 px-4 py-3"
+                    className={cn(
+                      "rounded-2xl border px-4 py-3",
+                      currentTheme.border,
+                      isDarkMode ? "bg-white/[0.03]" : "bg-black/[0.03]",
+                    )}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="space-y-1">
-                        <p className="text-sm font-medium text-slate-100">{task.title}</p>
-                        <p className="text-xs leading-5 text-slate-400">
+                        <p className={`text-sm font-medium ${currentTheme.text}`}>{task.title}</p>
+                        <p className={`text-xs leading-5 ${currentTheme.textMuted}`}>
                           {task.description?.trim()
                             ? task.description
                             : "No description provided."}
@@ -214,7 +356,11 @@ export function PlanningPokerTaskQueue({
                       </div>
                       <Badge
                         variant="outline"
-                        className="border-white/10 bg-slate-900 text-slate-300"
+                        className={cn(
+                          "text-[11px] font-semibold uppercase tracking-[0.16em]",
+                          currentTheme.border,
+                          isDarkMode ? "bg-slate-950/70 text-slate-300" : "bg-white/85 text-slate-600",
+                        )}
                       >
                         {getRoundStateLabel(task.roundState)}
                       </Badge>
@@ -224,7 +370,13 @@ export function PlanningPokerTaskQueue({
               </ol>
             </ScrollArea>
           ) : (
-            <div className="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-4 text-sm text-slate-300">
+            <div
+              className={cn(
+                "rounded-2xl border px-4 py-4 text-sm",
+                currentTheme.border,
+                isDarkMode ? "bg-slate-950/40 text-slate-300" : "bg-white/70 text-slate-600",
+              )}
+            >
               No additional tasks are queued for this session yet.
             </div>
           )}
