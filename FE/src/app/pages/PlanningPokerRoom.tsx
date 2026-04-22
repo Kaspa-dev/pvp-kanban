@@ -13,6 +13,7 @@ import { PlanningPokerJoinForm } from "../components/planning-poker/PlanningPoke
 import { PlanningPokerParticipantList } from "../components/planning-poker/PlanningPokerParticipantList";
 import { PlanningPokerTaskQueue } from "../components/planning-poker/PlanningPokerTaskQueue";
 import { PlanningPokerVoteDeck } from "../components/planning-poker/PlanningPokerVoteDeck";
+import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Skeleton } from "../components/ui/skeleton";
@@ -530,15 +531,12 @@ export function PlanningPokerRoom() {
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(19rem,0.85fr)] lg:items-start">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-3">
-                  <span
-                    className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${currentTheme.border} ${
-                      isDarkMode
-                        ? "bg-cyan-400/10 text-cyan-100"
-                        : "bg-cyan-500/10 text-cyan-700"
-                    }`}
+                  <Badge
+                    variant="outline"
+                    className={`border ${currentTheme.primaryBorder} bg-gradient-to-r ${currentTheme.primarySoftStrong} ${currentTheme.primaryText} px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]`}
                   >
                     Planning poker
-                  </span>
+                  </Badge>
                   <span className={`text-sm font-medium ${currentTheme.textMuted}`}>
                     Live estimation room
                   </span>
@@ -572,7 +570,7 @@ export function PlanningPokerRoom() {
                     <p className={`text-lg font-semibold ${currentTheme.text}`}>
                       {session
                         ? `${votedCount} of ${session.participants.length} votes in`
-                        : "Waiting for the room to connect"}
+                        : getConnectionBannerLabel(connectionBannerState)}
                     </p>
                     <p className={`text-sm leading-6 ${currentTheme.textMuted}`}>
                       {session
