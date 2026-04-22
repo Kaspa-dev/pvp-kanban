@@ -556,11 +556,7 @@ export function PlanningPokerRoom() {
                 {normalizedJoinToken ? (
                   <p className={`mt-4 text-xs ${currentTheme.textMuted}`}>
                     Room token{" "}
-                    <span
-                      className={`ml-2 inline-flex items-center rounded-md border px-2 py-1 font-mono text-[11px] tracking-[0.02em] ${
-                        currentTheme.border
-                      } ${isDarkMode ? "bg-white/[0.03] text-zinc-300" : "bg-white/80 text-slate-600"}`}
-                    >
+                    <span className="font-mono text-[11px] tracking-[0.02em]">
                       {normalizedJoinToken}
                     </span>
                   </p>
