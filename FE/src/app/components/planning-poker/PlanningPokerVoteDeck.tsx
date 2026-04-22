@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { CheckCircle2, Clock3, LoaderCircle, Sparkles } from "lucide-react";
 
 import { useTheme, getThemeColors } from "../../contexts/ThemeContext";
@@ -18,6 +19,7 @@ interface PlanningPokerVoteDeckProps {
   selectedValue: number | null;
   isSubmitting: boolean;
   isRevealed: boolean;
+  isRevealing: boolean;
   hasActiveTask: boolean;
   disabled: boolean;
   onVote: (value: number) => void | Promise<void>;
@@ -28,6 +30,7 @@ export function PlanningPokerVoteDeck({
   selectedValue,
   isSubmitting,
   isRevealed,
+  isRevealing,
   hasActiveTask,
   disabled,
   onVote,
@@ -35,12 +38,15 @@ export function PlanningPokerVoteDeck({
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
-  const voteDeckHeadingId = "planning-poker-vote-deck-heading";
-  const voteDeckHintId = "planning-poker-vote-deck-hint";
+  const voteDeckId = useId();
+  const voteDeckHeadingId = `${voteDeckId}-heading`;
+  const voteDeckHintId = `${voteDeckId}-hint`;
 
   const statusMessage = isSubmitting
     ? "Saving your vote to the live room."
-    : isRevealed
+    : isRevealing
+      ? "Voting is temporarily locked while the host reveal is being processed."
+      : isRevealed
       ? "Voting is locked while the revealed estimates are being discussed."
       : !hasActiveTask
         ? "Waiting for the host to move the next task into the active slot."
@@ -97,9 +103,10 @@ export function PlanningPokerVoteDeck({
               selectedValue === null &&
               (isDarkMode ? "bg-white/[0.04]" : "bg-black/[0.03]"),
           )}
-          aria-live="polite"
         >
           {isSubmitting ? (
+            <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+          ) : isRevealing ? (
             <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
           ) : isRevealed ? (
             <Sparkles className="h-4 w-4" aria-hidden="true" />
@@ -128,11 +135,13 @@ export function PlanningPokerVoteDeck({
                 Story points
               </p>
               <p className={cn("text-sm leading-6", currentTheme.textMuted)}>
-                Select one card with keyboard or pointer input.
+                {isRevealing
+                  ? "Reveal is in progress. Voting will reopen after the room state finishes updating."
+                  : "Select one card with keyboard or pointer input."}
               </p>
             </div>
 
-            {selectedValue !== null && !isRevealed ? (
+            {selectedValue !== null && !isRevealed && !isRevealing ? (
               <div
                 className={cn(
                   "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold",
@@ -213,6 +222,11 @@ export function PlanningPokerVoteDeck({
             <span className="inline-flex items-center gap-2">
               <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
               Saving your vote...
+            </span>
+          ) : isRevealing ? (
+            <span className="inline-flex items-center gap-2">
+              <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+              Reveal in progress. Voting is temporarily locked.
             </span>
           ) : isRevealed ? (
             "Votes are revealed. Wait for the host to choose the final recommendation or start the next round."
