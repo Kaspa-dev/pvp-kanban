@@ -699,6 +699,7 @@ export function PlanningPokerRoom() {
                     selectedValue={selectedVote}
                     isSubmitting={isVoteSubmitting}
                     isRevealed={session.isRevealed}
+                    hasActiveTask={Boolean(activeTask)}
                     disabled={!activeTask || isRevealing}
                     onVote={handleVote}
                   />
