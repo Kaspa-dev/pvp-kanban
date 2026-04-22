@@ -49,7 +49,7 @@ export const XP_PER_LEVEL = [
   5740,  // Level 15 (need 1060 more)
 ];
 
-export const STORY_POINTS_OPTIONS = [1, 2, 3, 5, 8, 13, 20, 40, 100];
+export const STORY_POINTS_OPTIONS = [1, 2, 3, 5, 8, 13, 20, 40];
 
 export const STORY_POINTS_MIN = 1;
 export const STORY_POINTS_MAX = 100;

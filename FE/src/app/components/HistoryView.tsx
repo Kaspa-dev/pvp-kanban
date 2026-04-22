@@ -4,6 +4,7 @@ import { CheckCircle2, TrendingUp } from "lucide-react";
 import { Label } from "../utils/labels";
 import { getXPForStoryPoints } from "../utils/gamification";
 import { Card, Priority, TaskAssignee, TaskType } from "../utils/cards";
+import { AppAvatar } from "./AppAvatar";
 
 type HistoryCard = Card & {
   status: string;
@@ -116,9 +117,14 @@ export function HistoryView({
               {Object.entries(cardsByAssignee).map(([assigneeName, assigneeCards]) => (
                 <div key={assigneeName}>
                   <div className="flex items-center gap-2 mb-3">
-                    <div 
-                      className="w-3 h-3 rounded-full" 
-                      style={{ backgroundColor: assigneeCards[0].assignee.color }}
+                    <AppAvatar
+                      username={assigneeCards[0].assignee.username || assigneeCards[0].assignee.name}
+                      fullName={assigneeCards[0].assignee.displayName || assigneeCards[0].assignee.name}
+                      size={28}
+                      className="shadow-sm"
+                      interactive={false}
+                      enableBlink={false}
+                      aria-hidden="true"
                     />
                     <h3 className={`font-semibold ${currentTheme.text}`}>
                       {assigneeName} ({assigneeCards.length})

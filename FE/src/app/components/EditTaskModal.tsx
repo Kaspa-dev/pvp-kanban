@@ -30,7 +30,6 @@ interface EditTaskModalProps {
     taskType?: TaskType | null;
   } | null;
   availableLabels: Label[];
-  onCreateLabel: (name: string, color: string) => Promise<void>;
   availableAssignees: TaskAssignee[];
 }
 
@@ -54,7 +53,6 @@ export function EditTaskModal({
   onSave,
   task,
   availableLabels,
-  onCreateLabel,
   availableAssignees,
 }: EditTaskModalProps) {
   const initialState = getInitialTaskState(task);
@@ -132,6 +130,12 @@ export function EditTaskModal({
     setStoryPoints(parseInt(value, 10));
   };
 
+  const handleClearStoryPoints = () => {
+    setStoryPoints(null);
+    setCustomStoryPoints("");
+    setStoryPointsError("");
+  };
+
   return (
     <TaskFormModal
       isOpen={isOpen}
@@ -154,7 +158,6 @@ export function EditTaskModal({
       availableLabels={availableLabels}
       selectedLabelIds={selectedLabelIds}
       onSelectedLabelIdsChange={setSelectedLabelIds}
-      onCreateLabel={onCreateLabel}
       availableAssignees={availableAssignees}
       selectedAssignee={selectedAssignee}
       onSelectedAssigneeChange={setSelectedAssignee}
@@ -162,6 +165,7 @@ export function EditTaskModal({
       customStoryPoints={customStoryPoints}
       onStoryPointsPresetClick={handleStoryPointsPresetClick}
       onCustomStoryPointsChange={handleCustomStoryPointsChange}
+      onClearStoryPoints={handleClearStoryPoints}
       storyPointsError={storyPointsError}
       dueDate={dueDate}
       onDueDateChange={setDueDate}

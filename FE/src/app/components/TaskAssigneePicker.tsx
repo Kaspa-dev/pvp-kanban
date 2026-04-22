@@ -2,6 +2,9 @@ import { PencilLine, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import { TaskAssignee } from "../utils/cards";
+import { AppAvatar } from "./AppAvatar";
+import { UtilityIconButton } from "./UtilityIconButton";
+import { Popover, PopoverAnchor, PopoverContent } from "./ui/popover";
 
 interface TaskAssigneePickerProps {
   id: string;
@@ -29,12 +32,17 @@ export function TaskAssigneePicker({
 }: TaskAssigneePickerProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const pickerSurfaceClassName = "bg-input-background dark:bg-input/30";
+  const pickerShadowClassName = isDarkMode
+    ? "shadow-[0_20px_48px_rgba(0,0,0,0.58)]"
+    : "shadow-[0_20px_44px_rgba(15,23,42,0.22)]";
 
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [anchorWidth, setAnchorWidth] = useState<number | null>(null);
 
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const anchorRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listboxId = `${id}-listbox`;
 
@@ -49,23 +57,32 @@ export function TaskAssigneePicker({
   );
 
   useEffect(() => {
-    const handlePointerDown = (event: MouseEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-    };
-  }, []);
-
-  useEffect(() => {
     if (isOpen) {
       inputRef.current?.focus();
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    const anchor = anchorRef.current;
+    if (!anchor) {
+      return;
+    }
+
+    const updateAnchorWidth = () => {
+      setAnchorWidth(anchor.getBoundingClientRect().width);
+    };
+
+    updateAnchorWidth();
+
+    const resizeObserver = new ResizeObserver(updateAnchorWidth);
+    resizeObserver.observe(anchor);
+    window.addEventListener("resize", updateAnchorWidth);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", updateAnchorWidth);
+    };
+  }, []);
 
   const handleSelectAssignee = (assignee: TaskAssignee) => {
     onSelectedAssigneeChange(assignee);
@@ -114,21 +131,24 @@ export function TaskAssigneePicker({
     }
   };
 
-  const idleSurfaceClassName = isDarkMode
-    ? "border-zinc-700 bg-zinc-800 text-zinc-100 hover:bg-zinc-700"
-    : "border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100";
+  const subtleActionButtonClassName = `w-auto gap-1.5 px-2.5 text-xs font-semibold shadow-none ${currentTheme.inputBorder} ${pickerSurfaceClassName} ${currentTheme.textSecondary}`;
 
   return (
-    <div ref={containerRef} className="relative">
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverAnchor asChild>
+        <div ref={anchorRef} className="relative">
       {selectedAssigneeOption && !isOpen ? (
-        <div className={`flex min-h-[52px] items-center justify-between gap-3 rounded-xl border-2 ${currentTheme.inputBorder} ${currentTheme.inputBg} px-3 py-2`}>
+        <div className={`flex h-[52px] items-center justify-between gap-3 rounded-xl border-2 ${currentTheme.inputBorder} ${pickerSurfaceClassName} px-3`}>
           <div className="flex min-w-0 items-center gap-3">
-            <div
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow-sm"
-              style={{ backgroundColor: selectedAssigneeOption.color }}
-            >
-              {selectedAssigneeOption.displayName.charAt(0).toUpperCase()}
-            </div>
+            <AppAvatar
+              username={selectedAssigneeOption.username || selectedAssigneeOption.displayName}
+              fullName={selectedAssigneeOption.displayName}
+              size={32}
+              className="shrink-0 shadow-sm"
+              interactive={false}
+              enableBlink={false}
+              aria-hidden="true"
+            />
             <div className="min-w-0">
               <p className={`truncate text-sm font-semibold ${currentTheme.text}`}>
                 {selectedAssigneeOption.displayName}
@@ -140,28 +160,32 @@ export function TaskAssigneePicker({
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setQuery("");
-                  setHighlightedIndex(availableAssignees.length > 0 ? 0 : -1);
-                  setIsOpen(true);
-                }}
-                className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors ${idleSurfaceClassName}`}
-                aria-label="Change assignee"
-              >
-                <PencilLine className="h-3.5 w-3.5" />
-                Change
-              </button>
-              <button
-                type="button"
-                onClick={handleClear}
-                className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors ${idleSurfaceClassName}`}
-                aria-label="Clear selected assignee"
-              >
-                Clear
-              </button>
-            </div>
+            <UtilityIconButton
+              type="button"
+              size="sm"
+              emphasis="elevated"
+              onClick={() => {
+                setQuery("");
+                setHighlightedIndex(availableAssignees.length > 0 ? 0 : -1);
+                setIsOpen(true);
+              }}
+              className={subtleActionButtonClassName}
+              aria-label="Change assignee"
+            >
+              <PencilLine className="h-3.5 w-3.5" />
+              Change
+            </UtilityIconButton>
+            <UtilityIconButton
+              type="button"
+              size="sm"
+              emphasis="elevated"
+              onClick={handleClear}
+              className={subtleActionButtonClassName}
+              aria-label="Clear selected assignee"
+            >
+              Clear
+            </UtilityIconButton>
+          </div>
         </div>
       ) : (
         <div className="relative">
@@ -196,19 +220,27 @@ export function TaskAssigneePicker({
                 : "Search members"
             }
             disabled={availableAssignees.length === 0}
-            className={`min-h-[52px] w-full rounded-xl border-2 ${currentTheme.inputBorder} ${currentTheme.inputBg} ${currentTheme.text} py-3 pl-10 pr-4 transition-all focus:border-transparent focus:outline-none focus:ring-2 ${currentTheme.focus} disabled:cursor-not-allowed disabled:opacity-60`}
+            className={`min-h-[52px] w-full rounded-xl border-2 ${currentTheme.inputBorder} ${pickerSurfaceClassName} ${currentTheme.text} placeholder:${currentTheme.textMuted} py-3 pl-10 pr-4 transition-all focus:border-transparent focus:outline-none focus:ring-2 ${currentTheme.focus} disabled:cursor-not-allowed disabled:opacity-60`}
           />
         </div>
       )}
+        </div>
+      </PopoverAnchor>
 
       {isOpen && availableAssignees.length > 0 && (
-        <div className={`absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border ${currentTheme.border} ${currentTheme.cardBg} shadow-2xl`}>
+        <PopoverContent
+          align="start"
+          sideOffset={8}
+          style={anchorWidth ? { width: anchorWidth } : undefined}
+          className={`z-30 overflow-hidden rounded-2xl border p-0 ${currentTheme.border} ${pickerSurfaceClassName} ${pickerShadowClassName}`}
+          onOpenAutoFocus={(event) => event.preventDefault()}
+        >
           {visibleAssignees.length === 0 ? (
-            <div className={`px-4 py-4 text-sm ${currentTheme.textMuted}`}>
+            <div className={`px-4 py-4 text-sm ${pickerSurfaceClassName} ${currentTheme.textMuted}`}>
               No board members match your search.
             </div>
           ) : (
-            <div id={listboxId} role="listbox" className="py-2">
+            <div id={listboxId} role="listbox" className={`py-2 ${pickerSurfaceClassName}`}>
               {visibleAssignees.map((assignee, index) => {
                 const isHighlighted = index === highlightedIndex;
                 const isSelected = selectedAssigneeOption?.userId === assignee.userId;
@@ -224,15 +256,18 @@ export function TaskAssigneePicker({
                     className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors ${
                       isHighlighted
                         ? `${currentTheme.primaryBg} ${currentTheme.primaryText}`
-                        : `${currentTheme.text} ${isDarkMode ? "hover:bg-zinc-800" : "hover:bg-gray-50"}`
+                        : `${pickerSurfaceClassName} ${currentTheme.text} ${isDarkMode ? "hover:bg-zinc-800" : "hover:bg-gray-100"}`
                     }`}
                   >
-                    <div
-                      className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
-                      style={{ backgroundColor: assignee.color }}
-                    >
-                      {assignee.displayName.charAt(0).toUpperCase()}
-                    </div>
+                    <AppAvatar
+                      username={assignee.username || assignee.displayName}
+                      fullName={assignee.displayName}
+                      size={36}
+                      className="mt-0.5 shrink-0 shadow-sm"
+                      interactive={false}
+                      enableBlink={false}
+                      aria-hidden="true"
+                    />
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-semibold">{assignee.displayName}</p>
                       <p className={`truncate text-xs ${isHighlighted ? "opacity-80" : currentTheme.textMuted}`}>
@@ -246,8 +281,8 @@ export function TaskAssigneePicker({
               })}
             </div>
           )}
-        </div>
+        </PopoverContent>
       )}
-    </div>
+    </Popover>
   );
 }

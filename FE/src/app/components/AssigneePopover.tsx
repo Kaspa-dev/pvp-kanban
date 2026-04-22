@@ -3,6 +3,7 @@ import { Check, Plus, Search, X } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import { TaskAssignee } from "../utils/cards";
+import { AppAvatar } from "./AppAvatar";
 import { CustomScrollArea } from "./CustomScrollArea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { getIconActionButtonClassName } from "./iconActionButtonStyles";
@@ -123,15 +124,22 @@ export function AssigneePopover({
                 className={`relative text-xs font-semibold transition-all ${
                   isUnassigned
                     ? `${triggerButtonBaseClassName} border ${currentTheme.border} ${isDarkMode ? "bg-white/[0.03]" : "bg-white"}`
-                    : `inline-flex h-8 w-8 items-center justify-center rounded-full text-white shadow-sm ring-1 ${isDarkMode ? "ring-zinc-600 hover:ring-zinc-500" : "ring-slate-200 hover:ring-slate-300"} hover:${currentTheme.primaryBorder} hover:ring-2 hover:shadow-md`
+                    : "inline-flex items-center justify-center rounded-full transition-transform hover:scale-105"
                 }`}
-                style={isUnassigned ? undefined : { backgroundColor: currentAssignee.color }}
                 aria-label={isUnassigned ? "Assign task" : `Assigned to ${currentAssignee.name}`}
               >
                 {isUnassigned ? (
                   <Plus className="h-3.5 w-3.5" />
                 ) : (
-                  currentAssignee.name.charAt(0).toUpperCase()
+                  <AppAvatar
+                    username={currentAssignee.username || currentAssignee.name}
+                    fullName={currentAssignee.displayName || currentAssignee.name}
+                    size={32}
+                    className="pointer-events-none shadow-sm"
+                    interactive={false}
+                    enableBlink={false}
+                    aria-hidden="true"
+                  />
                 )}
               </button>
             </Popover.Trigger>
@@ -205,12 +213,15 @@ export function AssigneePopover({
                             : `${currentTheme.text} ${isDarkMode ? "hover:bg-zinc-800" : "hover:bg-gray-50"}`
                         }`}
                       >
-                        <div
-                          className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
-                          style={{ backgroundColor: assignee.color }}
-                        >
-                          {assignee.displayName.charAt(0).toUpperCase()}
-                        </div>
+                        <AppAvatar
+                          username={assignee.username || assignee.displayName}
+                          fullName={assignee.displayName}
+                          size={36}
+                          className="mt-0.5 shrink-0 shadow-sm"
+                          interactive={false}
+                          enableBlink={false}
+                          aria-hidden="true"
+                        />
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-semibold">{assignee.displayName}</p>
                           <p className={`truncate text-xs ${isHighlighted ? "opacity-80" : currentTheme.textMuted}`}>

@@ -1249,7 +1249,6 @@ export function Board() {
               onClose={() => setIsModalOpen(false)}
               onAdd={handleAddCard}
               availableLabels={labels}
-              onCreateLabel={handleCreateLabel}
               availableAssignees={availableAssignees}
             />
 
@@ -1260,7 +1259,6 @@ export function Board() {
               onSave={handleSaveEdit}
               task={editingTask}
               availableLabels={labels}
-              onCreateLabel={handleCreateLabel}
               availableAssignees={availableAssignees}
             />
 

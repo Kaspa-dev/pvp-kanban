@@ -22,7 +22,7 @@ export function getIconActionButtonClassName(
   const { emphasis = "default" } = options;
   const emphasisClassName =
     emphasis === "elevated"
-      ? "transition-all duration-200 hover:shadow-sm"
+      ? "transition-colors"
       : "transition-colors";
 
   return `${currentTheme.textMuted} ${getIconActionButtonFrameClassName(options)} ${emphasisClassName} ${currentTheme.accentIconButtonHover}`;

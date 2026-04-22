@@ -1,6 +1,6 @@
 import { Crown, UserRound, Vote } from "lucide-react";
 
-import { Avatar, AvatarFallback } from "../ui/avatar";
+import { AppAvatar } from "../AppAvatar";
 import { Badge } from "../ui/badge";
 import {
   Card,
@@ -15,15 +15,6 @@ import type { PlanningPokerParticipant } from "../../utils/planningPoker";
 interface PlanningPokerParticipantListProps {
   participants: PlanningPokerParticipant[];
   isRevealed: boolean;
-}
-
-function getInitials(value: string) {
-  return value
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("");
 }
 
 export function PlanningPokerParticipantList({
@@ -49,11 +40,15 @@ export function PlanningPokerParticipantList({
                 className="flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-slate-950/50 px-4 py-3"
               >
                 <div className="flex min-w-0 items-center gap-3">
-                  <Avatar className="h-10 w-10 border border-white/10 bg-slate-800">
-                    <AvatarFallback className="bg-slate-800 text-xs font-semibold text-slate-100">
-                      {getInitials(participant.displayName)}
-                    </AvatarFallback>
-                  </Avatar>
+                  <AppAvatar
+                    username={participant.displayName}
+                    fullName={participant.displayName}
+                    size={40}
+                    className="border border-white/10 shadow-sm"
+                    interactive={false}
+                    enableBlink={false}
+                    aria-hidden="true"
+                  />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-slate-100">
                       {participant.displayName}

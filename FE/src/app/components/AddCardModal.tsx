@@ -18,7 +18,6 @@ interface AddCardModalProps {
     taskType?: TaskType;
   }) => Promise<void>;
   availableLabels: Label[];
-  onCreateLabel: (name: string, color: string) => Promise<void>;
   availableAssignees: TaskAssignee[];
 }
 
@@ -27,7 +26,6 @@ export function AddCardModal({
   onClose,
   onAdd,
   availableLabels,
-  onCreateLabel,
   availableAssignees,
 }: AddCardModalProps) {
   const [title, setTitle] = useState("");
@@ -126,6 +124,12 @@ export function AddCardModal({
     setStoryPoints(parseInt(value, 10));
   };
 
+  const handleClearStoryPoints = () => {
+    setStoryPoints(undefined);
+    setCustomStoryPoints("");
+    setStoryPointsError("");
+  };
+
   return (
     <TaskFormModal
       isOpen={isOpen}
@@ -148,7 +152,6 @@ export function AddCardModal({
       availableLabels={availableLabels}
       selectedLabelIds={selectedLabelIds}
       onSelectedLabelIdsChange={setSelectedLabelIds}
-      onCreateLabel={onCreateLabel}
       availableAssignees={availableAssignees}
       selectedAssignee={selectedAssignee}
       onSelectedAssigneeChange={setSelectedAssignee}
@@ -156,6 +159,7 @@ export function AddCardModal({
       customStoryPoints={customStoryPoints}
       onStoryPointsPresetClick={handleStoryPointsPresetClick}
       onCustomStoryPointsChange={handleCustomStoryPointsChange}
+      onClearStoryPoints={handleClearStoryPoints}
       storyPointsError={storyPointsError}
       dueDate={dueDate}
       onDueDateChange={setDueDate}

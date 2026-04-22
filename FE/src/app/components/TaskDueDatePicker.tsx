@@ -3,6 +3,7 @@ import { addDays, format, isValid, parseISO, startOfToday } from "date-fns";
 import { Calendar } from "./ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
+import { UtilityIconButton } from "./UtilityIconButton";
 
 interface TaskDueDatePickerProps {
   id?: string;
@@ -48,6 +49,12 @@ export function TaskDueDatePicker({
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const selectedDate = parseDateValue(value);
+  const pickerSurfaceClassName = "bg-input-background dark:bg-input/30";
+  const pickerShadowClassName = isDarkMode
+    ? "shadow-[0_20px_48px_rgba(0,0,0,0.58)]"
+    : "shadow-[0_20px_44px_rgba(15,23,42,0.22)]";
+  const subtleActionButtonClassName = `w-auto gap-1.5 px-2.5 text-xs font-semibold shadow-none ${currentTheme.inputBorder} ${pickerSurfaceClassName} ${currentTheme.textSecondary}`;
+  const selectedActionButtonClassName = `w-auto gap-1.5 px-2.5 text-xs font-semibold shadow-none ${currentTheme.primaryBg} ${currentTheme.primaryText} hover:brightness-[0.98] dark:hover:brightness-110`;
 
   return (
     <Popover>
@@ -56,10 +63,10 @@ export function TaskDueDatePicker({
           id={id}
           type="button"
           aria-label={selectedDate ? `Due date ${format(selectedDate, "MMMM d, yyyy")}` : "Choose due date"}
-          className={`group flex min-h-[52px] w-full items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition-all ${currentTheme.inputBorder} ${currentTheme.inputBg} ${currentTheme.text} focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent hover:${currentTheme.borderHover}`}
+          className={`group flex min-h-[52px] w-full items-center gap-3 rounded-xl border-2 px-4 py-3 text-left outline-none transition-[color,box-shadow,border-color] duration-300 ease-out ${currentTheme.inputBorder} ${pickerSurfaceClassName} ${currentTheme.text} hover:${currentTheme.borderHover} hover:ring-1 hover:ring-black/5 dark:hover:ring-white/10 focus-visible:outline-none focus-visible:border-transparent focus-visible:ring-2 ${currentTheme.focus} data-[state=open]:border-transparent data-[state=open]:ring-2 ${currentTheme.ring}`}
         >
-          <CalendarDays className={`h-4 w-4 shrink-0 ${selectedDate ? currentTheme.textSecondary : currentTheme.textMuted}`} />
-          <span className="min-w-0 flex-1 truncate text-sm font-medium">
+          <CalendarDays className={`h-4 w-4 shrink-0 ${currentTheme.textMuted}`} />
+          <span className="min-w-0 flex-1 truncate text-sm">
             <span className={selectedDate ? currentTheme.text : currentTheme.textMuted}>
               {selectedDate ? format(selectedDate, "EEE, MMM d, yyyy") : placeholder}
             </span>
@@ -69,63 +76,63 @@ export function TaskDueDatePicker({
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        sideOffset={10}
-        className={`w-[min(22rem,calc(100vw-2rem))] rounded-2xl border-2 p-0 shadow-2xl ${currentTheme.cardBg} ${currentTheme.border}`}
+        sideOffset={8}
+        className={`w-[min(22rem,calc(100vw-2rem))] rounded-2xl border p-0 ${currentTheme.inputBorder} ${pickerSurfaceClassName} ${pickerShadowClassName}`}
       >
-        <div className="p-4">
-          <div className="mb-4 flex items-start justify-between gap-3">
-            <div>
-              <p className={`text-sm font-semibold ${currentTheme.text}`}>Choose a due date</p>
-              <p className={`mt-1 text-xs ${currentTheme.textMuted}`}>
-                Pick a day or use a quick shortcut.
-              </p>
-            </div>
-            {selectedDate && (
-              <button
-                type="button"
-                onClick={() => onChange("")}
-                className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${currentTheme.primaryText} ${currentTheme.primaryBg} hover:opacity-90`}
-              >
-                Clear
-              </button>
-            )}
+        <div className={`p-4 ${pickerSurfaceClassName}`}>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <p className={`text-sm font-semibold ${currentTheme.text}`}>Choose a due date</p>
+            <UtilityIconButton
+              type="button"
+              size="sm"
+              emphasis="elevated"
+              onClick={() => onChange("")}
+              className={`${subtleActionButtonClassName} ${selectedDate ? "" : "pointer-events-none invisible"}`}
+              aria-hidden={!selectedDate}
+              tabIndex={selectedDate ? 0 : -1}
+            >
+              Clear
+            </UtilityIconButton>
           </div>
 
-          <div className="mb-4 flex flex-wrap gap-2">
+          <div className="mb-4 flex flex-wrap justify-center gap-2">
             {QUICK_DATE_PRESETS.map((preset) => {
               const presetValue = format(preset.getValue(), "yyyy-MM-dd");
               const isSelected = value === presetValue;
 
               return (
-                <button
+                <UtilityIconButton
                   key={preset.label}
                   type="button"
+                  size="sm"
+                  emphasis="elevated"
                   onClick={() => onChange(presetValue)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${
+                  className={
                     isSelected
-                      ? `bg-gradient-to-r ${currentTheme.primary} text-white shadow-sm`
-                      : `${currentTheme.bgSecondary} ${currentTheme.textSecondary} hover:${currentTheme.inputBg}`
-                  }`}
+                      ? selectedActionButtonClassName
+                      : subtleActionButtonClassName
+                  }
                 >
                   {preset.label}
-                </button>
+                </UtilityIconButton>
               );
             })}
           </div>
 
-          <div className={`flex justify-center overflow-hidden rounded-2xl border ${currentTheme.inputBorder}`}>
+          <div className={`flex justify-center overflow-hidden rounded-2xl border ${currentTheme.inputBorder} ${pickerSurfaceClassName}`}>
             <Calendar
               mode="single"
               selected={selectedDate}
-              month={selectedDate}
+              defaultMonth={selectedDate ?? startOfToday()}
               onSelect={(nextDate) => onChange(nextDate ? format(nextDate, "yyyy-MM-dd") : "")}
-              className={`mx-auto ${currentTheme.cardBg} [--cell-size:2.25rem]`}
+              className={`mx-auto ${pickerSurfaceClassName} [--cell-size:2.25rem]`}
               classNames={{
                 caption_label: `text-sm font-semibold ${currentTheme.text}`,
                 head_cell: `w-9 rounded-md text-[0.75rem] font-medium ${currentTheme.textMuted}`,
-                day: `h-9 w-9 rounded-xl p-0 text-sm font-medium ${currentTheme.text}`,
-                day_today: `${currentTheme.primaryBg} ${currentTheme.primaryText}`,
-                day_selected: `bg-gradient-to-r ${currentTheme.primary} text-white hover:bg-none hover:text-white focus:bg-none focus:text-white`,
+                nav_button: `inline-flex size-7 items-center justify-center rounded-lg border ${currentTheme.inputBorder} ${pickerSurfaceClassName} p-0 opacity-100 transition-colors ${currentTheme.textSecondary} hover:${currentTheme.primaryBg} hover:${currentTheme.primaryText}`,
+                day: `h-9 w-9 rounded-xl p-0 text-sm font-medium transition-colors ${currentTheme.text} ${isDarkMode ? "hover:bg-zinc-800" : "hover:bg-gray-100"} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-0 ${currentTheme.focus}`,
+                day_today: `${currentTheme.text} ${currentTheme.primaryBg} brightness-[0.98] dark:brightness-90`,
+                day_selected: `!bg-gradient-to-r ${currentTheme.primary} ${isDarkMode ? "!text-gray-900" : "!text-white"} shadow-sm hover:brightness-105 focus:brightness-105`,
                 day_outside: `${currentTheme.textMuted} opacity-50`,
                 day_disabled: `${currentTheme.textMuted} opacity-30`,
               }}

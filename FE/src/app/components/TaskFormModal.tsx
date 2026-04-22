@@ -16,6 +16,7 @@ import { LabelSelector } from "./LabelSelector";
 import { PriorityIcon } from "./PriorityIcon";
 import { TaskAssigneePicker } from "./TaskAssigneePicker";
 import { TaskDueDatePicker } from "./TaskDueDatePicker";
+import { UtilityIconButton } from "./UtilityIconButton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 interface TaskFormModalProps {
@@ -34,7 +35,6 @@ interface TaskFormModalProps {
   availableLabels: Label[];
   selectedLabelIds: number[];
   onSelectedLabelIdsChange: (labelIds: number[]) => void;
-  onCreateLabel: (name: string, color: string) => Promise<void>;
   availableAssignees: TaskAssignee[];
   selectedAssignee: TaskAssignee | null;
   onSelectedAssigneeChange: (assignee: TaskAssignee | null) => void;
@@ -42,6 +42,7 @@ interface TaskFormModalProps {
   customStoryPoints: string;
   onStoryPointsPresetClick: (points: number) => void;
   onCustomStoryPointsChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onClearStoryPoints: () => void;
   storyPointsError?: string;
   dueDate: string;
   onDueDateChange: (value: string) => void;
@@ -67,7 +68,6 @@ export function TaskFormModal({
   availableLabels,
   selectedLabelIds,
   onSelectedLabelIdsChange,
-  onCreateLabel,
   availableAssignees,
   selectedAssignee,
   onSelectedAssigneeChange,
@@ -75,6 +75,7 @@ export function TaskFormModal({
   customStoryPoints,
   onStoryPointsPresetClick,
   onCustomStoryPointsChange,
+  onClearStoryPoints,
   storyPointsError = "",
   dueDate,
   onDueDateChange,
@@ -87,10 +88,15 @@ export function TaskFormModal({
   const currentTheme = getThemeColors(theme, isDarkMode);
   const priorityOptions: Priority[] = ["low", "medium", "high", "critical"];
   const taskTypeOptions: TaskType[] = ["story", "task", "bug", "spike"];
-  const neutralChipClassName = isDarkMode
-    ? "border border-zinc-700 bg-zinc-800 text-zinc-100 hover:bg-zinc-700"
-    : "border border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100";
+  const formFieldSurfaceClassName = "bg-input-background dark:bg-input/30";
+  const hasStoryPointsValue =
+    customStoryPoints.trim().length > 0 || storyPoints !== null && storyPoints !== undefined;
+  const chipSurfaceClassName = formFieldSurfaceClassName;
+  const chipHoverHaloClassName = "hover:ring-1 hover:ring-black/5 dark:hover:ring-white/10";
+  const chipTransitionClassName = `transition-[color,box-shadow,border-color] duration-300 ease-out ${chipHoverHaloClassName}`;
+  const neutralChipClassName = `border ${currentTheme.inputBorder} ${chipSurfaceClassName} ${currentTheme.textSecondary} hover:${currentTheme.borderHover} ${chipTransitionClassName}`;
   const subtleIconClassName = isDarkMode ? "text-zinc-500" : "text-gray-400";
+  const subtleActionButtonClassName = `w-auto gap-1.5 px-2.5 text-xs font-semibold shadow-none ${currentTheme.inputBorder} ${formFieldSurfaceClassName} ${currentTheme.textSecondary}`;
   const cancelButtonClassName = isDarkMode
     ? "border-zinc-700 text-zinc-100 hover:bg-zinc-800"
     : "border-gray-300 text-gray-700 hover:bg-gray-50";
@@ -159,7 +165,7 @@ export function TaskFormModal({
               onChange={(event) => onTaskTitleChange(event.target.value)}
               maxLength={MAX_TASK_TITLE_LENGTH}
               placeholder="Enter task title..."
-              className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent transition-all ${currentTheme.inputBg} ${currentTheme.text} ${
+              className={`w-full px-4 py-3 border-2 rounded-xl placeholder:${currentTheme.textMuted} focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent transition-all ${formFieldSurfaceClassName} ${currentTheme.text} ${
                 showTitleError ? "border-red-500" : currentTheme.inputBorder
               }`}
               autoFocus
@@ -170,6 +176,24 @@ export function TaskFormModal({
             {showTitleError && (
               <p className="text-red-500 text-sm mt-1">Title is required</p>
             )}
+                </div>
+
+                <div className="md:col-span-2">
+            <label htmlFor={`${formIdPrefix}-description`} className={`block text-sm font-semibold ${currentTheme.textSecondary} mb-2`}>
+              Description <span className={`${currentTheme.textMuted} font-normal`}>(optional)</span>
+            </label>
+            <textarea
+              id={`${formIdPrefix}-description`}
+              value={description}
+              onChange={(event) => onDescriptionChange(event.target.value)}
+              maxLength={MAX_TASK_DESCRIPTION_LENGTH}
+              placeholder="Describe the task in detail... (supports multiple lines)"
+              rows={6}
+              className={`w-full min-h-24 max-h-48 px-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl placeholder:${currentTheme.textMuted} focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent resize-y transition-all ${formFieldSurfaceClassName} ${currentTheme.text}`}
+            />
+            <p className={`mt-2 text-xs ${currentTheme.textMuted}`}>
+              Up to {MAX_TASK_DESCRIPTION_LENGTH} characters.
+            </p>
                 </div>
 
                 <div>
@@ -195,29 +219,18 @@ export function TaskFormModal({
                 </div>
 
                 <div>
-            <div className="flex items-center justify-between gap-3 mb-2">
-              <div className="flex items-center gap-2">
-                <label htmlFor={`${formIdPrefix}-due-date`} className={`text-sm font-semibold ${currentTheme.textSecondary}`}>
-                  Due date
-                </label>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <HelpCircle className={`h-3.5 w-3.5 cursor-help ${subtleIconClassName}`} />
-                  </TooltipTrigger>
-                  <TooltipContent side="top" sideOffset={8}>
-                    Add a deadline for this task, or clear it if the work does not need one.
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-              {dueDate && (
-                <button
-                  type="button"
-                  onClick={() => onDueDateChange("")}
-                  className={`text-xs font-medium ${currentTheme.primaryText} hover:underline`}
-                >
-                  Clear
-                </button>
-              )}
+            <div className="flex items-center gap-2 mb-2">
+              <label htmlFor={`${formIdPrefix}-due-date`} className={`text-sm font-semibold ${currentTheme.textSecondary}`}>
+                Due date
+              </label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className={`h-3.5 w-3.5 cursor-help ${subtleIconClassName}`} />
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={8}>
+                  Add a deadline for this task, or clear it if the work does not need one.
+                </TooltipContent>
+              </Tooltip>
             </div>
             <TaskDueDatePicker
               id={`${formIdPrefix}-due-date`}
@@ -226,29 +239,10 @@ export function TaskFormModal({
             />
                 </div>
 
-                <div className="md:col-span-2">
-            <label htmlFor={`${formIdPrefix}-description`} className={`block text-sm font-semibold ${currentTheme.textSecondary} mb-2`}>
-              Description <span className={`${currentTheme.textMuted} font-normal`}>(optional)</span>
-            </label>
-            <textarea
-              id={`${formIdPrefix}-description`}
-              value={description}
-              onChange={(event) => onDescriptionChange(event.target.value)}
-              maxLength={MAX_TASK_DESCRIPTION_LENGTH}
-              placeholder="Describe the task in detail... (supports multiple lines)"
-              rows={6}
-              className={`w-full px-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent resize-y transition-all ${currentTheme.inputBg} ${currentTheme.text}`}
-            />
-            <p className={`mt-2 text-xs ${currentTheme.textMuted}`}>
-              Up to {MAX_TASK_DESCRIPTION_LENGTH} characters.
-            </p>
-                </div>
-
                 <LabelSelector
                   availableLabels={availableLabels}
                   selectedLabelIds={selectedLabelIds}
                   onLabelsChange={onSelectedLabelIdsChange}
-                  onCreateLabel={onCreateLabel}
                 />
 
                 <div>
@@ -266,18 +260,30 @@ export function TaskFormModal({
               </Tooltip>
             </div>
             <div className="relative">
-              <Zap className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${currentTheme.textMuted}`} />
+              <Zap className={`absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 ${hasStoryPointsValue ? currentTheme.primaryText : currentTheme.textMuted}`} />
               <input
                 type="text"
                 inputMode="numeric"
                 value={customStoryPoints}
                 onChange={onCustomStoryPointsChange}
                 aria-invalid={Boolean(storyPointsError)}
-                className={`min-h-[52px] w-full rounded-xl border-2 ${currentTheme.inputBg} ${currentTheme.text} py-3 pl-11 pr-4 transition-all focus:border-transparent focus:outline-none focus:ring-2 ${currentTheme.focus} ${
+                className={`min-h-[52px] w-full rounded-xl border-2 ${formFieldSurfaceClassName} ${currentTheme.text} placeholder:${currentTheme.textMuted} py-3 pl-11 ${hasStoryPointsValue ? "pr-20" : "pr-4"} transition-all focus:border-transparent focus:outline-none focus:ring-2 ${currentTheme.focus} ${
                   storyPointsError ? "border-red-500" : currentTheme.inputBorder
                 }`}
                 placeholder={`Enter ${STORY_POINTS_MIN}-${STORY_POINTS_MAX} or use a preset`}
               />
+              {hasStoryPointsValue && (
+                <UtilityIconButton
+                  type="button"
+                  size="sm"
+                  emphasis="default"
+                  onClick={onClearStoryPoints}
+                  className={`absolute right-2 top-1/2 -translate-y-1/2 ${subtleActionButtonClassName}`}
+                  aria-label="Clear story points"
+                >
+                  Clear
+                </UtilityIconButton>
+              )}
             </div>
             <p className={`mt-2 text-xs ${currentTheme.textMuted}`}>
               Optional. Use a whole number between {STORY_POINTS_MIN} and {STORY_POINTS_MAX}.
@@ -288,18 +294,56 @@ export function TaskFormModal({
             <div className="mt-3 flex flex-wrap gap-2">
               {STORY_POINTS_OPTIONS.map((points) => {
                 const isSelected = storyPoints === points;
+                const selectedChipTextClassName = isDarkMode ? "text-gray-900" : "text-white";
                 return (
                   <button
                     key={points}
                     type="button"
                     onClick={() => onStoryPointsPresetClick(points)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                    className={`px-3.5 py-2 rounded-xl text-sm font-medium ${
                       isSelected
-                        ? `border border-transparent bg-gradient-to-r ${currentTheme.primary} text-white shadow-md`
+                        ? `border border-transparent bg-gradient-to-r ${currentTheme.primary} ${selectedChipTextClassName} shadow-md ${chipTransitionClassName}`
                         : neutralChipClassName
                     }`}
                   >
                     {points}
+                  </button>
+                );
+              })}
+            </div>
+                </div>
+
+                <div>
+            <div className="flex items-center gap-2 mb-2">
+              <label className={`text-sm font-semibold ${currentTheme.textSecondary}`}>
+                Task Type
+              </label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className={`h-3.5 w-3.5 cursor-help ${subtleIconClassName}`} />
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={8}>
+                  Defines the nature of the work: Story, Task, Bug, or Spike.
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {taskTypeOptions.map((value) => {
+                const isSelected = taskType === value;
+                const selectedChipTextClassName = isDarkMode ? "text-gray-900" : "text-white";
+
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => onTaskTypeChange(isSelected ? undefined : value)}
+                    className={`px-3.5 py-2 rounded-xl text-sm font-medium ${
+                      isSelected
+                        ? `border border-transparent bg-gradient-to-r ${currentTheme.primary} ${selectedChipTextClassName} shadow-md ${chipTransitionClassName}`
+                        : neutralChipClassName
+                    }`}
+                  >
+                    {value.charAt(0).toUpperCase() + value.slice(1)}
                   </button>
                 );
               })}
@@ -336,9 +380,9 @@ export function TaskFormModal({
                     key={value}
                     type="button"
                     onClick={() => onPriorityChange(isSelected ? undefined : value)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
+                    className={`px-3.5 py-2 rounded-xl text-sm font-medium flex items-center gap-2 ${
                       isSelected
-                        ? `border border-transparent ${textColor} shadow-md`
+                        ? `border border-transparent ${textColor} shadow-md ${chipTransitionClassName}`
                         : neutralChipClassName
                     }`}
                     style={isSelected ? { backgroundColor: getPriorityColor(value, isDarkMode) } : undefined}
@@ -346,46 +390,10 @@ export function TaskFormModal({
                     <PriorityIcon
                       priority={value}
                       isDarkMode={isDarkMode}
-                      className="w-3.5 h-3.5"
+                      className="h-4 w-4"
                       colorOverride={isSelected ? selectedIconColor : undefined}
                     />
                     <span>{priorityConfig.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-                </div>
-
-                <div>
-            <div className="flex items-center gap-2 mb-2">
-              <label className={`text-sm font-semibold ${currentTheme.textSecondary}`}>
-                Task Type
-              </label>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <HelpCircle className={`h-3.5 w-3.5 cursor-help ${subtleIconClassName}`} />
-                </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={8}>
-                  Defines the nature of the work: Story, Task, Bug, or Spike.
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {taskTypeOptions.map((value) => {
-                const isSelected = taskType === value;
-
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => onTaskTypeChange(isSelected ? undefined : value)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                      isSelected
-                        ? `border border-transparent bg-gradient-to-r ${currentTheme.primary} text-white shadow-md`
-                        : neutralChipClassName
-                    }`}
-                  >
-                    {value.charAt(0).toUpperCase() + value.slice(1)}
                   </button>
                 );
               })}

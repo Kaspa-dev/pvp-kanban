@@ -233,7 +233,7 @@ export function Projects() {
   } = useUserPreferences();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
-  const boardCardActionButtonClassName = `${currentTheme.bgSecondary} opacity-0 group-hover:opacity-100 transition-all duration-200 z-10`;
+  const boardCardActionButtonClassName = "opacity-0 transition-all duration-200 z-10 group-hover:opacity-100";
   const boardCardSurfaceClassName = getNeutralElevatedCardSurfaceClassName(isDarkMode);
   const boardCardHoverClassName = getNeutralElevatedCardHoverClassName(currentTheme, isDarkMode);
 
