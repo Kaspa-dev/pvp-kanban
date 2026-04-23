@@ -6,6 +6,7 @@ import { Archive, ArrowRight, ClipboardList, Clock, LayoutGrid, List as ListIcon
 import { KanbanColumn } from "../components/KanbanColumn";
 import { AddCardModal } from "../components/AddCardModal";
 import { EditTaskModal } from "../components/EditTaskModal";
+import { ManageLabelsModal } from "../components/ManageLabelsModal";
 import { Sidebar } from "../components/Sidebar";
 import { Toolbar } from "../components/Toolbar";
 import { SettingsModal } from "../components/SettingsModal";
@@ -47,9 +48,12 @@ import {
   updateBoardTask,
 } from "../utils/cards";
 import {
+  DEFAULT_LABEL_COLOR,
   Label,
   createLabel,
   getBoardLabels,
+  MAX_BOARD_LABELS,
+  normalizeLabelName,
 } from "../utils/labels";
 import {
   applyPlanningPokerRecommendation,
@@ -59,6 +63,7 @@ import {
   type PlanningPokerSession,
 } from "../utils/planningPoker";
 import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
+import { showErrorToast, showSuccessToast } from "../utils/toast";
 import {
   BacklogWorkspaceFilters,
   DEFAULT_BACKLOG_WORKSPACE_FILTERS,
@@ -100,6 +105,7 @@ export function Board() {
   const numericBoardId = boardId ? Number(boardId) : NaN;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLabelsModalOpen, setIsLabelsModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Card | null>(null);
   const [pendingReplay, setPendingReplay] = useState<{ flowId: ReturnType<typeof getCoachmarkFlowForView>; targetView: BoardWorkspaceView } | null>(null);
@@ -839,16 +845,34 @@ export function Board() {
   };
   const handleCreateLabel = async (name: string, color: string) => {
     if (!Number.isFinite(numericBoardId)) {
-      return;
+      throw new Error("Unable to resolve the current board.");
+    }
+
+    const trimmedName = name.trim();
+    const normalizedName = normalizeLabelName(trimmedName);
+
+    if (!trimmedName) {
+      throw new Error("Label name is required.");
+    }
+
+    if (labels.length >= MAX_BOARD_LABELS) {
+      throw new Error(`This board already has ${MAX_BOARD_LABELS} labels.`);
+    }
+
+    if (labels.some((label) => normalizeLabelName(label.name) === normalizedName)) {
+      throw new Error("A label with this name already exists on the board.");
     }
 
     try {
-      setActionError("");
-      const newLabel = await createLabel(numericBoardId, name, color);
-      setLabels((prevLabels) => [...prevLabels, newLabel]);
+      const newLabel = await createLabel(numericBoardId, trimmedName, color || DEFAULT_LABEL_COLOR);
+      setLabels((prevLabels) =>
+        [...prevLabels, newLabel].sort((left, right) => left.name.localeCompare(right.name)),
+      );
+      showSuccessToast(`Label "${newLabel.name}" created.`);
+      return newLabel;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to create the label right now.";
-      setActionError(message);
+      showErrorToast(message);
       throw new Error(message);
     }
   };
@@ -981,6 +1005,8 @@ export function Board() {
         <div className="relative z-10 flex min-h-0 flex-1 overflow-hidden">
             <Sidebar
               onCreateTask={() => setIsModalOpen(true)}
+              onOpenLabels={() => setIsLabelsModalOpen(true)}
+              labelCount={labels.length}
               boardName={currentBoard.name}
               boardLogoIconKey={currentBoard.logoIconKey}
               boardLogoColorKey={currentBoard.logoColorKey}
@@ -1258,6 +1284,13 @@ export function Board() {
               task={editingTask}
               availableLabels={labels}
               availableAssignees={availableAssignees}
+            />
+
+            <ManageLabelsModal
+              isOpen={isLabelsModalOpen}
+              onClose={() => setIsLabelsModalOpen(false)}
+              labels={labels}
+              onCreateLabel={handleCreateLabel}
             />
 
             <SettingsModal

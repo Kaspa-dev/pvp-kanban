@@ -1,10 +1,11 @@
-import { Plus } from "lucide-react";
+import { Plus, Tag } from "lucide-react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { BoardLogo } from "./BoardLogo";
 import { OverflowTooltip } from "./OverflowTooltip";
 import { BoardLogoColorKey, BoardLogoIconKey } from "../utils/boardIdentity";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
+import { MAX_BOARD_LABELS } from "../utils/labels";
 import {
   Sidebar as WorkspaceSidebar,
   SidebarContent,
@@ -17,6 +18,8 @@ import {
 
 interface SidebarProps {
   onCreateTask: () => void;
+  onOpenLabels: () => void;
+  labelCount?: number;
   boardName?: string;
   boardLogoIconKey?: BoardLogoIconKey;
   boardLogoColorKey?: BoardLogoColorKey;
@@ -25,6 +28,8 @@ interface SidebarProps {
 
 export function Sidebar({
   onCreateTask,
+  onOpenLabels,
+  labelCount = 0,
   boardName,
   boardLogoIconKey,
   boardLogoColorKey,
@@ -43,6 +48,7 @@ export function Sidebar({
   };
 
   const primaryActionButtonClassName = `group/create-task relative inline-flex items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r font-bold text-white shadow-lg transition-[transform,box-shadow] duration-200 hover:scale-[1.02] hover:shadow-2xl active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} ${currentTheme.primary}`;
+  const labelsActionButtonClassName = `group/board-labels relative inline-flex items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r font-bold text-white shadow-lg transition-[transform,box-shadow] duration-200 hover:scale-[1.02] hover:shadow-2xl active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} ${currentTheme.primary}`;
 
   return (
     <WorkspaceSidebar
@@ -89,7 +95,7 @@ export function Sidebar({
 
         <SidebarContent className={`relative z-10 flex-1 gap-0 overflow-hidden ${isCollapsed ? "px-1.5 py-2.5" : "px-2.5 py-3"}`}>
           <SidebarGroup className={`p-0 ${isCollapsed ? "items-center" : ""}`}>
-            <SidebarGroupContent className={isCollapsed ? "flex w-full justify-center" : ""}>
+            <SidebarGroupContent className={`w-full ${isCollapsed ? "flex flex-col items-center gap-2" : "space-y-2"}`}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -108,6 +114,35 @@ export function Sidebar({
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right" sideOffset={10}>Create a new task in staging</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => {
+                      closeMobileSidebar();
+                      onOpenLabels();
+                    }}
+                    className={`${labelsActionButtonClassName} ${isCollapsed ? "h-10 w-10 self-center px-0" : "h-10 w-full gap-2 px-3 text-sm leading-none"}`}
+                    type="button"
+                  >
+                    <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_15%,rgba(255,255,255,0.24)_50%,transparent_85%)] opacity-0 transition-opacity duration-300 group-hover/board-labels:opacity-100" />
+                    <span className={`relative z-10 inline-flex min-w-0 items-center gap-2 ${isCollapsed ? "" : "w-full justify-between"}`}>
+                      <span className="inline-flex min-w-0 items-center gap-2 leading-none">
+                        <Tag className="h-4.5 w-4.5 shrink-0 will-change-transform transition-transform duration-200 group-hover/board-labels:rotate-6 group-hover/board-labels:scale-110" />
+                        {!isCollapsed && <span className="truncate leading-none">Labels</span>}
+                      </span>
+                      {!isCollapsed && (
+                        <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/82">
+                          {labelCount}/{MAX_BOARD_LABELS}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={10}>
+                  Create and review board labels
+                </TooltipContent>
               </Tooltip>
             </SidebarGroupContent>
           </SidebarGroup>

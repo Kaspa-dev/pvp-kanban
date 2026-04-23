@@ -1,4 +1,4 @@
-import { Search, Loader2 } from "lucide-react";
+import { Search, LoaderCircle, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import { ProjectUser, searchUsers } from "../utils/users";
@@ -13,12 +13,13 @@ interface UserSearchPickerProps {
 }
 
 const SEARCH_DEBOUNCE_MS = 250;
-const SEARCH_RESULT_LIMIT = 8;
+const SEARCH_RESULT_LIMIT = 3;
+const RESULTS_PANEL_HEIGHT_CLASS = "h-[13rem]";
 
 export function UserSearchPicker({
   excludedUserIds,
   onSelectUser,
-  placeholder = "Search members by name, username, or email",
+  placeholder = "Search members by name, username, or email prefix",
   disabled = false,
 }: UserSearchPickerProps) {
   const { theme, isDarkMode } = useTheme();
@@ -194,11 +195,16 @@ export function UserSearchPicker({
       {isOpen && normalizedQuery && (
         <div className={`mt-3 overflow-hidden rounded-2xl border ${currentTheme.border} ${pickerSurfaceClassName} shadow-lg`}>
           {error ? (
-            <div className="px-4 py-3 text-sm text-red-600">{error}</div>
+            <div className={`flex ${RESULTS_PANEL_HEIGHT_CLASS} items-center px-4 py-3 text-sm text-red-600`}>{error}</div>
+          ) : isLoading ? (
+            <div className={`flex ${RESULTS_PANEL_HEIGHT_CLASS} items-center justify-center gap-2 px-4 py-5 text-sm ${currentTheme.textMuted}`}>
+              <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+              <span>Searching members...</span>
+            </div>
           ) : !isLoading && visibleResults.length === 0 ? (
-            <div className={`px-4 py-3 text-sm ${currentTheme.textMuted}`}>No users found.</div>
+            <div className={`flex ${RESULTS_PANEL_HEIGHT_CLASS} items-center justify-center px-4 py-3 text-sm ${currentTheme.textMuted}`}>No users found.</div>
           ) : (
-            <CustomScrollArea viewportClassName="max-h-64 py-2">
+            <CustomScrollArea viewportClassName={`max-h-64 ${RESULTS_PANEL_HEIGHT_CLASS} py-2`}>
               <div className="-mr-3">
               {visibleResults.map((user, index) => {
                 const isHighlighted = index === highlightedIndex;

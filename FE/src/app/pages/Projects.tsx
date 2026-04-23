@@ -50,13 +50,13 @@ import {
   TooltipTrigger,
 } from "../components/ui/tooltip";
 import { Skeleton } from "../components/ui/skeleton";
-import { Input } from "../components/ui/input";
 import {
   getWorkspaceControlSurfaceClassName,
   getWorkspaceSurfaceStyles,
 } from "../utils/workspaceSurfaceStyles";
 import { WorkspacePaginationFooter } from "../components/WorkspacePaginationFooter";
 import { UtilityIconButton } from "../components/UtilityIconButton";
+import { getNativeInputFieldClassName } from "../components/inputLikeControlStyles";
 import { showErrorToast, showSuccessToast } from "../utils/toast";
 
 function isEditableKeyboardTarget(target: EventTarget | null): boolean {
@@ -233,6 +233,9 @@ export function Projects() {
   } = useUserPreferences();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
+  const projectsSearchInputClassName = getNativeInputFieldClassName(currentTheme, {
+    surfaceClassName: workspaceSurface.controlSurfaceClassName,
+  });
   const boardCardActionButtonClassName = "opacity-0 transition-all duration-200 z-10 group-hover:opacity-100";
   const boardCardSurfaceClassName = getNeutralElevatedCardSurfaceClassName(isDarkMode);
   const boardCardHoverClassName = getNeutralElevatedCardHoverClassName(currentTheme, isDarkMode);
@@ -703,12 +706,12 @@ export function Projects() {
                     <TooltipTrigger asChild>
                       <div className="relative min-w-0 flex-1">
                         <Search className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${currentTheme.textMuted}`} />
-                        <Input
+                        <input
                           type="text"
                           value={searchInput}
                           onChange={(event) => setSearchInput(event.target.value)}
                           placeholder="Search by board name or description"
-                          className={`h-11 w-full rounded-xl ${currentTheme.inputBorder} ${currentTheme.inputBg} pl-10 pr-4 text-sm ${currentTheme.text} placeholder:${currentTheme.textMuted} ${currentTheme.accentInputFocus}`}
+                          className={`h-11 w-full pl-10 pr-4 text-sm placeholder:${currentTheme.textMuted} ${projectsSearchInputClassName}`}
                         />
                       </div>
                     </TooltipTrigger>

@@ -8,6 +8,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
+import { getInputLikeControlClassName } from "./inputLikeControlStyles";
 
 interface WorkspaceToolbarSelectOption {
   value: string;
@@ -43,6 +44,10 @@ export function WorkspaceToolbarSelect({
   const visibleOptions = hideSelectedOption
     ? options.filter((option) => option.value !== value)
     : options;
+  const triggerClassName = getInputLikeControlClassName(currentTheme, {
+    openState: true,
+    surfaceClassName: workspaceSurface.controlSurfaceClassName,
+  });
 
   const content = (
     <label className={`block ${widthClassName}`}>
@@ -51,7 +56,7 @@ export function WorkspaceToolbarSelect({
       </span>
       <Select value={value} onValueChange={onValueChange}>
         <SelectTrigger
-          className={`h-11 rounded-xl border ${workspaceSurface.controlSurfaceClassName} ${workspaceSurface.controlSurfaceHoverClassName} ${currentTheme.inputBorder} ${currentTheme.text} data-[size=default]:h-11 px-4 py-0 shadow-none transition-[border-color,box-shadow] duration-300 ease-out hover:!bg-white dark:hover:!bg-input/30 focus:ring-2 ${currentTheme.focus} [&_[data-slot=select-value]]:text-left`}
+          className={`h-11 px-4 py-0 shadow-none ${currentTheme.text} ${triggerClassName} data-[size=default]:h-11 hover:!bg-white dark:hover:!bg-input/30 [&_[data-slot=select-value]]:text-left`}
         >
           <SelectValue placeholder={label}>{selectedLabel}</SelectValue>
         </SelectTrigger>

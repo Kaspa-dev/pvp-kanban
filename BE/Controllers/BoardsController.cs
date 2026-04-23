@@ -32,6 +32,8 @@ public class BoardsController(
     private const int MaxBoardPageSize = 48;
     private const int DefaultTaskPageSize = 10;
     private const int MaxTaskPageSize = 24;
+    private const int MaxBoardLabels = 12;
+    private const int MaxBoardLabelNameLength = 15;
 
     private static readonly string[] StatusKeys =
     [
@@ -1106,7 +1108,7 @@ public class BoardsController(
             return Unauthorized();
         }
 
-        var (_, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
+        var (accessContext, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
         if (failure is not null)
         {
             return failure;
@@ -1117,10 +1119,28 @@ public class BoardsController(
             return BadRequest(new { message = "Label name is required." });
         }
 
+        Board board = accessContext!.Board;
+        string normalizedName = request.Name.Trim();
+
+        if (normalizedName.Length > MaxBoardLabelNameLength)
+        {
+            return BadRequest(new { message = $"Label names can be up to {MaxBoardLabelNameLength} characters." });
+        }
+
+        if (board.Labels.Count >= MaxBoardLabels)
+        {
+            return BadRequest(new { message = $"This board already has {MaxBoardLabels} labels." });
+        }
+
+        if (board.Labels.Any(label => label.Title.Equals(normalizedName, StringComparison.OrdinalIgnoreCase)))
+        {
+            return BadRequest(new { message = "A label with this name already exists on the board." });
+        }
+
         var label = new Label
         {
             BoardId = boardId,
-            Title = request.Name.Trim(),
+            Title = normalizedName,
             Color = string.IsNullOrWhiteSpace(request.Color) ? "#64748b" : request.Color.Trim(),
         };
 

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { X, Trash2, Users } from 'lucide-react';
+import { Fingerprint, HelpCircle, X, Trash2, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme, getThemeColors } from '../contexts/ThemeContext';
 import { createBoard, Board } from '../utils/boards';
@@ -14,6 +14,7 @@ import { BoardIdentityPicker } from './BoardIdentityPicker';
 import { BoardMemberListItem } from './BoardMemberListItem';
 import { CustomScrollArea } from './CustomScrollArea';
 import { UserSearchPicker } from './UserSearchPicker';
+import { UtilityIconButton } from './UtilityIconButton';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { getIconActionButtonClassName } from './iconActionButtonStyles';
 import {
@@ -45,6 +46,12 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
     currentTheme,
     currentTheme.textSecondary,
   );
+  const sectionTitleClassName = `text-lg font-semibold ${currentTheme.text}`;
+  const sectionDescriptionClassName = `text-sm ${currentTheme.textMuted}`;
+  const helpIconButtonClassName = `inline-flex h-5 w-5 items-center justify-center rounded-full ${currentTheme.textMuted} transition-colors hover:${currentTheme.textSecondary} focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus}`;
+  const sectionDividerClassName = isDarkMode
+    ? "h-px rounded-full bg-zinc-800"
+    : "h-px rounded-full bg-gray-200";
 
   const [boardName, setBoardName] = useState('');
   const [description, setDescription] = useState('');
@@ -145,14 +152,27 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
         style={{ height: "min(90vh, 52rem)" }}
       >
         <div className={`${currentTheme.cardBg} border-b-2 ${currentTheme.border} px-6 py-4 flex items-center justify-between rounded-t-2xl shrink-0`}>
-          <h2 className={`text-2xl font-bold ${currentTheme.text}`}>Create New Project</h2>
-          <button
+          <div className="flex items-center gap-2">
+            <h2 className={`text-2xl font-bold ${currentTheme.text}`}>Create New Project</h2>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button type="button" className={helpIconButtonClassName} aria-label="Create project modal help">
+                  <HelpCircle className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={8}>
+                Set up the project identity first, then invite teammates before you create it.
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <UtilityIconButton
             type="button"
+            size="md"
             onClick={handleClose}
-            className={`p-2 hover:${currentTheme.bgSecondary} rounded-xl transition-colors`}
+            aria-label="Close create project modal"
           >
-            <X className={`w-5 h-5 ${currentTheme.textMuted}`} />
-          </button>
+            <X className="w-5 h-5" />
+          </UtilityIconButton>
         </div>
 
         <div className="flex-1 min-h-0 overflow-hidden px-6 py-6">
@@ -161,113 +181,188 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
             viewportClassName="h-full min-h-0 pr-4"
           >
             <div className="space-y-6 px-1 py-1">
-            <div>
-              <label htmlFor="boardName" className={`block text-sm font-semibold ${currentTheme.textSecondary} mb-2`}>
-                Project Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="boardName"
-                type="text"
-                value={boardName}
-                onChange={(event) => setBoardName(event.target.value)}
-                maxLength={MAX_BOARD_NAME_LENGTH}
-                placeholder="e.g., Website Redesign, Q1 Marketing Campaign"
-                className={`w-full px-4 py-3 border-2 ${
-                  errors.name ? 'border-red-500' : currentTheme.inputBorder
-                } rounded-xl transition-[border-color,box-shadow,color,background-color] duration-300 ease-out focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent ${modalFieldSurfaceClassName} ${currentTheme.text}`}
-              />
-              <p className={`mt-2 text-xs ${currentTheme.textMuted}`}>
-                Up to {MAX_BOARD_NAME_LENGTH} characters.
-              </p>
-              {errors.name && (
-                <p className="mt-1 text-sm text-red-500">{errors.name}</p>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor="description" className={`block text-sm font-semibold ${currentTheme.textSecondary} mb-2`}>
-                Description (optional)
-              </label>
-              <textarea
-                id="description"
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                maxLength={MAX_BOARD_DESCRIPTION_LENGTH}
-                placeholder="Brief description of what this project is about..."
-                rows={3}
-                className={`w-full px-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl transition-[border-color,box-shadow,color,background-color] duration-300 ease-out focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent resize-y ${BOARD_DESCRIPTION_TEXTAREA_HEIGHT_CLASS} ${modalFieldSurfaceClassName} ${currentTheme.text}`}
-              />
-              <p className={`mt-2 text-xs ${currentTheme.textMuted}`}>
-                Up to {MAX_BOARD_DESCRIPTION_LENGTH} characters.
-              </p>
-            </div>
-
-            <BoardIdentityPicker
-              iconKey={logoIconKey}
-              colorKey={logoColorKey}
-              onIconChange={setLogoIconKey}
-              onColorChange={setLogoColorKey}
-            />
-
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Users className={`w-4 h-4 ${currentTheme.textSecondary}`} />
-                <label className={`text-sm font-semibold ${currentTheme.textSecondary}`}>
-                  Team Members
-                </label>
-                <span className={`text-xs ${currentTheme.textMuted}`}>
-                  ({selectedMembers.length} member{selectedMembers.length !== 1 ? 's' : ''})
-                </span>
-              </div>
-
-              <UserSearchPicker
-                excludedUserIds={[currentUserId, ...memberUserIds]}
-                onSelectUser={handleAddMember}
-                disabled={hasReachedMemberLimit}
-                placeholder={
-                  hasReachedMemberLimit
-                    ? "Member limit reached"
-                    : "Search members by name, username, or email"
-                }
-              />
-
-              <p className={`mt-3 text-sm ${currentTheme.textMuted}`}>
-                Boards can have up to {MAX_BOARD_MEMBERS} members total, including you as the owner. Currently using {totalMemberCount} of {MAX_BOARD_MEMBERS}.
-              </p>
-
-              {selectedMembers.length > 0 ? (
-                <div className="mt-4 space-y-2">
-                  {selectedMembers.map((member) => (
-                    <BoardMemberListItem
-                      key={member.id}
-                      currentTheme={currentTheme}
-                      displayName={member.displayName}
-                      username={member.username}
-                      email={member.email}
-                      surfaceClassName={modalSecondarySurfaceClassName}
-                      action={(
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveMember(member.id)}
-                              className={memberActionButtonClassName}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" sideOffset={8}>Remove member</TooltipContent>
-                        </Tooltip>
-                      )}
-                    />
-                  ))}
+              <section className="space-y-6" aria-labelledby="create-project-identity-heading">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Fingerprint className={`h-4 w-4 ${currentTheme.primaryText}`} />
+                    <h3 id="create-project-identity-heading" className={sectionTitleClassName}>
+                      Define the project&apos;s identity
+                    </h3>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button type="button" className={helpIconButtonClassName} aria-label="Project identity help">
+                          <HelpCircle className="h-3.5 w-3.5" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" sideOffset={8}>
+                        The name, description, and visual identity help teammates recognize this board across the app.
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <p className={sectionDescriptionClassName}>
+                    Add the basics first, then choose the icon and color members will recognize across the app.
+                  </p>
                 </div>
-              ) : (
-                <p className={`mt-4 text-sm ${currentTheme.textMuted} italic`}>
-                  You&apos;ll be added automatically as the project owner. Search and add any extra registered users here.
+
+                <div>
+                  <div className="mb-2 flex items-center gap-2">
+                    <label htmlFor="boardName" className={`block text-sm font-semibold ${currentTheme.textSecondary}`}>
+                      Project Name <span className="text-red-500">*</span>
+                    </label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button type="button" className={helpIconButtonClassName} aria-label="Project name help">
+                          <HelpCircle className="h-3.5 w-3.5" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" sideOffset={8}>
+                        Pick a short, recognizable board name that teammates can scan quickly.
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <input
+                    id="boardName"
+                    type="text"
+                    value={boardName}
+                    onChange={(event) => setBoardName(event.target.value)}
+                    maxLength={MAX_BOARD_NAME_LENGTH}
+                    placeholder="e.g., Website Redesign, Q1 Marketing Campaign"
+                    className={`w-full px-4 py-3 border-2 ${
+                      errors.name ? 'border-red-500' : currentTheme.inputBorder
+                    } rounded-xl transition-[border-color,box-shadow,color,background-color] duration-300 ease-out focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent ${modalFieldSurfaceClassName} ${currentTheme.text}`}
+                  />
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                    <p className={`text-xs ${currentTheme.textMuted}`}>
+                      Up to {MAX_BOARD_NAME_LENGTH} characters.
+                    </p>
+                    <span className={`text-xs ${currentTheme.textMuted}`}>
+                      {boardName.trim().length}/{MAX_BOARD_NAME_LENGTH}
+                    </span>
+                  </div>
+                  {errors.name && (
+                    <p className="mt-1 text-sm text-red-500">{errors.name}</p>
+                  )}
+                </div>
+
+                <div>
+                  <div className="mb-2 flex items-center gap-2">
+                    <label htmlFor="description" className={`block text-sm font-semibold ${currentTheme.textSecondary}`}>
+                      Description
+                    </label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button type="button" className={helpIconButtonClassName} aria-label="Project description help">
+                          <HelpCircle className="h-3.5 w-3.5" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" sideOffset={8}>
+                        Add context about the board&apos;s purpose, team, or workflow so members know what belongs here.
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <textarea
+                    id="description"
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                    maxLength={MAX_BOARD_DESCRIPTION_LENGTH}
+                    placeholder="Brief description of what this project is about..."
+                    rows={3}
+                    className={`w-full px-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl transition-[border-color,box-shadow,color,background-color] duration-300 ease-out focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent resize-y ${BOARD_DESCRIPTION_TEXTAREA_HEIGHT_CLASS} ${modalFieldSurfaceClassName} ${currentTheme.text}`}
+                  />
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                    <p className={`text-xs ${currentTheme.textMuted}`}>
+                      Up to {MAX_BOARD_DESCRIPTION_LENGTH} characters.
+                    </p>
+                    <span className={`text-xs ${currentTheme.textMuted}`}>
+                      {description.trim().length}/{MAX_BOARD_DESCRIPTION_LENGTH}
+                    </span>
+                  </div>
+                </div>
+
+                <BoardIdentityPicker
+                  iconKey={logoIconKey}
+                  colorKey={logoColorKey}
+                  onIconChange={setLogoIconKey}
+                  onColorChange={setLogoColorKey}
+                />
+              </section>
+
+              <div className={`-mx-1 ${sectionDividerClassName}`} aria-hidden="true" />
+
+              <section className="space-y-4" aria-labelledby="create-project-members-heading">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Users className={`w-4 h-4 ${currentTheme.primaryText}`} />
+                    <h3 id="create-project-members-heading" className={sectionTitleClassName}>
+                      Invite your team
+                    </h3>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button type="button" className={helpIconButtonClassName} aria-label="Invite team help">
+                          <HelpCircle className="h-3.5 w-3.5" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" sideOffset={8}>
+                        Add registered users now so they can access the board as soon as it&apos;s created.
+                      </TooltipContent>
+                    </Tooltip>
+                    <span className={`text-xs font-medium ${currentTheme.primaryText}`}>
+                      ({selectedMembers.length} member{selectedMembers.length !== 1 ? 's' : ''})
+                    </span>
+                  </div>
+                  <p className={sectionDescriptionClassName}>
+                    Search by name, username, or email to add people before you create the project.
+                  </p>
+                </div>
+
+                <UserSearchPicker
+                  excludedUserIds={[currentUserId, ...memberUserIds]}
+                  onSelectUser={handleAddMember}
+                  disabled={hasReachedMemberLimit}
+                  placeholder={
+                    hasReachedMemberLimit
+                      ? "Member limit reached"
+                      : "Search members by name, username, or email"
+                  }
+                />
+
+                <p className={`mt-3 text-sm ${currentTheme.textMuted}`}>
+                  Boards can have up to {MAX_BOARD_MEMBERS} members total, including you as the owner. Currently using {totalMemberCount} of {MAX_BOARD_MEMBERS}.
                 </p>
-              )}
-            </div>
+
+                {selectedMembers.length > 0 ? (
+                  <div className="mt-4 space-y-2">
+                    {selectedMembers.map((member) => (
+                      <BoardMemberListItem
+                        key={member.id}
+                        currentTheme={currentTheme}
+                        displayName={member.displayName}
+                        username={member.username}
+                        email={member.email}
+                        surfaceClassName={modalSecondarySurfaceClassName}
+                        action={(
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveMember(member.id)}
+                                className={memberActionButtonClassName}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" sideOffset={8}>Remove member</TooltipContent>
+                          </Tooltip>
+                        )}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className={`mt-4 text-sm ${currentTheme.textMuted} italic`}>
+                    You&apos;ll be added automatically as the project owner. Search and add any extra registered users here.
+                  </p>
+                )}
+              </section>
             </div>
           </CustomScrollArea>
         </div>

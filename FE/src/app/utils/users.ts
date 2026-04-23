@@ -7,7 +7,7 @@ export interface ProjectUser {
   displayName: string;
 }
 
-export async function searchUsers(query: string, limit = 8): Promise<ProjectUser[]> {
+export async function searchUsers(query: string, limit = 3): Promise<ProjectUser[]> {
   return apiJson<ProjectUser[]>(
     `/api/users/search?q=${encodeURIComponent(query)}&limit=${limit}`,
     { method: "GET" },
