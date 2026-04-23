@@ -12,12 +12,25 @@ export interface Label {
   color: string;
 }
 
+export interface LabelDraft {
+  tempId: string;
+  id?: number;
+  name: string;
+  color: string;
+  isDeleted?: boolean;
+  isNew?: boolean;
+}
+
 export const MAX_BOARD_LABELS = 12;
 export const MAX_LABEL_NAME_LENGTH = 15;
 export const DEFAULT_LABEL_COLOR = "#64748b";
 
 export function normalizeLabelName(name: string): string {
   return name.trim().toLowerCase();
+}
+
+export function sortLabelsByName<T extends { name: string }>(labels: T[]): T[] {
+  return [...labels].sort((left, right) => left.name.localeCompare(right.name));
 }
 
 export async function getBoardLabels(boardId: number | string): Promise<Label[]> {
