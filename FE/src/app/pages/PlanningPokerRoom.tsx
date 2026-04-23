@@ -13,9 +13,7 @@ import { PlanningPokerJoinForm } from "../components/planning-poker/PlanningPoke
 import { PlanningPokerParticipantList } from "../components/planning-poker/PlanningPokerParticipantList";
 import { PlanningPokerTaskQueue } from "../components/planning-poker/PlanningPokerTaskQueue";
 import { PlanningPokerVoteDeck } from "../components/planning-poker/PlanningPokerVoteDeck";
-import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Skeleton } from "../components/ui/skeleton";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
@@ -113,6 +111,13 @@ function getConnectionBannerLabel(value: ConnectionBannerState) {
     default:
       return "Preparing room connection...";
   }
+}
+
+function normalizePlanningPokerErrorMessage(message: string) {
+  return message
+    .replace("An unexpected error occurred invoking 'JoinSession' on the server. ", "")
+    .replace("HubException: ", "")
+    .trim();
 }
 
 export function PlanningPokerRoom() {
@@ -252,8 +257,9 @@ export function PlanningPokerRoom() {
         setRoomError("");
         setConnectionBannerState("connected");
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Unable to rejoin the planning poker room.";
+        const message = normalizePlanningPokerErrorMessage(
+          error instanceof Error ? error.message : "Unable to rejoin the planning poker room.",
+        );
         const shouldResetParticipantIdentity =
           participantTokenRef.current.length > 0 && /participant|token/i.test(message);
 
@@ -350,8 +356,9 @@ export function PlanningPokerRoom() {
 
         setConnectionBannerState("connected");
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Unable to join the planning poker room.";
+        const message = normalizePlanningPokerErrorMessage(
+          error instanceof Error ? error.message : "Unable to join the planning poker room.",
+        );
         setJoinError(message);
         setRoomError(message);
         setConnectionBannerState(
@@ -406,7 +413,11 @@ export function PlanningPokerRoom() {
       setSelectedVote(value);
       setSession(nextSession);
     } catch (error) {
-      setRoomError(error instanceof Error ? error.message : "Unable to submit your vote.");
+      setRoomError(
+        normalizePlanningPokerErrorMessage(
+          error instanceof Error ? error.message : "Unable to submit your vote.",
+        ),
+      );
     } finally {
       setIsVoteSubmitting(false);
     }
@@ -432,7 +443,9 @@ export function PlanningPokerRoom() {
       setSelectedVote(null);
     } catch (error) {
       setRoomError(
-        error instanceof Error ? error.message : "Unable to reveal the current round.",
+        normalizePlanningPokerErrorMessage(
+          error instanceof Error ? error.message : "Unable to reveal the current round.",
+        ),
       );
     } finally {
       setIsRevealing(false);
@@ -474,7 +487,9 @@ export function PlanningPokerRoom() {
       setIsDeleteDialogOpen(false);
     } catch (error) {
       setRoomError(
-        error instanceof Error ? error.message : "Unable to delete the planning poker session.",
+        normalizePlanningPokerErrorMessage(
+          error instanceof Error ? error.message : "Unable to delete the planning poker session.",
+        ),
       );
     } finally {
       setIsDeletingSession(false);
@@ -507,7 +522,11 @@ export function PlanningPokerRoom() {
       setSession(nextSession);
     } catch (error) {
       setRoomError(
-        error instanceof Error ? error.message : "Unable to select the planning poker recommendation.",
+        normalizePlanningPokerErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Unable to select the planning poker recommendation.",
+        ),
       );
     } finally {
       setIsSelectingRecommendation(false);
@@ -523,109 +542,58 @@ export function PlanningPokerRoom() {
       </div>
 
       <div className="relative z-10">
-        <div className={`${pageWidthClassName} flex flex-col gap-6`}>
+        <div className={`${pageWidthClassName} flex flex-col gap-5`}>
           <section
-            className={`${workspaceSurface.panelSurfaceClassName} rounded-[1.75rem] px-5 py-5 shadow-2xl sm:px-6`}
-            style={workspaceSurface.panelSurfaceStyle}
+            className={`border-b ${currentTheme.border} pb-4`}
+            aria-label="Planning poker room status"
           >
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(19rem,0.85fr)] lg:items-start">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-3">
-                  <Badge
-                    variant="outline"
-                    className={`border ${currentTheme.primaryBorder} bg-gradient-to-r ${currentTheme.primarySoftStrong} ${currentTheme.primaryText} px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]`}
-                  >
-                    Planning poker
-                  </Badge>
-                  <span className={`text-sm font-medium ${currentTheme.textMuted}`}>
-                    Live estimation room
-                  </span>
-                </div>
-
-                <h1 className={`mt-3 font-ui-condensed text-[2rem] font-semibold tracking-[0.01em] ${currentTheme.text}`}>
-                  Planning poker room
-                </h1>
-
-                <p className={`mt-2 max-w-2xl text-base leading-7 ${currentTheme.textMuted}`}>
-                  Keep estimation inside the board workspace, surface the active task
-                  without switching context, and let the team vote in real time.
+                <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+                  Planning poker
                 </p>
-
+                <h1 className={`mt-1 text-2xl font-semibold ${currentTheme.text}`}>
+                  Room
+                </h1>
                 {normalizedJoinToken ? (
-                  <p className={`mt-4 text-xs ${currentTheme.textMuted}`}>
-                    Room token{" "}
-                    <span className="font-mono text-[11px] tracking-[0.02em]">
-                      {normalizedJoinToken}
-                    </span>
+                  <p className={`mt-1 text-xs ${currentTheme.textMuted}`}>
+                    Token {normalizedJoinToken}
                   </p>
                 ) : null}
               </div>
 
-              <Card className={`${workspaceSurface.elevatedSurfaceClassName} overflow-hidden rounded-[1.5rem] shadow-lg`}>
-                <CardHeader className={`space-y-2 border-b ${currentTheme.border} px-5 py-4`}>
-                  <CardTitle className={`text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
-                    Room status
-                  </CardTitle>
-                  <div className="space-y-1">
-                    <p className={`text-lg font-semibold ${currentTheme.text}`}>
-                      {session
-                        ? `${votedCount} of ${session.participants.length} votes in`
-                        : getConnectionBannerLabel(connectionBannerState)}
-                    </p>
-                    <p className={`text-sm leading-6 ${currentTheme.textMuted}`}>
-                      {session
-                        ? activeTask
-                          ? `Current task: ${activeTask.title}. ${getConnectionBannerLabel(connectionBannerState)}`
-                          : getConnectionBannerLabel(connectionBannerState)
-                        : getConnectionBannerLabel(connectionBannerState)}
-                    </p>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4 px-5 py-4">
-                  <p className={`text-sm leading-6 ${currentTheme.textMuted}`}>
-                    {session
-                      ? currentParticipant?.isHost
-                        ? "You can copy the room link, reveal the round, or close the session from here."
-                        : "You can keep voting while the host manages the room from the board workspace."
-                      : "Join the room to start the live estimation session."}
-                  </p>
-                  {connectionBannerState !== "connected" && normalizedJoinToken ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className={`w-full justify-center ${currentTheme.border} ${
-                        isDarkMode
-                          ? "bg-white/[0.03] text-zinc-100 hover:bg-white/[0.06]"
-                          : "bg-white/70 text-slate-700 hover:bg-white"
-                      }`}
-                      onClick={() => void handleJoin()}
-                      disabled={isJoining}
-                    >
-                      <RefreshCcw className="h-4 w-4" aria-hidden="true" />
-                      {session ? "Rejoin room" : "Retry connection"}
-                    </Button>
-                  ) : null}
-                </CardContent>
-              </Card>
+              <div className="flex flex-wrap items-center gap-3 text-sm">
+                <span className={currentTheme.textMuted}>
+                  {getConnectionBannerLabel(connectionBannerState)}
+                </span>
+                {session ? (
+                  <span className={currentTheme.textMuted}>
+                    {votedCount}/{session.participants.length} voted
+                  </span>
+                ) : null}
+              </div>
             </div>
           </section>
 
-          <div className={`shrink-0 border-t ${currentTheme.border}`} />
-
           {!normalizedJoinToken ? (
-            <Card className="border-rose-400/20 bg-rose-400/10">
-              <CardContent className="px-6 py-6">
-                <div className="flex items-start gap-3 text-rose-100">
-                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-                  <div>
-                    <h2 className="text-lg font-semibold">Missing join token</h2>
-                    <p className="mt-2 text-sm leading-6">
-                      This link does not include a valid planning poker room token.
-                    </p>
-                  </div>
+            <div
+              className={`rounded-2xl border px-4 py-3 ${
+                isDarkMode
+                  ? "border-rose-400/20 bg-rose-400/10 text-rose-100"
+                  : "border-rose-200 bg-rose-50 text-rose-900"
+              }`}
+              role="alert"
+            >
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+                <div>
+                  <h2 className="text-sm font-semibold">Missing join token</h2>
+                  <p className="mt-1 text-sm leading-6">
+                    This link does not include a valid planning poker room token.
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ) : null}
 
           {normalizedJoinToken && !session && !deletedSessionMessage ? (
@@ -643,95 +611,123 @@ export function PlanningPokerRoom() {
           ) : null}
 
           {normalizedJoinToken && !session && deletedSessionMessage ? (
-            <Card className="border-rose-400/20 bg-rose-400/10">
-              <CardContent className="px-6 py-6">
-                <div className="flex items-start gap-3 text-rose-100">
-                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-                  <div>
-                    <h2 className="text-lg font-semibold">Session deleted</h2>
-                    <p className="mt-2 text-sm leading-6">{deletedSessionMessage}</p>
-                  </div>
+            <div
+              className={`rounded-2xl border px-4 py-3 ${
+                isDarkMode
+                  ? "border-rose-400/20 bg-rose-400/10 text-rose-100"
+                  : "border-rose-200 bg-rose-50 text-rose-900"
+              }`}
+              role="alert"
+            >
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+                <div>
+                  <h2 className="text-sm font-semibold">Session deleted</h2>
+                  <p className="mt-1 text-sm leading-6">{deletedSessionMessage}</p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ) : null}
 
           {normalizedJoinToken && isJoining && !session ? (
-            <Card className="max-w-2xl border-white/10 bg-slate-900/80">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-white">
-                  <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
-                  Joining room
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Skeleton className="h-24 rounded-3xl bg-slate-800" />
-                <Skeleton className="h-44 rounded-3xl bg-slate-800" />
-              </CardContent>
-            </Card>
+            <section
+              className={`max-w-2xl rounded-2xl border px-4 py-4 ${
+                isDarkMode
+                  ? "border-white/10 bg-white/[0.03]"
+                  : "border-slate-200 bg-white/70"
+              }`}
+              aria-label="Joining planning poker room"
+            >
+              <div className={`mb-4 flex items-center gap-2 text-sm font-medium ${currentTheme.text}`}>
+                <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+                Joining room
+              </div>
+              <div className="space-y-3">
+                <Skeleton className="h-10 rounded-2xl" />
+                <Skeleton className="h-28 rounded-2xl" />
+              </div>
+            </section>
           ) : null}
 
           {session ? (
             <>
               {roomError ? (
                 <div
-                  className="rounded-2xl border border-amber-300/20 bg-amber-300/10 px-4 py-3 text-sm text-amber-50"
+                  className={`rounded-2xl border px-4 py-3 text-sm ${
+                    isDarkMode
+                      ? "border-amber-400/20 bg-amber-400/10 text-amber-100"
+                      : "border-amber-200 bg-amber-50 text-amber-900"
+                  }`}
                   role="alert"
                 >
-                  {roomError}
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <span>{roomError}</span>
+                    {connectionBannerState !== "connected" ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className={`h-8 px-3 ${currentTheme.border} ${
+                          isDarkMode
+                            ? "bg-white/[0.03] text-zinc-100 hover:bg-white/[0.06]"
+                            : "bg-white/80 text-slate-700 hover:bg-white"
+                        }`}
+                        onClick={() => void handleJoin()}
+                        disabled={isJoining}
+                      >
+                        <RefreshCcw className="h-4 w-4" aria-hidden="true" />
+                        {session ? "Rejoin room" : "Retry connection"}
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
               ) : null}
 
-              <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(20rem,0.8fr)]">
-                <div className="space-y-6">
-                  <PlanningPokerTaskQueue
-                    activeTask={activeTask}
-                    queue={session.queue}
-                    isRevealed={session.isRevealed}
-                    isHost={Boolean(currentParticipant?.isHost)}
-                    recommendationOptions={VOTE_DECK_VALUES}
-                    isSelectingRecommendation={isSelectingRecommendation}
-                    onSelectRecommendation={handleSelectRecommendation}
-                  />
+              <div className="flex flex-col gap-6">
+                <PlanningPokerTaskQueue
+                  activeTask={activeTask}
+                  queue={session.queue}
+                  isRevealed={session.isRevealed}
+                  isHost={Boolean(currentParticipant?.isHost)}
+                  recommendationOptions={VOTE_DECK_VALUES}
+                  isSelectingRecommendation={isSelectingRecommendation}
+                  onSelectRecommendation={handleSelectRecommendation}
+                />
 
-                  <PlanningPokerVoteDeck
-                    cardValues={VOTE_DECK_VALUES}
-                    selectedValue={selectedVote}
-                    isSubmitting={isVoteSubmitting}
-                    isRevealed={session.isRevealed}
-                    isRevealing={isRevealing}
-                    hasActiveTask={Boolean(activeTask)}
-                    disabled={!activeTask || isRevealing}
-                    onVote={handleVote}
-                  />
-                </div>
+                <PlanningPokerVoteDeck
+                  cardValues={VOTE_DECK_VALUES}
+                  selectedValue={selectedVote}
+                  isSubmitting={isVoteSubmitting}
+                  isRevealed={session.isRevealed}
+                  isRevealing={isRevealing}
+                  hasActiveTask={Boolean(activeTask)}
+                  disabled={!activeTask || isRevealing}
+                  onVote={handleVote}
+                />
 
-                <div className="space-y-6">
-                  <PlanningPokerHostPanel
-                    isHost={Boolean(currentParticipant?.isHost)}
-                    joinUrl={
-                      typeof window === "undefined"
-                        ? session.joinUrl
-                        : new URL(session.joinUrl, window.location.origin).toString()
-                    }
-                    votedCount={votedCount}
-                    participantCount={session.participants.length}
-                    isRevealed={session.isRevealed}
-                    isRevealing={isRevealing}
-                    isDeleting={isDeletingSession}
-                    copyFeedback={copyFeedback}
-                    statusMessage={revealStatusMessage}
-                    errorMessage={currentParticipant?.isHost ? "" : roomError}
-                    onCopyLink={handleCopyLink}
-                    onReveal={handleReveal}
-                    onDelete={() => setIsDeleteDialogOpen(true)}
-                  />
+                <PlanningPokerParticipantList
+                  participants={session.participants}
+                  isRevealed={session.isRevealed}
+                />
 
-                  <PlanningPokerParticipantList
-                    participants={session.participants}
-                    isRevealed={session.isRevealed}
-                  />
-                </div>
+                <PlanningPokerHostPanel
+                  isHost={Boolean(currentParticipant?.isHost)}
+                  joinUrl={
+                    typeof window === "undefined"
+                      ? session.joinUrl
+                      : new URL(session.joinUrl, window.location.origin).toString()
+                  }
+                  votedCount={votedCount}
+                  participantCount={session.participants.length}
+                  isRevealed={session.isRevealed}
+                  isRevealing={isRevealing}
+                  isDeleting={isDeletingSession}
+                  copyFeedback={copyFeedback}
+                  statusMessage={revealStatusMessage}
+                  errorMessage={currentParticipant?.isHost ? "" : roomError}
+                  onCopyLink={handleCopyLink}
+                  onReveal={handleReveal}
+                  onDelete={() => setIsDeleteDialogOpen(true)}
+                />
               </div>
             </>
           ) : null}
