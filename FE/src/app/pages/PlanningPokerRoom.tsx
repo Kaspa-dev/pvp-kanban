@@ -171,6 +171,11 @@ export function PlanningPokerRoom() {
   const canJoinWithoutForm = isAuthenticated || participantToken.length > 0;
   const activeTask: PlanningPokerSessionTask | null =
     session && session.activeTask.sessionTaskId > 0 ? session.activeTask : null;
+  const shouldShowReconnectControl =
+    Boolean(normalizedJoinToken) &&
+    connectionBannerState !== "connected" &&
+    !isJoining &&
+    !deletedSessionMessage;
 
   useEffect(() => {
     participantTokenRef.current = participantToken;
@@ -553,7 +558,7 @@ export function PlanningPokerRoom() {
                   Planning poker
                 </p>
                 <h1 className={`mt-1 text-2xl font-semibold ${currentTheme.text}`}>
-                  Room
+                  Planning poker room
                 </h1>
                 {normalizedJoinToken ? (
                   <p className={`mt-1 text-xs ${currentTheme.textMuted}`}>
@@ -570,6 +575,22 @@ export function PlanningPokerRoom() {
                   <span className={currentTheme.textMuted}>
                     {votedCount}/{session.participants.length} voted
                   </span>
+                ) : null}
+                {shouldShowReconnectControl ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={`h-8 px-3 ${currentTheme.border} ${
+                      isDarkMode
+                        ? "bg-white/[0.03] text-zinc-100 hover:bg-white/[0.06]"
+                        : "bg-white/80 text-slate-700 hover:bg-white"
+                    }`}
+                    onClick={() => void handleJoin()}
+                    disabled={isJoining}
+                  >
+                    <RefreshCcw className="h-4 w-4" aria-hidden="true" />
+                    {session ? "Rejoin room" : "Retry connection"}
+                  </Button>
                 ) : null}
               </div>
             </div>
@@ -662,7 +683,7 @@ export function PlanningPokerRoom() {
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <span>{roomError}</span>
-                    {connectionBannerState !== "connected" ? (
+                    {shouldShowReconnectControl ? (
                       <Button
                         type="button"
                         variant="outline"
@@ -704,11 +725,6 @@ export function PlanningPokerRoom() {
                   onVote={handleVote}
                 />
 
-                <PlanningPokerParticipantList
-                  participants={session.participants}
-                  isRevealed={session.isRevealed}
-                />
-
                 <PlanningPokerHostPanel
                   isHost={Boolean(currentParticipant?.isHost)}
                   joinUrl={
@@ -727,6 +743,11 @@ export function PlanningPokerRoom() {
                   onCopyLink={handleCopyLink}
                   onReveal={handleReveal}
                   onDelete={() => setIsDeleteDialogOpen(true)}
+                />
+
+                <PlanningPokerParticipantList
+                  participants={session.participants}
+                  isRevealed={session.isRevealed}
                 />
               </div>
             </>
