@@ -2,6 +2,7 @@ import { cloneElement, isValidElement, ReactNode } from "react";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { cn } from "./ui/utils";
+import { getInputLikeControlClassName } from "./inputLikeControlStyles";
 
 interface WorkspaceFilterChipProps {
   label: string;
@@ -50,7 +51,6 @@ export function WorkspaceFilterChip({
 }: WorkspaceFilterChipProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
-  const hoverLiftClassName = getWorkspaceFilterHoverClassName(isDarkMode);
   const controlSurfaceClassName = "bg-input-background bg-white dark:bg-input/30";
   const keybindBaseClassName = "inline-flex shrink-0 items-center justify-center rounded-md border px-2 py-1 text-[10px] font-semibold leading-none transition-colors duration-300 ease-out";
   const keybindClassName = isActive
@@ -64,10 +64,10 @@ export function WorkspaceFilterChip({
     <button
       type="button"
       onClick={onClick}
-      className={`group inline-flex h-11 items-center justify-center rounded-xl border px-4 text-sm font-medium transition-all duration-300 ease-out ${hoverLiftClassName} ${
+      className={`group inline-flex h-11 items-center justify-center px-4 text-sm font-medium ${
         isActive
-          ? `${currentTheme.primaryBg} ${currentTheme.primaryText} ${currentTheme.primaryBorder}`
-          : `${controlSurfaceClassName} ${currentTheme.textSecondary} ${currentTheme.inputBorder} hover:${currentTheme.borderHover} hover:ring-1 hover:ring-black/5 dark:hover:ring-white/10`
+          ? `${currentTheme.primaryText} ${getInputLikeControlClassName(currentTheme, { selected: true, surfaceClassName: controlSurfaceClassName })}`
+          : `${currentTheme.textSecondary} ${getInputLikeControlClassName(currentTheme, { surfaceClassName: controlSurfaceClassName })}`
       }`}
       aria-pressed={isActive}
     >
@@ -102,7 +102,6 @@ export function WorkspaceClearButton({
 }: WorkspaceClearButtonProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
-  const hoverLiftClassName = getWorkspaceFilterHoverClassName(isDarkMode);
   const controlSurfaceClassName = "bg-input-background bg-white dark:bg-input/30";
   const keybindClassName = "inline-flex shrink-0 items-center justify-center rounded-md border px-2 py-1 text-[10px] font-semibold leading-none transition-colors duration-300 ease-out";
   const renderedShortcut = shortcut
@@ -114,10 +113,10 @@ export function WorkspaceClearButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`group inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium transition-all duration-300 ease-out ${
+      className={`group inline-flex h-11 items-center justify-center gap-2 px-4 text-sm font-medium ${
         disabled
-          ? `${controlSurfaceClassName} ${currentTheme.textMuted} ${currentTheme.inputBorder}`
-          : `${controlSurfaceClassName} ${currentTheme.textSecondary} ${currentTheme.inputBorder} ${hoverLiftClassName} hover:${currentTheme.borderHover} hover:ring-1 hover:ring-black/5 dark:hover:ring-white/10`
+          ? `${currentTheme.textMuted} ${getInputLikeControlClassName(currentTheme, { surfaceClassName: controlSurfaceClassName, disabled: true })}`
+          : `${currentTheme.textSecondary} ${getInputLikeControlClassName(currentTheme, { surfaceClassName: controlSurfaceClassName })}`
       }`}
     >
       <span className="inline-flex items-center gap-2 leading-none">

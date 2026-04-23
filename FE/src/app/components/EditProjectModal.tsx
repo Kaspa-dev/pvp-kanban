@@ -1,4 +1,4 @@
-import { X, User, Trash2, Users } from "lucide-react";
+import { Fingerprint, HelpCircle, X, User, Trash2, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { Board } from "../utils/boards";
@@ -13,6 +13,7 @@ import { BoardIdentityPicker } from "./BoardIdentityPicker";
 import { BoardMemberListItem } from "./BoardMemberListItem";
 import { CustomScrollArea } from "./CustomScrollArea";
 import { UserSearchPicker } from "./UserSearchPicker";
+import { UtilityIconButton } from "./UtilityIconButton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { getIconActionButtonClassName } from "./iconActionButtonStyles";
 import {
@@ -76,6 +77,12 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
     currentTheme,
     currentTheme.text,
   );
+  const sectionTitleClassName = `text-lg font-semibold ${currentTheme.text}`;
+  const sectionDescriptionClassName = `text-sm ${currentTheme.textMuted}`;
+  const helpIconButtonClassName = `inline-flex h-5 w-5 items-center justify-center rounded-full ${currentTheme.textMuted} transition-colors hover:${currentTheme.textSecondary} focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus}`;
+  const sectionDividerClassName = isDarkMode
+    ? "h-px rounded-full bg-zinc-800"
+    : "h-px rounded-full bg-gray-200";
   const initialDraft = getInitialProjectDraft(board);
   const initialDirectory = getInitialMemberDirectory(board);
 
@@ -209,14 +216,27 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
         style={{ height: "min(90vh, 52rem)" }}
       >
         <div className={`z-10 flex items-center justify-between p-6 border-b-2 ${currentTheme.border} ${currentTheme.cardBg} rounded-t-3xl shrink-0`}>
-          <h2 className={`text-2xl font-bold ${currentTheme.text}`}>Edit Project</h2>
-          <button
+          <div className="flex items-center gap-2">
+            <h2 className={`text-2xl font-bold ${currentTheme.text}`}>Edit Project</h2>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button type="button" className={helpIconButtonClassName} aria-label="Edit project modal help">
+                  <HelpCircle className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={8}>
+                Update the board details, visual identity, and team access from one place.
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <UtilityIconButton
             type="button"
+            size="md"
             onClick={handleClose}
-            className={`${currentTheme.textMuted} hover:${currentTheme.textSecondary} transition-colors hover:${currentTheme.bgSecondary} rounded-full p-2`}
+            aria-label="Close edit project modal"
           >
             <X className="w-5 h-5" />
-          </button>
+          </UtilityIconButton>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-1 min-h-0 flex-col overflow-hidden">
@@ -226,125 +246,200 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
               viewportClassName="h-full min-h-0 pr-4"
             >
               <div className="space-y-6 px-1 py-1">
-              <div>
-                <label htmlFor="name" className={`block text-sm font-semibold ${currentTheme.textSecondary} mb-2`}>
-                  Project Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  id="name"
-                  type="text"
-                  value={name}
-                  onChange={(event) => {
-                    setName(event.target.value);
-                    if (showError && event.target.value.trim()) {
-                      setShowError(false);
+                <section className="space-y-6" aria-labelledby="edit-project-identity-heading">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Fingerprint className={`h-4 w-4 ${currentTheme.primaryText}`} />
+                    <h3 id="edit-project-identity-heading" className={sectionTitleClassName}>
+                      Define the project&apos;s identity
+                    </h3>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button type="button" className={helpIconButtonClassName} aria-label="Edit project identity help">
+                          <HelpCircle className="h-3.5 w-3.5" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" sideOffset={8}>
+                        Adjust the board&apos;s name, description, and visual identity without changing existing work.
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <p className={sectionDescriptionClassName}>
+                    Refine the project name, description, and visual identity without changing the overall flow of the modal.
+                    </p>
+                  </div>
+
+                <div>
+                    <div className="mb-2 flex items-center gap-2">
+                      <label htmlFor="name" className={`block text-sm font-semibold ${currentTheme.textSecondary}`}>
+                        Project Name <span className="text-red-500">*</span>
+                      </label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button type="button" className={helpIconButtonClassName} aria-label="Edit project name help">
+                            <HelpCircle className="h-3.5 w-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" sideOffset={8}>
+                          Keep the project name recognizable so teammates can still spot it across lists and navigation.
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  <input
+                    id="name"
+                    type="text"
+                    value={name}
+                      onChange={(event) => {
+                        setName(event.target.value);
+                        if (showError && event.target.value.trim()) {
+                          setShowError(false);
+                        }
+                      }}
+                      maxLength={MAX_BOARD_NAME_LENGTH}
+                      placeholder="Enter project name..."
+                      className={`w-full px-4 py-3 border-2 rounded-xl transition-[border-color,box-shadow,color,background-color] duration-300 ease-out focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent ${modalFieldSurfaceClassName} ${currentTheme.text} ${
+                        showError && !name.trim() ? "border-red-500" : currentTheme.inputBorder
+                      }`}
+                      autoFocus
+                    />
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                      <p className={`text-xs ${currentTheme.textMuted}`}>
+                        Up to {MAX_BOARD_NAME_LENGTH} characters.
+                      </p>
+                      <span className={`text-xs ${currentTheme.textMuted}`}>
+                        {name.trim().length}/{MAX_BOARD_NAME_LENGTH}
+                      </span>
+                    </div>
+                    {showError && !name.trim() && (
+                      <p className="text-red-500 text-sm mt-1">Project name is required</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="mb-2 flex items-center gap-2">
+                      <label htmlFor="description" className={`block text-sm font-semibold ${currentTheme.textSecondary}`}>
+                        Description
+                      </label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button type="button" className={helpIconButtonClassName} aria-label="Edit project description help">
+                            <HelpCircle className="h-3.5 w-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" sideOffset={8}>
+                          Use the description to explain the board&apos;s scope, focus area, or working agreement.
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <textarea
+                      id="description"
+                      value={description}
+                      onChange={(event) => setDescription(event.target.value)}
+                      maxLength={MAX_BOARD_DESCRIPTION_LENGTH}
+                      placeholder="Describe your project..."
+                      rows={4}
+                      className={`w-full px-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl transition-[border-color,box-shadow,color,background-color] duration-300 ease-out focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent resize-y ${BOARD_DESCRIPTION_TEXTAREA_HEIGHT_CLASS} ${modalFieldSurfaceClassName} ${currentTheme.text}`}
+                    />
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                      <p className={`text-xs ${currentTheme.textMuted}`}>
+                        Up to {MAX_BOARD_DESCRIPTION_LENGTH} characters.
+                      </p>
+                      <span className={`text-xs ${currentTheme.textMuted}`}>
+                        {description.trim().length}/{MAX_BOARD_DESCRIPTION_LENGTH}
+                      </span>
+                    </div>
+                  </div>
+
+                  <BoardIdentityPicker
+                    iconKey={logoIconKey}
+                    colorKey={logoColorKey}
+                    onIconChange={setLogoIconKey}
+                    onColorChange={setLogoColorKey}
+                  />
+                </section>
+
+                <div className={`-mx-1 ${sectionDividerClassName}`} aria-hidden="true" />
+
+                <section className="space-y-4" aria-labelledby="edit-project-members-heading">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Users className={`w-4 h-4 ${currentTheme.primaryText}`} />
+                    <h3 id="edit-project-members-heading" className={sectionTitleClassName}>
+                      Manage team access
+                    </h3>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button type="button" className={helpIconButtonClassName} aria-label="Manage team access help">
+                          <HelpCircle className="h-3.5 w-3.5" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" sideOffset={8}>
+                        Add new members or remove existing ones here to control who can work inside the board.
+                      </TooltipContent>
+                    </Tooltip>
+                    <span className={`text-xs font-medium ${currentTheme.primaryText}`}>
+                      ({members.length} member{members.length !== 1 ? 's' : ''})
+                    </span>
+                    </div>
+                    <p className={sectionDescriptionClassName}>
+                      Add new people here and review the current list below before saving your project changes.
+                    </p>
+                  </div>
+
+                  <UserSearchPicker
+                    excludedUserIds={memberUserIds}
+                    onSelectUser={handleAddMember}
+                    disabled={hasReachedMemberLimit}
+                    placeholder={
+                      hasReachedMemberLimit
+                        ? "Member limit reached"
+                        : "Search members by name, username, or email"
                     }
-                  }}
-                  maxLength={MAX_BOARD_NAME_LENGTH}
-                  placeholder="Enter project name..."
-                  className={`w-full px-4 py-3 border-2 rounded-xl transition-[border-color,box-shadow,color,background-color] duration-300 ease-out focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent ${modalFieldSurfaceClassName} ${currentTheme.text} ${
-                    showError && !name.trim() ? "border-red-500" : currentTheme.inputBorder
-                  }`}
-                  autoFocus
-                />
-                <p className={`mt-2 text-xs ${currentTheme.textMuted}`}>
-                  Up to {MAX_BOARD_NAME_LENGTH} characters.
-                </p>
-                {showError && !name.trim() && (
-                  <p className="text-red-500 text-sm mt-1">Project name is required</p>
-                )}
-              </div>
+                  />
 
-              <div>
-                <label htmlFor="description" className={`block text-sm font-semibold ${currentTheme.textSecondary} mb-2`}>
-                  Description <span className={`${currentTheme.textMuted} font-normal`}>(optional)</span>
-                </label>
-                <textarea
-                  id="description"
-                  value={description}
-                  onChange={(event) => setDescription(event.target.value)}
-                  maxLength={MAX_BOARD_DESCRIPTION_LENGTH}
-                  placeholder="Describe your project..."
-                  rows={4}
-                  className={`w-full px-4 py-3 border-2 ${currentTheme.inputBorder} rounded-xl transition-[border-color,box-shadow,color,background-color] duration-300 ease-out focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent resize-y ${BOARD_DESCRIPTION_TEXTAREA_HEIGHT_CLASS} ${modalFieldSurfaceClassName} ${currentTheme.text}`}
-                />
-                <p className={`mt-2 text-xs ${currentTheme.textMuted}`}>
-                  Up to {MAX_BOARD_DESCRIPTION_LENGTH} characters.
-                </p>
-              </div>
+                  <p className={`mt-3 text-sm ${currentTheme.textMuted}`}>
+                    Boards can have up to {MAX_BOARD_MEMBERS} members total. This board is currently using {totalMemberCount} of {MAX_BOARD_MEMBERS}.
+                  </p>
 
-              <BoardIdentityPicker
-                iconKey={logoIconKey}
-                colorKey={logoColorKey}
-                onIconChange={setLogoIconKey}
-                onColorChange={setLogoColorKey}
-              />
+                  {members.length === 0 ? (
+                    <div className={`mt-4 rounded-xl border ${currentTheme.border} ${modalSecondarySurfaceClassName} py-6 text-center ${currentTheme.textMuted}`}>
+                      <User className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No members yet.</p>
+                    </div>
+                  ) : (
+                    <div className="mt-4 space-y-2">
+                      {members.map((member) => {
+                        const isOwner = member.role === "owner";
 
-              <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Users className={`w-4 h-4 ${currentTheme.textSecondary}`} />
-                <label className={`text-sm font-semibold ${currentTheme.textSecondary}`}>
-                    Team Members
-                  </label>
-                  <span className={`text-xs ${currentTheme.textMuted}`}>
-                  ({members.length} member{members.length !== 1 ? 's' : ''})
-                </span>
-              </div>
-
-              <UserSearchPicker
-                excludedUserIds={memberUserIds}
-                onSelectUser={handleAddMember}
-                disabled={hasReachedMemberLimit}
-                placeholder={
-                  hasReachedMemberLimit
-                    ? "Member limit reached"
-                    : "Search members by name, username, or email"
-                }
-              />
-
-              <p className={`mt-3 text-sm ${currentTheme.textMuted}`}>
-                Boards can have up to {MAX_BOARD_MEMBERS} members total. This board is currently using {totalMemberCount} of {MAX_BOARD_MEMBERS}.
-              </p>
-
-                {members.length === 0 ? (
-                  <div className={`mt-4 rounded-xl border ${currentTheme.border} ${modalSecondarySurfaceClassName} py-6 text-center ${currentTheme.textMuted}`}>
-                    <User className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No members yet.</p>
-                  </div>
-                ) : (
-                  <div className="mt-4 space-y-2">
-                    {members.map((member) => {
-                      const isOwner = member.role === "owner";
-
-                      return (
-                        <BoardMemberListItem
-                          key={member.userId}
-                          currentTheme={currentTheme}
-                          displayName={member.name}
-                          username={member.username}
-                          role={member.role}
-                          surfaceClassName={modalSecondarySurfaceClassName}
-                          hoverBorderClassName={`transition-all hover:${currentTheme.primaryBorder}`}
-                          action={!isOwner ? (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveMember(member.userId)}
-                                  className={memberActionButtonClassName}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" sideOffset={8}>Remove member</TooltipContent>
-                            </Tooltip>
-                          ) : undefined}
-                        />
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+                        return (
+                          <BoardMemberListItem
+                            key={member.userId}
+                            currentTheme={currentTheme}
+                            displayName={member.name}
+                            username={member.username}
+                            role={member.role}
+                            surfaceClassName={modalSecondarySurfaceClassName}
+                            hoverBorderClassName={`transition-all hover:${currentTheme.primaryBorder}`}
+                            action={!isOwner ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveMember(member.userId)}
+                                    className={memberActionButtonClassName}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" sideOffset={8}>Remove member</TooltipContent>
+                              </Tooltip>
+                            ) : undefined}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
               </div>
             </CustomScrollArea>
           </div>

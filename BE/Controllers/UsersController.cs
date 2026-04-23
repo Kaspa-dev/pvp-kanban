@@ -46,11 +46,11 @@ public class UsersController : ControllerBase
         _authOptions = authOptions.Value;
     }
 
-    // GET api/users/search?q=query&limit=8
+    // GET api/users/search?q=query&limit=3
     [HttpGet("search")]
     public async Task<ActionResult<IEnumerable<UserSearchDto>>> SearchUsers(
         [FromQuery] string? q,
-        [FromQuery] int limit = 8,
+        [FromQuery] int limit = 3,
         CancellationToken cancellationToken = default)
     {
         string query = q?.Trim() ?? string.Empty;
@@ -59,14 +59,15 @@ public class UsersController : ControllerBase
             return Ok(Array.Empty<UserSearchDto>());
         }
 
-        int cappedLimit = Math.Clamp(limit, 1, 20);
+        int cappedLimit = Math.Clamp(limit, 1, 3);
         string normalizedQuery = query.ToLower();
 
         var users = await _context.Users
             .AsNoTracking()
             .Where(u =>
                 u.Username.ToLower().Contains(normalizedQuery) ||
-                u.Email.ToLower().Contains(normalizedQuery) ||
+                (u.Email.Contains("@") &&
+                 u.Email.Substring(0, u.Email.IndexOf("@")).ToLower().Contains(normalizedQuery)) ||
                 u.FirstName.ToLower().Contains(normalizedQuery) ||
                 u.LastName.ToLower().Contains(normalizedQuery) ||
                 (u.FirstName + " " + u.LastName).ToLower().Contains(normalizedQuery))

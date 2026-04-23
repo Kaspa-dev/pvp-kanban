@@ -1,15 +1,26 @@
-import { useState } from 'react';
-import { X, Plus, Edit2, Trash2, Check } from 'lucide-react';
-import { useTheme, getThemeColors } from '../contexts/ThemeContext';
-import { Label, LABEL_COLORS } from '../utils/labels';
+import { useEffect, useMemo, useState } from "react";
+import { HelpCircle, Palette, Tag } from "lucide-react";
+import { useTheme, getThemeColors } from "../contexts/ThemeContext";
+import { FormModalFrame } from "./FormModalFrame";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import {
+  getPrimaryModalActionButtonClassName,
+  getSecondaryModalActionButtonClassName,
+} from "./modalActionButtonStyles";
+import {
+  DEFAULT_LABEL_COLOR,
+  LABEL_COLORS,
+  Label,
+  MAX_BOARD_LABELS,
+  MAX_LABEL_NAME_LENGTH,
+  normalizeLabelName,
+} from "../utils/labels";
 
 interface ManageLabelsModalProps {
   isOpen: boolean;
   onClose: () => void;
   labels: Label[];
-  onCreateLabel: (name: string, color: string) => void;
-  onUpdateLabel: (labelId: number, name: string, color: string) => void;
-  onDeleteLabel: (labelId: number) => void;
+  onCreateLabel: (name: string, color: string) => Promise<Label>;
 }
 
 export function ManageLabelsModal({
@@ -17,205 +28,270 @@ export function ManageLabelsModal({
   onClose,
   labels,
   onCreateLabel,
-  onUpdateLabel,
-  onDeleteLabel,
 }: ManageLabelsModalProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const modalFieldSurfaceClassName = isDarkMode ? currentTheme.inputBg : "bg-gray-50";
+  const modalSecondarySurfaceClassName = isDarkMode ? currentTheme.bgSecondary : "bg-gray-50";
+  const primaryActionButtonClassName = getPrimaryModalActionButtonClassName(currentTheme);
+  const secondaryActionButtonClassName = getSecondaryModalActionButtonClassName(
+    currentTheme,
+    currentTheme.textSecondary,
+  );
+  const sectionTitleClassName = `text-lg font-semibold ${currentTheme.text}`;
+  const sectionDescriptionClassName = `text-sm ${currentTheme.textMuted}`;
+  const sectionDividerClassName = isDarkMode
+    ? "h-px rounded-full bg-zinc-800"
+    : "h-px rounded-full bg-gray-200";
 
-  const [newLabelName, setNewLabelName] = useState('');
-  const [newLabelColor, setNewLabelColor] = useState(LABEL_COLORS[0]);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editColor, setEditColor] = useState('');
+  const [labelName, setLabelName] = useState("");
+  const [selectedColor, setSelectedColor] = useState(DEFAULT_LABEL_COLOR);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [serverError, setServerError] = useState("");
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (!isOpen) {
+      setLabelName("");
+      setSelectedColor(DEFAULT_LABEL_COLOR);
+      setIsSubmitting(false);
+      setSubmitAttempted(false);
+      setServerError("");
+    }
+  }, [isOpen]);
 
-  const handleCreate = () => {
-    if (!newLabelName.trim()) return;
+  const trimmedLabelName = labelName.trim();
+  const normalizedNewLabelName = normalizeLabelName(labelName);
+  const hasReachedLabelLimit = labels.length >= MAX_BOARD_LABELS;
+  const remainingLabelSlots = Math.max(MAX_BOARD_LABELS - labels.length, 0);
+  const isDuplicateName = normalizedNewLabelName.length > 0 && labels.some(
+    (label) => normalizeLabelName(label.name) === normalizedNewLabelName,
+  );
 
-    onCreateLabel(newLabelName.trim(), newLabelColor);
-    setNewLabelName('');
-    setNewLabelColor(LABEL_COLORS[0]);
-  };
+  const validationError = useMemo(() => {
+    if (hasReachedLabelLimit) {
+      return `This board already has ${MAX_BOARD_LABELS} labels.`;
+    }
 
-  const handleStartEdit = (label: Label) => {
-    setEditingId(label.id);
-    setEditName(label.name);
-    setEditColor(label.color);
-  };
+    if (!trimmedLabelName) {
+      return "Label name is required.";
+    }
 
-  const handleSaveEdit = () => {
-    if (!editingId || !editName.trim()) return;
+    if (trimmedLabelName.length > MAX_LABEL_NAME_LENGTH) {
+      return `Label names can be up to ${MAX_LABEL_NAME_LENGTH} characters.`;
+    }
 
-    onUpdateLabel(editingId, editName.trim(), editColor);
-    setEditingId(null);
-    setEditName('');
-    setEditColor('');
-  };
+    if (isDuplicateName) {
+      return "A label with this name already exists on the board.";
+    }
 
-  const handleCancelEdit = () => {
-    setEditingId(null);
-    setEditName('');
-    setEditColor('');
-  };
+    return "";
+  }, [hasReachedLabelLimit, isDuplicateName, trimmedLabelName]);
 
-  const handleDelete = (labelId: number) => {
-    if (confirm('Delete this label? It will be removed from all tasks.')) {
-      onDeleteLabel(labelId);
+  const visibleError = submitAttempted ? validationError || serverError : serverError;
+  const canSubmit = !validationError && !isSubmitting;
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setSubmitAttempted(true);
+    setServerError("");
+
+    if (validationError) {
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await onCreateLabel(trimmedLabelName, selectedColor);
+      setLabelName("");
+      setSelectedColor(DEFAULT_LABEL_COLOR);
+      setSubmitAttempted(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to create the label right now.";
+      setServerError(message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
+  if (!isOpen) {
+    return null;
+  }
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className={`${currentTheme.cardBg} rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col`}>
-        {/* Header */}
-        <div className={`${currentTheme.cardBg} border-b-2 ${currentTheme.border} px-6 py-4 flex items-center justify-between`}>
-          <h2 className={`text-2xl font-bold ${currentTheme.text}`}>Manage Labels</h2>
+    <FormModalFrame
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Manage Labels"
+      description="Create shared board labels and review the ones already available to the team."
+      closeAriaLabel="Close labels modal"
+      onSubmit={handleSubmit}
+      maxWidthClassName="max-w-2xl"
+      height="min(90vh, 52rem)"
+      viewportClassName="h-full min-h-0 pr-4"
+      contentClassName="space-y-6 px-1 py-1"
+      footer={(
+        <>
           <button
+            type="button"
             onClick={onClose}
-            className={`p-2 hover:${currentTheme.bgSecondary} rounded-xl transition-colors`}
+            className={`flex-1 px-5 py-3 font-semibold ${secondaryActionButtonClassName}`}
           >
-            <X className={`w-5 h-5 ${currentTheme.textMuted}`} />
+            Close
           </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {/* Create New Label */}
-          <div className={`mb-6 p-4 ${currentTheme.bgSecondary} rounded-xl border-2 ${currentTheme.border}`}>
-            <h3 className={`text-sm font-bold ${currentTheme.textSecondary} mb-3`}>Create New Label</h3>
-            <div className="flex gap-3">
-              <input
-                type="text"
-                value={newLabelName}
-                onChange={(e) => setNewLabelName(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleCreate()}
-                placeholder="Label name"
-                className={`flex-1 px-3 py-2 border-2 ${currentTheme.inputBorder} rounded-lg focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent ${currentTheme.inputBg} ${currentTheme.text}`}
-              />
-              
-              {/* Color Picker */}
-              <div className="flex gap-1.5 flex-wrap max-w-xs">
-                {LABEL_COLORS.map((color) => (
-                  <button
-                    key={color}
-                    onClick={() => setNewLabelColor(color)}
-                    className={`w-8 h-8 rounded-lg transition-all ${
-                      newLabelColor === color ? 'ring-2 ring-gray-900 ring-offset-2 scale-110' : 'hover:scale-105'
-                    }`}
-                    style={{ backgroundColor: color }}
-                    title={color}
-                  />
-                ))}
-              </div>
-
-              <button
-                onClick={handleCreate}
-                disabled={!newLabelName.trim()}
-                className={`px-4 py-2 bg-gradient-to-r ${currentTheme.primary} text-white font-semibold rounded-lg hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center gap-2`}
-              >
-                <Plus className="w-4 h-4" />
-                Add
-              </button>
-            </div>
-          </div>
-
-          {/* Labels List */}
-          <div>
-            <h3 className={`text-sm font-bold ${currentTheme.textSecondary} mb-3`}>Existing Labels</h3>
-            {labels.length === 0 ? (
-              <p className={`${currentTheme.textMuted} text-center py-8 italic`}>No labels yet. Create your first one above!</p>
-            ) : (
-              <div className="space-y-2">
-                {labels.map((label) => (
-                  <div
-                    key={label.id}
-                    className={`flex items-center gap-3 p-3 ${currentTheme.cardBg} border-2 ${currentTheme.border} rounded-xl hover:${currentTheme.borderHover} transition-colors`}
-                  >
-                    {editingId === label.id ? (
-                      <>
-                        {/* Editing Mode */}
-                        <input
-                          type="text"
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && handleSaveEdit()}
-                          className={`flex-1 px-3 py-1.5 border-2 ${currentTheme.inputBorder} rounded-lg focus:outline-none focus:ring-2 ${currentTheme.focus} ${currentTheme.inputBg} ${currentTheme.text}`}
-                          autoFocus
-                        />
-                        
-                        {/* Color Picker for Edit */}
-                        <div className="flex gap-1 flex-wrap max-w-xs">
-                          {LABEL_COLORS.slice(0, 7).map((color) => (
-                            <button
-                              key={color}
-                              onClick={() => setEditColor(color)}
-                              className={`w-6 h-6 rounded transition-all ${
-                                editColor === color ? 'ring-2 ring-gray-900 ring-offset-1 scale-110' : ''
-                              }`}
-                              style={{ backgroundColor: color }}
-                            />
-                          ))}
-                        </div>
-
-                        <button
-                          onClick={handleSaveEdit}
-                          className="p-2 hover:bg-green-50 rounded-lg transition-colors"
-                          title="Save"
-                        >
-                          <Check className="w-4 h-4 text-green-600" />
-                        </button>
-                        <button
-                          onClick={handleCancelEdit}
-                          className={`p-2 hover:${currentTheme.bgSecondary} rounded-lg transition-colors`}
-                          title="Cancel"
-                        >
-                          <X className={`w-4 h-4 ${currentTheme.textSecondary}`} />
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        {/* Display Mode */}
-                        <div
-                          className="w-4 h-4 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: label.color }}
-                        />
-                        <span className={`flex-1 font-medium ${currentTheme.text}`}>{label.name}</span>
-                        
-                        <button
-                          onClick={() => handleStartEdit(label)}
-                          className={`p-2 hover:${currentTheme.bgSecondary} rounded-lg transition-colors`}
-                          title="Edit"
-                        >
-                          <Edit2 className={`w-4 h-4 ${currentTheme.textSecondary}`} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(label.id)}
-                          className={`p-2 ${currentTheme.isDark ? 'hover:bg-red-900/30' : 'hover:bg-red-50'} rounded-lg transition-colors`}
-                          title="Delete"
-                        >
-                          <Trash2 className={`w-4 h-4 ${currentTheme.isDark ? 'text-red-400' : 'text-red-600'}`} />
-                        </button>
-                      </>
-                    )}
+          <button
+            type="submit"
+            disabled={!canSubmit}
+            className={`flex-1 px-5 py-3 font-semibold ${primaryActionButtonClassName}`}
+          >
+            {isSubmitting ? "Creating..." : "Create Label"}
+          </button>
+        </>
+      )}
+    >
+              <section className="space-y-6" aria-labelledby="create-label-heading">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Tag className={`h-4 w-4 ${currentTheme.primaryText}`} />
+                      <h3 id="create-label-heading" className={sectionTitleClassName}>
+                        Create a shared board label
+                      </h3>
+                    </div>
+                    <p className={sectionDescriptionClassName}>
+                      Labels appear in task forms, board filters, and summaries so the team can group related work quickly.
+                    </p>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
 
-        {/* Footer */}
-        <div className="bg-gray-50 border-t-2 border-gray-200 px-6 py-4 flex items-center justify-end">
-          <button
-            onClick={onClose}
-            className={`px-6 py-2.5 bg-gradient-to-r ${currentTheme.primary} text-white font-bold rounded-xl hover:scale-105 transition-all shadow-lg`}
-          >
-            Done
-          </button>
-        </div>
-      </div>
-    </div>
+                  <div>
+                    <div className="mb-2 flex items-center gap-2">
+                      <label htmlFor="board-label-name" className={`block text-sm font-semibold ${currentTheme.textSecondary}`}>
+                        Label Name <span className="text-red-500">*</span>
+                      </label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className={`inline-flex h-5 w-5 items-center justify-center rounded-full ${currentTheme.textMuted} transition-colors hover:${currentTheme.textSecondary} focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus}`}
+                            aria-label="Label naming help"
+                          >
+                            <HelpCircle className="h-3.5 w-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" sideOffset={8}>
+                          Keep the name short and recognizable so teammates can reuse it consistently.
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <input
+                      id="board-label-name"
+                      type="text"
+                      value={labelName}
+                      onChange={(event) => {
+                        setLabelName(event.target.value);
+                        setServerError("");
+                      }}
+                      maxLength={MAX_LABEL_NAME_LENGTH}
+                      placeholder="e.g., Bug, Design, Backend"
+                      className={`w-full px-4 py-3 border-2 rounded-xl transition-[border-color,box-shadow,color,background-color] duration-300 ease-out focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent ${modalFieldSurfaceClassName} ${currentTheme.text} ${
+                        visibleError ? "border-red-500" : currentTheme.inputBorder
+                      }`}
+                      autoFocus
+                    />
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                      <p className={`text-xs ${visibleError ? "text-red-500" : currentTheme.textMuted}`}>
+                        {visibleError || "Use a unique label name for this board. Duplicate names are blocked."}
+                      </p>
+                      <span className={`text-xs ${currentTheme.textMuted}`}>
+                        {trimmedLabelName.length}/{MAX_LABEL_NAME_LENGTH}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className={`rounded-2xl border ${currentTheme.border} ${modalSecondarySurfaceClassName} p-4`}>
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Palette className={`h-4 w-4 shrink-0 ${currentTheme.primaryText}`} />
+                        <h4 className={`text-sm font-semibold ${currentTheme.text}`}>
+                          Choose a label color
+                        </h4>
+                      </div>
+                      <span className={`text-xs ${currentTheme.textMuted}`}>
+                        {hasReachedLabelLimit
+                          ? `Limit reached (${MAX_BOARD_LABELS}/${MAX_BOARD_LABELS})`
+                          : `${remainingLabelSlots} of ${MAX_BOARD_LABELS} slots left`}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {LABEL_COLORS.map((color) => {
+                        const isSelected = selectedColor === color;
+                        return (
+                          <button
+                            key={color}
+                            type="button"
+                            onClick={() => setSelectedColor(color)}
+                            className={`h-9 w-9 rounded-xl border transition-transform duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} ${
+                              isSelected
+                                ? "scale-105 border-white/70 shadow-md ring-2 ring-offset-0 ring-slate-400"
+                                : "border-black/5 hover:scale-[1.03] dark:border-white/10"
+                            }`}
+                            style={{ backgroundColor: color }}
+                            aria-label={`Choose label color ${color}`}
+                            aria-pressed={isSelected}
+                          />
+                        );
+                      })}
+                    </div>
+                    <p className={`mt-3 text-sm ${currentTheme.textMuted}`}>
+                      Pick one accent color for the label. Long names are capped at {MAX_LABEL_NAME_LENGTH} characters to keep the board tidy.
+                    </p>
+                  </div>
+                </section>
+
+                <div className={`-mx-1 ${sectionDividerClassName}`} aria-hidden="true" />
+
+              <section className="space-y-4" aria-labelledby="existing-labels-heading">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Tag className={`h-4 w-4 ${currentTheme.primaryText}`} />
+                      <h3 id="existing-labels-heading" className={sectionTitleClassName}>
+                        Review existing labels
+                      </h3>
+                    </div>
+                    <p className={sectionDescriptionClassName}>
+                      Reuse the board&apos;s current labels when possible to keep filters and task organization predictable.
+                    </p>
+                  </div>
+
+                  {labels.length === 0 ? (
+                    <div className={`rounded-2xl border border-dashed ${currentTheme.border} ${modalSecondarySurfaceClassName} px-5 py-8 text-center`}>
+                      <p className={`text-sm font-medium ${currentTheme.text}`}>No labels have been created yet</p>
+                      <p className={`mt-2 text-sm ${currentTheme.textMuted}`}>
+                        Create the first label above and it will immediately become available in task forms and filters.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-3 lg:grid-cols-2">
+                      {labels.map((label) => (
+                        <div
+                          key={label.id}
+                          className={`flex min-w-0 items-center gap-3 rounded-2xl border ${currentTheme.border} ${modalSecondarySurfaceClassName} px-4 py-3`}
+                        >
+                          <span
+                            className="h-4 w-4 shrink-0 rounded-full shadow-sm"
+                            style={{ backgroundColor: label.color }}
+                            aria-hidden="true"
+                          />
+                          <div className="min-w-0">
+                            <p className={`truncate text-sm font-semibold ${currentTheme.text}`}>{label.name}</p>
+                            <p className={`text-xs ${currentTheme.textMuted}`}>
+                              Ready to use in task creation and filtering
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+              </section>
+    </FormModalFrame>
   );
 }
