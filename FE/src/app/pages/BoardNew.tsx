@@ -48,12 +48,15 @@ import {
   updateBoardTask,
 } from "../utils/cards";
 import {
-  DEFAULT_LABEL_COLOR,
   Label,
+  LabelDraft,
   createLabel,
+  deleteLabel,
   getBoardLabels,
-  MAX_BOARD_LABELS,
+  MAX_LABEL_NAME_LENGTH,
   normalizeLabelName,
+  sortLabelsByName,
+  updateLabel,
 } from "../utils/labels";
 import {
   applyPlanningPokerRecommendation,
@@ -93,6 +96,22 @@ function isEditableKeyboardTarget(target: EventTarget | null): boolean {
     tagName === "SELECT" ||
     Boolean(target.closest("[contenteditable='true']"))
   );
+}
+
+function buildTemporaryLabelName(usedNames: Set<string>, index: number): string {
+  let attempt = index + 1;
+
+  while (true) {
+    const candidate = `~tmp${attempt}`.slice(0, MAX_LABEL_NAME_LENGTH);
+    const normalizedCandidate = normalizeLabelName(candidate);
+
+    if (!usedNames.has(normalizedCandidate)) {
+      usedNames.add(normalizedCandidate);
+      return candidate;
+    }
+
+    attempt += 1;
+  }
 }
 
 export function Board() {
@@ -843,35 +862,74 @@ export function Board() {
       setIsPlanningPokerDeleting(false);
     }
   };
-  const handleCreateLabel = async (name: string, color: string) => {
+  const handleSaveLabels = async (drafts: LabelDraft[]) => {
     if (!Number.isFinite(numericBoardId)) {
       throw new Error("Unable to resolve the current board.");
     }
 
-    const trimmedName = name.trim();
-    const normalizedName = normalizeLabelName(trimmedName);
+    const originalLabelsById = new Map(labels.map((label) => [label.id, label]));
+    const deletedDrafts = drafts.filter(
+      (draft): draft is LabelDraft & { id: number } => Boolean(draft.isDeleted && typeof draft.id === "number"),
+    );
+    const activeDrafts = drafts.filter((draft) => !draft.isDeleted);
+    const createDrafts = activeDrafts.filter((draft) => typeof draft.id !== "number");
+    const updateDrafts = activeDrafts.filter((draft): draft is LabelDraft & { id: number } => typeof draft.id === "number");
+    const changedDrafts = updateDrafts.filter((draft) => {
+      const originalLabel = originalLabelsById.get(draft.id);
+      if (!originalLabel) {
+        return false;
+      }
 
-    if (!trimmedName) {
-      throw new Error("Label name is required.");
-    }
+      return originalLabel.name !== draft.name || originalLabel.color !== draft.color;
+    });
+    const renamedDrafts = changedDrafts.filter((draft) => {
+      const originalLabel = originalLabelsById.get(draft.id);
+      return Boolean(originalLabel && originalLabel.name !== draft.name);
+    });
+    const hasChanges = deletedDrafts.length > 0 || changedDrafts.length > 0 || createDrafts.length > 0;
 
-    if (labels.length >= MAX_BOARD_LABELS) {
-      throw new Error(`This board already has ${MAX_BOARD_LABELS} labels.`);
-    }
-
-    if (labels.some((label) => normalizeLabelName(label.name) === normalizedName)) {
-      throw new Error("A label with this name already exists on the board.");
+    if (!hasChanges) {
+      return;
     }
 
     try {
-      const newLabel = await createLabel(numericBoardId, trimmedName, color || DEFAULT_LABEL_COLOR);
-      setLabels((prevLabels) =>
-        [...prevLabels, newLabel].sort((left, right) => left.name.localeCompare(right.name)),
-      );
-      showSuccessToast(`Label "${newLabel.name}" created.`);
-      return newLabel;
+      for (const draft of deletedDrafts) {
+        await deleteLabel(numericBoardId, draft.id);
+      }
+
+      if (renamedDrafts.length > 0) {
+        const usedNames = new Set(activeDrafts.map((draft) => normalizeLabelName(draft.name)));
+
+        for (const [index, draft] of renamedDrafts.entries()) {
+          const originalLabel = originalLabelsById.get(draft.id);
+          if (!originalLabel) {
+            continue;
+          }
+
+          const temporaryName = buildTemporaryLabelName(usedNames, index);
+          await updateLabel(numericBoardId, draft.id, {
+            name: temporaryName,
+            color: originalLabel.color,
+          });
+        }
+      }
+
+      for (const draft of changedDrafts) {
+        await updateLabel(numericBoardId, draft.id, {
+          name: draft.name,
+          color: draft.color,
+        });
+      }
+
+      for (const draft of createDrafts) {
+        await createLabel(numericBoardId, draft.name, draft.color);
+      }
+
+      const refreshedLabels = await getBoardLabels(numericBoardId);
+      setLabels(sortLabelsByName(refreshedLabels));
+      showSuccessToast("Labels saved.");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to create the label right now.";
+      const message = error instanceof Error ? error.message : "Unable to save label changes right now.";
       showErrorToast(message);
       throw new Error(message);
     }
@@ -1292,7 +1350,7 @@ export function Board() {
               isOpen={isLabelsModalOpen}
               onClose={() => setIsLabelsModalOpen(false)}
               labels={labels}
-              onCreateLabel={handleCreateLabel}
+              onSave={handleSaveLabels}
             />
 
             <SettingsModal

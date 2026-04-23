@@ -1158,7 +1158,7 @@ public class BoardsController(
             return Unauthorized();
         }
 
-        var (_, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
+        var (accessContext, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
         if (failure is not null)
         {
             return failure;
@@ -1177,7 +1177,22 @@ public class BoardsController(
             return BadRequest(new { message = "Label name is required." });
         }
 
-        label.Title = request.Name.Trim();
+        Board board = accessContext!.Board;
+        string normalizedName = request.Name.Trim();
+
+        if (normalizedName.Length > MaxBoardLabelNameLength)
+        {
+            return BadRequest(new { message = $"Label names can be up to {MaxBoardLabelNameLength} characters." });
+        }
+
+        if (board.Labels.Any(item =>
+                item.Id != labelId &&
+                item.Title.Equals(normalizedName, StringComparison.OrdinalIgnoreCase)))
+        {
+            return BadRequest(new { message = "A label with this name already exists on the board." });
+        }
+
+        label.Title = normalizedName;
         label.Color = string.IsNullOrWhiteSpace(request.Color) ? label.Color : request.Color.Trim();
 
         await _context.SaveChangesAsync(cancellationToken);
