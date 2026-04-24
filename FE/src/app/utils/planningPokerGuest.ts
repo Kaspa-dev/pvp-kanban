@@ -127,6 +127,36 @@ export async function selectPlanningPokerRecommendation(
   );
 }
 
+export async function advancePlanningPokerToNextTask(
+  connection: HubConnection,
+  joinToken: string,
+  participantToken?: string | null,
+): Promise<PlanningPokerSession> {
+  await ensurePlanningPokerConnection(connection);
+
+  return connection.invoke<PlanningPokerSession>(
+    "AdvanceToNextTask",
+    joinToken,
+    participantToken ?? null,
+  );
+}
+
+export async function activatePlanningPokerBacklogTask(
+  connection: HubConnection,
+  joinToken: string,
+  taskId: number,
+  participantToken?: string | null,
+): Promise<PlanningPokerSession> {
+  await ensurePlanningPokerConnection(connection);
+
+  return connection.invoke<PlanningPokerSession>(
+    "ActivateBacklogTask",
+    joinToken,
+    taskId,
+    participantToken ?? null,
+  );
+}
+
 export async function deletePlanningPokerSessionFromRoom(
   connection: HubConnection,
   joinToken: string,

@@ -148,6 +148,58 @@ public class PlanningPokerHub(IPlanningPokerSessionService service, AppDbContext
         }
     }
 
+    public async Task<PlanningPokerSessionDto> AdvanceToNextTask(
+        string joinToken,
+        string? participantToken = null)
+    {
+        try
+        {
+            PlanningPokerSessionDto session = await _service.AdvanceToNextTaskAsync(
+                joinToken,
+                TryGetCurrentUserId(),
+                participantToken,
+                Context.ConnectionAborted);
+
+            string groupName = GetGroupNameForSession(session.SessionId);
+            await Groups.AddToGroupAsync(Context.ConnectionId, groupName, Context.ConnectionAborted);
+            await Clients.Group(groupName).SendAsync(VotingUpdatedEventName, session, Context.ConnectionAborted);
+            await Clients.Group(groupName).SendAsync(SessionUpdatedEventName, session, Context.ConnectionAborted);
+
+            return session;
+        }
+        catch (PlanningPokerException exception)
+        {
+            throw new HubException(exception.Message);
+        }
+    }
+
+    public async Task<PlanningPokerSessionDto> ActivateBacklogTask(
+        string joinToken,
+        int taskId,
+        string? participantToken = null)
+    {
+        try
+        {
+            PlanningPokerSessionDto session = await _service.ActivateBacklogTaskAsync(
+                joinToken,
+                TryGetCurrentUserId(),
+                participantToken,
+                taskId,
+                Context.ConnectionAborted);
+
+            string groupName = GetGroupNameForSession(session.SessionId);
+            await Groups.AddToGroupAsync(Context.ConnectionId, groupName, Context.ConnectionAborted);
+            await Clients.Group(groupName).SendAsync(VotingUpdatedEventName, session, Context.ConnectionAborted);
+            await Clients.Group(groupName).SendAsync(SessionUpdatedEventName, session, Context.ConnectionAborted);
+
+            return session;
+        }
+        catch (PlanningPokerException exception)
+        {
+            throw new HubException(exception.Message);
+        }
+    }
+
     public async Task DeleteSession(string joinToken, string? participantToken = null)
     {
         try

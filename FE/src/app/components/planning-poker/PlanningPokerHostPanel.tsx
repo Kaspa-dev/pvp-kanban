@@ -1,5 +1,18 @@
-import { Copy, Crown, LoaderCircle, RadioTower, ShieldCheck, Trash2 } from "lucide-react";
+import {
+  CheckCircle2,
+  Copy,
+  Crown,
+  Eye,
+  EyeOff,
+  LoaderCircle,
+  RadioTower,
+  ShieldCheck,
+  Trash2,
+  UsersRound,
+} from "lucide-react";
 
+import { useTheme, getThemeColors } from "../../contexts/ThemeContext";
+import { getWorkspaceSurfaceStyles } from "../../utils/workspaceSurfaceStyles";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import {
@@ -9,6 +22,8 @@ import {
   CardHeader,
   CardTitle,
 } from "../ui/card";
+import { Input } from "../ui/input";
+import { cn } from "../ui/utils";
 
 interface PlanningPokerHostPanelProps {
   isHost: boolean;
@@ -41,125 +56,279 @@ export function PlanningPokerHostPanel({
   onReveal,
   onDelete,
 }: PlanningPokerHostPanelProps) {
+  const { theme, isDarkMode } = useTheme();
+  const currentTheme = getThemeColors(theme, isDarkMode);
+  const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
   const canReveal = isHost && !isRevealed && votedCount > 0 && !isRevealing;
+  const readinessLabel =
+    participantCount === 0 ? "No one joined yet" : `${votedCount} of ${participantCount} participants voted`;
+  const sharedLinkHint = copyFeedback || "Anyone with this link can join as a guest.";
+
+  const panelClassName = cn(
+    "overflow-hidden rounded-[2rem] shadow-lg",
+    workspaceSurface.elevatedPanelSurfaceClassName,
+  );
+  const sectionClassName = cn(
+    "rounded-[1.5rem] border px-4 py-4",
+    currentTheme.border,
+    isDarkMode ? "bg-white/[0.03]" : "bg-black/[0.03]",
+  );
+  const stateBadgeClassName = cn(
+    "px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]",
+    currentTheme.border,
+    currentTheme.textSecondary,
+    isDarkMode ? "bg-slate-950/70" : "bg-white/85",
+  );
+  const primaryActionClassName = cn(
+    "h-11 w-full rounded-xl bg-gradient-to-r text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60",
+    currentTheme.primary,
+  );
+  const secondaryActionClassName = cn(
+    "h-11 w-full rounded-xl border",
+    currentTheme.border,
+    currentTheme.textSecondary,
+    workspaceSurface.controlSurfaceClassName,
+  );
 
   return (
-    <Card className="border-white/10 bg-slate-900/80 shadow-xl shadow-slate-950/20">
-      <CardHeader className="space-y-2">
-        <div className="flex items-center gap-2">
-          <CardTitle className="text-white">Room controls</CardTitle>
+    <Card className={panelClassName}>
+      <CardHeader className={`space-y-3 border-b ${currentTheme.border} px-5 py-5 sm:px-6`}>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className={stateBadgeClassName}>
+            Room operations
+          </Badge>
           {isHost ? (
-            <Badge className="bg-amber-300 text-slate-950 hover:bg-amber-200">
-              <Crown className="h-3 w-3" aria-hidden="true" />
+            <Badge
+              variant="outline"
+              className={cn(
+                "px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]",
+                currentTheme.primaryBorder,
+                currentTheme.primaryText,
+                `bg-gradient-to-r ${currentTheme.primarySoftStrong}`,
+              )}
+            >
+              <Crown className="h-3.5 w-3.5" aria-hidden="true" />
               Host
             </Badge>
           ) : null}
         </div>
-        <CardDescription className="text-sm leading-6 text-slate-300">
-          Share the join link with teammates. Reveal is only available for the current host.
+        <CardTitle className={`text-xl font-semibold ${currentTheme.text}`}>Room controls</CardTitle>
+        <CardDescription className={`text-sm leading-6 ${currentTheme.textMuted}`}>
+          Readiness and round status stay at the top so the host can decide when the room is ready
+          to reveal.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-              <RadioTower className="h-3.5 w-3.5" aria-hidden="true" />
-              Participation
+
+      <CardContent className="space-y-4 px-5 py-5 sm:px-6">
+        <section className={cn(sectionClassName, "space-y-4")} aria-labelledby="planning-poker-room-readiness">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="space-y-1">
+              <p
+                id="planning-poker-room-readiness"
+                className={`text-xs font-semibold uppercase tracking-[0.2em] ${currentTheme.textMuted}`}
+              >
+                Readiness
+              </p>
+              <p className={`text-sm ${currentTheme.textMuted}`}>{readinessLabel}</p>
             </div>
-            <p className="mt-3 text-2xl font-semibold text-white">
+            <Badge
+              variant="outline"
+              className={cn(
+                "rounded-full px-3 py-1 text-xs font-semibold",
+                votedCount === participantCount && participantCount > 0
+                  ? `${currentTheme.primaryBorder} ${currentTheme.primaryText} bg-gradient-to-r ${currentTheme.primarySoftStrong}`
+                  : `${currentTheme.border} ${currentTheme.textSecondary} ${isDarkMode ? "bg-slate-950/70" : "bg-white/85"}`,
+              )}
+            >
+              <UsersRound className="h-3.5 w-3.5" aria-hidden="true" />
               {votedCount}/{participantCount}
-            </p>
-            <p className="mt-1 text-sm text-slate-400">Participants ready in this round.</p>
+            </Badge>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-              <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
-              Round state
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div
+              className={cn(
+                "rounded-2xl border px-4 py-3",
+                currentTheme.border,
+                isDarkMode ? "bg-slate-950/55" : "bg-white/80",
+              )}
+            >
+              <div className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+                <RadioTower className="h-3.5 w-3.5" aria-hidden="true" />
+                Participation
+              </div>
+              <p className={`mt-2 text-2xl font-semibold ${currentTheme.text}`}>{votedCount}</p>
+              <p className={`mt-1 text-sm ${currentTheme.textMuted}`}>Votes locked in for this round.</p>
             </div>
-            <p className="mt-3 text-lg font-semibold text-white">
-              {isRevealed ? "Revealed" : "Voting in progress"}
-            </p>
-            <p className="mt-1 text-sm text-slate-400">{statusMessage}</p>
-          </div>
-        </div>
 
-        <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-3">
-          <label
-            htmlFor="planning-poker-share-link"
-            className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400"
-          >
-            Shared link
-          </label>
-          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-            <input
+            <div
+              className={cn(
+                "rounded-2xl border px-4 py-3",
+                currentTheme.border,
+                isDarkMode ? "bg-slate-950/55" : "bg-white/80",
+              )}
+            >
+              <div className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+                {isRevealed ? (
+                  <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                ) : (
+                  <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />
+                )}
+                Round state
+              </div>
+              <p className={`mt-2 text-base font-semibold ${currentTheme.text}`}>
+                {isRevealed ? "Revealed" : "Voting in progress"}
+              </p>
+              <p className={`mt-1 text-sm ${currentTheme.textMuted}`}>{statusMessage}</p>
+            </div>
+          </div>
+        </section>
+
+        <section className={cn(sectionClassName, "space-y-3")} aria-labelledby="planning-poker-share-link">
+          <div className="space-y-1">
+            <p
               id="planning-poker-share-link"
+              className={`text-xs font-semibold uppercase tracking-[0.2em] ${currentTheme.textMuted}`}
+            >
+              Shared link
+            </p>
+            <p className={`text-sm ${currentTheme.textMuted}`}>
+              Copy the live room link to invite teammates into this session.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Input
               readOnly
               value={joinUrl}
-              className="h-11 flex-1 rounded-xl border border-white/10 bg-slate-950 px-3 text-sm text-slate-100"
+              aria-describedby="planning-poker-share-link-feedback"
+              className={cn(
+                "h-11 rounded-xl text-sm",
+                workspaceSurface.inputSurfaceClassName,
+                currentTheme.text,
+                currentTheme.focus,
+              )}
             />
             <Button
               type="button"
               variant="outline"
-              className="h-11 border-white/10 bg-slate-900 text-slate-100 hover:bg-slate-800"
+              className={secondaryActionClassName}
               onClick={onCopyLink}
             >
               <Copy className="h-4 w-4" aria-hidden="true" />
               Copy link
             </Button>
           </div>
-          <p className="mt-2 text-xs text-slate-400" aria-live="polite">
-            {copyFeedback || "Anyone with this link can join as a guest."}
+
+          <p
+            id="planning-poker-share-link-feedback"
+            className={`text-xs ${currentTheme.textMuted}`}
+            aria-live="polite"
+          >
+            {sharedLinkHint}
           </p>
-        </div>
+        </section>
 
         {errorMessage ? (
-          <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">
+          <div
+            className={cn(
+              "rounded-2xl border px-4 py-3 text-sm",
+              isDarkMode ? "border-rose-400/30 bg-rose-500/10 text-rose-100" : "border-rose-200 bg-rose-50 text-rose-700",
+            )}
+            role="alert"
+          >
             {errorMessage}
           </div>
         ) : null}
 
-        <Button
-          type="button"
-          disabled={!canReveal}
-          onClick={() => void onReveal()}
-          className="h-11 w-full rounded-xl bg-white text-slate-950 hover:bg-slate-200 disabled:bg-slate-800 disabled:text-slate-400"
-        >
-          {isRevealing ? (
-            <>
-              <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
-              Revealing votes...
-            </>
-          ) : isRevealed ? (
-            "Votes revealed"
-          ) : isHost ? (
-            "Reveal votes"
-          ) : (
-            "Host can reveal votes"
-          )}
-        </Button>
+        <section className={cn(sectionClassName, "space-y-3")} aria-labelledby="planning-poker-reveal-action">
+          <div className="space-y-1">
+            <p
+              id="planning-poker-reveal-action"
+              className={`text-xs font-semibold uppercase tracking-[0.2em] ${currentTheme.textMuted}`}
+            >
+              Reveal votes
+            </p>
+            <p className={`text-sm ${currentTheme.textMuted}`}>
+              Reveal becomes available once at least one participant has voted.
+            </p>
+          </div>
 
-        <Button
-          type="button"
-          variant="outline"
-          disabled={!isHost || isDeleting}
-          onClick={() => void onDelete()}
-          className="h-11 w-full rounded-xl border-rose-400/30 bg-rose-500/10 text-rose-100 hover:bg-rose-500/20 disabled:border-white/10 disabled:bg-slate-900 disabled:text-slate-400"
-        >
-          {isDeleting ? (
-            <>
-              <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
-              Deleting session...
-            </>
-          ) : isHost ? (
-            <>
-              <Trash2 className="h-4 w-4" aria-hidden="true" />
+          <Button
+            type="button"
+            disabled={!canReveal}
+            onClick={() => void onReveal()}
+            className={primaryActionClassName}
+          >
+            {isRevealing ? (
+              <>
+                <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+                Revealing votes...
+              </>
+            ) : isRevealed ? (
+              <>
+                <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                Votes revealed
+              </>
+            ) : isHost ? (
+              <>
+                <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+                Reveal votes
+              </>
+            ) : (
+              <>
+                <Crown className="h-4 w-4" aria-hidden="true" />
+                Host can reveal votes
+              </>
+            )}
+          </Button>
+        </section>
+
+        <section className={cn(sectionClassName, "space-y-3")} aria-labelledby="planning-poker-delete-action">
+          <div className="space-y-1">
+            <p
+              id="planning-poker-delete-action"
+              className={`text-xs font-semibold uppercase tracking-[0.2em] ${currentTheme.textMuted}`}
+            >
               Delete session
-            </>
-          ) : (
-            "Host can delete session"
-          )}
-        </Button>
+            </p>
+            <p className={`text-sm ${currentTheme.textMuted}`}>
+              Closing the room ends live collaboration for everyone in this session.
+            </p>
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!isHost || isDeleting}
+            onClick={() => void onDelete()}
+            className={cn(
+              "h-11 w-full rounded-xl border",
+              !isHost || isDeleting
+                ? `${currentTheme.border} ${workspaceSurface.controlSurfaceClassName} ${currentTheme.textMuted}`
+                : isDarkMode
+                  ? "border-rose-400/30 bg-rose-500/10 text-rose-100 hover:bg-rose-500/20"
+                  : "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100",
+            )}
+          >
+            {isDeleting ? (
+              <>
+                <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+                Deleting session...
+              </>
+            ) : isHost ? (
+              <>
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                Delete session
+              </>
+            ) : (
+              <>
+                <Crown className="h-4 w-4" aria-hidden="true" />
+                Host can delete session
+              </>
+            )}
+          </Button>
+        </section>
       </CardContent>
     </Card>
   );

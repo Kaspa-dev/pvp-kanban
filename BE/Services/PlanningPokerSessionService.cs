@@ -257,6 +257,121 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
         return ToSessionDto(session, participant);
     }
 
+    public async System.Threading.Tasks.Task<PlanningPokerSessionDto> AdvanceToNextTaskAsync(
+        string joinToken,
+        int? userId,
+        string? participantToken,
+        CancellationToken cancellationToken)
+    {
+        PlanningPokerSession session = await GetSessionByJoinTokenAsync(joinToken, cancellationToken);
+        PlanningPokerParticipant participant = await ResolveParticipantAsync(
+            session,
+            userId,
+            participantToken,
+            guestDisplayName: null,
+            allowGuestCreation: false,
+            cancellationToken);
+        EnsureParticipantIsHost(session, participant);
+
+        PlanningPokerSessionTask activeTask = session.ActiveSessionTask
+            ?? session.Tasks
+                .OrderBy(task => task.Position)
+                .FirstOrDefault(task =>
+                    task.RoundState.Equals(VotingRoundState, StringComparison.OrdinalIgnoreCase) ||
+                    task.RoundState.Equals(RevealedRoundState, StringComparison.OrdinalIgnoreCase))
+            ?? throw new PlanningPokerValidationException("There is no active planning poker task.");
+
+        PlanningPokerSessionTask? nextTask = session.Tasks
+            .OrderBy(task => task.Position)
+            .FirstOrDefault(task =>
+                task.Id != activeTask.Id &&
+                task.RoundState.Equals(PendingRoundState, StringComparison.OrdinalIgnoreCase) &&
+                !task.Task.StoryPoints.HasValue);
+
+        if (nextTask is null)
+        {
+            throw new PlanningPokerValidationException("There is no next task in this planning poker session.");
+        }
+
+        activeTask.RoundState = PendingRoundState;
+        nextTask.RoundState = VotingRoundState;
+        session.ActiveSessionTaskId = nextTask.Id;
+        session.ActiveSessionTask = nextTask;
+        session.UpdatedAtUtc = DateTime.UtcNow;
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return ToSessionDto(session, participant);
+    }
+
+    public async System.Threading.Tasks.Task<PlanningPokerSessionDto> ActivateBacklogTaskAsync(
+        string joinToken,
+        int? userId,
+        string? participantToken,
+        int taskId,
+        CancellationToken cancellationToken)
+    {
+        PlanningPokerSession session = await GetSessionByJoinTokenAsync(joinToken, cancellationToken);
+        PlanningPokerParticipant participant = await ResolveParticipantAsync(
+            session,
+            userId,
+            participantToken,
+            guestDisplayName: null,
+            allowGuestCreation: false,
+            cancellationToken);
+        EnsureParticipantIsHost(session, participant);
+
+        TaskEntity task = await _context.Tasks
+            .Include(item => item.Status)
+            .FirstOrDefaultAsync(item => item.Id == taskId && item.BoardId == session.BoardId, cancellationToken)
+            ?? throw new PlanningPokerNotFoundException("Task was not found.");
+
+        if (!task.Status.Title.Equals(BacklogStatusTitle, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new PlanningPokerValidationException("Only backlog tasks can be selected for planning poker.");
+        }
+
+        if (task.StoryPoints.HasValue)
+        {
+            throw new PlanningPokerValidationException("Only unestimated backlog tasks can be selected.");
+        }
+
+        PlanningPokerSessionTask? activeTask = session.ActiveSessionTask
+            ?? session.Tasks
+                .OrderBy(item => item.Position)
+                .FirstOrDefault(item =>
+                    item.RoundState.Equals(VotingRoundState, StringComparison.OrdinalIgnoreCase) ||
+                    item.RoundState.Equals(RevealedRoundState, StringComparison.OrdinalIgnoreCase));
+
+        PlanningPokerSessionTask sessionTask = session.Tasks
+            .OrderBy(item => item.Position)
+            .FirstOrDefault(item => item.TaskId == taskId)
+            ?? new PlanningPokerSessionTask
+            {
+                SessionId = session.Id,
+                TaskId = taskId,
+                Position = session.Tasks.Count == 0 ? 0 : session.Tasks.Max(item => item.Position) + 1,
+                RoundState = PendingRoundState,
+            };
+
+        if (!session.Tasks.Any(item => item.TaskId == taskId))
+        {
+            session.Tasks.Add(sessionTask);
+        }
+
+        if (activeTask is not null && activeTask.Id != sessionTask.Id)
+        {
+            activeTask.RoundState = PendingRoundState;
+        }
+
+        sessionTask.RoundState = VotingRoundState;
+        session.ActiveSessionTask = sessionTask;
+        session.ActiveSessionTaskId = sessionTask.Id;
+        session.UpdatedAtUtc = DateTime.UtcNow;
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return ToSessionDto(session, participant);
+    }
+
     public async System.Threading.Tasks.Task<PlanningPokerDeletedSessionResult> DeleteBoardSessionAsync(
         int boardId,
         int userId,

@@ -1,5 +1,7 @@
 import { LoaderCircle, UserRound } from "lucide-react";
 
+import { getThemeColors, useTheme } from "../../contexts/ThemeContext";
+import { getWorkspaceSurfaceStyles } from "../../utils/workspaceSurfaceStyles";
 import { Button } from "../ui/button";
 import {
   Card,
@@ -10,6 +12,7 @@ import {
 } from "../ui/card";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { cn } from "../ui/utils";
 
 interface PlanningPokerJoinFormProps {
   displayName: string;
@@ -30,24 +33,40 @@ export function PlanningPokerJoinForm({
   onDisplayNameChange,
   onSubmit,
 }: PlanningPokerJoinFormProps) {
+  const { theme, isDarkMode } = useTheme();
+  const currentTheme = getThemeColors(theme, isDarkMode);
+  const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
+
   return (
-    <Card className="border-white/10 bg-slate-900/80 shadow-2xl shadow-slate-950/20 backdrop-blur">
-      <CardHeader className="space-y-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-400/30 bg-cyan-400/10 text-cyan-100">
+    <Card
+      className={cn(
+        "overflow-hidden rounded-[2rem] shadow-2xl shadow-slate-950/10",
+        workspaceSurface.elevatedPanelSurfaceClassName,
+      )}
+    >
+      <CardHeader className={cn("space-y-4 border-b px-5 py-5 sm:px-6", currentTheme.border)}>
+        <div
+          className={cn(
+            "flex h-12 w-12 items-center justify-center rounded-2xl border bg-gradient-to-br",
+            currentTheme.primaryText,
+            currentTheme.primaryBorder,
+            currentTheme.primarySoftStrong,
+          )}
+        >
           <UserRound className="h-5 w-5" aria-hidden="true" />
         </div>
         <div className="space-y-2">
-          <CardTitle className="text-2xl font-semibold text-white">
+          <CardTitle className={cn("text-2xl font-semibold", currentTheme.text)}>
             Join the planning room
           </CardTitle>
-          <CardDescription className="max-w-xl text-sm leading-6 text-slate-300">
+          <CardDescription className={cn("max-w-xl text-sm leading-6", currentTheme.textMuted)}>
             {isAuthenticated
               ? "Your account is ready to enter the shared room. Continue to reconnect to the live session."
               : "Pick the name other participants will see. You can join as a guest through the shared link."}
           </CardDescription>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-5 py-5 sm:px-6">
         <form
           className="space-y-4"
           onSubmit={(event) => {
@@ -56,12 +75,19 @@ export function PlanningPokerJoinForm({
           }}
         >
           {isAuthenticated ? (
-            <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
+            <div
+              className={cn(
+                "rounded-2xl border bg-gradient-to-r px-4 py-3 text-sm",
+                currentTheme.primaryText,
+                currentTheme.primaryBorder,
+                currentTheme.primarySoftStrong,
+              )}
+            >
               Signed in as <span className="font-semibold">{authenticatedLabel}</span>.
             </div>
           ) : (
             <div className="space-y-2">
-              <Label htmlFor="planning-poker-display-name" className="text-slate-100">
+              <Label htmlFor="planning-poker-display-name" className={currentTheme.text}>
                 Display name
               </Label>
               <Input
@@ -71,13 +97,21 @@ export function PlanningPokerJoinForm({
                 placeholder="Enter your display name"
                 autoComplete="name"
                 maxLength={80}
-                className="h-11 border-white/10 bg-slate-950/70 text-slate-50 placeholder:text-slate-500"
+                className={cn(
+                  "h-11 rounded-xl",
+                  workspaceSurface.inputSurfaceClassName,
+                  currentTheme.text,
+                  currentTheme.focus,
+                  isDarkMode
+                    ? "placeholder:text-zinc-500"
+                    : "placeholder:text-zinc-400",
+                )}
                 aria-invalid={errorMessage ? "true" : "false"}
                 aria-describedby="planning-poker-display-name-hint planning-poker-join-error"
               />
               <p
                 id="planning-poker-display-name-hint"
-                className="text-xs leading-5 text-slate-400"
+                className={cn("text-xs leading-5", currentTheme.textMuted)}
               >
                 Keep it short and recognizable so the host can see who has voted.
               </p>
@@ -87,7 +121,12 @@ export function PlanningPokerJoinForm({
           {errorMessage ? (
             <p
               id="planning-poker-join-error"
-              className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100"
+              className={cn(
+                "rounded-2xl border px-4 py-3 text-sm",
+                isDarkMode
+                  ? "border-amber-400/20 bg-amber-400/10 text-amber-100"
+                  : "border-amber-200 bg-amber-50 text-amber-900",
+              )}
               role="alert"
             >
               {errorMessage}
@@ -96,7 +135,11 @@ export function PlanningPokerJoinForm({
 
           <Button
             type="submit"
-            className="h-11 w-full rounded-xl bg-cyan-500 text-slate-950 hover:bg-cyan-400"
+            className={cn(
+              "h-11 w-full rounded-xl bg-gradient-to-r text-white shadow-lg shadow-black/5",
+              currentTheme.primary,
+              currentTheme.primaryHover,
+            )}
             disabled={isSubmitting}
           >
             {isSubmitting ? (
