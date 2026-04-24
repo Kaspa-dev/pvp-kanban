@@ -1201,11 +1201,9 @@ export function Board() {
                     planningPokerEligibleTaskCount={planningPokerEligibleTaskCount}
                     isPlanningPokerLoading={isPlanningPokerLoading}
                     isPlanningPokerCreating={isPlanningPokerCreating}
-                    isPlanningPokerApplying={isPlanningPokerApplying}
                     isPlanningPokerDeleting={isPlanningPokerDeleting}
                     onCreatePlanningPokerSession={() => void handleCreatePlanningPokerSession()}
                     onRefreshPlanningPokerSession={() => void handleRefreshPlanningPokerSession()}
-                    onApplyPlanningPokerRecommendation={(sessionTaskId) => void handleApplyPlanningPokerRecommendation(sessionTaskId)}
                     onDeletePlanningPokerSession={() => setIsDeletePlanningPokerDialogOpen(true)}
                   />
                 </main>

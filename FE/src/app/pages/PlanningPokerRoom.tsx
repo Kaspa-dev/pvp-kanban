@@ -7,10 +7,8 @@ import {
 } from "lucide-react";
 import { useParams } from "react-router";
 
-import { PlanningPokerHostPanel } from "../components/planning-poker/PlanningPokerHostPanel";
-import { PlanningPokerDeleteSessionDialog } from "../components/planning-poker/PlanningPokerDeleteSessionDialog";
 import { PlanningPokerJoinForm } from "../components/planning-poker/PlanningPokerJoinForm";
-import { PlanningPokerParticipantList } from "../components/planning-poker/PlanningPokerParticipantList";
+import { PlanningPokerBacklogPickerDialog } from "../components/planning-poker/PlanningPokerBacklogPickerDialog";
 import { PlanningPokerTaskQueue } from "../components/planning-poker/PlanningPokerTaskQueue";
 import { PlanningPokerVoteDeck } from "../components/planning-poker/PlanningPokerVoteDeck";
 import { Button } from "../components/ui/button";
@@ -22,9 +20,12 @@ import type {
   PlanningPokerSession,
   PlanningPokerSessionTask,
 } from "../utils/planningPoker";
+import { applyPlanningPokerRecommendation } from "../utils/planningPoker";
+import { getBoardCards, type Card } from "../utils/cards";
 import {
+  activatePlanningPokerBacklogTask,
+  advancePlanningPokerToNextTask,
   createPlanningPokerConnection,
-  deletePlanningPokerSessionFromRoom,
   joinPlanningPokerSession,
   revealPlanningPokerVotes,
   selectPlanningPokerRecommendation,
@@ -138,13 +139,16 @@ export function PlanningPokerRoom() {
   const [selectedVote, setSelectedVote] = useState<number | null>(null);
   const [joinError, setJoinError] = useState("");
   const [roomError, setRoomError] = useState("");
-  const [copyFeedback, setCopyFeedback] = useState("");
   const [isJoining, setIsJoining] = useState(false);
   const [isVoteSubmitting, setIsVoteSubmitting] = useState(false);
   const [isRevealing, setIsRevealing] = useState(false);
   const [isSelectingRecommendation, setIsSelectingRecommendation] = useState(false);
-  const [isDeletingSession, setIsDeletingSession] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isApplyingRecommendation, setIsApplyingRecommendation] = useState(false);
+  const [isAdvancingTask, setIsAdvancingTask] = useState(false);
+  const [isBacklogPickerOpen, setIsBacklogPickerOpen] = useState(false);
+  const [isBacklogPickerLoading, setIsBacklogPickerLoading] = useState(false);
+  const [isBacklogTaskSubmitting, setIsBacklogTaskSubmitting] = useState(false);
+  const [backlogTasks, setBacklogTasks] = useState<Card[]>([]);
   const [deletedSessionMessage, setDeletedSessionMessage] = useState("");
   const [connectionBannerState, setConnectionBannerState] =
     useState<ConnectionBannerState>("idle");
@@ -166,6 +170,7 @@ export function PlanningPokerRoom() {
     () => getCurrentParticipant(session?.participants ?? [], participantId),
     [participantId, session?.participants],
   );
+  const isCurrentParticipantHost = Boolean(currentParticipant?.isHost);
   const votedCount =
     session?.participants.filter((participant) => participant.hasVoted).length ?? 0;
   const canJoinWithoutForm = isAuthenticated || participantToken.length > 0;
@@ -306,15 +311,6 @@ export function PlanningPokerRoom() {
     activeTaskIdRef.current = nextActiveTaskId;
     setSelectedVote(null);
   }, [activeTask]);
-
-  useEffect(() => {
-    if (!session || copyFeedback === "") {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => setCopyFeedback(""), 2500);
-    return () => window.clearTimeout(timeoutId);
-  }, [copyFeedback, session]);
 
   const handleJoin = useCallback(
     async (displayNameOverride?: string) => {
@@ -457,56 +453,6 @@ export function PlanningPokerRoom() {
     }
   };
 
-  const handleCopyLink = async () => {
-    const joinUrl = session?.joinUrl;
-    if (!joinUrl) {
-      return;
-    }
-
-    const absoluteJoinUrl =
-      typeof window === "undefined" ? joinUrl : new URL(joinUrl, window.location.origin).toString();
-
-    try {
-      await navigator.clipboard.writeText(absoluteJoinUrl);
-      setCopyFeedback("Join link copied.");
-    } catch {
-      setCopyFeedback("Could not copy automatically. You can still copy the link manually.");
-    }
-  };
-
-  const handleDeleteSession = async () => {
-    const connection = connectionRef.current;
-    if (!connection || !normalizedJoinToken) {
-      return;
-    }
-
-    setIsDeletingSession(true);
-    setRoomError("");
-
-    try {
-      await deletePlanningPokerSessionFromRoom(
-        connection,
-        normalizedJoinToken,
-        participantToken || null,
-      );
-      setIsDeleteDialogOpen(false);
-    } catch (error) {
-      setRoomError(
-        normalizePlanningPokerErrorMessage(
-          error instanceof Error ? error.message : "Unable to delete the planning poker session.",
-        ),
-      );
-    } finally {
-      setIsDeletingSession(false);
-    }
-  };
-
-  const revealStatusMessage = session?.isRevealed
-    ? "This round is already revealed."
-    : votedCount > 0
-      ? "Reveal is available once the host is ready."
-      : "At least one vote is needed before reveal.";
-
   const handleSelectRecommendation = async (storyPoints: number) => {
     const connection = connectionRef.current;
     if (!connection || !normalizedJoinToken) {
@@ -538,8 +484,145 @@ export function PlanningPokerRoom() {
     }
   };
 
+  const handleApplyRecommendation = async (sessionTaskId: number) => {
+    if (!session) {
+      return;
+    }
+
+    setIsApplyingRecommendation(true);
+    setRoomError("");
+
+    try {
+      const updatedTask = await applyPlanningPokerRecommendation(
+        session.boardId,
+        sessionTaskId,
+      );
+      const appliedStoryPoints = updatedTask.storyPoints ?? null;
+
+      setSession((currentSession) => {
+        if (!currentSession) {
+          return currentSession;
+        }
+
+        const applyToSessionTask = (sessionTask: PlanningPokerSessionTask) =>
+          sessionTask.sessionTaskId === sessionTaskId
+            ? {
+                ...sessionTask,
+                appliedStoryPoints,
+              }
+            : sessionTask;
+
+        return {
+          ...currentSession,
+          activeTask: applyToSessionTask(currentSession.activeTask),
+          queue: currentSession.queue.map(applyToSessionTask),
+        };
+      });
+    } catch (error) {
+      setRoomError(
+        normalizePlanningPokerErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Unable to apply the planning poker recommendation.",
+        ),
+      );
+    } finally {
+      setIsApplyingRecommendation(false);
+    }
+  };
+
+  const handleAdvanceToNextTask = async () => {
+    const connection = connectionRef.current;
+    if (!connection || !normalizedJoinToken) {
+      return;
+    }
+
+    setIsAdvancingTask(true);
+    setRoomError("");
+
+    try {
+      const nextSession = await advancePlanningPokerToNextTask(
+        connection,
+        normalizedJoinToken,
+        participantToken || null,
+      );
+
+      setSession(nextSession);
+      setSelectedVote(null);
+    } catch (error) {
+      setRoomError(
+        normalizePlanningPokerErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Unable to move to the next planning poker task.",
+        ),
+      );
+    } finally {
+      setIsAdvancingTask(false);
+    }
+  };
+
+  const loadBacklogTasks = useCallback(async () => {
+    if (!session) {
+      return;
+    }
+
+    setIsBacklogPickerLoading(true);
+
+    try {
+      const cards = await getBoardCards(session.boardId);
+      setBacklogTasks(
+        cards.backlog.filter((task) => task.storyPoints === null || task.storyPoints === undefined),
+      );
+    } finally {
+      setIsBacklogPickerLoading(false);
+    }
+  }, [session]);
+
+  const handleOpenBacklogPicker = () => {
+    if (!session) {
+      return;
+    }
+
+    setIsBacklogPickerOpen(true);
+    void loadBacklogTasks();
+  };
+
+  const handleActivateBacklogTask = async (taskId: number) => {
+    const connection = connectionRef.current;
+    if (!connection || !normalizedJoinToken) {
+      return;
+    }
+
+    setIsBacklogTaskSubmitting(true);
+    setRoomError("");
+
+    try {
+      const nextSession = await activatePlanningPokerBacklogTask(
+        connection,
+        normalizedJoinToken,
+        taskId,
+        participantToken || null,
+      );
+
+      setSession(nextSession);
+      setSelectedVote(null);
+      setIsBacklogPickerOpen(false);
+    } catch (error) {
+      setRoomError(
+        normalizePlanningPokerErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Unable to switch to that backlog task.",
+        ),
+      );
+    } finally {
+      setIsBacklogTaskSubmitting(false);
+    }
+  };
+
   return (
-    <main className={`${workspaceSurface.pageClassName} px-4 py-8 ${currentTheme.text} sm:px-6 lg:px-8`}>
+    <main className={`${workspaceSurface.pageClassName} px-4 py-4 ${currentTheme.text} sm:px-6 lg:px-8`}>
       <div className={workspaceSurface.backgroundLayerClassName}>
         {workspaceSurface.backgroundBlobs.map((blob, index) => (
           <div key={index} className={blob.className} style={blob.style} />
@@ -547,18 +630,15 @@ export function PlanningPokerRoom() {
       </div>
 
       <div className="relative z-10">
-        <div className={`${pageWidthClassName} flex flex-col gap-5`}>
+        <div className={`${pageWidthClassName} flex flex-col gap-4`}>
           <section
-            className={`border-b ${currentTheme.border} pb-4`}
+            className={`border-b ${currentTheme.border} pb-3`}
             aria-label="Planning poker room status"
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+                <h1 className={`text-3xl font-semibold tracking-tight ${currentTheme.text}`}>
                   Planning poker
-                </p>
-                <h1 className={`mt-1 text-2xl font-semibold ${currentTheme.text}`}>
-                  Planning poker room
                 </h1>
                 {normalizedJoinToken ? (
                   <p className={`mt-1 text-xs ${currentTheme.textMuted}`}>
@@ -703,15 +783,21 @@ export function PlanningPokerRoom() {
                 </div>
               ) : null}
 
-              <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-4">
                 <PlanningPokerTaskQueue
                   activeTask={activeTask}
                   queue={session.queue}
                   isRevealed={session.isRevealed}
-                  isHost={Boolean(currentParticipant?.isHost)}
+                  isHost={isCurrentParticipantHost}
                   recommendationOptions={VOTE_DECK_VALUES}
                   isSelectingRecommendation={isSelectingRecommendation}
+                  isApplyingRecommendation={isApplyingRecommendation}
+                  isAdvancingTask={isAdvancingTask}
+                  canOpenBacklogPicker={isCurrentParticipantHost}
                   onSelectRecommendation={handleSelectRecommendation}
+                  onApplyRecommendation={handleApplyRecommendation}
+                  onAdvanceToNextTask={handleAdvanceToNextTask}
+                  onOpenBacklogPicker={handleOpenBacklogPicker}
                 />
 
                 <PlanningPokerVoteDeck
@@ -720,46 +806,28 @@ export function PlanningPokerRoom() {
                   isSubmitting={isVoteSubmitting}
                   isRevealed={session.isRevealed}
                   isRevealing={isRevealing}
+                  isHost={isCurrentParticipantHost}
                   hasActiveTask={Boolean(activeTask)}
                   disabled={!activeTask || isRevealing}
+                  participants={session.participants}
+                  onReveal={handleReveal}
                   onVote={handleVote}
                 />
 
-                <PlanningPokerHostPanel
-                  isHost={Boolean(currentParticipant?.isHost)}
-                  joinUrl={
-                    typeof window === "undefined"
-                      ? session.joinUrl
-                      : new URL(session.joinUrl, window.location.origin).toString()
-                  }
-                  votedCount={votedCount}
-                  participantCount={session.participants.length}
-                  isRevealed={session.isRevealed}
-                  isRevealing={isRevealing}
-                  isDeleting={isDeletingSession}
-                  copyFeedback={copyFeedback}
-                  statusMessage={revealStatusMessage}
-                  errorMessage={currentParticipant?.isHost ? "" : roomError}
-                  onCopyLink={handleCopyLink}
-                  onReveal={handleReveal}
-                  onDelete={() => setIsDeleteDialogOpen(true)}
-                />
-
-                <PlanningPokerParticipantList
-                  participants={session.participants}
-                  isRevealed={session.isRevealed}
-                />
               </div>
             </>
           ) : null}
         </div>
       </div>
 
-      <PlanningPokerDeleteSessionDialog
-        isOpen={isDeleteDialogOpen}
-        isDeleting={isDeletingSession}
-        onClose={() => setIsDeleteDialogOpen(false)}
-        onConfirm={() => void handleDeleteSession()}
+      <PlanningPokerBacklogPickerDialog
+        isOpen={isBacklogPickerOpen}
+        isLoading={isBacklogPickerLoading}
+        isSubmitting={isBacklogTaskSubmitting}
+        tasks={backlogTasks}
+        currentTaskId={activeTask?.taskId ?? null}
+        onClose={() => setIsBacklogPickerOpen(false)}
+        onSelectTask={handleActivateBacklogTask}
       />
     </main>
   );

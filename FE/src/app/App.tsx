@@ -5,6 +5,7 @@ import { Register } from './pages/Register';
 import { ForgotPassword } from './pages/ForgotPassword';
 import { Projects } from './pages/Projects';
 import { Board } from './pages/BoardNew';
+import { PlanningPokerRoom } from './pages/PlanningPokerRoom';
 import { Profile } from './pages/Profile';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -71,6 +72,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route path="/planning-poker/:joinToken" element={<PlanningPokerRoom />} />
 
       {/* Catch all - redirect to landing */}
       <Route path="*" element={<Navigate to="/" replace />} />
