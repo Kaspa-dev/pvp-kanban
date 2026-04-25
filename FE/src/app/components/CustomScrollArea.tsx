@@ -8,6 +8,7 @@ interface CustomScrollAreaProps {
 }
 
 const THUMB_MIN_HEIGHT = 36;
+const TRACK_VERTICAL_INSET_PX = 8;
 
 export function CustomScrollArea({
   children,
@@ -56,11 +57,15 @@ export function CustomScrollArea({
       return;
     }
 
-    const nextThumbHeight = Math.max(
-      THUMB_MIN_HEIGHT,
-      (clientHeight / scrollHeight) * clientHeight,
+    const trackHeight = Math.max(clientHeight - TRACK_VERTICAL_INSET_PX * 2, 0);
+    const nextThumbHeight = Math.min(
+      trackHeight,
+      Math.max(
+        THUMB_MIN_HEIGHT,
+        (clientHeight / scrollHeight) * trackHeight,
+      ),
     );
-    const maxThumbOffset = clientHeight - nextThumbHeight;
+    const maxThumbOffset = trackHeight - nextThumbHeight;
     const maxScrollTop = scrollHeight - clientHeight;
     const nextThumbOffset =
       maxScrollTop > 0 ? (scrollTop / maxScrollTop) * maxThumbOffset : 0;
@@ -115,8 +120,9 @@ export function CustomScrollArea({
       }
 
       const { clientHeight, scrollHeight } = viewport;
+      const trackHeight = Math.max(clientHeight - TRACK_VERTICAL_INSET_PX * 2, 0);
       const maxScrollTop = scrollHeight - clientHeight;
-      const maxThumbOffset = clientHeight - thumbHeight;
+      const maxThumbOffset = trackHeight - thumbHeight;
 
       if (maxScrollTop <= 0 || maxThumbOffset <= 0) {
         return;
@@ -167,7 +173,7 @@ export function CustomScrollArea({
     const clickOffset = event.clientY - trackRect.top;
     const thumbCenter = thumbHeight / 2;
     const maxScrollTop = viewport.scrollHeight - viewport.clientHeight;
-    const maxThumbOffset = viewport.clientHeight - thumbHeight;
+    const maxThumbOffset = trackRect.height - thumbHeight;
 
     if (maxScrollTop <= 0 || maxThumbOffset <= 0) {
       return;

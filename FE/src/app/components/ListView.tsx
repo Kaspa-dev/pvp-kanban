@@ -809,7 +809,11 @@ export function ListView({
                           <TableCell className={`px-4 align-middle ${taskIndexDividerClassName}`}>
                             <div className="flex min-h-8 items-center">
                               {cardLabels.length > 0 ? (
-                                <TaskLabelSummary labels={cardLabels} maxVisible={3} />
+                                <TaskLabelSummary
+                                  labels={cardLabels}
+                                  maxVisible={2}
+                                  compactMaxVisible={1}
+                                />
                               ) : (
                                 <span className="sr-only">No labels</span>
                               )}
@@ -818,6 +822,7 @@ export function ListView({
                           <TableCell className={`px-4 align-middle ${taskIndexDividerClassName}`}>
                             <div className={`flex items-center justify-center ${isRowPending ? "pointer-events-none" : ""}`}>
                               <AssigneePopover
+                                boardId={boardId}
                                 currentAssignee={card.assignee}
                                 onAssigneeChange={(newAssignee) => void runRowAction(card.id, () => onAssigneeChange(card.id, newAssignee))}
                                 availableAssignees={availableAssignees}

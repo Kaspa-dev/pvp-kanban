@@ -10,6 +10,7 @@ import { PlanningPokerLaunchCard } from "./planning-poker/PlanningPokerLaunchCar
 import type { PlanningPokerSession } from "../utils/planningPoker";
 
 interface BacklogViewProps {
+  boardId: number;
   backlogCards: Card[];
   queuedCards: Card[];
   onAssigneeChange: (cardId: number, assignee: TaskAssignee | null) => void;
@@ -37,6 +38,7 @@ interface DragCardItem {
 }
 
 export function BacklogView2({
+  boardId,
   backlogCards,
   queuedCards,
   onAssigneeChange,
@@ -181,6 +183,7 @@ export function BacklogView2({
                     {backlogCards.map((card) => (
                       <KanbanCard
                         key={card.id}
+                        boardId={boardId}
                         id={card.id}
                         title={card.title}
                         labelIds={card.labelIds}
@@ -271,6 +274,7 @@ export function BacklogView2({
                     {queuedCards.map((card) => (
                       <KanbanCard
                         key={card.id}
+                        boardId={boardId}
                         id={card.id}
                         title={card.title}
                         labelIds={card.labelIds}

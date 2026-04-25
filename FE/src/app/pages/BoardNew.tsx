@@ -53,7 +53,6 @@ import {
   createLabel,
   deleteLabel,
   getBoardLabels,
-  MAX_LABEL_NAME_LENGTH,
   normalizeLabelName,
   sortLabelsByName,
   updateLabel,
@@ -99,10 +98,19 @@ function isEditableKeyboardTarget(target: EventTarget | null): boolean {
 }
 
 function buildTemporaryLabelName(usedNames: Set<string>, index: number): string {
-  let attempt = index + 1;
+  let attempt = index;
 
   while (true) {
-    const candidate = `~tmp${attempt}`.slice(0, MAX_LABEL_NAME_LENGTH);
+    let sequence = "";
+    let value = attempt + 1;
+
+    while (value > 0) {
+      value -= 1;
+      sequence = String.fromCharCode(65 + (value % 26)) + sequence;
+      value = Math.floor(value / 26);
+    }
+
+    const candidate = `Temp ${sequence}`;
     const normalizedCandidate = normalizeLabelName(candidate);
 
     if (!usedNames.has(normalizedCandidate)) {
@@ -112,6 +120,42 @@ function buildTemporaryLabelName(usedNames: Set<string>, index: number): string 
 
     attempt += 1;
   }
+}
+
+function haveSameNumericValues(left: number[], right: number[]) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  const normalizedLeft = [...left].sort((a, b) => a - b);
+  const normalizedRight = [...right].sort((a, b) => a - b);
+
+  return normalizedLeft.every((value, index) => value === normalizedRight[index]);
+}
+
+function areTaskEditUpdatesUnchanged(
+  existingTask: Card,
+  updates: {
+    title: string;
+    description: string;
+    labelIds: number[];
+    assignee: TaskAssignee | null;
+    storyPoints?: number | null;
+    priority?: Priority | null;
+    taskType?: TaskType | null;
+    dueDate?: string | null;
+  },
+) {
+  return (
+    existingTask.title === updates.title &&
+    (existingTask.description ?? "") === updates.description &&
+    haveSameNumericValues(existingTask.labelIds, updates.labelIds) &&
+    (existingTask.assigneeUserId ?? null) === (updates.assignee?.userId ?? null) &&
+    (existingTask.storyPoints ?? null) === (updates.storyPoints ?? null) &&
+    (existingTask.priority ?? null) === (updates.priority ?? null) &&
+    (existingTask.taskType ?? null) === (updates.taskType ?? null) &&
+    (existingTask.dueDate ?? null) === (updates.dueDate ?? null)
+  );
 }
 
 export function Board() {
@@ -630,9 +674,11 @@ export function Board() {
     try {
       setActionError("");
       await saveTask(cardId, { status: toColumnId as TaskStatus });
+      showSuccessToast("Task status updated.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to move the task right now.";
       setActionError(message);
+      showErrorToast(message);
     }
   };
 
@@ -667,20 +713,37 @@ export function Board() {
 
       setTaskInState(createdTask);
       await refreshProgress();
+      showSuccessToast("Task created.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to create the task right now.";
       setActionError(message);
+      showErrorToast(message);
       throw new Error(message);
     }
   };
 
   const handleAssigneeChange = async (cardId: number, newAssignee: TaskAssignee | null) => {
+    const existingTask = allCards.find((card) => card.id === cardId);
+    if (!existingTask) {
+      return;
+    }
+
+    if ((existingTask.assigneeUserId ?? null) === (newAssignee?.userId ?? null)) {
+      return;
+    }
+
     try {
       setActionError("");
       await saveTask(cardId, { assignee: newAssignee });
+      if (newAssignee) {
+        showSuccessToast("Task assigned.");
+      } else {
+        showSuccessToast("Task unassigned.");
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to update the assignee right now.";
       setActionError(message);
+      showErrorToast(message);
     }
   };
 
@@ -720,13 +783,26 @@ export function Board() {
     taskType?: TaskType | null;
     dueDate?: string | null;
   }) => {
+    const existingTask = allCards.find((card) => card.id === cardId);
+    if (!existingTask) {
+      return;
+    }
+
+    if (areTaskEditUpdatesUnchanged(existingTask, updates)) {
+      setEditingTask(null);
+      showSuccessToast("No task changes to save.");
+      return;
+    }
+
     try {
       setActionError("");
       await saveTask(cardId, updates);
       setEditingTask(null);
+      showSuccessToast("Task changes saved.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to save the task right now.";
       setActionError(message);
+      showErrorToast(message);
       throw new Error(message);
     }
   };
@@ -735,9 +811,11 @@ export function Board() {
     try {
       setActionError("");
       await saveTask(cardId, { status: "backlog" });
+      showSuccessToast("Task status updated.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to move the task back to staging right now.";
       setActionError(message);
+      showErrorToast(message);
     }
   };
 
@@ -889,6 +967,7 @@ export function Board() {
     const hasChanges = deletedDrafts.length > 0 || changedDrafts.length > 0 || createDrafts.length > 0;
 
     if (!hasChanges) {
+      showSuccessToast("No label changes to save.");
       return;
     }
 
@@ -1174,10 +1253,10 @@ export function Board() {
 
                         <div className="flex-1 min-h-0">
                           <div className="grid h-full min-h-0 grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4" data-coachmark="board-columns-grid">
-                          <KanbanColumn id="todo" title="To Do" count={workflowColumns.todo.length} cards={workflowColumns.todo} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
-                          <KanbanColumn id="inProgress" title="In Progress" count={workflowColumns.inProgress.length} cards={workflowColumns.inProgress} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
-                          <KanbanColumn id="inReview" title="In Review" count={workflowColumns.inReview.length} cards={workflowColumns.inReview} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
-                            <KanbanColumn id="done" title="Done" count={workflowColumns.done.length} cards={workflowColumns.done} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                          <KanbanColumn boardId={numericBoardId} id="todo" title="To Do" count={workflowColumns.todo.length} cards={workflowColumns.todo} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                          <KanbanColumn boardId={numericBoardId} id="inProgress" title="In Progress" count={workflowColumns.inProgress.length} cards={workflowColumns.inProgress} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                          <KanbanColumn boardId={numericBoardId} id="inReview" title="In Review" count={workflowColumns.inReview.length} cards={workflowColumns.inReview} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                            <KanbanColumn boardId={numericBoardId} id="done" title="Done" count={workflowColumns.done.length} cards={workflowColumns.done} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
                           </div>
                         </div>
 
@@ -1270,6 +1349,7 @@ export function Board() {
               {view === "staging" && (
                 <main className={`flex-1 min-h-0 overflow-hidden ${currentTheme.bgSecondary}`}>
                   <BacklogView2
+                    boardId={numericBoardId}
                     backlogCards={plainStagingCards}
                     queuedCards={queuedStagingCards}
                     onAssigneeChange={handleAssigneeChange}
@@ -1315,6 +1395,7 @@ export function Board() {
 
               {view === "history" && (
                 <HistoryView
+                  boardId={numericBoardId}
                   cards={allCards}
                   onAssigneeChange={handleAssigneeChange}
                   onDelete={handleDeleteRequest}
@@ -1328,6 +1409,7 @@ export function Board() {
 
             <AddCardModal
               isOpen={isModalOpen}
+              boardId={numericBoardId}
               onClose={() => setIsModalOpen(false)}
               onAdd={handleAddCard}
               availableLabels={labels}
@@ -1337,6 +1419,7 @@ export function Board() {
             <EditTaskModal
               key={editingTask?.id ?? "no-task"}
               isOpen={editingTask !== null}
+              boardId={numericBoardId}
               onClose={() => setEditingTask(null)}
               onSave={handleSaveEdit}
               task={editingTask}

@@ -11,6 +11,7 @@ type ColumnCard = Card & {
 };
 
 interface KanbanColumnProps {
+  boardId: number;
   id: string;
   title: string;
   count: number;
@@ -25,6 +26,7 @@ interface KanbanColumnProps {
 }
 
 export function KanbanColumn({ 
+  boardId,
   id, 
   title, 
   count, 
@@ -84,6 +86,7 @@ export function KanbanColumn({
               {cards.map((card) => (
                 <KanbanCard
                   key={card.id}
+                  boardId={boardId}
                   id={card.id}
                   title={card.title}
                   labelIds={card.labelIds}

@@ -10,6 +10,8 @@ interface TaskDueDatePickerProps {
   value: string;
   onChange: (nextValue: string) => void;
   placeholder?: string;
+  hasError?: boolean;
+  onBlur?: () => void;
 }
 
 const QUICK_DATE_PRESETS = [
@@ -45,16 +47,21 @@ export function TaskDueDatePicker({
   value,
   onChange,
   placeholder = "Pick a due date",
+  hasError = false,
+  onBlur,
 }: TaskDueDatePickerProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const selectedDate = parseDateValue(value);
-  const pickerSurfaceClassName = "bg-input-background dark:bg-input/30";
+  const pickerSurfaceClassName = isDarkMode ? currentTheme.inputBg : "bg-input-background";
+  const pickerPopoverSurfaceClassName = isDarkMode ? "!bg-zinc-950" : "!bg-input-background";
   const pickerShadowClassName = isDarkMode
     ? "shadow-[0_20px_48px_rgba(0,0,0,0.58)]"
     : "shadow-[0_20px_44px_rgba(15,23,42,0.22)]";
   const subtleActionButtonClassName = `w-auto gap-1.5 px-2.5 text-xs font-semibold shadow-none ${currentTheme.inputBorder} ${pickerSurfaceClassName} ${currentTheme.textSecondary}`;
   const selectedActionButtonClassName = `w-auto gap-1.5 px-2.5 text-xs font-semibold shadow-none ${currentTheme.primaryBg} ${currentTheme.primaryText} hover:brightness-[0.98] dark:hover:brightness-110`;
+  const triggerIconClassName = selectedDate ? currentTheme.primaryText : currentTheme.textMuted;
+  const triggerTextClassName = selectedDate ? currentTheme.text : currentTheme.textMuted;
 
   return (
     <Popover>
@@ -62,12 +69,14 @@ export function TaskDueDatePicker({
         <button
           id={id}
           type="button"
+          onBlur={onBlur}
           aria-label={selectedDate ? `Due date ${format(selectedDate, "MMMM d, yyyy")}` : "Choose due date"}
-          className={`group flex min-h-[52px] w-full items-center gap-3 rounded-xl border-2 px-4 py-3 text-left outline-none transition-[color,box-shadow,border-color] duration-300 ease-out ${currentTheme.inputBorder} ${pickerSurfaceClassName} ${currentTheme.text} hover:${currentTheme.borderHover} hover:ring-1 hover:ring-black/5 dark:hover:ring-white/10 focus-visible:outline-none focus-visible:border-transparent focus-visible:ring-2 ${currentTheme.focus} data-[state=open]:border-transparent data-[state=open]:ring-2 ${currentTheme.ring}`}
+          aria-invalid={hasError}
+          className={`group flex min-h-[52px] w-full items-center gap-3 rounded-xl border-2 px-4 py-3 text-left outline-none transition-[color,box-shadow,border-color] duration-300 ease-out ${hasError ? "border-red-500" : currentTheme.inputBorder} ${pickerSurfaceClassName} ${currentTheme.text} hover:${currentTheme.borderHover} hover:ring-1 hover:ring-black/5 dark:hover:ring-white/10 focus-visible:outline-none focus-visible:border-transparent focus-visible:ring-2 ${currentTheme.focus} data-[state=open]:border-transparent data-[state=open]:ring-2 ${currentTheme.ring}`}
         >
-          <CalendarDays className={`h-4 w-4 shrink-0 ${currentTheme.textMuted}`} />
+          <CalendarDays className={`h-4 w-4 shrink-0 ${triggerIconClassName}`} />
           <span className="min-w-0 flex-1 truncate text-sm">
-            <span className={selectedDate ? currentTheme.text : currentTheme.textMuted}>
+            <span className={`text-sm font-normal ${triggerTextClassName}`}>
               {selectedDate ? format(selectedDate, "EEE, MMM d, yyyy") : placeholder}
             </span>
           </span>
@@ -77,9 +86,9 @@ export function TaskDueDatePicker({
       <PopoverContent
         align="start"
         sideOffset={8}
-        className={`w-[min(22rem,calc(100vw-2rem))] rounded-2xl border p-0 ${currentTheme.inputBorder} ${pickerSurfaceClassName} ${pickerShadowClassName}`}
+        className={`w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border-2 p-0 ${currentTheme.inputBorder} ${pickerPopoverSurfaceClassName} ${pickerShadowClassName}`}
       >
-        <div className={`p-4 ${pickerSurfaceClassName}`}>
+        <div className={`rounded-[inherit] p-4 ${pickerSurfaceClassName}`}>
           <div className="mb-4 flex items-center justify-between gap-3">
             <p className={`text-sm font-semibold ${currentTheme.text}`}>Choose a due date</p>
             <UtilityIconButton
@@ -124,6 +133,7 @@ export function TaskDueDatePicker({
               mode="single"
               selected={selectedDate}
               defaultMonth={selectedDate ?? startOfToday()}
+              disabled={{ before: startOfToday() }}
               onSelect={(nextDate) => onChange(nextDate ? format(nextDate, "yyyy-MM-dd") : "")}
               className={`mx-auto ${pickerSurfaceClassName} [--cell-size:2.25rem]`}
               classNames={{

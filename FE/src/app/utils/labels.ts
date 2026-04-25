@@ -24,9 +24,16 @@ export interface LabelDraft {
 export const MAX_BOARD_LABELS = 12;
 export const MAX_LABEL_NAME_LENGTH = 15;
 export const DEFAULT_LABEL_COLOR = "#64748b";
+export const LABEL_NAME_CHARACTER_MESSAGE = "Label names can contain only letters and spaces.";
+
+const LABEL_NAME_CHARACTERS_PATTERN = /^\p{L}+(?: +\p{L}+)*$/u;
 
 export function normalizeLabelName(name: string): string {
   return name.trim().toLowerCase();
+}
+
+export function isValidLabelNameCharacters(name: string): boolean {
+  return LABEL_NAME_CHARACTERS_PATTERN.test(name.trim());
 }
 
 export function sortLabelsByName<T extends { name: string }>(labels: T[]): T[] {

@@ -31,9 +31,9 @@ export function UtilityIconButton({
       type={type}
       disabled={disabled}
       className={cn(
-        disabled || focusStyle === "none"
+        focusStyle === "none"
           ? "focus:outline-none"
-          : `focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus}`,
+          : "focus:outline-none",
         disabled
           ? getDisabledIconActionButtonClassName(currentTheme, {
               size,

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Fingerprint, HelpCircle, X, Trash2, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme, getThemeColors } from '../contexts/ThemeContext';
@@ -60,10 +60,10 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
   const [memberUserIds, setMemberUserIds] = useState<number[]>([]);
   const [memberDirectory, setMemberDirectory] = useState<Record<number, ProjectUser>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<{ name?: string }>(
-    {},
-  );
+  const [hasTriedSubmit, setHasTriedSubmit] = useState(false);
+  const [hasTouchedName, setHasTouchedName] = useState(false);
   const memberActionButtonClassName = getIconActionButtonClassName(currentTheme);
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
 
   const selectedMembers = useMemo(
     () =>
@@ -82,8 +82,9 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
     setLogoColorKey(DEFAULT_BOARD_LOGO_COLOR_KEY);
     setMemberUserIds([]);
     setMemberDirectory({});
-    setErrors({});
     setIsSubmitting(false);
+    setHasTriedSubmit(false);
+    setHasTouchedName(false);
   };
 
   const handleClose = () => {
@@ -110,18 +111,25 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
   };
 
   const validateForm = () => {
-    const newErrors: { name?: string } = {};
+    return Boolean(boardName.trim());
+  };
 
-    if (!boardName.trim()) {
-      newErrors.name = 'Project name is required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  const focusNameField = () => {
+    window.requestAnimationFrame(() => {
+      nameInputRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+      nameInputRef.current?.focus();
+    });
   };
 
   const handleCreate = async () => {
-    if (!validateForm()) return;
+    setHasTriedSubmit(true);
+    if (!validateForm()) {
+      focusNameField();
+      return;
+    }
 
     try {
       setIsSubmitting(true);
@@ -144,6 +152,10 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
   };
 
   if (!isOpen) return null;
+
+  const displayNameError = (hasTriedSubmit || hasTouchedName) && !boardName.trim()
+    ? 'Project name is required'
+    : undefined;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -223,12 +235,15 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
                   <input
                     id="boardName"
                     type="text"
+                    ref={nameInputRef}
                     value={boardName}
                     onChange={(event) => setBoardName(event.target.value)}
+                    onBlur={() => setHasTouchedName(true)}
                     maxLength={MAX_BOARD_NAME_LENGTH}
                     placeholder="e.g., Website Redesign, Q1 Marketing Campaign"
+                    autoFocus
                     className={`w-full px-4 py-3 border-2 ${
-                      errors.name ? 'border-red-500' : currentTheme.inputBorder
+                      displayNameError ? 'border-red-500' : currentTheme.inputBorder
                     } rounded-xl transition-[border-color,box-shadow,color,background-color] duration-300 ease-out focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent ${modalFieldSurfaceClassName} ${currentTheme.text}`}
                   />
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
@@ -239,8 +254,8 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
                       {boardName.trim().length}/{MAX_BOARD_NAME_LENGTH}
                     </span>
                   </div>
-                  {errors.name && (
-                    <p className="mt-1 text-sm text-red-500">{errors.name}</p>
+                  {displayNameError && (
+                    <p className="mt-1 text-sm text-red-500">{displayNameError}</p>
                   )}
                 </div>
 
