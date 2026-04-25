@@ -13,6 +13,7 @@ type HistoryCard = Card & {
 };
 
 interface HistoryViewProps {
+  boardId: number;
   cards: HistoryCard[];
   onAssigneeChange: (cardId: number, assignee: TaskAssignee | null) => void;
   onDelete: (cardId: number, title: string) => void;
@@ -23,6 +24,7 @@ interface HistoryViewProps {
 }
 
 export function HistoryView({ 
+  boardId,
   cards, 
   onAssigneeChange, 
   onDelete,
@@ -134,6 +136,7 @@ export function HistoryView({
                     {assigneeCards.map((card) => (
                       <KanbanCard
                         key={card.id}
+                        boardId={boardId}
                         id={card.id}
                         title={card.title}
                         labelIds={card.labelIds}

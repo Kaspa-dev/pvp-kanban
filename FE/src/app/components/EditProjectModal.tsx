@@ -1,5 +1,5 @@
 import { Fingerprint, HelpCircle, X, User, Trash2, Users } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { Board } from "../utils/boards";
 import {
@@ -67,6 +67,17 @@ function getInitialMemberDirectory(board: Board | null): Record<number, ProjectU
   }, {});
 }
 
+function haveSameMemberIds(left: number[], right: number[]) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  const normalizedLeft = [...left].sort((a, b) => a - b);
+  const normalizedRight = [...right].sort((a, b) => a - b);
+
+  return normalizedLeft.every((userId, index) => userId === normalizedRight[index]);
+}
+
 export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: EditProjectModalProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
@@ -93,11 +104,14 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
   const [memberUserIds, setMemberUserIds] = useState<number[]>(initialDraft.memberUserIds);
   const [memberDirectory, setMemberDirectory] = useState<Record<number, ProjectUser>>(initialDirectory);
   const [showError, setShowError] = useState(false);
+  const [hasTouchedName, setHasTouchedName] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const memberActionButtonClassName = getIconActionButtonClassName(currentTheme);
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleClose = () => {
     setShowError(false);
+    setHasTouchedName(false);
     setIsSubmitting(false);
     onClose();
   };
@@ -106,6 +120,7 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape" && isOpen) {
         setShowError(false);
+        setHasTouchedName(false);
         setIsSubmitting(false);
         onClose();
       }
@@ -151,22 +166,50 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
   );
   const totalMemberCount = members.length;
   const hasReachedMemberLimit = totalMemberCount >= MAX_BOARD_MEMBERS;
+  const shouldShowNameError = (showError || hasTouchedName) && !name.trim();
 
   if (!isOpen || !board) return null;
+
+  const focusNameField = () => {
+    window.requestAnimationFrame(() => {
+      nameInputRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+      nameInputRef.current?.focus();
+    });
+  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (!name.trim()) {
+    const trimmedName = name.trim();
+    const trimmedDescription = description.trim();
+
+    if (!trimmedName) {
       setShowError(true);
+      focusNameField();
+      return;
+    }
+
+    const hasChanges =
+      trimmedName !== initialDraft.name ||
+      trimmedDescription !== initialDraft.description ||
+      logoIconKey !== initialDraft.logoIconKey ||
+      logoColorKey !== initialDraft.logoColorKey ||
+      !haveSameMemberIds(memberUserIds, initialDraft.memberUserIds);
+
+    if (!hasChanges) {
+      showSuccessToast("No project changes to save.");
+      handleClose();
       return;
     }
 
     try {
       setIsSubmitting(true);
       await onBoardUpdated(board.id, {
-        name: name.trim(),
-        description: description.trim(),
+        name: trimmedName,
+        description: trimmedDescription,
         logoIconKey,
         logoColorKey,
         memberUserIds,
@@ -288,17 +331,19 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
                   <input
                     id="name"
                     type="text"
+                    ref={nameInputRef}
                     value={name}
                       onChange={(event) => {
                         setName(event.target.value);
-                        if (showError && event.target.value.trim()) {
+                        if ((showError || hasTouchedName) && event.target.value.trim()) {
                           setShowError(false);
                         }
                       }}
+                      onBlur={() => setHasTouchedName(true)}
                       maxLength={MAX_BOARD_NAME_LENGTH}
                       placeholder="Enter project name..."
                       className={`w-full px-4 py-3 border-2 rounded-xl transition-[border-color,box-shadow,color,background-color] duration-300 ease-out focus:outline-none focus:ring-2 ${currentTheme.focus} focus:border-transparent ${modalFieldSurfaceClassName} ${currentTheme.text} ${
-                        showError && !name.trim() ? "border-red-500" : currentTheme.inputBorder
+                        shouldShowNameError ? "border-red-500" : currentTheme.inputBorder
                       }`}
                       autoFocus
                     />
@@ -310,7 +355,7 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
                         {name.trim().length}/{MAX_BOARD_NAME_LENGTH}
                       </span>
                     </div>
-                    {showError && !name.trim() && (
+                    {shouldShowNameError && (
                       <p className="text-red-500 text-sm mt-1">Project name is required</p>
                     )}
                   </div>

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 using BE.Data;
 using BE.DTOs;
 using BE.Hubs;
@@ -32,8 +33,15 @@ public class BoardsController(
     private const int MaxBoardPageSize = 48;
     private const int DefaultTaskPageSize = 10;
     private const int MaxTaskPageSize = 24;
+    private const int MaxTaskTitleLength = 128;
+    private const int MaxTaskDescriptionLength = 2000;
+    private const int MaxTaskLabels = 5;
+    private const int MinTaskStoryPoints = 1;
+    private const int MaxTaskStoryPoints = 100;
     private const int MaxBoardLabels = 12;
     private const int MaxBoardLabelNameLength = 15;
+    private const string BoardLabelNameCharacterMessage = "Label names can contain only letters and spaces.";
+    private static readonly Regex BoardLabelNamePattern = new(@"^\p{L}+(?: +\p{L}+)*$", RegexOptions.Compiled);
 
     private static readonly string[] StatusKeys =
     [
@@ -745,12 +753,30 @@ public class BoardsController(
             return BadRequest(new { message = "Task status is invalid." });
         }
 
-        if (string.IsNullOrWhiteSpace(request.Title))
+        string normalizedTitle = request.Title?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(normalizedTitle))
         {
             return BadRequest(new { message = "Task title is required." });
         }
 
-        if (!AreBoardLabelsValid(board, request.LabelIds))
+        if (normalizedTitle.Length > MaxTaskTitleLength)
+        {
+            return BadRequest(new { message = $"Task title can be up to {MaxTaskTitleLength} characters." });
+        }
+
+        string normalizedDescription = request.Description?.Trim() ?? string.Empty;
+        if (normalizedDescription.Length > MaxTaskDescriptionLength)
+        {
+            return BadRequest(new { message = $"Task description can be up to {MaxTaskDescriptionLength} characters." });
+        }
+
+        List<int> requestedLabelIds = request.LabelIds.Distinct().ToList();
+        if (requestedLabelIds.Count > MaxTaskLabels)
+        {
+            return BadRequest(new { message = $"Tasks can have up to {MaxTaskLabels} labels." });
+        }
+
+        if (!AreBoardLabelsValid(board, requestedLabelIds))
         {
             return BadRequest(new { message = "One or more labels do not belong to this board." });
         }
@@ -775,10 +801,20 @@ public class BoardsController(
             return BadRequest(new { message = "Due date must use the yyyy-MM-dd format." });
         }
 
+        if (dueDate.HasValue && dueDate.Value.Date < DateTime.UtcNow.Date)
+        {
+            return BadRequest(new { message = "Due date cannot be before today." });
+        }
+
+        if (!AreTaskStoryPointsValid(request.StoryPoints))
+        {
+            return BadRequest(new { message = $"Story points must be between {MinTaskStoryPoints} and {MaxTaskStoryPoints}." });
+        }
+
         var task = new TaskEntity
         {
-            Title = request.Title.Trim(),
-            Description = request.Description.Trim(),
+            Title = normalizedTitle,
+            Description = normalizedDescription,
             BoardId = boardId,
             StatusId = status!.Id,
             AssigneeId = request.AssigneeUserId,
@@ -790,7 +826,7 @@ public class BoardsController(
             Type = taskType,
         };
 
-        foreach (int labelId in request.LabelIds.Distinct())
+        foreach (int labelId in requestedLabelIds)
         {
             task.LabeledTasks.Add(new LabeledTask
             {
@@ -847,12 +883,30 @@ public class BoardsController(
             return BadRequest(new { message = "Task status is invalid." });
         }
 
-        if (string.IsNullOrWhiteSpace(request.Title))
+        string normalizedTitle = request.Title?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(normalizedTitle))
         {
             return BadRequest(new { message = "Task title is required." });
         }
 
-        if (!AreBoardLabelsValid(board, request.LabelIds))
+        if (normalizedTitle.Length > MaxTaskTitleLength)
+        {
+            return BadRequest(new { message = $"Task title can be up to {MaxTaskTitleLength} characters." });
+        }
+
+        string normalizedDescription = request.Description?.Trim() ?? string.Empty;
+        if (normalizedDescription.Length > MaxTaskDescriptionLength)
+        {
+            return BadRequest(new { message = $"Task description can be up to {MaxTaskDescriptionLength} characters." });
+        }
+
+        List<int> requestedLabelIds = request.LabelIds.Distinct().ToList();
+        if (requestedLabelIds.Count > MaxTaskLabels)
+        {
+            return BadRequest(new { message = $"Tasks can have up to {MaxTaskLabels} labels." });
+        }
+
+        if (!AreBoardLabelsValid(board, requestedLabelIds))
         {
             return BadRequest(new { message = "One or more labels do not belong to this board." });
         }
@@ -877,8 +931,18 @@ public class BoardsController(
             return BadRequest(new { message = "Due date must use the yyyy-MM-dd format." });
         }
 
-        task.Title = request.Title.Trim();
-        task.Description = request.Description.Trim();
+        if (dueDate.HasValue && dueDate.Value.Date < DateTime.UtcNow.Date)
+        {
+            return BadRequest(new { message = "Due date cannot be before today." });
+        }
+
+        if (!AreTaskStoryPointsValid(request.StoryPoints))
+        {
+            return BadRequest(new { message = $"Story points must be between {MinTaskStoryPoints} and {MaxTaskStoryPoints}." });
+        }
+
+        task.Title = normalizedTitle;
+        task.Description = normalizedDescription;
         task.StatusId = status!.Id;
         task.AssigneeId = request.AssigneeUserId;
         task.StoryPoints = request.StoryPoints;
@@ -892,7 +956,7 @@ public class BoardsController(
 
         _context.LabeledTasks.RemoveRange(task.LabeledTasks);
         task.LabeledTasks.Clear();
-        foreach (int labelId in request.LabelIds.Distinct())
+        foreach (int labelId in requestedLabelIds)
         {
             task.LabeledTasks.Add(new LabeledTask
             {
@@ -1100,6 +1164,50 @@ public class BoardsController(
         return Ok(labels.Select(ToLabelDto));
     }
 
+    [HttpGet("{boardId:int}/assignees/search")]
+    public async Task<ActionResult<IEnumerable<BoardMemberDto>>> SearchBoardAssignees(
+        int boardId,
+        [FromQuery] string? q,
+        [FromQuery] int limit = 3,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        var (accessContext, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
+        if (failure is not null)
+        {
+            return failure;
+        }
+
+        string query = q?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return Ok(Array.Empty<BoardMemberDto>());
+        }
+
+        int cappedLimit = Math.Clamp(limit, 1, 3);
+        string normalizedQuery = query.ToLowerInvariant();
+
+        var matches = accessContext!.Board.Memberships
+            .Select(membership => new
+            {
+                Membership = membership,
+                Rank = GetBoardMemberSearchRank(membership, normalizedQuery),
+            })
+            .Where(item => item.Rank.HasValue)
+            .OrderBy(item => item.Rank)
+            .ThenBy(item => item.Membership.User.FirstName)
+            .ThenBy(item => item.Membership.User.LastName)
+            .Take(cappedLimit)
+            .Select(item => ToBoardMemberDto(item.Membership))
+            .ToList();
+
+        return Ok(matches);
+    }
+
     [HttpPost("{boardId:int}/labels")]
     public async Task<ActionResult<BoardLabelDto>> CreateLabel(int boardId, CreateLabelRequestDto request, CancellationToken cancellationToken)
     {
@@ -1125,6 +1233,11 @@ public class BoardsController(
         if (normalizedName.Length > MaxBoardLabelNameLength)
         {
             return BadRequest(new { message = $"Label names can be up to {MaxBoardLabelNameLength} characters." });
+        }
+
+        if (!BoardLabelNamePattern.IsMatch(normalizedName))
+        {
+            return BadRequest(new { message = BoardLabelNameCharacterMessage });
         }
 
         if (board.Labels.Count >= MaxBoardLabels)
@@ -1183,6 +1296,11 @@ public class BoardsController(
         if (normalizedName.Length > MaxBoardLabelNameLength)
         {
             return BadRequest(new { message = $"Label names can be up to {MaxBoardLabelNameLength} characters." });
+        }
+
+        if (!BoardLabelNamePattern.IsMatch(normalizedName))
+        {
+            return BadRequest(new { message = BoardLabelNameCharacterMessage });
         }
 
         if (board.Labels.Any(item =>
@@ -1296,6 +1414,64 @@ public class BoardsController(
     private static bool IsBoardMember(Board board, int? assigneeUserId)
     {
         return assigneeUserId is null || board.Memberships.Any(membership => membership.UserId == assigneeUserId.Value);
+    }
+
+    private static bool AreTaskStoryPointsValid(int? storyPoints)
+    {
+        return storyPoints is null || storyPoints.Value is >= MinTaskStoryPoints and <= MaxTaskStoryPoints;
+    }
+
+    private static int? GetBoardMemberSearchRank(BoardMembership membership, string normalizedQuery)
+    {
+        string username = membership.User.Username.ToLowerInvariant();
+        string firstName = membership.User.FirstName.ToLowerInvariant();
+        string lastName = membership.User.LastName.ToLowerInvariant();
+        string displayName = $"{membership.User.FirstName} {membership.User.LastName}".Trim().ToLowerInvariant();
+        string emailPrefix = GetEmailPrefix(membership.User.Email).ToLowerInvariant();
+
+        if (username == normalizedQuery)
+        {
+            return 0;
+        }
+
+        if (firstName == normalizedQuery || lastName == normalizedQuery || displayName == normalizedQuery || emailPrefix == normalizedQuery)
+        {
+            return 1;
+        }
+
+        if (username.StartsWith(normalizedQuery, StringComparison.Ordinal))
+        {
+            return 2;
+        }
+
+        if (firstName.StartsWith(normalizedQuery, StringComparison.Ordinal)
+            || lastName.StartsWith(normalizedQuery, StringComparison.Ordinal)
+            || displayName.StartsWith(normalizedQuery, StringComparison.Ordinal)
+            || emailPrefix.StartsWith(normalizedQuery, StringComparison.Ordinal))
+        {
+            return 3;
+        }
+
+        if (username.Contains(normalizedQuery, StringComparison.Ordinal))
+        {
+            return 4;
+        }
+
+        if (firstName.Contains(normalizedQuery, StringComparison.Ordinal)
+            || lastName.Contains(normalizedQuery, StringComparison.Ordinal)
+            || displayName.Contains(normalizedQuery, StringComparison.Ordinal)
+            || emailPrefix.Contains(normalizedQuery, StringComparison.Ordinal))
+        {
+            return 5;
+        }
+
+        return null;
+    }
+
+    private static string GetEmailPrefix(string email)
+    {
+        int separatorIndex = email.IndexOf('@');
+        return separatorIndex >= 0 ? email[..separatorIndex] : email;
     }
 
     private static bool TryParsePriority(string? value, out Priority? priority)

@@ -1,10 +1,20 @@
 import { ChangeEvent, useState } from "react";
 import { Label } from "../utils/labels";
-import { getStoryPointsValidationError, Priority, TaskAssignee, TaskStatus, TaskType } from "../utils/cards";
+import {
+  getStoryPointsValidationError,
+  getTaskDueDateValidationError,
+  getTaskDescriptionValidationError,
+  getTaskTitleValidationError,
+  Priority,
+  TaskAssignee,
+  TaskStatus,
+  TaskType,
+} from "../utils/cards";
 import { TaskFormModal } from "./TaskFormModal";
 
 interface EditTaskModalProps {
   isOpen: boolean;
+  boardId: number;
   onClose: () => void;
   onSave: (cardId: number, updates: {
     title: string;
@@ -49,12 +59,14 @@ function getInitialTaskState(task: EditTaskModalProps["task"]) {
 
 export function EditTaskModal({
   isOpen,
+  boardId,
   onClose,
   onSave,
   task,
   availableLabels,
   availableAssignees,
 }: EditTaskModalProps) {
+  const formIdPrefix = "edit-task";
   const initialState = getInitialTaskState(task);
   const [title, setTitle] = useState(initialState.title);
   const [description, setDescription] = useState(initialState.description);
@@ -63,28 +75,67 @@ export function EditTaskModal({
   const [storyPoints, setStoryPoints] = useState<number | null | undefined>(initialState.storyPoints);
   const [dueDate, setDueDate] = useState(initialState.dueDate);
   const [customStoryPoints, setCustomStoryPoints] = useState(initialState.customStoryPoints);
-  const [storyPointsError, setStoryPointsError] = useState("");
   const [priority, setPriority] = useState<Priority | null | undefined>(initialState.priority);
   const [taskType, setTaskType] = useState<TaskType | null | undefined>(initialState.taskType);
-  const [showError, setShowError] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasTriedSubmit, setHasTriedSubmit] = useState(false);
+  const [touchedFields, setTouchedFields] = useState({
+    title: false,
+    description: false,
+    storyPoints: false,
+    dueDate: false,
+  });
+  const titleError = getTaskTitleValidationError(title) ?? "";
+  const descriptionError = getTaskDescriptionValidationError(description) ?? "";
+  const dueDateError = getTaskDueDateValidationError(dueDate) ?? "";
+  const storyPointsError = getStoryPointsValidationError(customStoryPoints) ?? "";
+  const canSubmit = !titleError && !descriptionError && !dueDateError && !storyPointsError;
+  const displayTitleError = (hasTriedSubmit || touchedFields.title) ? titleError : "";
+  const displayDescriptionError = (hasTriedSubmit || touchedFields.description) ? descriptionError : "";
+  const displayDueDateError = (hasTriedSubmit || touchedFields.dueDate) ? dueDateError : "";
+  const displayStoryPointsError = (hasTriedSubmit || touchedFields.storyPoints) ? storyPointsError : "";
 
   if (!isOpen || !task) return null;
 
+  const markFieldTouched = (field: keyof typeof touchedFields) => {
+    setTouchedFields((previous) => ({
+      ...previous,
+      [field]: true,
+    }));
+  };
+
+  const focusFirstInvalidField = () => {
+    const firstInvalidFieldId =
+      titleError ? `${formIdPrefix}-title`
+      : descriptionError ? `${formIdPrefix}-description`
+      : dueDateError ? `${formIdPrefix}-due-date`
+      : storyPointsError ? `${formIdPrefix}-story-points`
+      : null;
+
+    if (!firstInvalidFieldId) {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      const field = document.getElementById(firstInvalidFieldId);
+      if (field instanceof HTMLElement) {
+        field.focus();
+      }
+    });
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    setHasTriedSubmit(true);
 
-    const nextShowTitleError = !title.trim();
-    const nextStoryPointsError = getStoryPointsValidationError(customStoryPoints) ?? "";
-
-    setShowError(nextShowTitleError);
-    setStoryPointsError(nextStoryPointsError);
-
-    if (nextShowTitleError || nextStoryPointsError) {
+    if (!canSubmit) {
+      focusFirstInvalidField();
       return;
     }
 
     try {
+      setIsSubmitting(true);
       setSubmitError("");
       await onSave(task.id, {
         title: title.trim(),
@@ -100,6 +151,8 @@ export function EditTaskModal({
       onClose();
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Unable to save the task right now.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -107,7 +160,6 @@ export function EditTaskModal({
     const nextValue = storyPoints === value ? null : value;
     setStoryPoints(nextValue);
     setCustomStoryPoints(nextValue?.toString() || "");
-    setStoryPointsError("");
   };
 
   const handleCustomStoryPointsChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -115,8 +167,6 @@ export function EditTaskModal({
     setCustomStoryPoints(value);
 
     const validationError = getStoryPointsValidationError(value);
-    setStoryPointsError(validationError ?? "");
-
     if (validationError) {
       setStoryPoints(undefined);
       return;
@@ -133,27 +183,27 @@ export function EditTaskModal({
   const handleClearStoryPoints = () => {
     setStoryPoints(null);
     setCustomStoryPoints("");
-    setStoryPointsError("");
   };
 
   return (
     <TaskFormModal
       isOpen={isOpen}
+      boardId={boardId}
       title="Edit task"
       submitLabel="Save changes"
       onClose={onClose}
       onSubmit={handleSubmit}
-      formIdPrefix="edit-task"
+      formIdPrefix={formIdPrefix}
       taskTitle={title}
-      onTaskTitleChange={(value) => {
-        setTitle(value);
-        if (showError && value.trim()) {
-          setShowError(false);
-        }
-      }}
+      onTaskTitleChange={setTitle}
+      onTaskTitleBlur={() => markFieldTouched("title")}
       description={description}
       onDescriptionChange={setDescription}
-      showTitleError={showError}
+      onDescriptionBlur={() => markFieldTouched("description")}
+      titleError={displayTitleError}
+      descriptionError={displayDescriptionError}
+      dueDateError={displayDueDateError}
+      isSubmitting={isSubmitting}
       submitError={submitError}
       availableLabels={availableLabels}
       selectedLabelIds={selectedLabelIds}
@@ -165,10 +215,12 @@ export function EditTaskModal({
       customStoryPoints={customStoryPoints}
       onStoryPointsPresetClick={handleStoryPointsPresetClick}
       onCustomStoryPointsChange={handleCustomStoryPointsChange}
+      onStoryPointsBlur={() => markFieldTouched("storyPoints")}
       onClearStoryPoints={handleClearStoryPoints}
-      storyPointsError={storyPointsError}
+      storyPointsError={displayStoryPointsError}
       dueDate={dueDate}
       onDueDateChange={setDueDate}
+      onDueDateBlur={() => markFieldTouched("dueDate")}
       priority={priority}
       onPriorityChange={(value) => setPriority(value ?? null)}
       taskType={taskType}

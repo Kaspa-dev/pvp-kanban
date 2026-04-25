@@ -11,8 +11,10 @@ import { PriorityBadge } from "./PriorityBadge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { TaskLabelSummary } from "./TaskLabelSummary";
 import { UtilityIconButton } from "./UtilityIconButton";
+import { getNeutralElevatedCardHoverClassName } from "./cardSurfaceStyles";
 
 interface KanbanCardProps {
+  boardId: number;
   id: number;
   title: string;
   labelIds: number[];
@@ -32,6 +34,7 @@ interface KanbanCardProps {
 }
 
 export function KanbanCard({
+  boardId,
   id,
   title,
   labelIds,
@@ -52,6 +55,7 @@ export function KanbanCard({
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const taskSurfaceClassName = isDarkMode ? "bg-zinc-900/90" : "bg-white/95";
+  const taskHoverClassName = getNeutralElevatedCardHoverClassName(currentTheme, isDarkMode);
 
   const [{ isDragging }, drag] = useDrag({
     type: "CARD",
@@ -97,7 +101,7 @@ export function KanbanCard({
       }}
     >
       <div
-        className={`overflow-hidden rounded-lg border-2 ${currentTheme.border} ${taskSurfaceClassName} shadow-md transition-all duration-200 hover:-translate-y-1 hover:shadow-2xl hover:${currentTheme.primaryBorder}`}
+        className={`overflow-hidden rounded-lg border-2 ${currentTheme.border} ${taskSurfaceClassName} shadow-md transition-all duration-200 ${taskHoverClassName}`}
       >
         <div className="flex items-start gap-2 p-4">
           <div
@@ -147,7 +151,8 @@ export function KanbanCard({
                     <TaskLabelSummary
                       labels={cardLabels}
                       maxVisible={2}
-                      overflowText={(hiddenCount) => `+${hiddenCount} labels`}
+                      compactMaxVisible={1}
+                      collapseToFit
                     />
                   )}
                 </div>
@@ -165,6 +170,7 @@ export function KanbanCard({
               <div className="flex items-center gap-2">
                 <div onMouseDown={(e) => e.stopPropagation()}>
                   <AssigneePopover
+                    boardId={boardId}
                     currentAssignee={assignee}
                     onAssigneeChange={(newAssignee) => onAssigneeChange(id, newAssignee)}
                     availableAssignees={availableAssignees}

@@ -8,6 +8,59 @@ export type TaskType = "story" | "task" | "bug" | "spike";
 
 export const MAX_TASK_TITLE_LENGTH = 128;
 export const MAX_TASK_DESCRIPTION_LENGTH = 2000;
+export const MAX_TASK_LABELS = 5;
+
+export function getTaskTitleValidationError(value: string): string | null {
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue) {
+    return "Task title is required.";
+  }
+
+  if (trimmedValue.length > MAX_TASK_TITLE_LENGTH) {
+    return `Task title can be up to ${MAX_TASK_TITLE_LENGTH} characters.`;
+  }
+
+  return null;
+}
+
+export function getTaskDescriptionValidationError(value: string): string | null {
+  if (value.trim().length > MAX_TASK_DESCRIPTION_LENGTH) {
+    return `Description can be up to ${MAX_TASK_DESCRIPTION_LENGTH} characters.`;
+  }
+
+  return null;
+}
+
+export function getTaskLabelsValidationError(labelIds: number[]): string | null {
+  if (new Set(labelIds).size > MAX_TASK_LABELS) {
+    return `Tasks can have up to ${MAX_TASK_LABELS} labels.`;
+  }
+
+  return null;
+}
+
+export function getTaskDueDateValidationError(value: string): string | null {
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue) {
+    return null;
+  }
+
+  const today = new Date();
+  const localToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const selectedDate = new Date(`${trimmedValue}T00:00:00`);
+
+  if (Number.isNaN(selectedDate.getTime())) {
+    return "Due date is invalid.";
+  }
+
+  if (selectedDate < localToday) {
+    return "Due date cannot be before today.";
+  }
+
+  return null;
+}
 
 export function getStoryPointsValidationError(value: string): string | null {
   const trimmedValue = value.trim();
@@ -45,6 +98,15 @@ export interface ApiTask {
 }
 
 interface ApiAssignee {
+  userId: number;
+  username: string;
+  displayName: string;
+  email: string;
+  color: string;
+  role: BoardRole;
+}
+
+interface ApiAssigneeSearchResult {
   userId: number;
   username: string;
   displayName: string;
@@ -141,6 +203,18 @@ function normalizeAssignee(assignee: ApiAssignee | null): TaskAssignee {
   };
 }
 
+function normalizeAssigneeSearchResult(assignee: ApiAssigneeSearchResult): TaskAssignee {
+  return {
+    userId: assignee.userId,
+    username: assignee.username,
+    displayName: assignee.displayName,
+    email: assignee.email,
+    color: assignee.color,
+    role: assignee.role,
+    name: assignee.displayName,
+  };
+}
+
 export function normalizeTask(task: ApiTask): Card {
   return {
     id: task.id,
@@ -194,6 +268,29 @@ export async function getBoardCards(boardId: number | string): Promise<Cards> {
   );
 
   return groupCards(tasks.map(normalizeTask));
+}
+
+export async function searchBoardAssignees(
+  boardId: number | string,
+  query: string,
+  limit = 3,
+  signal?: AbortSignal,
+): Promise<TaskAssignee[]> {
+  const trimmedQuery = query.trim();
+  if (!trimmedQuery) {
+    return [];
+  }
+
+  const results = await apiJson<ApiAssigneeSearchResult[]>(
+    `/api/boards/${Number(boardId)}/assignees/search?q=${encodeURIComponent(trimmedQuery)}&limit=${limit}`,
+    {
+      method: "GET",
+      signal,
+    },
+    "Unable to search board members right now.",
+  );
+
+  return results.map(normalizeAssigneeSearchResult);
 }
 
 export async function getBoardTaskPage(
