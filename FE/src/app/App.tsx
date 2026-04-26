@@ -11,6 +11,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { UserPreferencesProvider } from './contexts/UserPreferencesContext';
+import { AuthStatusScreen } from './components/AuthStatusScreen';
 import { Toaster } from './components/ui/toast';
 
 // AppRoutes must be inside AuthProvider to use useAuth
@@ -18,21 +19,17 @@ function AppRoutes() {
   const { isAuthenticated, isInitializing } = useAuth();
 
   if (isInitializing) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-100">
-        <p className="text-sm tracking-[0.2em] uppercase">Restoring session...</p>
-      </div>
-    );
+    return <AuthStatusScreen title="Restoring session..." />;
   }
 
   return (
     <Routes>
       {/* Public routes */}
-      <Route 
-        path="/" 
-        element={isAuthenticated ? <Navigate to="/app" replace /> : <Landing />} 
+      <Route
+        path="/"
+        element={isAuthenticated ? <Navigate to="/app" replace /> : <Landing />}
       />
-      
+
       {/* Auth routes - redirect to /app if already authenticated */}
       <Route
         path="/login"

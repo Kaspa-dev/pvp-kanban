@@ -233,17 +233,22 @@ export function AssigneePopover({
           <div className={`border-b px-4 py-3 ${currentTheme.border} ${pickerSurfaceClassName}`}>
             <div className="flex items-center justify-between gap-3">
               <p className={`text-sm font-semibold ${currentTheme.text}`}>Assign task</p>
-              <UtilityIconButton
-                type="button"
-                size="sm"
-                emphasis="elevated"
-                onClick={handleClear}
-                className={`${subtleActionButtonClassName} ${isUnassigned ? "pointer-events-none invisible" : ""}`}
-                aria-hidden={isUnassigned}
-                tabIndex={isUnassigned ? -1 : 0}
-              >
-                Clear
-              </UtilityIconButton>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <UtilityIconButton
+                    type="button"
+                    size="sm"
+                    emphasis="elevated"
+                    onClick={handleClear}
+                    className={`${subtleActionButtonClassName} ${isUnassigned ? "pointer-events-none invisible" : ""}`}
+                    aria-hidden={isUnassigned}
+                    tabIndex={isUnassigned ? -1 : 0}
+                  >
+                    Clear
+                  </UtilityIconButton>
+                </TooltipTrigger>
+                <TooltipContent side="left" sideOffset={8}>Clear assignee</TooltipContent>
+              </Tooltip>
             </div>
           </div>
 
@@ -300,40 +305,46 @@ export function AssigneePopover({
                 const isHighlighted = index === highlightedIndex;
 
                 return (
-                  <button
-                    key={assignee.userId}
-                    type="button"
-                    role="option"
-                    aria-selected={isSelected}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onMouseEnter={() => setHighlightedIndex(index)}
-                    onClick={() => handleSelectAssignee(assignee)}
-                    className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors ${
-                      isHighlighted
-                        ? `${currentTheme.primaryBg} ${currentTheme.primaryText}`
-                        : `${pickerSurfaceClassName} ${currentTheme.text} ${isDarkMode ? "hover:bg-zinc-800" : "hover:bg-gray-100"}`
-                    }`}
-                  >
-                    <AppAvatar
-                      username={assignee.username || assignee.displayName}
-                      fullName={assignee.displayName}
-                      size={36}
-                      className="mt-0.5 shrink-0 shadow-sm"
-                      interactive={false}
-                      enableBlink={false}
-                      aria-hidden="true"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold">{assignee.displayName}</p>
-                      <p className={`truncate text-xs ${isHighlighted ? "opacity-80" : currentTheme.textMuted}`}>
-                        @{assignee.username}
-                        {assignee.email ? ` | ${assignee.email}` : ""}
-                      </p>
-                    </div>
-                    {isSelected ? (
-                      <span className="sr-only">Selected assignee</span>
-                    ) : null}
-                  </button>
+                  <Tooltip key={assignee.userId}>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={isSelected}
+                        onMouseDown={(event) => event.preventDefault()}
+                        onMouseEnter={() => setHighlightedIndex(index)}
+                        onClick={() => handleSelectAssignee(assignee)}
+                        className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors ${
+                          isHighlighted
+                            ? `${currentTheme.primaryBg} ${currentTheme.primaryText}`
+                            : `${pickerSurfaceClassName} ${currentTheme.text} ${isDarkMode ? "hover:bg-zinc-800" : "hover:bg-gray-100"}`
+                        }`}
+                      >
+                        <AppAvatar
+                          username={assignee.username || assignee.displayName}
+                          fullName={assignee.displayName}
+                          size={36}
+                          className="mt-0.5 shrink-0 shadow-sm"
+                          interactive={false}
+                          enableBlink={false}
+                          aria-hidden="true"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-semibold">{assignee.displayName}</p>
+                          <p className={`truncate text-xs ${isHighlighted ? "opacity-80" : currentTheme.textMuted}`}>
+                            @{assignee.username}
+                            {assignee.email ? ` | ${assignee.email}` : ""}
+                          </p>
+                        </div>
+                        {isSelected ? (
+                          <span className="sr-only">Selected assignee</span>
+                        ) : null}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" sideOffset={8}>
+                      {isSelected ? `${assignee.displayName} is selected` : `Assign to ${assignee.displayName}`}
+                    </TooltipContent>
+                  </Tooltip>
                 );
               })}
             </div>

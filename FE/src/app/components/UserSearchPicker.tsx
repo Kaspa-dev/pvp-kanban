@@ -4,6 +4,7 @@ import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import { ProjectUser, searchUsers } from "../utils/users";
 import { AppAvatar } from "./AppAvatar";
 import { CustomScrollArea } from "./CustomScrollArea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 interface UserSearchPickerProps {
   excludedUserIds: number[];
@@ -206,37 +207,41 @@ export function UserSearchPicker({
           ) : (
             <CustomScrollArea viewportClassName={`max-h-64 ${RESULTS_PANEL_HEIGHT_CLASS} py-2`}>
               <div className="-mr-3">
-              {visibleResults.map((user, index) => {
-                const isHighlighted = index === highlightedIndex;
+                {visibleResults.map((user, index) => {
+                  const isHighlighted = index === highlightedIndex;
 
-                return (
-                  <button
-                    key={user.id}
-                    type="button"
-                    onMouseDown={(event) => event.preventDefault()}
-                    onMouseEnter={() => setHighlightedIndex(index)}
-                    onClick={() => handleSelectUser(user)}
-                    className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors ${
-                      isHighlighted
-                        ? `${currentTheme.primaryBg} ${currentTheme.primaryText}`
-                        : `${currentTheme.text} ${isDarkMode ? "hover:bg-zinc-800/80" : "hover:bg-slate-50"}`
-                    }`}
-                  >
-                    <AppAvatar
-                      username={user.username}
-                      fullName={user.displayName}
-                      size={36}
-                      className="mt-0.5"
-                    />
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold">{user.displayName}</p>
-                      <p className={`truncate text-xs ${isHighlighted ? "opacity-80" : currentTheme.textMuted}`}>
-                        @{user.username} • {user.email}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
+                  return (
+                    <Tooltip key={user.id}>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onMouseEnter={() => setHighlightedIndex(index)}
+                          onClick={() => handleSelectUser(user)}
+                          className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors ${
+                            isHighlighted
+                              ? `${currentTheme.primaryBg} ${currentTheme.primaryText}`
+                              : `${currentTheme.text} ${isDarkMode ? "hover:bg-zinc-800/80" : "hover:bg-slate-50"}`
+                          }`}
+                        >
+                          <AppAvatar
+                            username={user.username}
+                            fullName={user.displayName}
+                            size={36}
+                            className="mt-0.5"
+                          />
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold">{user.displayName}</p>
+                            <p className={`truncate text-xs ${isHighlighted ? "opacity-80" : currentTheme.textMuted}`}>
+                              @{user.username} • {user.email}
+                            </p>
+                          </div>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" sideOffset={8}>Add {user.displayName}</TooltipContent>
+                    </Tooltip>
+                  );
+                })}
               </div>
             </CustomScrollArea>
           )}

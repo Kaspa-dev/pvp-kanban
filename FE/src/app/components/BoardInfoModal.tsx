@@ -77,13 +77,18 @@ export function BoardInfoModal({ isOpen, onClose, board }: BoardInfoModalProps) 
       viewportClassName="h-full min-h-0 pr-4"
       contentClassName="space-y-6 px-1 py-1"
       footer={(
-        <button
-          type="button"
-          onClick={onClose}
-          className={`w-full rounded-xl bg-gradient-to-r ${currentTheme.primary} px-5 py-3 font-semibold text-white shadow-lg transition-all hover:scale-105`}
-        >
-          Close
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={onClose}
+              className={`w-full rounded-xl bg-gradient-to-r ${currentTheme.primary} px-5 py-3 font-semibold text-white shadow-lg transition-all hover:scale-105`}
+            >
+              Close
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top" sideOffset={8}>Close project details</TooltipContent>
+        </Tooltip>
       )}
     >
       <section className="space-y-6" aria-labelledby="board-details-identity-heading">

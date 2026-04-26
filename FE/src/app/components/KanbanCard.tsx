@@ -54,10 +54,7 @@ export function KanbanCard({
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const taskSurfaceClassName = isDarkMode ? "bg-zinc-900/90" : "bg-white/95";
-  const taskHoverBorderClassName = isDarkMode
-    ? `group-hover:${currentTheme.primaryBorder}`
-    : `group-hover:${currentTheme.borderHover}`;
-  const taskHoverBackgroundClassName = isDarkMode
+  const taskHoverShadowClassName = isDarkMode
     ? "group-hover:shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_20px_44px_rgba(0,0,0,0.46),0_0_34px_rgba(255,255,255,0.08)]"
     : "group-hover:shadow-[0_14px_28px_rgba(15,23,42,0.12),0_4px_12px_rgba(15,23,42,0.08)]";
 
@@ -105,11 +102,7 @@ export function KanbanCard({
       }}
     >
       <div
-        aria-hidden="true"
-        className={`pointer-events-none absolute inset-1 -z-10 rounded-lg ${taskSurfaceClassName} opacity-0 transition-[opacity,box-shadow] duration-200 group-hover:opacity-100 ${taskHoverBackgroundClassName}`}
-      />
-      <div
-        className={`relative overflow-hidden rounded-lg border-2 ${currentTheme.border} ${taskSurfaceClassName} transition-colors duration-200 ${taskHoverBorderClassName}`}
+        className={`relative overflow-hidden rounded-lg border-2 ${currentTheme.border} ${taskSurfaceClassName} shadow-none transition-[box-shadow] duration-200 ${taskHoverShadowClassName}`}
       >
         <div className="flex items-start gap-2 p-4">
           <div

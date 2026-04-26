@@ -149,24 +149,34 @@ export function TaskFormModal({
       contentClassName="grid items-start gap-5 px-1 py-1 md:grid-cols-2"
       footer={(
         <>
-          <button
-            type="button"
-            onClick={onClose}
-            className={`flex-1 ${secondaryActionButtonClassName}`}
-          >
-            <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_10%,rgba(255,255,255,0.14)_50%,transparent_90%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-            <span className="relative z-10">Cancel</span>
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className={`flex-1 ${primaryActionButtonClassName}`}
-          >
-            <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_12%,rgba(255,255,255,0.24)_50%,transparent_88%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-            <span className="relative z-10 transition-transform duration-300 group-hover:translate-y-[-1px]">
-              {submitLabel}
-            </span>
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onClose}
+                className={`flex-1 ${secondaryActionButtonClassName}`}
+              >
+                <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_10%,rgba(255,255,255,0.14)_50%,transparent_90%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                <span className="relative z-10">Cancel</span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={8}>Close without saving task changes</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className={`flex-1 ${primaryActionButtonClassName}`}
+              >
+                <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_12%,rgba(255,255,255,0.24)_50%,transparent_88%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                <span className="relative z-10 transition-transform duration-300 group-hover:translate-y-[-1px]">
+                  {submitLabel}
+                </span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={8}>{submitLabel}</TooltipContent>
+          </Tooltip>
         </>
       )}
     >
@@ -326,16 +336,21 @@ export function TaskFormModal({
             placeholder={`Enter ${STORY_POINTS_MIN}-${STORY_POINTS_MAX} or use a preset`}
           />
           {hasStoryPointsValue && (
-            <UtilityIconButton
-              type="button"
-              size="sm"
-              emphasis="default"
-              onClick={onClearStoryPoints}
-              className={`absolute right-2 top-1/2 -translate-y-1/2 ${subtleActionButtonClassName}`}
-              aria-label="Clear story points"
-            >
-              Clear
-            </UtilityIconButton>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <UtilityIconButton
+                  type="button"
+                  size="sm"
+                  emphasis="default"
+                  onClick={onClearStoryPoints}
+                  className={`absolute right-2 top-1/2 -translate-y-1/2 ${subtleActionButtonClassName}`}
+                  aria-label="Clear story points"
+                >
+                  Clear
+                </UtilityIconButton>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={8}>Clear story points</TooltipContent>
+            </Tooltip>
           )}
         </div>
         <p className={`mt-2 text-xs ${currentTheme.textMuted}`}>
@@ -349,18 +364,24 @@ export function TaskFormModal({
             const isSelected = storyPoints === points;
             const selectedChipTextClassName = isDarkMode ? "text-gray-900" : "text-white";
             return (
-              <button
-                key={points}
-                type="button"
-                onClick={() => onStoryPointsPresetClick(points)}
-                className={`px-3.5 py-2 rounded-xl text-sm font-medium ${
-                  isSelected
-                    ? `border border-transparent bg-gradient-to-r ${currentTheme.primary} ${selectedChipTextClassName} shadow-md ${chipTransitionClassName}`
-                    : neutralChipClassName
-                }`}
-              >
-                {points}
-              </button>
+              <Tooltip key={points}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => onStoryPointsPresetClick(points)}
+                    className={`px-3.5 py-2 rounded-xl text-sm font-medium ${
+                      isSelected
+                        ? `border border-transparent bg-gradient-to-r ${currentTheme.primary} ${selectedChipTextClassName} shadow-md ${chipTransitionClassName}`
+                        : neutralChipClassName
+                    }`}
+                  >
+                    {points}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={8}>
+                  {isSelected ? `Story points set to ${points}` : `Set story points to ${points}`}
+                </TooltipContent>
+              </Tooltip>
             );
           })}
         </div>
@@ -387,19 +408,25 @@ export function TaskFormModal({
             const taskTypeDisplay = getTaskTypeDisplay(value);
 
             return (
-              <button
-                key={value}
-                type="button"
-                onClick={() => onTaskTypeChange(isSelected ? undefined : value)}
-                className={`px-3.5 py-2 rounded-xl text-sm font-medium flex items-center gap-2 ${
-                  isSelected
-                    ? `border border-transparent bg-gradient-to-r ${currentTheme.primary} ${selectedChipTextClassName} shadow-md ${chipTransitionClassName}`
-                    : neutralChipClassName
-                }`}
-              >
-                {taskTypeDisplay.icon}
-                <span>{taskTypeDisplay.label}</span>
-              </button>
+              <Tooltip key={value}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => onTaskTypeChange(isSelected ? undefined : value)}
+                    className={`px-3.5 py-2 rounded-xl text-sm font-medium flex items-center gap-2 ${
+                      isSelected
+                        ? `border border-transparent bg-gradient-to-r ${currentTheme.primary} ${selectedChipTextClassName} shadow-md ${chipTransitionClassName}`
+                        : neutralChipClassName
+                    }`}
+                  >
+                    {taskTypeDisplay.icon}
+                    <span>{taskTypeDisplay.label}</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={8}>
+                  {isSelected ? `${taskTypeDisplay.label} selected` : `Set task type to ${taskTypeDisplay.label}`}
+                </TooltipContent>
+              </Tooltip>
             );
           })}
         </div>
@@ -431,25 +458,31 @@ export function TaskFormModal({
               : undefined;
 
             return (
-              <button
-                key={value}
-                type="button"
-                onClick={() => onPriorityChange(isSelected ? undefined : value)}
-                className={`px-3.5 py-2 rounded-xl text-sm font-medium flex items-center gap-2 ${
-                  isSelected
-                    ? `border border-transparent ${textColor} shadow-md ${chipTransitionClassName}`
-                    : neutralChipClassName
-                }`}
-                style={isSelected ? { backgroundColor: getPriorityColor(value, isDarkMode) } : undefined}
-              >
-                <PriorityIcon
-                  priority={value}
-                  isDarkMode={isDarkMode}
-                  className="h-4 w-4"
-                  colorOverride={selectedIconColor}
-                />
-                <span>{priorityConfig.label}</span>
-              </button>
+              <Tooltip key={value}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => onPriorityChange(isSelected ? undefined : value)}
+                    className={`px-3.5 py-2 rounded-xl text-sm font-medium flex items-center gap-2 ${
+                      isSelected
+                        ? `border border-transparent ${textColor} shadow-md ${chipTransitionClassName}`
+                        : neutralChipClassName
+                    }`}
+                    style={isSelected ? { backgroundColor: getPriorityColor(value, isDarkMode) } : undefined}
+                  >
+                    <PriorityIcon
+                      priority={value}
+                      isDarkMode={isDarkMode}
+                      className="h-4 w-4"
+                      colorOverride={selectedIconColor}
+                    />
+                    <span>{priorityConfig.label}</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={8}>
+                  {isSelected ? `${priorityConfig.label} priority selected` : `Set priority to ${priorityConfig.label}`}
+                </TooltipContent>
+              </Tooltip>
             );
           })}
         </div>

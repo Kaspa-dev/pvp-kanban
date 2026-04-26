@@ -97,7 +97,7 @@ The production roadmap should therefore focus on actions PVP can verify now:
 - task completed with story-point-backed effort
 - planning poker participation milestones
 - planning poker recommendation application milestones
-- board and global recent XP accumulation
+- board recent XP accumulation
 
 The roadmap should not treat these as core XP sources yet:
 
@@ -363,9 +363,8 @@ Leaderboards should be event-windowed, not lifetime-total-based.
 
 ### 7.1 Supported scopes
 
-Initial supported scopes:
+Initial supported scope:
 
-- global
 - per-board
 
 Deferred:
@@ -376,6 +375,7 @@ Reason:
 
 - the database has `OrganizationalUnit`
 - the product does not yet expose enough team-centric workflow for a full team leaderboard experience
+- board context is the most meaningful and least noisy competitive scope for PVP right now
 
 ### 7.2 Supported time ranges
 
@@ -389,12 +389,18 @@ These should be computed from `XpEvent.CreatedAtUtc`, not from lifetime XP.
 ### 7.3 Recommended API
 
 ```text
-GET /api/gamification/leaderboards?range=week|month&scope=global|board&boardId=
+GET /api/gamification/leaderboards?range=week|month&boardId=
 ```
 
 Response should include:
 
 ```text
+BoardLeaderboardResponse
+- boardId
+- range
+- topUsers
+- currentUserEntry nullable
+
 LeaderboardEntry
 - UserId
 - Username
@@ -405,17 +411,25 @@ LeaderboardEntry
 - Rank
 ```
 
-For board scope, the API must enforce board access rules the same way board endpoints already do.
+Rules:
+
+- `topUsers` should contain only the top 3 users for that board and time range
+- `currentUserEntry` should always be included when the current user has rankable XP in that board and range
+- `currentUserEntry` should still be returned even if the current user is already in the top 3, because the sidebar should show the current user's place and XP in a dedicated row below the ranked entries
+- the API must enforce board access rules the same way board endpoints already do
 
 ### 7.4 Where leaderboard UI belongs
 
 Recommended surfacing:
 
-- profile page: optional link to full leaderboard
-- board sidebar or board info surface: board weekly/monthly top contributors
-- dedicated modal or page: full leaderboard rankings
+- board sidebar: weekly top 3 contributors
+- board sidebar: monthly top 3 contributors
+- collapsed sidebar: show only rank numbers and user identicons for the top 3 entries
+- expanded sidebar: show rank, identicon, display name, and XP for the top 3 entries
+- below each expanded leaderboard block, show the current user's place and XP for that same range in a dedicated row
+- if the current user has no XP for that range, show them as unranked with `0 XP`
 
-Do not place full leaderboard tables directly into the main board workspace by default.
+Do not introduce a global rankings page or full leaderboard table in this phase.
 
 ---
 
@@ -686,7 +700,7 @@ The current endpoint can remain temporarily for compatibility, but the roadmap s
 ### 12.2 Leaderboards API
 
 ```text
-GET /api/gamification/leaderboards?range=week|month&scope=global|board&boardId=
+GET /api/gamification/leaderboards?range=week|month&boardId=
 ```
 
 ### 12.3 Badges API
@@ -766,17 +780,21 @@ Success criteria:
 
 Implement:
 
-- global weekly leaderboard
-- global monthly leaderboard
 - per-board weekly leaderboard
 - per-board monthly leaderboard
 - board-access-safe leaderboard queries
-- board summary widget or modal entry point
+- board sidebar leaderboard widget
+- top 3 users by XP for each board range
+- current user's place and XP shown below each board range list
+- collapsed sidebar presentation with rank numbers and identicons only
+- expanded sidebar presentation with rank, identicon, display name, and XP
 
 Success criteria:
 
 - rankings use event timestamps
 - lifetime XP does not drive leaderboard placement
+- the collapsed sidebar stays visually compact
+- the expanded sidebar shows readable weekly and monthly detail without turning into a full rankings page
 
 ### Phase 3: Badges And Achievement History
 
@@ -822,6 +840,7 @@ The roadmap should require verification at both backend and frontend levels.
 - reopen creates reversal behavior correctly
 - weekly and monthly leaderboard windows are computed from XP event timestamps
 - board leaderboard results are filtered by board membership access
+- weekly and monthly board responses return exactly the top 3 entries plus the current user's placement block
 - planning poker badge conditions depend on persisted session facts
 
 ### Frontend validation
@@ -853,7 +872,7 @@ Phase 1:
 verified XP ledger + authoritative progress
 
 Phase 2:
-recent-activity leaderboards
+per-board recent-activity leaderboards
 
 Phase 3:
 badges and achievement history
@@ -873,7 +892,7 @@ The revised implementation strategy should be:
 - keep story points as the backbone of progression
 - move progression authority to the backend
 - build on an XP event ledger rather than derived totals alone
-- support global and per-board leaderboards before team leaderboards
+- support per-board leaderboards before considering global or team leaderboards
 - use planning poker as a milestone source, not an XP exploit
 - keep avatars visually compact and accessible
 - treat prestige as later-stage polish, not day-one complexity

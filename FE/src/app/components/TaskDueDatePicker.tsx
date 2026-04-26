@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import { UtilityIconButton } from "./UtilityIconButton";
 import { MAX_TASK_DUE_DATE_MONTHS } from "../utils/cards";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 interface TaskDueDatePickerProps {
   id?: string;
@@ -68,24 +69,31 @@ export function TaskDueDatePicker({
 
   return (
     <Popover>
-      <PopoverTrigger asChild>
-        <button
-          id={id}
-          type="button"
-          onBlur={onBlur}
-          aria-label={selectedDate ? `Due date ${format(selectedDate, "MMMM d, yyyy")}` : "Choose due date"}
-          aria-invalid={hasError}
-          className={`group flex min-h-[52px] w-full items-center gap-3 rounded-xl border-2 px-4 py-3 text-left outline-none transition-[color,box-shadow,border-color] duration-300 ease-out ${hasError ? "border-red-500" : currentTheme.inputBorder} ${pickerSurfaceClassName} ${currentTheme.text} hover:${currentTheme.borderHover} hover:ring-1 hover:ring-black/5 dark:hover:ring-white/10 focus-visible:outline-none focus-visible:border-transparent focus-visible:ring-2 ${currentTheme.focus} data-[state=open]:border-transparent data-[state=open]:ring-2 ${currentTheme.ring}`}
-        >
-          <CalendarDays className={`h-4 w-4 shrink-0 ${triggerIconClassName}`} />
-          <span className="min-w-0 flex-1 truncate text-sm">
-            <span className={`text-sm font-normal ${triggerTextClassName}`}>
-              {selectedDate ? format(selectedDate, "EEE, MMM d, yyyy") : placeholder}
-            </span>
-          </span>
-          <ChevronDown className={`h-4 w-4 shrink-0 transition-transform group-data-[state=open]:rotate-180 ${currentTheme.textMuted}`} />
-        </button>
-      </PopoverTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <button
+              id={id}
+              type="button"
+              onBlur={onBlur}
+              aria-label={selectedDate ? `Due date ${format(selectedDate, "MMMM d, yyyy")}` : "Choose due date"}
+              aria-invalid={hasError}
+              className={`group flex min-h-[52px] w-full items-center gap-3 rounded-xl border-2 px-4 py-3 text-left outline-none transition-[color,box-shadow,border-color] duration-300 ease-out ${hasError ? "border-red-500" : currentTheme.inputBorder} ${pickerSurfaceClassName} ${currentTheme.text} hover:${currentTheme.borderHover} hover:ring-1 hover:ring-black/5 dark:hover:ring-white/10 focus-visible:outline-none focus-visible:border-transparent focus-visible:ring-2 ${currentTheme.focus} data-[state=open]:border-transparent data-[state=open]:ring-2 ${currentTheme.ring}`}
+            >
+              <CalendarDays className={`h-4 w-4 shrink-0 ${triggerIconClassName}`} />
+              <span className="min-w-0 flex-1 truncate text-sm">
+                <span className={`text-sm font-normal ${triggerTextClassName}`}>
+                  {selectedDate ? format(selectedDate, "EEE, MMM d, yyyy") : placeholder}
+                </span>
+              </span>
+              <ChevronDown className={`h-4 w-4 shrink-0 transition-transform group-data-[state=open]:rotate-180 ${currentTheme.textMuted}`} />
+            </button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent side="top" sideOffset={8}>
+          {selectedDate ? "Change due date" : "Pick a due date"}
+        </TooltipContent>
+      </Tooltip>
       <PopoverContent
         align="start"
         sideOffset={8}
@@ -94,17 +102,22 @@ export function TaskDueDatePicker({
         <div className={`rounded-[inherit] p-4 ${pickerSurfaceClassName}`}>
           <div className="mb-4 flex items-center justify-between gap-3">
             <p className={`text-sm font-semibold ${currentTheme.text}`}>Choose a due date</p>
-            <UtilityIconButton
-              type="button"
-              size="sm"
-              emphasis="elevated"
-              onClick={() => onChange("")}
-              className={`${subtleActionButtonClassName} ${selectedDate ? "" : "pointer-events-none invisible"}`}
-              aria-hidden={!selectedDate}
-              tabIndex={selectedDate ? 0 : -1}
-            >
-              Clear
-            </UtilityIconButton>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <UtilityIconButton
+                  type="button"
+                  size="sm"
+                  emphasis="elevated"
+                  onClick={() => onChange("")}
+                  className={`${subtleActionButtonClassName} ${selectedDate ? "" : "pointer-events-none invisible"}`}
+                  aria-hidden={!selectedDate}
+                  tabIndex={selectedDate ? 0 : -1}
+                >
+                  Clear
+                </UtilityIconButton>
+              </TooltipTrigger>
+              <TooltipContent side="left" sideOffset={8}>Clear due date</TooltipContent>
+            </Tooltip>
           </div>
 
           <div className="mb-4 flex flex-wrap justify-center gap-2">
@@ -113,20 +126,26 @@ export function TaskDueDatePicker({
               const isSelected = value === presetValue;
 
               return (
-                <UtilityIconButton
-                  key={preset.label}
-                  type="button"
-                  size="sm"
-                  emphasis="elevated"
-                  onClick={() => onChange(presetValue)}
-                  className={
-                    isSelected
-                      ? selectedActionButtonClassName
-                      : subtleActionButtonClassName
-                  }
-                >
-                  {preset.label}
-                </UtilityIconButton>
+                <Tooltip key={preset.label}>
+                  <TooltipTrigger asChild>
+                    <UtilityIconButton
+                      type="button"
+                      size="sm"
+                      emphasis="elevated"
+                      onClick={() => onChange(presetValue)}
+                      className={
+                        isSelected
+                          ? selectedActionButtonClassName
+                          : subtleActionButtonClassName
+                      }
+                    >
+                      {preset.label}
+                    </UtilityIconButton>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={8}>
+                    {isSelected ? `${preset.label} selected` : `Set due date to ${preset.label.toLowerCase()}`}
+                  </TooltipContent>
+                </Tooltip>
               );
             })}
           </div>

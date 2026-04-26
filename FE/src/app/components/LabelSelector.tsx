@@ -67,28 +67,35 @@ export function LabelSelector({
       </div>
 
       <Popover.Root open={isOpen} onOpenChange={setIsOpen}>
-        <Popover.Trigger asChild>
-          <button
-            type="button"
-            className={`flex min-h-[52px] w-full items-center justify-between gap-3 rounded-xl border-2 px-4 py-3 text-left outline-none transition-[color,box-shadow,border-color] duration-300 ease-out ${currentTheme.inputBorder} ${pickerSurfaceClassName} ${currentTheme.text} hover:${currentTheme.borderHover} hover:ring-1 hover:ring-black/5 dark:hover:ring-white/10 focus-visible:outline-none focus-visible:border-transparent focus-visible:ring-2 ${currentTheme.focus} data-[state=open]:border-transparent data-[state=open]:ring-2 ${currentTheme.ring}`}
-          >
-            <span className="flex min-w-0 items-center gap-2">
-              <Tag
-                className={`h-4 w-4 shrink-0 ${
-                  selectedLabels.length > 0 ? currentTheme.primaryText : currentTheme.textMuted
-                }`}
-              />
-              <span
-                className={`truncate text-sm font-normal ${
-                  selectedLabels.length === 0 ? currentTheme.textMuted : currentTheme.text
-                }`}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Popover.Trigger asChild>
+              <button
+                type="button"
+                className={`flex min-h-[52px] w-full items-center justify-between gap-3 rounded-xl border-2 px-4 py-3 text-left outline-none transition-[color,box-shadow,border-color] duration-300 ease-out ${currentTheme.inputBorder} ${pickerSurfaceClassName} ${currentTheme.text} hover:${currentTheme.borderHover} hover:ring-1 hover:ring-black/5 dark:hover:ring-white/10 focus-visible:outline-none focus-visible:border-transparent focus-visible:ring-2 ${currentTheme.focus} data-[state=open]:border-transparent data-[state=open]:ring-2 ${currentTheme.ring}`}
               >
-                {selectedLabels.length === 0 ? "Select labels" : `${selectedLabels.length} selected`}
-              </span>
-            </span>
-            <ChevronDown className={`h-4 w-4 shrink-0 ${currentTheme.textMuted}`} />
-          </button>
-        </Popover.Trigger>
+                <span className="flex min-w-0 items-center gap-2">
+                  <Tag
+                    className={`h-4 w-4 shrink-0 ${
+                      selectedLabels.length > 0 ? currentTheme.primaryText : currentTheme.textMuted
+                    }`}
+                  />
+                  <span
+                    className={`truncate text-sm font-normal ${
+                      selectedLabels.length === 0 ? currentTheme.textMuted : currentTheme.text
+                    }`}
+                  >
+                    {selectedLabels.length === 0 ? "Select labels" : `${selectedLabels.length} selected`}
+                  </span>
+                </span>
+                <ChevronDown className={`h-4 w-4 shrink-0 ${currentTheme.textMuted}`} />
+              </button>
+            </Popover.Trigger>
+          </TooltipTrigger>
+          <TooltipContent side="top" sideOffset={8}>
+            {selectedLabels.length === 0 ? "Open label selector" : "Change selected labels"}
+          </TooltipContent>
+        </Tooltip>
 
         <Popover.Portal>
         <Popover.Content
@@ -106,28 +113,34 @@ export function LabelSelector({
                   availableLabels.map((label) => {
                     const isSelected = selectedLabelIds.includes(label.id);
                     return (
-                      <button
-                        key={label.id}
-                        type="button"
-                        onClick={() => toggleLabel(label.id)}
-                        className={`relative flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                          isSelected
-                            ? `${currentTheme.primaryBg} ${currentTheme.primaryText} hover:brightness-[0.98] dark:hover:brightness-110`
-                            : `${pickerSurfaceClassName} ${currentTheme.textSecondary} hover:${currentTheme.primaryBg} hover:${currentTheme.primaryText} ${
-                              hasReachedSelectionLimit ? "opacity-90" : ""
-                            }`
-                        }`}
-                      >
-                        <span
-                          className={labelChipClassName}
-                          style={{ backgroundColor: label.color }}
-                        >
-                          <span className="truncate">{label.name}</span>
-                        </span>
-                        {isSelected && (
-                          <Check className="h-4 w-4 shrink-0" />
-                        )}
-                      </button>
+                      <Tooltip key={label.id}>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={() => toggleLabel(label.id)}
+                            className={`relative flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                              isSelected
+                                ? `${currentTheme.primaryBg} ${currentTheme.primaryText} hover:brightness-[0.98] dark:hover:brightness-110`
+                                : `${pickerSurfaceClassName} ${currentTheme.textSecondary} hover:${currentTheme.primaryBg} hover:${currentTheme.primaryText} ${
+                                  hasReachedSelectionLimit ? "opacity-90" : ""
+                                }`
+                            }`}
+                          >
+                            <span
+                              className={labelChipClassName}
+                              style={{ backgroundColor: label.color }}
+                            >
+                              <span className="truncate">{label.name}</span>
+                            </span>
+                            {isSelected && (
+                              <Check className="h-4 w-4 shrink-0" />
+                            )}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" sideOffset={8}>
+                          {isSelected ? `Remove ${label.name}` : `Add ${label.name}`}
+                        </TooltipContent>
+                      </Tooltip>
                     );
                   })
                 )}
@@ -140,15 +153,26 @@ export function LabelSelector({
       {selectedLabels.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-2">
           {selectedLabels.map((label) => (
-            <button
+            <div
               key={label.id}
-              onClick={() => removeLabel(label.id)}
-              className={`${labelChipClassName} gap-1.5 text-sm font-medium transition-opacity hover:opacity-80`}
+              className={`${labelChipClassName} gap-1.5 text-sm font-medium`}
               style={{ backgroundColor: label.color }}
             >
               <span>{label.name}</span>
-              <X className="h-3 w-3" />
-            </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => removeLabel(label.id)}
+                    className="inline-flex h-4 w-4 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/12 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55"
+                    aria-label={`Remove ${label.name}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={8}>Remove {label.name}</TooltipContent>
+              </Tooltip>
+            </div>
           ))}
         </div>
       )}

@@ -13,40 +13,48 @@ type UtilityIconButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   focusStyle?: "default" | "none";
 };
 
-export function UtilityIconButton({
-  size = "sm",
-  shape = "rounded",
-  emphasis = "default",
-  focusStyle = "default",
-  className,
-  type = "button",
-  disabled,
-  ...props
-}: UtilityIconButtonProps) {
-  const { theme, isDarkMode } = useTheme();
-  const currentTheme = getThemeColors(theme, isDarkMode);
+export const UtilityIconButton = React.forwardRef<HTMLButtonElement, UtilityIconButtonProps>(
+  (
+    {
+      size = "sm",
+      shape = "rounded",
+      emphasis = "default",
+      focusStyle = "default",
+      className,
+      type = "button",
+      disabled,
+      ...props
+    },
+    ref,
+  ) => {
+    const { theme, isDarkMode } = useTheme();
+    const currentTheme = getThemeColors(theme, isDarkMode);
 
-  return (
-    <button
-      type={type}
-      disabled={disabled}
-      className={cn(
-        focusStyle === "none"
-          ? "focus:outline-none"
-          : "focus:outline-none",
-        disabled
-          ? getDisabledIconActionButtonClassName(currentTheme, {
-              size,
-              shape,
-            })
-          : getIconActionButtonClassName(currentTheme, {
-              size,
-              shape,
-              emphasis,
-            }),
-        className,
-      )}
-      {...props}
-    />
-  );
-}
+    return (
+      <button
+        ref={ref}
+        type={type}
+        disabled={disabled}
+        className={cn(
+          focusStyle === "none"
+            ? "focus:outline-none"
+            : "focus:outline-none",
+          disabled
+            ? getDisabledIconActionButtonClassName(currentTheme, {
+                size,
+                shape,
+              })
+            : getIconActionButtonClassName(currentTheme, {
+                size,
+                shape,
+                emphasis,
+              }),
+          className,
+        )}
+        {...props}
+      />
+    );
+  },
+);
+
+UtilityIconButton.displayName = "UtilityIconButton";

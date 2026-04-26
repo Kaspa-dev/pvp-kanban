@@ -1,4 +1,5 @@
 import { TableHead } from "./ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { cn } from "./ui/utils";
 
 type SortDirection = "asc" | "desc" | null;
@@ -90,19 +91,25 @@ export function TaskIndexHeaderCell({
       )}
     >
       {isSortable ? (
-        <button
-          type="button"
-          onClick={onSort}
-          className={cn(
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={onSort}
+              className={cn(
             "font-ui-condensed inline-flex w-full items-center gap-2 text-[0.95rem] font-semibold leading-none tracking-[0.015em] transition-colors focus-visible:outline-none focus-visible:ring-0",
             justifyClassMap[align],
             textClassName,
+            shouldShowSortGlyph && activeTextClassName,
             buttonHoverClassName,
           )}
-          aria-label={`Sort by ${label}`}
-        >
-          {content}
-        </button>
+              aria-label={`Sort by ${label}`}
+            >
+              {content}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top" sideOffset={8}>Sort by {label}</TooltipContent>
+        </Tooltip>
       ) : (
         <span
           className={cn(

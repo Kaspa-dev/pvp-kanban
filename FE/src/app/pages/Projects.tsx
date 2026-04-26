@@ -929,88 +929,95 @@ export function Projects() {
                       </UtilityIconButton>
                     </div>
 
-                    <button onClick={() => handleSelectBoard(board.id)} className="w-full text-left">
-                      <div>
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex items-center gap-3">
-                            <BoardLogo
-                              iconKey={board.logoIconKey}
-                              colorKey={board.logoColorKey}
-                              size="md"
-                              className="group-hover:scale-110 transition-transform duration-300 shadow-md"
-                            />
-                          </div>
-                          <ArrowRight
-                            className={`w-5 h-5 ${currentTheme.textMuted} group-hover:${currentTheme.primaryText} transition-all duration-300 group-hover:translate-x-1 group-hover:opacity-0`}
-                          />
-                        </div>
-
-                        <OverflowTooltip
-                          as="h3"
-                          text={board.name}
-                          className={`mb-2 text-xl font-bold ${currentTheme.text} truncate`}
-                          align="start"
-                          delayDuration={PROJECTS_TOOLTIP_DELAY}
-                        />
-                        <OverflowTooltip
-                          as="p"
-                          text={board.description || "No description"}
-                          className={`mb-4 min-h-[3.75rem] overflow-hidden break-all text-sm ${currentTheme.textMuted} opacity-90`}
-                          style={{
-                            display: "-webkit-box",
-                            WebkitLineClamp: 3,
-                            WebkitBoxOrient: "vertical",
-                            overflowWrap: "anywhere",
-                            wordBreak: "break-word",
-                          }}
-                          tooltipClassName="max-w-md whitespace-normal break-words"
-                          align="start"
-                          delayDuration={PROJECTS_TOOLTIP_DELAY}
-                        />
-
-                        <div className="mt-4 flex flex-wrap items-center gap-2">
-                          <Tooltip delayDuration={PROJECTS_TOOLTIP_DELAY}>
-                            <TooltipTrigger asChild>
-                              <div
-                                className={`inline-flex h-8 items-center gap-2 rounded-full border px-3 text-sm font-medium transition-all ${
-                                  board.memberCount > 0
-                                    ? `${currentTheme.bgSecondary} ${currentTheme.textSecondary} ${currentTheme.border} group-hover:${currentTheme.borderHover}`
-                                    : `${currentTheme.bgSecondary} ${currentTheme.textMuted} ${currentTheme.border}`
-                                }`}
-                                aria-label={`${board.memberCount} ${board.memberCount === 1 ? "member" : "members"}`}
-                              >
-                                <Users className="h-4 w-4" />
-                                <span>
-                                  {board.memberCount} {board.memberCount === 1 ? "member" : "members"}
-                                </span>
+                    <Tooltip delayDuration={PROJECTS_TOOLTIP_DELAY}>
+                      <TooltipTrigger asChild>
+                        <button onClick={() => handleSelectBoard(board.id)} className="w-full text-left">
+                          <div>
+                            <div className="flex items-start justify-between mb-4">
+                              <div className="flex items-center gap-3">
+                                <BoardLogo
+                                  iconKey={board.logoIconKey}
+                                  colorKey={board.logoColorKey}
+                                  size="md"
+                                  className="group-hover:scale-110 transition-transform duration-300 shadow-md"
+                                />
                               </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" sideOffset={8}>
-                              {board.memberCount === 0
-                                ? "Only you are on this project right now"
-                                : `${board.memberCount} ${board.memberCount === 1 ? "member" : "members"} on this project`}
-                            </TooltipContent>
-                          </Tooltip>
+                              <ArrowRight
+                                className={`w-5 h-5 ${currentTheme.textMuted} group-hover:${currentTheme.primaryText} transition-all duration-300 group-hover:translate-x-1 group-hover:opacity-0`}
+                              />
+                            </div>
 
-                          {board.isFavorite && (
-                            <Tooltip delayDuration={PROJECTS_TOOLTIP_DELAY}>
-                              <TooltipTrigger asChild>
-                                <div
-                                  className={`inline-flex h-8 items-center gap-2 rounded-full border px-3 text-sm font-medium ${currentTheme.bgSecondary} ${currentTheme.textSecondary} ${currentTheme.border}`}
-                                  aria-label="Favorited board"
-                                >
-                                  <Star className={`h-4 w-4 ${currentTheme.primaryText} fill-current`} />
-                                  <span>Favorite</span>
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" sideOffset={8}>
-                                This project is in your favorites
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
-                        </div>
-                      </div>
-                    </button>
+                            <OverflowTooltip
+                              as="h3"
+                              text={board.name}
+                              className={`mb-2 text-xl font-bold ${currentTheme.text} truncate`}
+                              align="start"
+                              delayDuration={PROJECTS_TOOLTIP_DELAY}
+                            />
+                            <OverflowTooltip
+                              as="p"
+                              text={board.description || "No description"}
+                              className={`mb-4 min-h-[3.75rem] overflow-hidden break-all text-sm ${currentTheme.textMuted} opacity-90`}
+                              style={{
+                                display: "-webkit-box",
+                                WebkitLineClamp: 3,
+                                WebkitBoxOrient: "vertical",
+                                overflowWrap: "anywhere",
+                                wordBreak: "break-word",
+                              }}
+                              tooltipClassName="max-w-md whitespace-normal break-words"
+                              align="start"
+                              delayDuration={PROJECTS_TOOLTIP_DELAY}
+                            />
+
+                            <div className="mt-4 flex flex-wrap items-center gap-2">
+                              <Tooltip delayDuration={PROJECTS_TOOLTIP_DELAY}>
+                                <TooltipTrigger asChild>
+                                  <div
+                                    className={`inline-flex h-8 items-center gap-2 rounded-full border px-3 text-sm font-medium transition-all ${
+                                      board.memberCount > 0
+                                        ? `${currentTheme.bgSecondary} ${currentTheme.textSecondary} ${currentTheme.border} group-hover:${currentTheme.borderHover}`
+                                        : `${currentTheme.bgSecondary} ${currentTheme.textMuted} ${currentTheme.border}`
+                                    }`}
+                                    aria-label={`${board.memberCount} ${board.memberCount === 1 ? "member" : "members"}`}
+                                  >
+                                    <Users className="h-4 w-4" />
+                                    <span>
+                                      {board.memberCount} {board.memberCount === 1 ? "member" : "members"}
+                                    </span>
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" sideOffset={8}>
+                                  {board.memberCount === 0
+                                    ? "Only you are on this project right now"
+                                    : `${board.memberCount} ${board.memberCount === 1 ? "member" : "members"} on this project`}
+                                </TooltipContent>
+                              </Tooltip>
+
+                              {board.isFavorite && (
+                                <Tooltip delayDuration={PROJECTS_TOOLTIP_DELAY}>
+                                  <TooltipTrigger asChild>
+                                    <div
+                                      className={`inline-flex h-8 items-center gap-2 rounded-full border px-3 text-sm font-medium ${currentTheme.bgSecondary} ${currentTheme.textSecondary} ${currentTheme.border}`}
+                                      aria-label="Favorited board"
+                                    >
+                                      <Star className={`h-4 w-4 ${currentTheme.primaryText} fill-current`} />
+                                      <span>Favorite</span>
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" sideOffset={8}>
+                                    This project is in your favorites
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" sideOffset={10}>
+                        Open this project
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
                 );
               })}

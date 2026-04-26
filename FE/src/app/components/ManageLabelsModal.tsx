@@ -470,20 +470,30 @@ export function ManageLabelsModal({
       contentClassName="flex h-full min-h-0 flex-col px-1 py-1"
       footer={(
         <>
-          <button
-            type="button"
-            onClick={onClose}
-            className={`flex-1 px-5 py-3 font-semibold ${secondaryActionButtonClassName}`}
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isSaving}
-            className={`flex-1 px-5 py-3 font-semibold ${primaryActionButtonClassName}`}
-          >
-            {isSaving ? "Saving..." : "Save Labels"}
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onClose}
+                className={`flex-1 px-5 py-3 font-semibold ${secondaryActionButtonClassName}`}
+              >
+                Cancel
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={8}>Close without saving label changes</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="submit"
+                disabled={isSaving}
+                className={`flex-1 px-5 py-3 font-semibold ${primaryActionButtonClassName}`}
+              >
+                {isSaving ? "Saving..." : "Save Labels"}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={8}>Save label changes</TooltipContent>
+          </Tooltip>
         </>
       )}
     >
@@ -551,18 +561,23 @@ export function ManageLabelsModal({
               ) : null}
             </div>
 
-            <button
-              type="button"
-              onClick={handleAddLabel}
-              disabled={!canAddLabel}
-              className={addLabelButtonClassName}
-            >
-              <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_15%,rgba(255,255,255,0.24)_50%,transparent_85%)] opacity-0 transition-opacity duration-300 group-hover/add-label:opacity-100" />
-              <span className="relative z-10 inline-flex items-center gap-2 leading-none">
-                <Plus className="h-4.5 w-4.5 will-change-transform transition-transform duration-200 group-hover/add-label:rotate-90 group-hover/add-label:scale-110" />
-                <span className="leading-none">Add Label</span>
-              </span>
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={handleAddLabel}
+                  disabled={!canAddLabel}
+                  className={addLabelButtonClassName}
+                >
+                  <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_15%,rgba(255,255,255,0.24)_50%,transparent_85%)] opacity-0 transition-opacity duration-300 group-hover/add-label:opacity-100" />
+                  <span className="relative z-10 inline-flex items-center gap-2 leading-none">
+                    <Plus className="h-4.5 w-4.5 will-change-transform transition-transform duration-200 group-hover/add-label:rotate-90 group-hover/add-label:scale-110" />
+                    <span className="leading-none">Add Label</span>
+                  </span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={8}>Add a new label draft</TooltipContent>
+            </Tooltip>
           </div>
 
           <div className="pt-2" aria-hidden="true">
@@ -570,17 +585,24 @@ export function ManageLabelsModal({
           </div>
 
           <div className="flex justify-end pt-1">
-            <UtilityIconButton
-              type="button"
-              size="sm"
-              emphasis="elevated"
-              onClick={toggleAllEditableRows}
-              disabled={collapsibleDraftIds.length === 0}
-              className={subtleUtilityButtonClassName}
-              aria-label={allEditableRowsCollapsed ? "Expand all labels" : "Collapse all labels"}
-            >
-              {allEditableRowsCollapsed ? "Expand all" : "Collapse all"}
-            </UtilityIconButton>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <UtilityIconButton
+                  type="button"
+                  size="sm"
+                  emphasis="elevated"
+                  onClick={toggleAllEditableRows}
+                  disabled={collapsibleDraftIds.length === 0}
+                  className={subtleUtilityButtonClassName}
+                  aria-label={allEditableRowsCollapsed ? "Expand all labels" : "Collapse all labels"}
+                >
+                  {allEditableRowsCollapsed ? "Expand all" : "Collapse all"}
+                </UtilityIconButton>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={8}>
+                {allEditableRowsCollapsed ? "Expand all valid label rows" : "Collapse all valid label rows"}
+              </TooltipContent>
+            </Tooltip>
           </div>
         </div>
 
@@ -792,17 +814,23 @@ export function ManageLabelsModal({
                             });
 
                             return (
-                              <button
-                                key={color}
-                                type="button"
-                                onClick={() => updateDraft(draft.tempId, { color })}
-                                className={`flex h-11 w-11 items-center justify-center rounded-full ${colorChipClassName} ${isSelected ? selectedColorChipClasses : ""}`}
-                                style={{ backgroundColor: color }}
-                                aria-label={`Choose label color ${color}`}
-                                aria-pressed={isSelected}
-                              >
-                                {isSelected ? <Check className="h-4 w-4 text-white" aria-hidden="true" /> : null}
-                              </button>
+                              <Tooltip key={color}>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateDraft(draft.tempId, { color })}
+                                    className={`flex h-11 w-11 items-center justify-center rounded-full ${colorChipClassName} ${isSelected ? selectedColorChipClasses : ""}`}
+                                    style={{ backgroundColor: color }}
+                                    aria-label={`Choose label color ${color}`}
+                                    aria-pressed={isSelected}
+                                  >
+                                    {isSelected ? <Check className="h-4 w-4 text-white" aria-hidden="true" /> : null}
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" sideOffset={8}>
+                                  {isSelected ? "Selected label color" : "Use this label color"}
+                                </TooltipContent>
+                              </Tooltip>
                             );
                           })}
                         </div>

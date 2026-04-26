@@ -8,6 +8,7 @@ import {
 } from "../utils/boardIdentity";
 import { BoardLogo } from "./BoardLogo";
 import { getInputLikeControlClassName } from "./inputLikeControlStyles";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 interface BoardIdentityPickerProps {
   iconKey: BoardLogoIconKey;
@@ -44,19 +45,25 @@ export function BoardIdentityPicker({
             });
 
             return (
-              <button
-                key={option.key}
-                type="button"
-                onClick={() => onIconChange(option.key)}
-                aria-pressed={isSelected}
-                aria-label={`Choose ${option.label} icon`}
-                className={`flex flex-col items-center gap-2 px-3 py-3 ${iconCardClassName}`}
-              >
-                <BoardLogo iconKey={option.key} colorKey={colorKey} size="xs" />
-                <span className={`text-[11px] font-medium ${optionTextClassName}`}>
-                  {option.label}
-                </span>
-              </button>
+              <Tooltip key={option.key}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => onIconChange(option.key)}
+                    aria-pressed={isSelected}
+                    aria-label={`Choose ${option.label} icon`}
+                    className={`flex flex-col items-center gap-2 px-3 py-3 ${iconCardClassName}`}
+                  >
+                    <BoardLogo iconKey={option.key} colorKey={colorKey} size="xs" />
+                    <span className={`text-[11px] font-medium ${optionTextClassName}`}>
+                      {option.label}
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={8}>
+                  {isSelected ? `${option.label} icon selected` : `Use ${option.label} as the project icon`}
+                </TooltipContent>
+              </Tooltip>
             );
           })}
         </div>
@@ -76,17 +83,23 @@ export function BoardIdentityPicker({
             });
 
             return (
-              <button
-                key={option.key}
-                type="button"
-                onClick={() => onColorChange(option.key)}
-                aria-pressed={isSelected}
-                aria-label={`Choose ${option.label} color`}
-                className={`flex h-11 w-11 items-center justify-center rounded-full ${colorChipClassName} ${isSelected ? selectedColorChipClasses : ""}`}
-                style={{ backgroundColor: option.hex }}
-              >
-                {isSelected && <Check className="h-4 w-4 text-white" aria-hidden="true" />}
-              </button>
+              <Tooltip key={option.key}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => onColorChange(option.key)}
+                    aria-pressed={isSelected}
+                    aria-label={`Choose ${option.label} color`}
+                    className={`flex h-11 w-11 items-center justify-center rounded-full ${colorChipClassName} ${isSelected ? selectedColorChipClasses : ""}`}
+                    style={{ backgroundColor: option.hex }}
+                  >
+                    {isSelected && <Check className="h-4 w-4 text-white" aria-hidden="true" />}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={8}>
+                  {isSelected ? `${option.label} color selected` : `Use ${option.label} as the project color`}
+                </TooltipContent>
+              </Tooltip>
             );
           })}
         </div>

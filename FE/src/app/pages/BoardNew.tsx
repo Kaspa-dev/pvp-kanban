@@ -391,13 +391,22 @@ export function Board() {
     }));
   };
 
-  const refreshCurrentView = (mode: "hard" | "soft" = "soft") => {
+  const pinRefreshIndicator = () => {
     setIsRefreshIndicatorPinned(true);
     refreshIndicatorMinUntilRef.current = Date.now() + 120;
     if (refreshIndicatorTimeoutRef.current !== null) {
       window.clearTimeout(refreshIndicatorTimeoutRef.current);
       refreshIndicatorTimeoutRef.current = null;
     }
+  };
+
+  const triggerWorkspaceRefetch = (mode: "hard" | "soft" = "soft") => {
+    pinRefreshIndicator();
+    refreshWorkspace(mode);
+  };
+
+  const refreshCurrentView = (mode: "hard" | "soft" = "soft") => {
+    pinRefreshIndicator();
 
     if (view === "list" || view === "backlog") {
       setTaskIndexRefreshToken((current) => current + 1);
@@ -472,6 +481,7 @@ export function Board() {
 
     setTaskInState(updatedTask);
     await refreshProgress();
+    triggerWorkspaceRefetch("soft");
   };
 
   const stagingCards = useMemo(
@@ -697,6 +707,7 @@ export function Board() {
 
       setTaskInState(createdTask);
       await refreshProgress();
+      triggerWorkspaceRefetch("soft");
       showSuccessToast("Task created.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to create the task right now.";
@@ -745,10 +756,12 @@ export function Board() {
       await deleteBoardTask(numericBoardId, deleteDialog.cardId);
       removeTaskFromState(deleteDialog.cardId);
       setDeleteDialog({ isOpen: false, cardId: null, title: "" });
+      showSuccessToast("Task deleted.");
       await refreshProgress();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to delete the task right now.";
       setActionError(message);
+      showErrorToast(message);
     }
   };
 
@@ -812,6 +825,7 @@ export function Board() {
       setActionError("");
       const updatedTask = await addTaskToQueue(numericBoardId, cardId);
       setTaskInState(updatedTask);
+      triggerWorkspaceRefetch("soft");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to add the task to the queue right now.";
       setActionError(message);
@@ -827,6 +841,7 @@ export function Board() {
       setActionError("");
       const updatedTask = await removeTaskFromQueue(numericBoardId, cardId);
       setTaskInState(updatedTask);
+      triggerWorkspaceRefetch("soft");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to remove the task from the queue right now.";
       setActionError(message);
@@ -843,6 +858,7 @@ export function Board() {
       const startedTasks = await startBoardQueue(numericBoardId);
       startedTasks.forEach(setTaskInState);
       await refreshProgress();
+      triggerWorkspaceRefetch("soft");
       setView("board");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to start the queue right now.";
@@ -1240,14 +1256,21 @@ export function Board() {
                               The board is ready. Move work out of Staging to start filling these columns.
                             </p>
                           </div>
-                          <button
-                            onClick={() => setView("staging")}
-                            data-coachmark="board-empty-state-cta"
-                            className={`inline-flex items-center gap-2 self-start rounded-lg bg-gradient-to-r px-4 py-2.5 text-sm font-semibold text-white transition-all hover:scale-[1.02] hover:shadow-lg md:self-auto ${currentTheme.primary}`}
-                          >
-                            Go to Staging
-                            <ArrowRight className="h-4 w-4" />
-                          </button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                onClick={() => setView("staging")}
+                                data-coachmark="board-empty-state-cta"
+                                className={`inline-flex items-center gap-2 self-start rounded-lg bg-gradient-to-r px-4 py-2.5 text-sm font-semibold text-white transition-all hover:scale-[1.02] hover:shadow-lg md:self-auto ${currentTheme.primary}`}
+                              >
+                                Go to Staging
+                                <ArrowRight className="h-4 w-4" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" sideOffset={8}>
+                              Open staging to prepare work for the board
+                            </TooltipContent>
+                          </Tooltip>
                         </div>
                       </div>
                     )}
@@ -1278,14 +1301,21 @@ export function Board() {
                               List view is ready. Move work out of Staging to populate the table.
                             </p>
                           </div>
-                          <button
-                            onClick={() => setView("staging")}
-                            data-coachmark="list-empty-state-cta"
-                            className={`inline-flex items-center gap-2 self-start rounded-lg bg-gradient-to-r px-4 py-2.5 text-sm font-semibold text-white transition-all hover:scale-[1.02] hover:shadow-lg md:self-auto ${currentTheme.primary}`}
-                          >
-                            Go to Staging
-                            <ArrowRight className="h-4 w-4" />
-                          </button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                onClick={() => setView("staging")}
+                                data-coachmark="list-empty-state-cta"
+                                className={`inline-flex items-center gap-2 self-start rounded-lg bg-gradient-to-r px-4 py-2.5 text-sm font-semibold text-white transition-all hover:scale-[1.02] hover:shadow-lg md:self-auto ${currentTheme.primary}`}
+                              >
+                                Go to Staging
+                                <ArrowRight className="h-4 w-4" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" sideOffset={8}>
+                              Open staging to prepare work for the board
+                            </TooltipContent>
+                          </Tooltip>
                         </div>
                       </div>
                     </div>

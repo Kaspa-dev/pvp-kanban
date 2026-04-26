@@ -177,14 +177,19 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
               </TooltipContent>
             </Tooltip>
           </div>
-          <UtilityIconButton
-            type="button"
-            size="md"
-            onClick={handleClose}
-            aria-label="Close create project modal"
-          >
-            <X className="w-5 h-5" />
-          </UtilityIconButton>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <UtilityIconButton
+                type="button"
+                size="md"
+                onClick={handleClose}
+                aria-label="Close create project modal"
+              >
+                <X className="w-5 h-5" />
+              </UtilityIconButton>
+            </TooltipTrigger>
+            <TooltipContent side="left" sideOffset={8}>Close create project modal</TooltipContent>
+          </Tooltip>
         </div>
 
         <div className="flex-1 min-h-0 overflow-hidden px-6 py-6">
@@ -383,21 +388,31 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
         </div>
 
         <div className={`flex gap-3 p-6 border-t-2 ${currentTheme.border} ${currentTheme.cardBg} rounded-b-2xl shrink-0`}>
-          <button
-            type="button"
-            onClick={handleClose}
-            className={`flex-1 px-5 py-3 font-semibold ${secondaryActionButtonClassName}`}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleCreate()}
-            disabled={isSubmitting}
-            className={`flex-1 px-5 py-3 font-semibold ${primaryActionButtonClassName}`}
-          >
-            {isSubmitting ? 'Creating...' : 'Create Project'}
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={handleClose}
+                className={`flex-1 px-5 py-3 font-semibold ${secondaryActionButtonClassName}`}
+              >
+                Cancel
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={8}>Close without creating the project</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => void handleCreate()}
+                disabled={isSubmitting}
+                className={`flex-1 px-5 py-3 font-semibold ${primaryActionButtonClassName}`}
+              >
+                {isSubmitting ? 'Creating...' : 'Create Project'}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={8}>Create this project</TooltipContent>
+          </Tooltip>
         </div>
       </div>
     </div>

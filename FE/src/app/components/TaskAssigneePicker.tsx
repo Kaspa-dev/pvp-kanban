@@ -5,6 +5,7 @@ import { searchBoardAssignees, TaskAssignee } from "../utils/cards";
 import { AppAvatar } from "./AppAvatar";
 import { UtilityIconButton } from "./UtilityIconButton";
 import { Popover, PopoverAnchor, PopoverContent } from "./ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 interface TaskAssigneePickerProps {
   id: string;
@@ -230,27 +231,37 @@ export function TaskAssigneePicker({
               </div>
 
               <div className="flex shrink-0 items-center gap-2">
-                <UtilityIconButton
-                  type="button"
-                  size="sm"
-                  emphasis="elevated"
-                  onClick={handleOpenSearch}
-                  className={subtleActionButtonClassName}
-                  aria-label="Change assignee"
-                >
-                  <PencilLine className="h-3.5 w-3.5" />
-                  Change
-                </UtilityIconButton>
-                <UtilityIconButton
-                  type="button"
-                  size="sm"
-                  emphasis="elevated"
-                  onClick={handleClear}
-                  className={subtleActionButtonClassName}
-                  aria-label="Clear selected assignee"
-                >
-                  Clear
-                </UtilityIconButton>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <UtilityIconButton
+                      type="button"
+                      size="sm"
+                      emphasis="elevated"
+                      onClick={handleOpenSearch}
+                      className={subtleActionButtonClassName}
+                      aria-label="Change assignee"
+                    >
+                      <PencilLine className="h-3.5 w-3.5" />
+                      Change
+                    </UtilityIconButton>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={8}>Change assignee</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <UtilityIconButton
+                      type="button"
+                      size="sm"
+                      emphasis="elevated"
+                      onClick={handleClear}
+                      className={subtleActionButtonClassName}
+                      aria-label="Clear selected assignee"
+                    >
+                      Clear
+                    </UtilityIconButton>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={8}>Clear assignee</TooltipContent>
+                </Tooltip>
               </div>
             </div>
           ) : (
@@ -317,38 +328,44 @@ export function TaskAssigneePicker({
                 const isHighlighted = index === highlightedIndex;
 
                 return (
-                  <button
-                    key={assignee.userId}
-                    type="button"
-                    role="option"
-                    aria-selected={isSelected}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onMouseEnter={() => setHighlightedIndex(index)}
-                    onClick={() => handleSelectAssignee(assignee)}
-                    className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors ${
-                      isHighlighted
-                        ? `${currentTheme.primaryBg} ${currentTheme.primaryText}`
-                        : `${pickerSurfaceClassName} ${currentTheme.text} ${isDarkMode ? "hover:bg-zinc-800" : "hover:bg-gray-100"}`
-                    }`}
-                  >
-                    <AppAvatar
-                      username={assignee.username || assignee.displayName}
-                      fullName={assignee.displayName}
-                      size={36}
-                      className="mt-0.5 shrink-0 shadow-sm"
-                      interactive={false}
-                      enableBlink={false}
-                      aria-hidden="true"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold">{assignee.displayName}</p>
-                      <p className={`truncate text-xs ${isHighlighted ? "opacity-80" : currentTheme.textMuted}`}>
-                        @{assignee.username}
-                        {assignee.email ? ` | ${assignee.email}` : ""}
-                      </p>
-                    </div>
-                    {isSelected ? <span className="sr-only">Selected assignee</span> : null}
-                  </button>
+                  <Tooltip key={assignee.userId}>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={isSelected}
+                        onMouseDown={(event) => event.preventDefault()}
+                        onMouseEnter={() => setHighlightedIndex(index)}
+                        onClick={() => handleSelectAssignee(assignee)}
+                        className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors ${
+                          isHighlighted
+                            ? `${currentTheme.primaryBg} ${currentTheme.primaryText}`
+                            : `${pickerSurfaceClassName} ${currentTheme.text} ${isDarkMode ? "hover:bg-zinc-800" : "hover:bg-gray-100"}`
+                        }`}
+                      >
+                        <AppAvatar
+                          username={assignee.username || assignee.displayName}
+                          fullName={assignee.displayName}
+                          size={36}
+                          className="mt-0.5 shrink-0 shadow-sm"
+                          interactive={false}
+                          enableBlink={false}
+                          aria-hidden="true"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-semibold">{assignee.displayName}</p>
+                          <p className={`truncate text-xs ${isHighlighted ? "opacity-80" : currentTheme.textMuted}`}>
+                            @{assignee.username}
+                            {assignee.email ? ` | ${assignee.email}` : ""}
+                          </p>
+                        </div>
+                        {isSelected ? <span className="sr-only">Selected assignee</span> : null}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" sideOffset={8}>
+                      {isSelected ? `${assignee.displayName} is selected` : `Assign to ${assignee.displayName}`}
+                    </TooltipContent>
+                  </Tooltip>
                 );
               })}
             </div>

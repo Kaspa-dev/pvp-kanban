@@ -3,6 +3,8 @@ import * as Popover from "@radix-ui/react-popover";
 import {
   Bug,
   CalendarDays,
+  Check,
+  ChevronDown,
   CheckSquare,
   Edit,
   FileText,
@@ -13,6 +15,7 @@ import {
   Tag,
   Trash2,
   Undo2,
+  X,
   Zap,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
@@ -44,8 +47,10 @@ import { TaskLabelSummary } from "./TaskLabelSummary";
 import { TaskIndexHeaderCell } from "./TaskIndexHeaderCell";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import { getIconActionButtonClassName } from "./iconActionButtonStyles";
+import { getNativeInputFieldClassName } from "./inputLikeControlStyles";
 import { WorkspaceClearButton, WorkspaceFilterChip } from "./WorkspaceFilterChip";
 import { WorkspacePaginationFooter } from "./WorkspacePaginationFooter";
+import { getWorkspaceControlSurfaceClassName } from "../utils/workspaceSurfaceStyles";
 
 type ListCard = Card & {
   priority?: Priority;
@@ -426,7 +431,16 @@ export function ListView({
   };
 
   const toolbarLabelClassName = `text-[11px] font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`;
-  const toolbarControlClassName = `h-11 rounded-xl border ${currentTheme.inputBorder} ${currentTheme.inputBg} ${currentTheme.text}`;
+  const listSearchInputClassName = getNativeInputFieldClassName(currentTheme, {
+    surfaceClassName: getWorkspaceControlSurfaceClassName(),
+  });
+  const labelFilterTriggerSurfaceClassName = getWorkspaceControlSurfaceClassName();
+  const labelFilterPopoverInnerSurfaceClassName = isDarkMode ? currentTheme.inputBg : "bg-input-background";
+  const labelFilterPopoverSurfaceClassName = isDarkMode ? "!bg-zinc-950" : "!bg-input-background";
+  const labelFilterShadowClassName = isDarkMode
+    ? "shadow-[0_20px_48px_rgba(0,0,0,0.58)]"
+    : "shadow-[0_20px_44px_rgba(15,23,42,0.22)]";
+  const labelFilterChipClassName = "inline-flex min-w-0 max-w-[12rem] items-center rounded-full px-3 py-1.5 text-xs font-semibold text-white shadow-sm";
   const primaryActionButtonClassName = `group relative inline-flex items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r font-bold text-white shadow-lg transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} ${currentTheme.primary}`;
   const iconActionButtonClassName = getIconActionButtonClassName(currentTheme);
   const rowTextActionButtonClassName = `inline-flex h-8 items-center justify-center rounded-lg border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-0 ${currentTheme.focus} ${currentTheme.border} ${currentTheme.textSecondary} ${isDarkMode ? "bg-white/[0.03] hover:bg-white/[0.06]" : "bg-slate-50 hover:bg-white"} hover:${currentTheme.text}`;
@@ -477,7 +491,7 @@ export function ListView({
         </div>
 
         <div
-          className={`mt-6 border-y ${currentTheme.border} py-4`}
+          className={`mt-6 border-t ${currentTheme.border} py-4`}
           data-coachmark={isBacklogMode ? "backlog-filters" : "list-filters"}
         >
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end">
@@ -492,7 +506,7 @@ export function ListView({
                       value={searchInput}
                       onChange={(event) => setSearchInput(event.target.value)}
                       placeholder="Search by task title or label"
-                      className={`${toolbarControlClassName} w-full pl-10 pr-4 text-sm placeholder:${currentTheme.textMuted} focus:outline-none focus:ring-2`}
+                      className={`h-11 w-full pl-10 pr-4 text-sm placeholder:${currentTheme.textMuted} ${listSearchInputClassName}`}
                     />
                   </div>
                 </TooltipTrigger>
@@ -557,15 +571,15 @@ export function ListView({
                       <Popover.Trigger asChild>
                         <button
                           type="button"
-                          className={`${toolbarControlClassName} flex w-full items-center justify-between px-3 text-left text-sm`}
+                          className={`flex h-11 w-full items-center justify-between gap-3 rounded-xl border-2 px-4 text-left text-sm outline-none transition-[color,box-shadow,border-color] duration-300 ease-out ${currentTheme.inputBorder} ${labelFilterTriggerSurfaceClassName} ${currentTheme.text} hover:${currentTheme.borderHover} hover:ring-1 hover:ring-black/5 dark:hover:ring-white/10 focus-visible:outline-none focus-visible:border-transparent focus-visible:ring-2 ${currentTheme.focus} data-[state=open]:border-transparent data-[state=open]:ring-2 ${currentTheme.ring}`}
                         >
                           <span className="flex min-w-0 items-center gap-2">
                             <Tag className={`h-4 w-4 shrink-0 ${filters.selectedLabelIds.length > 0 ? currentTheme.primaryText : currentTheme.textMuted}`} />
-                            <span className="truncate">
+                            <span className={`truncate ${filters.selectedLabelIds.length === 0 ? currentTheme.textMuted : currentTheme.text}`}>
                               {filters.selectedLabelIds.length > 0 ? `${filters.selectedLabelIds.length} labels selected` : "Filter by labels"}
                             </span>
                           </span>
-                          <span className={`text-xs ${currentTheme.textMuted}`}>Labels</span>
+                          <ChevronDown className={`h-4 w-4 shrink-0 ${currentTheme.textMuted}`} />
                         </button>
                       </Popover.Trigger>
                     </TooltipTrigger>
@@ -575,49 +589,47 @@ export function ListView({
                   </Tooltip>
                   <Popover.Portal>
                     <Popover.Content
-                      sideOffset={10}
+                      sideOffset={8}
                       align="start"
-                      className={`z-50 w-72 rounded-xl border p-3 shadow-lg ${currentTheme.cardBg} ${currentTheme.border}`}
+                      className={`z-50 w-72 overflow-hidden rounded-2xl border-2 ${currentTheme.inputBorder} ${labelFilterPopoverSurfaceClassName} p-1 ${labelFilterShadowClassName} animate-in fade-in zoom-in-95 duration-200`}
                     >
-                      <div className="mb-3 px-1">
-                        <h4 className={toolbarLabelClassName}>Filter by labels</h4>
-                      </div>
-
-                      <div className={`border ${currentTheme.border}`}>
-                        {labels.length === 0 ? (
-                          <div className={`px-4 py-4 text-sm ${currentTheme.textMuted}`}>
-                            No labels available yet.
-                          </div>
-                        ) : (
-                          <CustomScrollArea viewportClassName="max-h-64 py-1 pr-1">
-                            <div className="space-y-1">
-                              {labels.map((label) => {
-                                const isSelected = filters.selectedLabelIds.includes(label.id);
-
-                                return (
-                                  <button
-                                    key={label.id}
-                                    type="button"
-                                    onClick={() => toggleSelectedLabelId(label.id)}
-                                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${
-                                      isSelected
-                                        ? `${currentTheme.primaryBg} ${currentTheme.primaryText}`
-                                        : `${currentTheme.text} ${isDarkMode ? "hover:bg-zinc-800" : "hover:bg-gray-50"}`
-                                    }`}
-                                  >
-                                    <span className="h-3.5 w-3.5 shrink-0 rounded-full" style={{ backgroundColor: label.color }} />
-                                    <OverflowTooltip
-                                      text={label.name}
-                                      className="min-w-0 flex-1 truncate text-sm font-medium"
-                                      tooltipClassName="max-w-none whitespace-nowrap"
-                                    />
-                                  </button>
-                                );
-                              })}
+                      <CustomScrollArea className={`overflow-hidden rounded-lg ${labelFilterPopoverInnerSurfaceClassName}`} viewportClassName={`max-h-64 ${labelFilterPopoverInnerSurfaceClassName}`}>
+                        <div className={`space-y-1 pr-4 ${labelFilterPopoverInnerSurfaceClassName}`}>
+                          {labels.length === 0 ? (
+                            <div className={`px-3 py-4 text-center text-sm italic ${labelFilterPopoverInnerSurfaceClassName} ${currentTheme.textMuted}`}>
+                              No labels available yet.
                             </div>
-                          </CustomScrollArea>
-                        )}
-                      </div>
+                          ) : (
+                            labels.map((label) => {
+                              const isSelected = filters.selectedLabelIds.includes(label.id);
+
+                              return (
+                                <Tooltip key={label.id}>
+                                  <TooltipTrigger asChild>
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleSelectedLabelId(label.id)}
+                                        className={`relative flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                                        isSelected
+                                          ? `${currentTheme.primaryBg} ${currentTheme.primaryText} hover:brightness-[0.98] dark:hover:brightness-110`
+                                          : `${labelFilterPopoverInnerSurfaceClassName} ${currentTheme.textSecondary} hover:${currentTheme.primaryBg} hover:${currentTheme.primaryText}`
+                                      }`}
+                                    >
+                                      <span className={labelFilterChipClassName} style={{ backgroundColor: label.color }}>
+                                        <span className="truncate">{label.name}</span>
+                                      </span>
+                                      {isSelected && <Check className="h-4 w-4 shrink-0" />}
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="right" sideOffset={8}>
+                                    {isSelected ? `Remove ${label.name}` : `Add ${label.name}`}
+                                  </TooltipContent>
+                                </Tooltip>
+                              );
+                            })
+                          )}
+                        </div>
+                      </CustomScrollArea>
                     </Popover.Content>
                   </Popover.Portal>
                 </Popover.Root>
@@ -634,8 +646,8 @@ export function ListView({
             </div>
           </div>
 
-          {filters.selectedLabelIds.length > 0 && (
-            <div className={`mt-4 flex flex-wrap items-center gap-2 border-t pt-4 ${currentTheme.border}`}>
+          <div className={`mt-4 min-h-11 border-t pt-4 ${currentTheme.border}`}>
+            <div className="flex flex-wrap items-center gap-2">
               {filters.selectedLabelIds.map((labelId) => {
                 const label = labels.find((item) => item.id === labelId);
                 if (!label) {
@@ -643,10 +655,8 @@ export function ListView({
                 }
 
                 return (
-                  <button
+                  <div
                     key={labelId}
-                    type="button"
-                    onClick={() => toggleSelectedLabelId(labelId)}
                     className="inline-flex h-7 items-center gap-2 rounded-full px-3 text-xs font-semibold text-white"
                     style={{ backgroundColor: label.color }}
                   >
@@ -655,15 +665,27 @@ export function ListView({
                       className="max-w-[10rem] truncate"
                       tooltipClassName="max-w-none whitespace-nowrap"
                     />
-                    <span aria-hidden="true">x</span>
-                  </button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => toggleSelectedLabelId(labelId)}
+                          className="inline-flex h-4 w-4 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/12 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55"
+                          aria-label={`Remove ${label.name}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" sideOffset={8}>Remove {label.name}</TooltipContent>
+                    </Tooltip>
+                  </div>
                 );
               })}
             </div>
-          )}
+          </div>
         </div>
 
-        <div className="mt-6" data-coachmark={isBacklogMode ? "backlog-table" : "list-table"}>
+        <div className="mt-4" data-coachmark={isBacklogMode ? "backlog-table" : "list-table"}>
           <div className="flex items-center justify-between gap-3 py-2.5">
             <span className={tableSectionTitleClassName}>
               {isBacklogMode ? "Backlog tasks" : "Active board tasks"}
