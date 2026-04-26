@@ -11,7 +11,6 @@ import { PriorityBadge } from "./PriorityBadge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { TaskLabelSummary } from "./TaskLabelSummary";
 import { UtilityIconButton } from "./UtilityIconButton";
-import { getNeutralElevatedCardHoverClassName } from "./cardSurfaceStyles";
 
 interface KanbanCardProps {
   boardId: number;
@@ -55,7 +54,12 @@ export function KanbanCard({
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const taskSurfaceClassName = isDarkMode ? "bg-zinc-900/90" : "bg-white/95";
-  const taskHoverClassName = getNeutralElevatedCardHoverClassName(currentTheme, isDarkMode);
+  const taskHoverBorderClassName = isDarkMode
+    ? `group-hover:${currentTheme.primaryBorder}`
+    : `group-hover:${currentTheme.borderHover}`;
+  const taskHoverBackgroundClassName = isDarkMode
+    ? "group-hover:shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_20px_44px_rgba(0,0,0,0.46),0_0_34px_rgba(255,255,255,0.08)]"
+    : "group-hover:shadow-[0_14px_28px_rgba(15,23,42,0.12),0_4px_12px_rgba(15,23,42,0.08)]";
 
   const [{ isDragging }, drag] = useDrag({
     type: "CARD",
@@ -93,7 +97,7 @@ export function KanbanCard({
   return (
     <div
       ref={drag}
-      className={`relative group overflow-visible p-1 ${
+      className={`relative z-0 isolate group overflow-visible p-1 transition-transform duration-200 hover:-translate-y-1 ${
         isDragging ? "opacity-50 scale-95" : "opacity-100"
       }`}
       style={{
@@ -101,7 +105,11 @@ export function KanbanCard({
       }}
     >
       <div
-        className={`overflow-hidden rounded-lg border-2 ${currentTheme.border} ${taskSurfaceClassName} shadow-md transition-all duration-200 ${taskHoverClassName}`}
+        aria-hidden="true"
+        className={`pointer-events-none absolute inset-1 -z-10 rounded-lg ${taskSurfaceClassName} opacity-0 transition-[opacity,box-shadow] duration-200 group-hover:opacity-100 ${taskHoverBackgroundClassName}`}
+      />
+      <div
+        className={`relative overflow-hidden rounded-lg border-2 ${currentTheme.border} ${taskSurfaceClassName} transition-colors duration-200 ${taskHoverBorderClassName}`}
       >
         <div className="flex items-start gap-2 p-4">
           <div

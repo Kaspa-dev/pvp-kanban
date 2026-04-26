@@ -21,11 +21,13 @@ namespace BE.Controllers;
 public class BoardsController(
     AppDbContext context,
     IPlanningPokerSessionService planningPokerSessionService,
-    IHubContext<PlanningPokerHub> planningPokerHubContext) : ControllerBase
+    IHubContext<PlanningPokerHub> planningPokerHubContext,
+    IGamificationService gamificationService) : ControllerBase
 {
     private readonly AppDbContext _context = context;
     private readonly IPlanningPokerSessionService _planningPokerSessionService = planningPokerSessionService;
     private readonly IHubContext<PlanningPokerHub> _planningPokerHubContext = planningPokerHubContext;
+    private readonly IGamificationService _gamificationService = gamificationService;
     private const int MaxBoardMembers = 20;
     private const int MaxBoardNameLength = 128;
     private const int MaxBoardDescriptionLength = 500;
@@ -801,9 +803,16 @@ public class BoardsController(
             return BadRequest(new { message = "Due date must use the yyyy-MM-dd format." });
         }
 
+        DateTime maxAllowedDueDate = DateTime.UtcNow.Date.AddMonths(6);
+
         if (dueDate.HasValue && dueDate.Value.Date < DateTime.UtcNow.Date)
         {
             return BadRequest(new { message = "Due date cannot be before today." });
+        }
+
+        if (dueDate.HasValue && dueDate.Value.Date > maxAllowedDueDate)
+        {
+            return BadRequest(new { message = "Due date cannot be later than 6 months from today." });
         }
 
         if (!AreTaskStoryPointsValid(request.StoryPoints))
@@ -931,15 +940,24 @@ public class BoardsController(
             return BadRequest(new { message = "Due date must use the yyyy-MM-dd format." });
         }
 
+        DateTime maxAllowedDueDate = DateTime.UtcNow.Date.AddMonths(6);
+
         if (dueDate.HasValue && dueDate.Value.Date < DateTime.UtcNow.Date)
         {
             return BadRequest(new { message = "Due date cannot be before today." });
+        }
+
+        if (dueDate.HasValue && dueDate.Value.Date > maxAllowedDueDate)
+        {
+            return BadRequest(new { message = "Due date cannot be later than 6 months from today." });
         }
 
         if (!AreTaskStoryPointsValid(request.StoryPoints))
         {
             return BadRequest(new { message = $"Story points must be between {MinTaskStoryPoints} and {MaxTaskStoryPoints}." });
         }
+
+        string previousStatusKey = task.Status.Title;
 
         task.Title = normalizedTitle;
         task.Description = normalizedDescription;
@@ -965,6 +983,7 @@ public class BoardsController(
             });
         }
 
+        await _gamificationService.ApplyTaskTransitionXpAsync(task, previousStatusKey, status.Title, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
 
         var memberLookup = board.Memberships.ToDictionary(

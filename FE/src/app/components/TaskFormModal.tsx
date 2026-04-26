@@ -2,6 +2,7 @@ import { Bug, CheckSquare, FileText, HelpCircle, Lightbulb, Zap } from "lucide-r
 import { ChangeEvent, FormEvent } from "react";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import {
+  MAX_TASK_DUE_DATE_MONTHS,
   MAX_TASK_LABELS,
   MAX_TASK_DESCRIPTION_LENGTH,
   MAX_TASK_TITLE_LENGTH,
@@ -279,7 +280,7 @@ export function TaskFormModal({
           hasError={Boolean(dueDateError)}
         />
         <p className={`mt-2 text-xs ${dueDateError ? "text-red-500" : currentTheme.textMuted}`}>
-          {dueDateError || "Cannot be earlier than today."}
+          {dueDateError || `Must be between today and ${MAX_TASK_DUE_DATE_MONTHS} months from today.`}
         </p>
       </div>
 

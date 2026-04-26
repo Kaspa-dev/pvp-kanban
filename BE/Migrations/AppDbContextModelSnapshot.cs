@@ -621,6 +621,59 @@ namespace BE.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("BE.Models.XpEvent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<string>("AwardKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<int>("BoardId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("ReversesXpEventId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SourceSnapshotJson")
+                        .HasColumnType("longtext");
+
+                    b.Property<int?>("TaskId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("XpAmount")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AwardKey")
+                        .IsUnique();
+
+                    b.HasIndex("ReversesXpEventId");
+
+                    b.HasIndex("TaskId");
+
+                    b.HasIndex("BoardId", "CreatedAtUtc");
+
+                    b.HasIndex("UserId", "CreatedAtUtc");
+
+                    b.ToTable("XpEvents");
+                });
+
             modelBuilder.Entity("BE.Models.Attachment", b =>
                 {
                     b.HasOne("BE.Models.Comment", "Comment")
@@ -914,6 +967,39 @@ namespace BE.Migrations
                         .IsRequired();
 
                     b.Navigation("Board");
+                });
+
+            modelBuilder.Entity("BE.Models.XpEvent", b =>
+                {
+                    b.HasOne("BE.Models.Board", "Board")
+                        .WithMany()
+                        .HasForeignKey("BoardId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("BE.Models.XpEvent", "ReversedXpEvent")
+                        .WithMany()
+                        .HasForeignKey("ReversesXpEventId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("BE.Models.Task", "Task")
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("BE.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Board");
+
+                    b.Navigation("ReversedXpEvent");
+
+                    b.Navigation("Task");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("BE.Models.Board", b =>

@@ -16,6 +16,7 @@ import { BacklogView2 } from "../components/BacklogView2";
 import { HistoryView } from "../components/HistoryView";
 import { CoachmarkOverlay } from "../components/CoachmarkOverlay";
 import { PlanningPokerDeleteSessionDialog } from "../components/planning-poker/PlanningPokerDeleteSessionDialog";
+import { UtilityIconButton } from "../components/UtilityIconButton";
 import { SidebarInset, SidebarProvider } from "../components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../components/ui/tooltip";
 import { useAuth } from "../contexts/AuthContext";
@@ -23,9 +24,9 @@ import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { useUserPreferences } from "../contexts/UserPreferencesContext";
 import { BoardWorkspaceView, getCoachmarkFlowForView, useBoardCoachmarks } from "../hooks/useBoardCoachmarks";
 import {
-  UserProgress,
-  fetchCurrentUserProgress,
-  getDefaultUserProgress,
+  fetchCurrentUserGamificationSummary,
+  GamificationSummary,
+  getDefaultGamificationSummary,
 } from "../utils/gamification";
 import { isApiError } from "../utils/auth";
 import { getBoard, Board as BoardType } from "../utils/boards";
@@ -81,6 +82,23 @@ const BOARD_VIEW_TABS: Array<{ value: BoardWorkspaceView; label: string; icon: t
   { value: "backlog", label: "Backlog", icon: ClipboardList },
   { value: "history", label: "History", icon: Clock },
 ];
+
+function getBoardWorkspaceTabTooltip(view: BoardWorkspaceView) {
+  switch (view) {
+    case "board":
+      return "Track active work across the workflow columns.";
+    case "list":
+      return "Review active board work in one sortable list.";
+    case "staging":
+      return "Prepare upcoming work before it enters the workflow.";
+    case "backlog":
+      return "Refine waiting and queued backlog tasks.";
+    case "history":
+      return "Review completed work and team progress.";
+    default:
+      return "Open workspace view.";
+  }
+}
 
 function isEditableKeyboardTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
@@ -208,17 +226,7 @@ export function Board() {
   const refreshIndicatorTimeoutRef = useRef<number | null>(null);
   const refreshIndicatorMinUntilRef = useRef<number>(0);
 
-  const [userProgress, setUserProgress] = useState<UserProgress>(() => {
-    if (!user) {
-      return getDefaultUserProgress();
-    }
-
-    return {
-      ...getDefaultUserProgress(),
-      username: user.displayName,
-      email: user.email,
-    };
-  });
+  const [gamificationSummary, setGamificationSummary] = useState<GamificationSummary>(() => getDefaultGamificationSummary());
 
   const {
     preferences,
@@ -226,18 +234,6 @@ export function Board() {
     errorMessage: preferencesError,
     markFlowCompleted,
   } = useUserPreferences();
-
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-
-    setUserProgress((prev) => ({
-      ...prev,
-      username: user.displayName,
-      email: user.email,
-    }));
-  }, [user]);
 
   useEffect(() => {
     setTaskDataVersion((current) => current + 1);
@@ -322,10 +318,10 @@ export function Board() {
           return;
         }
 
-        const [boardLabels, boardCards, progress, session] = await Promise.all([
+        const [boardLabels, boardCards, summary, session] = await Promise.all([
           getBoardLabels(numericBoardId),
           getBoardCards(numericBoardId),
-          fetchCurrentUserProgress(),
+          fetchCurrentUserGamificationSummary(),
           loadPlanningPokerSession(numericBoardId),
         ]);
 
@@ -339,13 +335,7 @@ export function Board() {
         setLabels(boardLabels);
         setCards(boardCards);
         setPlanningPokerSession(session);
-        setUserProgress({
-          username: user.displayName,
-          email: user.email,
-          xp: progress.xp,
-          level: progress.level,
-          tasksCompleted: progress.tasksCompleted,
-        });
+        setGamificationSummary(summary);
       } catch (error) {
         if (!isActive) {
           return;
@@ -428,14 +418,8 @@ export function Board() {
     }
 
     try {
-      const progress = await fetchCurrentUserProgress();
-      setUserProgress({
-        username: user.displayName,
-        email: user.email,
-        xp: progress.xp,
-        level: progress.level,
-        tasksCompleted: progress.tasksCompleted,
-      });
+      const summary = await fetchCurrentUserGamificationSummary();
+      setGamificationSummary(summary);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to refresh your progress.";
       setActionError(message);
@@ -1134,7 +1118,7 @@ export function Board() {
             userProfile={{
               username: user.username,
               fullName: `${user.firstName} ${user.lastName}`.trim(),
-              subtitle: `Level ${userProgress.level}`,
+              subtitle: `Level ${gamificationSummary.currentLevel}`,
             }}
           />
         </div>
@@ -1175,7 +1159,9 @@ export function Board() {
                             <span>{label}</span>
                           </button>
                         </TooltipTrigger>
-                        <TooltipContent side="bottom" sideOffset={8}>{label} view</TooltipContent>
+                        <TooltipContent side="bottom" sideOffset={8}>
+                          {getBoardWorkspaceTabTooltip(value)}
+                        </TooltipContent>
                       </Tooltip>
                     ))}
                   </div>
@@ -1191,28 +1177,24 @@ export function Board() {
                     </kbd>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <button
+                        <UtilityIconButton
                           onClick={() => refreshCurrentView("soft")}
-                          className={`inline-flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} ${
-                            isCurrentViewRefreshing
-                              ? `${currentTheme.primaryText} bg-transparent`
-                              : isDarkMode
-                                ? "bg-transparent text-zinc-400 hover:bg-white/[0.05]"
-                                : "bg-transparent text-slate-500 hover:bg-black/[0.04]"
-                          }`}
                           disabled={isCurrentViewRefreshing}
+                          size="md"
+                          emphasis="elevated"
                           aria-label={isCurrentViewRefreshing ? "Refreshing board data" : "Refresh current view"}
                           type="button"
-                          >
-                            {isCurrentViewRefreshing ? (
-                              <LoaderCircle className={`h-4 w-4 animate-spin [animation-duration:650ms] ${isDarkMode ? "brightness-125 saturate-125" : "brightness-110 saturate-125"}`} />
-                            ) : (
-                              <RotateCw className="h-4 w-4" />
-                            )}
-                        </button>
+                          className={isCurrentViewRefreshing ? `${currentTheme.primaryText}` : ""}
+                        >
+                          {isCurrentViewRefreshing ? (
+                            <LoaderCircle className={`h-4 w-4 animate-spin [animation-duration:650ms] ${isDarkMode ? "brightness-125 saturate-125" : "brightness-110 saturate-125"}`} />
+                          ) : (
+                            <RotateCw className="h-4 w-4" />
+                          )}
+                        </UtilityIconButton>
                       </TooltipTrigger>
                       <TooltipContent side="bottom" sideOffset={8}>
-                        {isCurrentViewRefreshing ? "Refreshing..." : "Refresh current view (R)"}
+                        {isCurrentViewRefreshing ? "Refreshing workspace data..." : "Reload the current workspace data (R)"}
                       </TooltipContent>
                     </Tooltip>
                   </div>
@@ -1236,77 +1218,79 @@ export function Board() {
               )}
 
               {view === "board" && (
-                <>
-                  {workflowCards.length > 0 ? (
-                    <main className={`flex-1 min-h-0 overflow-hidden ${currentTheme.bgSecondary}`}>
-                      <div className={`${boardWorkspaceWidthClassName} flex h-full min-h-0 flex-col gap-6 px-8 py-6 lg:px-10 xl:px-12`}>
-                        <div className="shrink-0" data-coachmark="board-header">
-                          <h1 className={`font-ui-condensed text-[2rem] font-semibold tracking-[0.01em] ${currentTheme.text}`}>
-                            Board
-                          </h1>
-                          <p className={`mt-1 text-base ${currentTheme.textMuted}`}>
-                            Keep active work moving across the workflow, surface bottlenecks early, and give each column a stable operating lane.
-                          </p>
-                        </div>
+                <main className={`flex-1 min-h-0 overflow-hidden ${currentTheme.bgSecondary}`}>
+                  <div className={`${boardWorkspaceWidthClassName} flex h-full min-h-0 flex-col gap-6 px-8 py-6 lg:px-10 xl:px-12`}>
+                    <div className="shrink-0" data-coachmark="board-header">
+                      <h1 className={`font-ui-condensed text-[2rem] font-semibold tracking-[0.01em] ${currentTheme.text}`}>
+                        Board
+                      </h1>
+                      <p className={`mt-1 text-base ${currentTheme.textMuted}`}>
+                        Keep active work moving across the workflow, surface bottlenecks early, and give each column a stable operating lane.
+                      </p>
+                    </div>
 
-                        <div className={`shrink-0 border-t ${currentTheme.border}`} />
+                    <div className={`shrink-0 border-t ${currentTheme.border}`} />
 
-                        <div className="flex-1 min-h-0">
-                          <div className="grid h-full min-h-0 grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4" data-coachmark="board-columns-grid">
-                          <KanbanColumn boardId={numericBoardId} id="todo" title="To Do" count={workflowColumns.todo.length} cards={workflowColumns.todo} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
-                          <KanbanColumn boardId={numericBoardId} id="inProgress" title="In Progress" count={workflowColumns.inProgress.length} cards={workflowColumns.inProgress} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
-                          <KanbanColumn boardId={numericBoardId} id="inReview" title="In Review" count={workflowColumns.inReview.length} cards={workflowColumns.inReview} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
-                            <KanbanColumn boardId={numericBoardId} id="done" title="Done" count={workflowColumns.done.length} cards={workflowColumns.done} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
-                          </div>
-                        </div>
-
-                        <div className={`shrink-0 border-t ${currentTheme.border}`} />
-                      </div>
-                    </main>
-                  ) : (
-                    <main className={`flex-1 min-h-0 overflow-hidden ${currentTheme.bgSecondary}`}>
-                      <div className={`${boardWorkspaceWidthClassName} flex h-full min-h-0 flex-col gap-6 px-8 py-6 lg:px-10 xl:px-12`}>
-                        <div className="shrink-0" data-coachmark="board-header">
-                          <h1 className={`font-ui-condensed text-[2rem] font-semibold tracking-[0.01em] ${currentTheme.text}`}>
-                            Board
-                          </h1>
-                          <p className={`mt-1 text-base ${currentTheme.textMuted}`}>
-                            Keep active work moving across the workflow, surface bottlenecks early, and give each column a stable operating lane.
-                          </p>
-                        </div>
-
-                        <div className={`shrink-0 border-t ${currentTheme.border}`} />
-
-                        <div className="flex min-h-0 flex-1 items-center justify-center">
-                          <div className="max-w-md px-6 text-center">
-                            <div className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl ${currentTheme.primarySoftStrong}`}>
-                              <ClipboardList className={`h-10 w-10 ${currentTheme.primaryText}`} />
-                            </div>
-                            <h2 className={`mb-3 text-2xl font-bold ${currentTheme.text}`}>No active workflow yet</h2>
-                            <p className={`mb-8 text-base ${currentTheme.textMuted}`}>
-                              Tasks stay in Staging until your team pulls them into To Do. Open Staging to create work or promote a ready item.
+                    {workflowCards.length === 0 && (
+                      <div className={`shrink-0 rounded-2xl border px-5 py-4 ${currentTheme.border} ${isDarkMode ? "bg-white/[0.03]" : "bg-white/70"}`}>
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                          <div className="min-w-0">
+                            <h2 className={`text-base font-semibold ${currentTheme.text}`}>No active workflow yet</h2>
+                            <p className={`mt-1 text-sm ${currentTheme.textMuted}`}>
+                              The board is ready. Move work out of Staging to start filling these columns.
                             </p>
-                            <button
-                              onClick={() => setView("staging")}
-                              data-coachmark="board-empty-state-cta"
-                              className={`inline-flex items-center gap-2 rounded-lg bg-gradient-to-r px-6 py-3 font-bold text-white transition-all hover:scale-[1.02] hover:shadow-lg ${currentTheme.primary}`}
-                            >
-                              Go to Staging
-                              <ArrowRight className="h-4 w-4" />
-                            </button>
                           </div>
+                          <button
+                            onClick={() => setView("staging")}
+                            data-coachmark="board-empty-state-cta"
+                            className={`inline-flex items-center gap-2 self-start rounded-lg bg-gradient-to-r px-4 py-2.5 text-sm font-semibold text-white transition-all hover:scale-[1.02] hover:shadow-lg md:self-auto ${currentTheme.primary}`}
+                          >
+                            Go to Staging
+                            <ArrowRight className="h-4 w-4" />
+                          </button>
                         </div>
-
-                        <div className={`shrink-0 border-t ${currentTheme.border}`} />
                       </div>
-                    </main>
-                  )}
-                </>
+                    )}
+
+                    <div className="flex-1 min-h-0">
+                      <div className="grid h-full min-h-0 grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4" data-coachmark="board-columns-grid">
+                      <KanbanColumn boardId={numericBoardId} id="todo" title="To Do" count={workflowColumns.todo.length} cards={workflowColumns.todo} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                      <KanbanColumn boardId={numericBoardId} id="inProgress" title="In Progress" count={workflowColumns.inProgress.length} cards={workflowColumns.inProgress} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                      <KanbanColumn boardId={numericBoardId} id="inReview" title="In Review" count={workflowColumns.inReview.length} cards={workflowColumns.inReview} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                        <KanbanColumn boardId={numericBoardId} id="done" title="Done" count={workflowColumns.done.length} cards={workflowColumns.done} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                      </div>
+                    </div>
+
+                    <div className={`shrink-0 border-t ${currentTheme.border}`} />
+                  </div>
+                </main>
               )}
 
               {view === "list" && (
-                <>
-                  {workflowCards.length > 0 ? (
+                <main className={`flex min-h-0 flex-1 flex-col overflow-hidden ${currentTheme.bgSecondary}`}>
+                  {workflowCards.length === 0 && (
+                    <div className="shrink-0 px-8 pt-4 lg:px-10 xl:px-12">
+                      <div className={`${boardWorkspaceWidthClassName} rounded-2xl border px-5 py-4 ${currentTheme.border} ${isDarkMode ? "bg-white/[0.03]" : "bg-white/70"}`}>
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                          <div className="min-w-0">
+                            <h2 className={`text-base font-semibold ${currentTheme.text}`}>No active workflow yet</h2>
+                            <p className={`mt-1 text-sm ${currentTheme.textMuted}`}>
+                              List view is ready. Move work out of Staging to populate the table.
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => setView("staging")}
+                            data-coachmark="list-empty-state-cta"
+                            className={`inline-flex items-center gap-2 self-start rounded-lg bg-gradient-to-r px-4 py-2.5 text-sm font-semibold text-white transition-all hover:scale-[1.02] hover:shadow-lg md:self-auto ${currentTheme.primary}`}
+                          >
+                            Go to Staging
+                            <ArrowRight className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <div className="min-h-0 flex-1">
                     <ListView
                       mode="active"
                       boardId={numericBoardId}
@@ -1322,28 +1306,8 @@ export function Board() {
                       availableAssignees={availableAssignees}
                       labels={labels}
                     />
-                  ) : (
-                    <div className={`flex min-h-0 flex-1 items-center justify-center ${currentTheme.bgSecondary}`}>
-                      <div className="max-w-md px-6 text-center">
-                        <div className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl ${currentTheme.primarySoftStrong}`}>
-                          <ClipboardList className={`h-10 w-10 ${currentTheme.primaryText}`} />
-                        </div>
-                        <h2 className={`mb-3 text-2xl font-bold ${currentTheme.text}`}>No active workflow yet</h2>
-                        <p className={`mb-8 text-base ${currentTheme.textMuted}`}>
-                          List view shows tasks that have already left staging. Move work into To Do first to see it here.
-                        </p>
-                        <button
-                          onClick={() => setView("staging")}
-                          data-coachmark="list-empty-state-cta"
-                          className={`inline-flex items-center gap-2 rounded-lg bg-gradient-to-r px-6 py-3 font-bold text-white transition-all hover:scale-[1.02] hover:shadow-lg ${currentTheme.primary}`}
-                        >
-                          Go to Staging
-                          <ArrowRight className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </>
+                  </div>
+                </main>
               )}
 
               {view === "staging" && (
@@ -1458,6 +1422,7 @@ export function Board() {
               isOpen={activeFlowId !== null}
               step={activeStep}
               targetRect={targetRect}
+              spotlightPadding={activeStep?.targetId === "board-sidebar-actions" ? 0 : undefined}
               stepIndex={stepIndex}
               totalSteps={totalSteps}
               onBack={goToPreviousStep}

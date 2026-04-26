@@ -9,6 +9,7 @@ export type TaskType = "story" | "task" | "bug" | "spike";
 export const MAX_TASK_TITLE_LENGTH = 128;
 export const MAX_TASK_DESCRIPTION_LENGTH = 2000;
 export const MAX_TASK_LABELS = 5;
+export const MAX_TASK_DUE_DATE_MONTHS = 6;
 
 export function getTaskTitleValidationError(value: string): string | null {
   const trimmedValue = value.trim();
@@ -50,6 +51,8 @@ export function getTaskDueDateValidationError(value: string): string | null {
   const today = new Date();
   const localToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const selectedDate = new Date(`${trimmedValue}T00:00:00`);
+  const maxAllowedDate = new Date(localToday);
+  maxAllowedDate.setMonth(maxAllowedDate.getMonth() + MAX_TASK_DUE_DATE_MONTHS);
 
   if (Number.isNaN(selectedDate.getTime())) {
     return "Due date is invalid.";
@@ -57,6 +60,10 @@ export function getTaskDueDateValidationError(value: string): string | null {
 
   if (selectedDate < localToday) {
     return "Due date cannot be before today.";
+  }
+
+  if (selectedDate > maxAllowedDate) {
+    return `Due date cannot be later than ${MAX_TASK_DUE_DATE_MONTHS} months from today.`;
   }
 
   return null;

@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   Clock3,
   Edit3,
-  FilterX,
   Folder,
   Info,
   ListTodo,
@@ -81,6 +80,7 @@ const BOARD_GRID_GAP_REM = 1.75;
 const DEFAULT_MEMBERSHIP_FILTER: BoardMembershipFilter = "all";
 const DEFAULT_SORT: BoardSort = "newest";
 const PROJECTS_TOOLTIP_DELAY = 500;
+const CREATE_PROJECT_TOOLTIP = "Create a new project and invite members";
 const BOARD_SORT_OPTIONS: Array<{ value: BoardSort; label: string }> = [
   { value: "newest", label: "Newest" },
   { value: "nameAsc", label: "Name A-Z" },
@@ -657,7 +657,7 @@ export function Projects() {
                   </span>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" sideOffset={8}>
-                  Create a new board and invite members
+                  {CREATE_PROJECT_TOOLTIP}
                 </TooltipContent>
               </Tooltip>
             </button>
@@ -716,7 +716,7 @@ export function Projects() {
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="top" sideOffset={8}>
-                      Search your boards by project name or description
+                      Search your projects by name or description
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -768,12 +768,12 @@ export function Projects() {
                           delayDuration={PROJECTS_TOOLTIP_DELAY}
                           tooltip={
                             filter.value === "all"
-                              ? "Show every board you belong to"
+                              ? "Show every project you belong to"
                               : filter.value === "owned"
-                                ? "Show only boards you own"
+                                ? "Show only projects you own"
                                 : filter.value === "favorites"
-                                  ? "Show boards you marked as favorites"
-                                : "Show boards shared with you by other owners"
+                                  ? "Show projects you marked as favorites"
+                                : "Show projects shared with you by other owners"
                           }
                           shortcut={
                             filter.shortcut ? (
@@ -823,14 +823,21 @@ export function Projects() {
             <Folder className={`w-16 h-16 ${currentTheme.textMuted} mx-auto mb-4`} />
             <h3 className={`text-xl font-semibold ${currentTheme.textSecondary} mb-2`}>No projects yet</h3>
             <p className={`${currentTheme.textMuted} mb-6`}>Create your first project to get started</p>
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              data-coachmark="projects-empty-create"
-              className={`inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r ${currentTheme.primary} text-white font-bold rounded-xl hover:scale-105 transition-all shadow-lg`}
-            >
-              <Plus className="w-5 h-5" />
-              Create Project
-            </button>
+            <Tooltip delayDuration={PROJECTS_TOOLTIP_DELAY}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setIsCreateModalOpen(true)}
+                  data-coachmark="projects-empty-create"
+                  className={`inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r ${currentTheme.primary} text-white font-bold rounded-xl hover:scale-105 transition-all shadow-lg`}
+                >
+                  <Plus className="w-5 h-5" />
+                  Create Project
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" sideOffset={8}>
+                {CREATE_PROJECT_TOOLTIP}
+              </TooltipContent>
+            </Tooltip>
           </div>
         ) : boardList.items.length === 0 ? (
           <div
@@ -877,7 +884,7 @@ export function Projects() {
                                 <Edit3 className="w-4 h-4" />
                               </span>
                             </TooltipTrigger>
-                            <TooltipContent side="top" sideOffset={8}>Edit board details</TooltipContent>
+                            <TooltipContent side="top" sideOffset={8}>Edit project details</TooltipContent>
                           </Tooltip>
                         </UtilityIconButton>
                       )}
@@ -896,7 +903,7 @@ export function Projects() {
                               <Info className="w-4 h-4" />
                             </span>
                           </TooltipTrigger>
-                          <TooltipContent side="top" sideOffset={8}>View board details</TooltipContent>
+                          <TooltipContent side="top" sideOffset={8}>View project details</TooltipContent>
                         </Tooltip>
                       </UtilityIconButton>
 
@@ -980,8 +987,8 @@ export function Projects() {
                             </TooltipTrigger>
                             <TooltipContent side="top" sideOffset={8}>
                               {board.memberCount === 0
-                                ? "Only you are on this board right now"
-                                : `${board.memberCount} ${board.memberCount === 1 ? "member" : "members"} on this board`}
+                                ? "Only you are on this project right now"
+                                : `${board.memberCount} ${board.memberCount === 1 ? "member" : "members"} on this project`}
                             </TooltipContent>
                           </Tooltip>
 
@@ -997,7 +1004,7 @@ export function Projects() {
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent side="top" sideOffset={8}>
-                                This board is in your favorites
+                                This project is in your favorites
                               </TooltipContent>
                             </Tooltip>
                           )}

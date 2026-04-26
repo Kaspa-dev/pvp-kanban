@@ -27,6 +27,7 @@ public class AppDbContext : DbContext
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<Attachment> Attachments => Set<Attachment>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<XpEvent> XpEvents => Set<XpEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -61,6 +62,39 @@ public class AppDbContext : DbContext
                 .WithMany(u => u.RefreshTokens)
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<XpEvent>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Type).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.AwardKey).IsRequired().HasMaxLength(128);
+            entity.Property(e => e.CreatedAtUtc).IsRequired();
+            entity.Property(e => e.SourceSnapshotJson).HasColumnType("longtext");
+            entity.HasIndex(e => e.AwardKey).IsUnique();
+            entity.HasIndex(e => new { e.UserId, e.CreatedAtUtc });
+            entity.HasIndex(e => new { e.BoardId, e.CreatedAtUtc });
+            entity.HasIndex(e => e.TaskId);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Board)
+                .WithMany()
+                .HasForeignKey(e => e.BoardId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Task)
+                .WithMany()
+                .HasForeignKey(e => e.TaskId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.ReversedXpEvent)
+                .WithMany()
+                .HasForeignKey(e => e.ReversesXpEventId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Board>(entity =>

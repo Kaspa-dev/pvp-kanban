@@ -435,6 +435,12 @@ export function ListView({
   const taskIndexHeaderActiveTextClassName = currentTheme.text;
   const taskIndexHeaderHoverClassName = `hover:${currentTheme.text}`;
   const taskIndexDividerClassName = "";
+  const searchTooltipText = isBacklogMode
+    ? "Search backlog tasks by title or by the labels attached to them."
+    : "Search active tasks by title or by the labels attached to them.";
+  const labelFilterTooltipText = isBacklogMode
+    ? "Filter backlog tasks by one or more board labels."
+    : "Filter active tasks by one or more board labels.";
 
   return (
     <div className={`${currentTheme.bgSecondary} h-full overflow-auto`}>
@@ -477,16 +483,23 @@ export function ListView({
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end">
             <div className="flex min-w-0 flex-col gap-2 xl:flex-[1.25]">
               <span className={toolbarLabelClassName}>Search tasks</span>
-              <div className="relative min-w-0 flex-1">
-                <Search className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${currentTheme.textMuted}`} />
-                <input
-                  type="text"
-                  value={searchInput}
-                  onChange={(event) => setSearchInput(event.target.value)}
-                  placeholder="Search by task title or label"
-                  className={`${toolbarControlClassName} w-full pl-10 pr-4 text-sm placeholder:${currentTheme.textMuted} focus:outline-none focus:ring-2`}
-                />
-              </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="relative min-w-0 flex-1">
+                    <Search className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${currentTheme.textMuted}`} />
+                    <input
+                      type="text"
+                      value={searchInput}
+                      onChange={(event) => setSearchInput(event.target.value)}
+                      placeholder="Search by task title or label"
+                      className={`${toolbarControlClassName} w-full pl-10 pr-4 text-sm placeholder:${currentTheme.textMuted} focus:outline-none focus:ring-2`}
+                    />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={8}>
+                  {searchTooltipText}
+                </TooltipContent>
+              </Tooltip>
             </div>
 
             <div className="flex min-w-0 flex-col gap-4 xl:flex-row xl:items-end">
@@ -539,20 +552,27 @@ export function ListView({
               <div className="flex min-w-0 flex-col gap-2 xl:w-72 xl:flex-none">
                 <span className={toolbarLabelClassName}>Labels</span>
                 <Popover.Root>
-                  <Popover.Trigger asChild>
-                    <button
-                      type="button"
-                      className={`${toolbarControlClassName} flex w-full items-center justify-between px-3 text-left text-sm`}
-                    >
-                      <span className="flex min-w-0 items-center gap-2">
-                        <Tag className={`h-4 w-4 shrink-0 ${filters.selectedLabelIds.length > 0 ? currentTheme.primaryText : currentTheme.textMuted}`} />
-                        <span className="truncate">
-                          {filters.selectedLabelIds.length > 0 ? `${filters.selectedLabelIds.length} labels selected` : "Filter by labels"}
-                        </span>
-                      </span>
-                      <span className={`text-xs ${currentTheme.textMuted}`}>Labels</span>
-                    </button>
-                  </Popover.Trigger>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Popover.Trigger asChild>
+                        <button
+                          type="button"
+                          className={`${toolbarControlClassName} flex w-full items-center justify-between px-3 text-left text-sm`}
+                        >
+                          <span className="flex min-w-0 items-center gap-2">
+                            <Tag className={`h-4 w-4 shrink-0 ${filters.selectedLabelIds.length > 0 ? currentTheme.primaryText : currentTheme.textMuted}`} />
+                            <span className="truncate">
+                              {filters.selectedLabelIds.length > 0 ? `${filters.selectedLabelIds.length} labels selected` : "Filter by labels"}
+                            </span>
+                          </span>
+                          <span className={`text-xs ${currentTheme.textMuted}`}>Labels</span>
+                        </button>
+                      </Popover.Trigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={8}>
+                      {labelFilterTooltipText}
+                    </TooltipContent>
+                  </Tooltip>
                   <Popover.Portal>
                     <Popover.Content
                       sideOffset={10}

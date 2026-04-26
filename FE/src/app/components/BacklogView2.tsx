@@ -168,13 +168,18 @@ export function BacklogView2({
                           : "Create tasks here so your team always has clear work waiting to be staged next."}
                       </p>
                       {queuedCards.length === 0 && (
-                        <button
-                          onClick={onCreateTask}
-                          className={`mt-5 inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${currentTheme.border} ${currentTheme.textSecondary} ${isDarkMode ? "bg-white/[0.03] hover:bg-white/[0.06]" : "bg-slate-50 hover:bg-white"} hover:${currentTheme.primaryText}`}
-                        >
-                          <Plus className="h-4 w-4" />
-                          Create First Task
-                        </button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={onCreateTask}
+                              className={`mt-5 inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${currentTheme.border} ${currentTheme.textSecondary} ${isDarkMode ? "bg-white/[0.03] hover:bg-white/[0.06]" : "bg-slate-50 hover:bg-white"} hover:${currentTheme.primaryText}`}
+                            >
+                              <Plus className="h-4 w-4" />
+                              Create First Task
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" sideOffset={8}>Create a new task in staging</TooltipContent>
+                        </Tooltip>
                       )}
                     </div>
                   </div>

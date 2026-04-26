@@ -26,14 +26,9 @@ import {
   updateCurrentUserProfile,
 } from "../utils/auth";
 import {
-  fetchCurrentUserProgress,
-  getDefaultUserProgress,
-  getLevelName,
-  getProgressPercent,
-  getXPForCurrentLevel,
-  getXPNeededForNextLevel,
-  getXPRemainingForNextLevel,
-  UserProgress,
+  fetchCurrentUserGamificationSummary,
+  GamificationSummary,
+  getDefaultGamificationSummary,
 } from "../utils/gamification";
 import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
 
@@ -97,17 +92,7 @@ export function Profile() {
   const [gamificationEnabled, setGamificationEnabled] = useLocalStorageBoolean("settings.gamification", true);
   const [notificationsEnabled, setNotificationsEnabled] = useLocalStorageBoolean("settings.notifications", true);
 
-  const [userProgress, setUserProgress] = useState<UserProgress>(() => {
-    if (!user) {
-      return getDefaultUserProgress();
-    }
-
-    return {
-      ...getDefaultUserProgress(),
-      username: user.displayName,
-      email: user.email,
-    };
-  });
+  const [gamificationSummary, setGamificationSummary] = useState<GamificationSummary>(() => getDefaultGamificationSummary());
   const [isLoadingProgress, setIsLoadingProgress] = useState(true);
 
   const [profileForm, setProfileForm] = useState<ProfileFormState>(() => (
@@ -137,11 +122,6 @@ export function Profile() {
     }
 
     setProfileForm(createProfileFormState(user));
-    setUserProgress((current) => ({
-      ...current,
-      username: user.displayName,
-      email: user.email,
-    }));
   }, [user]);
 
   useEffect(() => {
@@ -154,28 +134,18 @@ export function Profile() {
     const loadProgress = async () => {
       setIsLoadingProgress(true);
       try {
-        const progress = await fetchCurrentUserProgress();
+        const summary = await fetchCurrentUserGamificationSummary();
         if (!isActive) {
           return;
         }
 
-        setUserProgress({
-          username: user.displayName,
-          email: user.email,
-          xp: progress.xp,
-          level: progress.level,
-          tasksCompleted: progress.tasksCompleted,
-        });
+        setGamificationSummary(summary);
       } catch {
         if (!isActive) {
           return;
         }
 
-        setUserProgress((current) => ({
-          ...current,
-          username: user.displayName,
-          email: user.email,
-        }));
+        setGamificationSummary(getDefaultGamificationSummary());
       } finally {
         if (isActive) {
           setIsLoadingProgress(false);
@@ -207,12 +177,12 @@ export function Profile() {
     );
   }, [profileForm, user]);
 
-  const userLevel = userProgress.level;
-  const progressPercent = getProgressPercent(userProgress.xp, userLevel);
-  const xpInLevel = getXPForCurrentLevel(userProgress.xp, userLevel);
-  const xpNeeded = getXPNeededForNextLevel(userLevel);
-  const xpRemaining = getXPRemainingForNextLevel(userProgress.xp, userLevel);
-  const rankTitle = getLevelName(userLevel);
+  const userLevel = gamificationSummary.currentLevel;
+  const progressPercent = gamificationSummary.progressPercent;
+  const xpInLevel = gamificationSummary.currentLevelXp;
+  const xpNeeded = gamificationSummary.xpForNextLevel;
+  const xpRemaining = gamificationSummary.xpRemainingForNextLevel;
+  const rankTitle = gamificationSummary.currentLevelName;
   const sectionShellClassName = `rounded-[2rem] border ${currentTheme.border} ${currentTheme.cardBg} p-8 shadow-[0_24px_80px_-40px_rgba(15,23,42,0.45)]`;
   const pillClassName = `inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${currentTheme.border} ${currentTheme.bgSecondary} ${currentTheme.textSecondary}`;
   const inputClassName = `w-full rounded-2xl border-2 px-4 py-3 ${currentTheme.inputBorder} ${currentTheme.inputBg} ${currentTheme.text} focus:outline-none focus:ring-2 ${currentTheme.focus}`;
@@ -247,11 +217,6 @@ export function Profile() {
       const updatedUser = await updateCurrentUserProfile(trimmedProfile);
       setCurrentUser(updatedUser);
       setProfileForm(createProfileFormState(updatedUser));
-      setUserProgress((current) => ({
-        ...current,
-        username: updatedUser.displayName,
-        email: updatedUser.email,
-      }));
       setProfileSuccess("Your profile details were updated.");
     } catch (error) {
       setProfileError(error instanceof Error ? error.message : "Unable to update your profile right now.");
@@ -376,7 +341,7 @@ export function Profile() {
                   </div>
                   <div className={`rounded-[1.5rem] border p-4 ${currentTheme.border} ${currentTheme.bgSecondary}`}>
                     <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Experience</p>
-                    <p className={`mt-3 text-sm font-medium ${currentTheme.text}`}>{userProgress.tasksCompleted} tasks closed</p>
+                    <p className={`mt-3 text-sm font-medium ${currentTheme.text}`}>{gamificationSummary.tasksCompleted} tasks closed</p>
                     <p className={`mt-1 text-sm leading-6 ${currentTheme.textSecondary}`}>Your progress stays close while you manage the rest of your account.</p>
                   </div>
                   <div className={`rounded-[1.5rem] border p-4 ${currentTheme.border} ${currentTheme.bgSecondary}`}>
@@ -402,7 +367,7 @@ export function Profile() {
 
               <div className={`mb-3 flex items-center gap-2 ${currentTheme.textSecondary}`}>
                 <Zap className="h-4 w-4" />
-                <span className="text-sm font-medium">{userProgress.xp} XP earned</span>
+                <span className="text-sm font-medium">{gamificationSummary.lifetimeXp} XP earned</span>
                 {isLoadingProgress && <span className={`text-xs ${currentTheme.textMuted}`}>Refreshing...</span>}
               </div>
 
@@ -423,18 +388,22 @@ export function Profile() {
                 <span>{xpRemaining} to go</span>
               </div>
 
-              <div className="mt-5 grid grid-cols-3 gap-3">
+              <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
                 <div className={`rounded-[1.25rem] border p-3 ${currentTheme.border} ${currentTheme.bg}`}>
                   <p className={`text-xs font-medium ${currentTheme.textMuted}`}>Tasks</p>
-                  <p className={`mt-1 text-xl font-semibold ${currentTheme.text}`}>{userProgress.tasksCompleted}</p>
+                  <p className={`mt-1 text-xl font-semibold ${currentTheme.text}`}>{gamificationSummary.tasksCompleted}</p>
                 </div>
                 <div className={`rounded-[1.25rem] border p-3 ${currentTheme.border} ${currentTheme.bg}`}>
-                  <p className={`text-xs font-medium ${currentTheme.textMuted}`}>XP</p>
-                  <p className={`mt-1 text-xl font-semibold ${currentTheme.text}`}>{userProgress.xp}</p>
+                  <p className={`text-xs font-medium ${currentTheme.textMuted}`}>Lifetime XP</p>
+                  <p className={`mt-1 text-xl font-semibold ${currentTheme.text}`}>{gamificationSummary.lifetimeXp}</p>
                 </div>
                 <div className={`rounded-[1.25rem] border p-3 ${currentTheme.border} ${currentTheme.bg}`}>
-                  <p className={`text-xs font-medium ${currentTheme.textMuted}`}>Rank</p>
-                  <p className={`mt-1 text-sm font-semibold ${currentTheme.text}`}>{rankTitle}</p>
+                  <p className={`text-xs font-medium ${currentTheme.textMuted}`}>This Week</p>
+                  <p className={`mt-1 text-xl font-semibold ${currentTheme.text}`}>{gamificationSummary.weeklyXp}</p>
+                </div>
+                <div className={`rounded-[1.25rem] border p-3 ${currentTheme.border} ${currentTheme.bg}`}>
+                  <p className={`text-xs font-medium ${currentTheme.textMuted}`}>This Month</p>
+                  <p className={`mt-1 text-xl font-semibold ${currentTheme.text}`}>{gamificationSummary.monthlyXp}</p>
                 </div>
               </div>
             </div>

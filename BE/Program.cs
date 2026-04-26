@@ -22,6 +22,7 @@ builder.Services.AddSignalR();
 builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection(AuthOptions.SectionName));
 builder.Services.AddSingleton<ITokenService, TokenService>();
 builder.Services.AddScoped<IPlanningPokerSessionService, PlanningPokerSessionService>();
+builder.Services.AddScoped<IGamificationService, GamificationService>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>

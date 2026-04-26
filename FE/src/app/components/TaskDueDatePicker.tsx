@@ -1,9 +1,10 @@
 import { CalendarDays, ChevronDown } from "lucide-react";
-import { addDays, format, isValid, parseISO, startOfToday } from "date-fns";
+import { addDays, addMonths, format, isValid, parseISO, startOfToday } from "date-fns";
 import { Calendar } from "./ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import { UtilityIconButton } from "./UtilityIconButton";
+import { MAX_TASK_DUE_DATE_MONTHS } from "../utils/cards";
 
 interface TaskDueDatePickerProps {
   id?: string;
@@ -53,6 +54,8 @@ export function TaskDueDatePicker({
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const selectedDate = parseDateValue(value);
+  const minimumSelectableDate = startOfToday();
+  const maximumSelectableDate = addMonths(minimumSelectableDate, MAX_TASK_DUE_DATE_MONTHS);
   const pickerSurfaceClassName = isDarkMode ? currentTheme.inputBg : "bg-input-background";
   const pickerPopoverSurfaceClassName = isDarkMode ? "!bg-zinc-950" : "!bg-input-background";
   const pickerShadowClassName = isDarkMode
@@ -132,8 +135,8 @@ export function TaskDueDatePicker({
             <Calendar
               mode="single"
               selected={selectedDate}
-              defaultMonth={selectedDate ?? startOfToday()}
-              disabled={{ before: startOfToday() }}
+              defaultMonth={selectedDate ?? minimumSelectableDate}
+              disabled={{ before: minimumSelectableDate, after: maximumSelectableDate }}
               onSelect={(nextDate) => onChange(nextDate ? format(nextDate, "yyyy-MM-dd") : "")}
               className={`mx-auto ${pickerSurfaceClassName} [--cell-size:2.25rem]`}
               classNames={{

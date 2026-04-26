@@ -39,11 +39,16 @@ public class UsersController : ControllerBase
 
     private readonly AppDbContext _context;
     private readonly AuthOptions _authOptions;
+    private readonly IGamificationService _gamificationService;
 
-    public UsersController(AppDbContext context, IOptions<AuthOptions> authOptions)
+    public UsersController(
+        AppDbContext context,
+        IOptions<AuthOptions> authOptions,
+        IGamificationService gamificationService)
     {
         _context = context;
         _authOptions = authOptions.Value;
+        _gamificationService = gamificationService;
     }
 
     // GET api/users/search?q=query&limit=3
@@ -158,20 +163,21 @@ public class UsersController : ControllerBase
             return Unauthorized();
         }
 
-        var completedTasks = await _context.Tasks
-            .Where(task => task.AssigneeId == userId && task.Status.Title == "done")
-            .Select(task => task.StoryPoints)
-            .ToListAsync(cancellationToken);
+        UserProgressDto progress = await _gamificationService.GetUserProgressAsync(userId, cancellationToken);
+        return Ok(progress);
+    }
 
-        int tasksCompleted = completedTasks.Count;
-        int xp = completedTasks.Sum(storyPoints => (storyPoints ?? 0) * 10);
-
-        return Ok(new UserProgressDto
+    // GET api/users/me/gamification-summary
+    [HttpGet("me/gamification-summary")]
+    public async Task<ActionResult<UserGamificationSummaryDto>> GetMyGamificationSummary(CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
         {
-            Xp = xp,
-            Level = CalculateLevel(xp),
-            TasksCompleted = tasksCompleted,
-        });
+            return Unauthorized();
+        }
+
+        UserGamificationSummaryDto summary = await _gamificationService.GetUserGamificationSummaryAsync(userId, cancellationToken);
+        return Ok(summary);
     }
 
     // GET api/users/me/preferences
@@ -344,40 +350,6 @@ public class UsersController : ControllerBase
         await _context.SaveChangesAsync(cancellationToken);
         ClearRefreshTokenCookie();
         return NoContent();
-    }
-
-    private static int CalculateLevel(int xp)
-    {
-        int[] xpPerLevel =
-        [
-            0,
-            20,
-            60,
-            130,
-            240,
-            400,
-            620,
-            910,
-            1280,
-            1740,
-            2300,
-            2970,
-            3760,
-            4680,
-            5740,
-        ];
-
-        int level = 1;
-        for (int index = xpPerLevel.Length - 1; index >= 0; index -= 1)
-        {
-            if (xp >= xpPerLevel[index])
-            {
-                level = index + 1;
-                break;
-            }
-        }
-
-        return level;
     }
 
     private bool TryGetCurrentUserId(out int userId)

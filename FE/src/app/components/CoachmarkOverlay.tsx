@@ -2,6 +2,7 @@ import { X } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef } from "react";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
+import { UtilityIconButton } from "./UtilityIconButton";
 import { useIsMobile } from "./ui/use-mobile";
 
 interface CoachmarkOverlayStep {
@@ -13,12 +14,16 @@ interface CoachmarkOverlayProps {
   isOpen: boolean;
   step: CoachmarkOverlayStep | null;
   targetRect: DOMRect | null;
+  spotlightPadding?: number;
   stepIndex: number;
   totalSteps: number;
   onBack: () => void;
   onNext: () => void;
   onClose: () => void;
 }
+
+const SPOTLIGHT_PADDING = 8;
+const SPOTLIGHT_RADIUS = 16;
 
 function getDesktopCardStyle(targetRect: DOMRect | null): CSSProperties {
   const cardWidth = 340;
@@ -71,6 +76,7 @@ export function CoachmarkOverlay({
   isOpen,
   step,
   targetRect,
+  spotlightPadding = SPOTLIGHT_PADDING,
   stepIndex,
   totalSteps,
   onBack,
@@ -92,6 +98,10 @@ export function CoachmarkOverlay({
     () => (isOpen && !isMobile ? getDesktopCardStyle(targetRect) : undefined),
     [isMobile, isOpen, targetRect],
   );
+  const coachmarkSecondaryActionButtonClassName = `group relative inline-flex items-center justify-center overflow-hidden rounded-xl border-2 px-4 py-2.5 text-sm font-semibold transition-all duration-300 hover:scale-[1.02] active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100 ${
+    currentTheme.focus
+  } ${isDarkMode ? "border-zinc-700 text-zinc-100 hover:bg-zinc-800" : "border-gray-300 text-gray-700 hover:bg-gray-50"}`;
+  const coachmarkPrimaryActionButtonClassName = `group relative inline-flex items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} ${currentTheme.primary}`;
 
   if (!isOpen || !step) {
     return null;
@@ -99,16 +109,112 @@ export function CoachmarkOverlay({
 
   const highlightStyle = targetRect
     ? {
-        left: Math.max(8, targetRect.left - 8),
-        top: Math.max(8, targetRect.top - 8),
-        width: targetRect.width + 16,
-        height: targetRect.height + 16,
+        left: Math.max(0, targetRect.left - spotlightPadding),
+        top: Math.max(0, targetRect.top - spotlightPadding),
+        width: targetRect.width + spotlightPadding * 2,
+        height: targetRect.height + spotlightPadding * 2,
       }
     : undefined;
 
+  const spotlightPanels = highlightStyle
+    ? {
+        top: {
+          left: 0,
+          top: 0,
+          width: "100%",
+          height: `${highlightStyle.top}px`,
+        } satisfies CSSProperties,
+        bottom: {
+          left: 0,
+          top: `${highlightStyle.top + highlightStyle.height}px`,
+          width: "100%",
+          bottom: 0,
+        } satisfies CSSProperties,
+        left: {
+          left: 0,
+          top: `${highlightStyle.top}px`,
+          width: `${highlightStyle.left}px`,
+          height: `${highlightStyle.height}px`,
+        } satisfies CSSProperties,
+        right: {
+          left: `${highlightStyle.left + highlightStyle.width}px`,
+          top: `${highlightStyle.top}px`,
+          right: 0,
+          height: `${highlightStyle.height}px`,
+        } satisfies CSSProperties,
+      }
+    : null;
+
+  const overlayPanelClassName = "absolute bg-black/55 backdrop-blur-[1.5px]";
+  const spotlightCornerOverlays = highlightStyle
+    ? [
+        {
+          key: "top-left",
+          style: {
+            left: `${highlightStyle.left}px`,
+            top: `${highlightStyle.top}px`,
+            width: `${SPOTLIGHT_RADIUS}px`,
+            height: `${SPOTLIGHT_RADIUS}px`,
+            WebkitMaskImage: `radial-gradient(circle at bottom right, transparent ${SPOTLIGHT_RADIUS - 1}px, black ${SPOTLIGHT_RADIUS}px)`,
+            maskImage: `radial-gradient(circle at bottom right, transparent ${SPOTLIGHT_RADIUS - 1}px, black ${SPOTLIGHT_RADIUS}px)`,
+          } satisfies CSSProperties,
+        },
+        {
+          key: "top-right",
+          style: {
+            left: `${highlightStyle.left + highlightStyle.width - SPOTLIGHT_RADIUS}px`,
+            top: `${highlightStyle.top}px`,
+            width: `${SPOTLIGHT_RADIUS}px`,
+            height: `${SPOTLIGHT_RADIUS}px`,
+            WebkitMaskImage: `radial-gradient(circle at bottom left, transparent ${SPOTLIGHT_RADIUS - 1}px, black ${SPOTLIGHT_RADIUS}px)`,
+            maskImage: `radial-gradient(circle at bottom left, transparent ${SPOTLIGHT_RADIUS - 1}px, black ${SPOTLIGHT_RADIUS}px)`,
+          } satisfies CSSProperties,
+        },
+        {
+          key: "bottom-left",
+          style: {
+            left: `${highlightStyle.left}px`,
+            top: `${highlightStyle.top + highlightStyle.height - SPOTLIGHT_RADIUS}px`,
+            width: `${SPOTLIGHT_RADIUS}px`,
+            height: `${SPOTLIGHT_RADIUS}px`,
+            WebkitMaskImage: `radial-gradient(circle at top right, transparent ${SPOTLIGHT_RADIUS - 1}px, black ${SPOTLIGHT_RADIUS}px)`,
+            maskImage: `radial-gradient(circle at top right, transparent ${SPOTLIGHT_RADIUS - 1}px, black ${SPOTLIGHT_RADIUS}px)`,
+          } satisfies CSSProperties,
+        },
+        {
+          key: "bottom-right",
+          style: {
+            left: `${highlightStyle.left + highlightStyle.width - SPOTLIGHT_RADIUS}px`,
+            top: `${highlightStyle.top + highlightStyle.height - SPOTLIGHT_RADIUS}px`,
+            width: `${SPOTLIGHT_RADIUS}px`,
+            height: `${SPOTLIGHT_RADIUS}px`,
+            WebkitMaskImage: `radial-gradient(circle at top left, transparent ${SPOTLIGHT_RADIUS - 1}px, black ${SPOTLIGHT_RADIUS}px)`,
+            maskImage: `radial-gradient(circle at top left, transparent ${SPOTLIGHT_RADIUS - 1}px, black ${SPOTLIGHT_RADIUS}px)`,
+          } satisfies CSSProperties,
+        },
+      ]
+    : [];
+
   return (
     <div className="fixed inset-0 z-[120]">
-      <div className="absolute inset-0 bg-black/55 backdrop-blur-[1.5px]" aria-hidden="true" />
+      {spotlightPanels ? (
+        <>
+          <div aria-hidden="true" className={overlayPanelClassName} style={spotlightPanels.top} />
+          <div aria-hidden="true" className={overlayPanelClassName} style={spotlightPanels.bottom} />
+          <div aria-hidden="true" className={overlayPanelClassName} style={spotlightPanels.left} />
+          <div aria-hidden="true" className={overlayPanelClassName} style={spotlightPanels.right} />
+          {spotlightCornerOverlays.map((corner) => (
+            <div
+              key={corner.key}
+              aria-hidden="true"
+              className={overlayPanelClassName}
+              style={corner.style}
+            />
+          ))}
+        </>
+      ) : (
+        <div className="absolute inset-0 bg-black/55 backdrop-blur-[1.5px]" aria-hidden="true" />
+      )}
 
       {highlightStyle && (
         <div
@@ -142,14 +248,14 @@ export function CoachmarkOverlay({
                 {step.title}
               </h2>
             </div>
-            <button
-              type="button"
+            <UtilityIconButton
               onClick={onClose}
-              className={`rounded-full p-2 transition-colors ${currentTheme.textMuted} hover:${currentTheme.textSecondary} hover:${currentTheme.bgSecondary}`}
+              size="sm"
+              emphasis="default"
               aria-label="Close hints"
             >
               <X className="h-4 w-4" />
-            </button>
+            </UtilityIconButton>
           </div>
 
           <p id="coachmark-description" className={`mt-3 text-sm leading-6 ${currentTheme.textSecondary}`}>
@@ -164,7 +270,7 @@ export function CoachmarkOverlay({
             <button
               type="button"
               onClick={onClose}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold ${currentTheme.textSecondary} ${currentTheme.bgSecondary} transition-all hover:scale-[1.01]`}
+              className={`inline-flex h-8 items-center justify-center rounded-lg px-3 text-sm font-medium ${currentTheme.textMuted} transition-colors ${currentTheme.accentIconButtonHover}`}
             >
               Skip
             </button>
@@ -174,14 +280,14 @@ export function CoachmarkOverlay({
                 type="button"
                 onClick={onBack}
                 disabled={stepIndex === 0}
-                className={`rounded-xl border ${currentTheme.border} px-4 py-2 text-sm font-semibold ${currentTheme.text} transition-all disabled:cursor-not-allowed disabled:opacity-40`}
+                className={coachmarkSecondaryActionButtonClassName}
               >
                 Back
               </button>
               <button
                 type="button"
                 onClick={onNext}
-                className={`rounded-xl bg-gradient-to-r ${currentTheme.primary} px-4 py-2 text-sm font-semibold text-white shadow-lg transition-all hover:scale-[1.01]`}
+                className={coachmarkPrimaryActionButtonClassName}
               >
                 {stepIndex === totalSteps - 1 ? "Done" : "Next"}
               </button>

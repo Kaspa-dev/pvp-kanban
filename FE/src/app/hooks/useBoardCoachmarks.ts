@@ -13,6 +13,7 @@ type BoardCoachmarkFlowId =
   | "history-overview";
 
 export type CoachmarkTargetId =
+  | "board-sidebar-actions"
   | "toolbar-view-switcher"
   | "board-empty-state-cta"
   | "board-columns-grid"
@@ -48,9 +49,19 @@ interface UseBoardCoachmarksOptions {
 const FLOW_STEPS: Record<BoardCoachmarkFlowId, CoachmarkStep[]> = {
   "board-no-active-sprint": [
     {
+      targetId: "board-sidebar-actions",
+      title: "Create Work And Manage Labels",
+      description: "The board sidebar keeps task creation, board labels, and quick workspace actions within reach while you work.",
+    },
+    {
       targetId: "toolbar-view-switcher",
       title: "Switch Between Workspaces",
       description: "Board, List, Staging, and History stay one click away so you can move between planning and active work quickly.",
+    },
+    {
+      targetId: "board-columns-grid",
+      title: "The Workflow Is Ready",
+      description: "These columns stay visible even before work starts, so you can see exactly where tasks will land once they leave Staging.",
     },
     {
       targetId: "board-empty-state-cta",
@@ -59,6 +70,11 @@ const FLOW_STEPS: Record<BoardCoachmarkFlowId, CoachmarkStep[]> = {
     },
   ],
   "board-active-sprint": [
+    {
+      targetId: "board-sidebar-actions",
+      title: "Create Work And Manage Labels",
+      description: "Use the sidebar to add new tasks, manage board labels, and keep key board actions close by.",
+    },
     {
       targetId: "toolbar-view-switcher",
       title: "Keep Your Place Across Views",
@@ -72,9 +88,19 @@ const FLOW_STEPS: Record<BoardCoachmarkFlowId, CoachmarkStep[]> = {
   ],
   "list-no-active-sprint": [
     {
-      targetId: "toolbar-view-switcher",
+      targetId: "list-header",
       title: "List Is Ready When Work Starts",
-      description: "The list tab stays in the same workspace row, so you can jump here whenever tasks leave staging and enter active work.",
+      description: "The list tab stays available even before active work begins, so you can understand the layout before tasks appear.",
+    },
+    {
+      targetId: "list-filters",
+      title: "Filters Stay Ready Too",
+      description: "Search, quick filters, and labels stay in place so you can narrow the list as soon as tasks enter the workflow.",
+    },
+    {
+      targetId: "list-table",
+      title: "The Table Will Fill Here",
+      description: "Once work leaves Staging, this table will show the full active task index in one place.",
     },
     {
       targetId: "list-empty-state-cta",
