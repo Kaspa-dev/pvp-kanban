@@ -18,8 +18,8 @@ export const PRIORITY_COLORS: Record<Priority, PriorityConfig> = {
     tooltip: "Low priority - can be done later",
   },
   medium: {
-    color: "#eab308",
-    colorDark: "#facc15",
+    color: "#f59e0b",
+    colorDark: "#fbbf24",
     label: "Medium",
     tooltip: "Medium priority - normal importance",
   },
@@ -31,7 +31,7 @@ export const PRIORITY_COLORS: Record<Priority, PriorityConfig> = {
   },
   critical: {
     color: "#0f172a",
-    colorDark: "#f1f5f9",
+    colorDark: "#f8fafc",
     label: "Critical",
     tooltip: "Critical priority - needs immediate attention",
   },

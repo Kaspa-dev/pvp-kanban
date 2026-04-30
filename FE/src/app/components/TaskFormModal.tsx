@@ -15,7 +15,6 @@ import { STORY_POINTS_MAX, STORY_POINTS_MIN, STORY_POINTS_OPTIONS } from "../uti
 import { Label } from "../utils/labels";
 import { FormModalFrame } from "./FormModalFrame";
 import { LabelSelector } from "./LabelSelector";
-import { PriorityIcon } from "./PriorityIcon";
 import { TaskAssigneePicker } from "./TaskAssigneePicker";
 import { TaskDueDatePicker } from "./TaskDueDatePicker";
 import { UtilityIconButton } from "./UtilityIconButton";
@@ -453,9 +452,6 @@ export function TaskFormModal({
             const textColor = isSelected
               ? (isDarkMode ? "text-gray-900" : "text-white")
               : "";
-            const selectedIconColor = isSelected
-              ? (isDarkMode ? "#111827" : "#ffffff")
-              : undefined;
 
             return (
               <Tooltip key={value}>
@@ -470,12 +466,6 @@ export function TaskFormModal({
                     }`}
                     style={isSelected ? { backgroundColor: getPriorityColor(value, isDarkMode) } : undefined}
                   >
-                    <PriorityIcon
-                      priority={value}
-                      isDarkMode={isDarkMode}
-                      className="h-4 w-4"
-                      colorOverride={selectedIconColor}
-                    />
                     <span>{priorityConfig.label}</span>
                   </button>
                 </TooltipTrigger>

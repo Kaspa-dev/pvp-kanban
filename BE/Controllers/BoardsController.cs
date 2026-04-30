@@ -755,6 +755,12 @@ public class BoardsController(
             return BadRequest(new { message = "Task status is invalid." });
         }
 
+        ActionResult? createTaskLimitFailure = await GetHardLimitFailureAsync(boardId, status!.Title, cancellationToken);
+        if (createTaskLimitFailure is not null)
+        {
+            return createTaskLimitFailure;
+        }
+
         string normalizedTitle = request.Title?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(normalizedTitle))
         {
@@ -890,6 +896,15 @@ public class BoardsController(
         if (!TryResolveTaskStatus(board, request.StatusKey, out BoardTaskStatus? status))
         {
             return BadRequest(new { message = "Task status is invalid." });
+        }
+
+        if (!string.Equals(task.Status.Title, status!.Title, StringComparison.OrdinalIgnoreCase))
+        {
+            ActionResult? updateTaskLimitFailure = await GetHardLimitFailureAsync(boardId, status.Title, cancellationToken);
+            if (updateTaskLimitFailure is not null)
+            {
+                return updateTaskLimitFailure;
+            }
         }
 
         string normalizedTitle = request.Title?.Trim() ?? string.Empty;
@@ -1138,6 +1153,16 @@ public class BoardsController(
         if (startableTasks.Count == 0)
         {
             return BadRequest(new { message = "There are no queued backlog tasks to start." });
+        }
+
+        ActionResult? startQueueLimitFailure = await GetHardLimitFailureAsync(
+            boardId,
+            todoStatus.Title,
+            cancellationToken,
+            itemsToAdd: startableTasks.Count);
+        if (startQueueLimitFailure is not null)
+        {
+            return startQueueLimitFailure;
         }
 
         foreach (TaskEntity task in startableTasks)
@@ -1397,11 +1422,56 @@ public class BoardsController(
         return (new BoardAccessContext(board, membership), null);
     }
 
+    private async Task<ActionResult?> GetHardLimitFailureAsync(
+        int boardId,
+        string statusKey,
+        CancellationToken cancellationToken,
+        int itemsToAdd = 1)
+    {
+        BoardWorkflowLimit? limit = BoardWorkflowLimits.GetLimit(statusKey);
+        if (limit is null || limit.HardLimit is null)
+        {
+            return null;
+        }
+
+        int currentCount = await _context.Tasks
+            .Where(task =>
+                task.BoardId == boardId &&
+                task.Status.Title == statusKey)
+            .CountAsync(cancellationToken);
+
+        if (!BoardWorkflowLimits.WouldExceedHardLimit(limit, currentCount, itemsToAdd))
+        {
+            return null;
+        }
+
+        string label = GetBoardStatusDisplayName(statusKey);
+        string taskWord = itemsToAdd == 1 ? "task" : "tasks";
+
+        return BadRequest(new
+        {
+            message = $"{label} has reached the hard limit of {limit.HardLimit}. Move work forward before adding {itemsToAdd} more {taskWord}."
+        });
+    }
+
     private static bool TryResolveTaskStatus(Board board, string statusKey, out BoardTaskStatus? status)
     {
         status = board.TaskStatuses
             .SingleOrDefault(item => item.Title.Equals(statusKey.Trim(), StringComparison.OrdinalIgnoreCase));
         return status is not null;
+    }
+
+    private static string GetBoardStatusDisplayName(string statusKey)
+    {
+        return statusKey.Trim() switch
+        {
+            "todo" => "To Do",
+            "inProgress" => "In Progress",
+            "inReview" => "In Review",
+            "done" => "Done",
+            "backlog" => "Backlog",
+            _ => statusKey,
+        };
     }
 
     private static bool TryNormalizeBoardLogoKey(
@@ -1561,6 +1631,14 @@ public class BoardsController(
             CreatedAt = board.CreatedAt,
             CreatorUserId = board.CreatorId,
             IsFavorite = board.Favorites.Any(favorite => favorite.UserId == currentUserId),
+            ColumnLimits = BoardWorkflowLimits.GetAll()
+                .Select(limit => new BoardColumnLimitDto
+                {
+                    StatusKey = limit.StatusKey,
+                    SoftLimit = limit.SoftLimit,
+                    HardLimit = limit.HardLimit,
+                })
+                .ToList(),
             Members = board.Memberships
                 .OrderBy(membership => membership.Role == BoardRole.Owner ? 0 : 1)
                 .ThenBy(membership => membership.User.FirstName)
@@ -1703,6 +1781,9 @@ public class BoardsController(
             "storypoints" => isDescending
                 ? query.OrderByDescending(task => task.StoryPoints ?? int.MinValue).ThenBy(task => task.Title)
                 : query.OrderBy(task => task.StoryPoints ?? int.MaxValue).ThenBy(task => task.Title),
+            "duedate" => isDescending
+                ? query.OrderByDescending(task => task.DueDate.HasValue).ThenByDescending(task => task.DueDate).ThenBy(task => task.Title)
+                : query.OrderByDescending(task => task.DueDate.HasValue).ThenBy(task => task.DueDate).ThenBy(task => task.Title),
             "assignee" => isDescending
                 ? query.OrderByDescending(task => task.Assignee != null ? task.Assignee.FirstName + " " + task.Assignee.LastName : "zzzzzz").ThenBy(task => task.Title)
                 : query.OrderBy(task => task.Assignee != null ? task.Assignee.FirstName + " " + task.Assignee.LastName : "zzzzzz").ThenBy(task => task.Title),

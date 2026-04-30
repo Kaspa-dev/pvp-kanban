@@ -1,6 +1,7 @@
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { FormModalFrame } from "./FormModalFrame";
 import {
+  getPrimaryModalActionButtonClassName,
   getSecondaryModalActionButtonClassName,
 } from "./modalActionButtonStyles";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -24,7 +25,7 @@ export function ConfirmDeleteDialog({
     currentTheme,
     currentTheme.textSecondary,
   );
-  const destructiveActionButtonClassName = `inline-flex h-11 items-center justify-center leading-none rounded-xl bg-gradient-to-r from-rose-500 to-red-600 px-5 font-semibold text-white shadow-lg transition-all duration-500 ease-out hover:scale-[1.03] hover:shadow-2xl hover:brightness-105 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-lg disabled:hover:brightness-100 ${currentTheme.focus}`;
+  const primaryActionButtonClassName = getPrimaryModalActionButtonClassName(currentTheme);
   const safeTaskTitle = taskTitle.trim() || "Untitled task";
 
   return (
@@ -56,7 +57,7 @@ export function ConfirmDeleteDialog({
               <button
                 type="button"
                 onClick={onConfirm}
-                className={`flex-1 px-5 py-3 font-semibold ${destructiveActionButtonClassName}`}
+                className={`flex-1 px-5 py-3 font-semibold ${primaryActionButtonClassName}`}
               >
                 Delete task
               </button>

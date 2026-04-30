@@ -1,4 +1,4 @@
-import { GripVertical, Trash2, Zap, Edit, FileText, Bug, Lightbulb, CheckSquare, CalendarDays, Undo2 } from "lucide-react";
+import { Trash2, Zap, Edit, FileText, Bug, Lightbulb, CheckSquare, CalendarDays, Undo2 } from "lucide-react";
 import { useDrag } from "react-dnd";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { AssigneePopover } from "./AssigneePopover";
@@ -6,11 +6,11 @@ import { Label } from "../utils/labels";
 import { ReactNode } from "react";
 import { Priority, TaskAssignee, TaskType } from "../utils/cards";
 import { getPriorityIndicator } from "../utils/priorityColors";
-import { format, parseISO } from "date-fns";
-import { PriorityBadge } from "./PriorityBadge";
+import { differenceInCalendarDays, format, parseISO } from "date-fns";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { TaskLabelSummary } from "./TaskLabelSummary";
 import { UtilityIconButton } from "./UtilityIconButton";
+import { PriorityAccent } from "./PriorityAccent";
 
 interface KanbanCardProps {
   boardId: number;
@@ -71,7 +71,44 @@ export function KanbanCard({
     .filter((label): label is Label => label !== undefined);
 
   const priorityIndicator = getPriorityIndicator(priority);
-  const formattedDueDate = dueDate ? format(parseISO(dueDate), "MMM d") : null;
+  const parsedDueDate = dueDate ? parseISO(dueDate) : null;
+  const formattedDueDate = parsedDueDate ? format(parsedDueDate, "MMM d") : null;
+  const dueDateOffset = parsedDueDate ? differenceInCalendarDays(parsedDueDate, new Date()) : null;
+  const dueDateDisplay = (() => {
+    if (!parsedDueDate || dueDateOffset === null) {
+      return null;
+    }
+
+    if (dueDateOffset < 0) {
+      return `Overdue ${Math.abs(dueDateOffset)}d`;
+    }
+
+    if (dueDateOffset === 0) {
+      return "Due today";
+    }
+
+    if (dueDateOffset === 1) {
+      return "Due tomorrow";
+    }
+
+    if (dueDateOffset <= 7) {
+      return `Due in ${dueDateOffset}d`;
+    }
+
+    return formattedDueDate;
+  })();
+  const dueDateClassName = dueDateOffset === null
+    ? currentTheme.textMuted
+    : dueDateOffset < 0
+      ? "font-semibold text-rose-600 dark:text-rose-300"
+      : dueDateOffset === 0
+        ? "text-orange-600 underline decoration-orange-400/70 underline-offset-2 dark:text-orange-300 dark:decoration-orange-300/70"
+        : dueDateOffset <= 7
+          ? "text-sky-600 dark:text-sky-300"
+          : currentTheme.textMuted;
+  const dueDateTooltip = dueDateDisplay && formattedDueDate && dueDateDisplay !== formattedDueDate
+    ? `${dueDateDisplay} (${formattedDueDate})`
+    : formattedDueDate;
 
   const getTaskTypeDisplay = () => {
     switch (taskType) {
@@ -104,14 +141,8 @@ export function KanbanCard({
       <div
         className={`relative overflow-hidden rounded-lg border-2 ${currentTheme.border} ${taskSurfaceClassName} shadow-none transition-[box-shadow] duration-200 ${taskHoverShadowClassName}`}
       >
-        <div className="flex items-start gap-2 p-4">
-          <div
-            className={`${currentTheme.textMuted} group-hover:${currentTheme.primaryText} pt-1 transition-colors pointer-events-none flex-shrink-0`}
-          >
-            <GripVertical className="w-4 h-4" />
-          </div>
-
-          <div className="relative flex-1 min-w-0">
+        <div className="px-4 py-4 pl-7">
+          <div className="relative min-w-0">
             <div>
               {hasTopMeta && (
                 <div className={`mb-2 flex min-w-0 items-center gap-2 overflow-hidden ${currentTheme.textMuted}`}>
@@ -132,20 +163,15 @@ export function KanbanCard({
                       <span className="text-xs font-medium">{taskTypeDisplay.label}</span>
                     </div>
                   )}
-                  {formattedDueDate && (
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      <CalendarDays className="w-3.5 h-3.5" />
-                      <span className="text-xs font-medium">{formattedDueDate}</span>
-                    </div>
-                  )}
-                  {priorityIndicator && (
+                  {dueDateDisplay && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <div className="shrink-0 cursor-help">
-                          <PriorityBadge priority={priority!} isDarkMode={isDarkMode} variant="card" />
+                        <div className={`flex shrink-0 items-center gap-1.5 ${dueDateClassName}`}>
+                          <CalendarDays className="w-3.5 h-3.5" />
+                          <span className="text-xs font-medium">{dueDateDisplay}</span>
                         </div>
                       </TooltipTrigger>
-                      <TooltipContent side="top" sideOffset={8}>{priorityIndicator.tooltip}</TooltipContent>
+                      <TooltipContent side="top" sideOffset={8}>{dueDateTooltip}</TooltipContent>
                     </Tooltip>
                   )}
                   {cardLabels.length > 0 && (
@@ -163,6 +189,9 @@ export function KanbanCard({
                 title={title}
                 className={`mb-4 truncate font-bold text-[15px] leading-tight ${currentTheme.text}`}
               >
+                {priorityIndicator && (
+                  <span className="sr-only">{priorityIndicator.label} priority. </span>
+                )}
                 {title}
               </h3>
             </div>
@@ -225,7 +254,7 @@ export function KanbanCard({
             </div>
           </div>
         </div>
-
+        {priority ? <PriorityAccent priority={priority} isDarkMode={isDarkMode} /> : null}
       </div>
     </div>
   );

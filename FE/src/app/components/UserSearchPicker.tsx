@@ -11,6 +11,7 @@ interface UserSearchPickerProps {
   onSelectUser: (user: ProjectUser) => void;
   placeholder?: string;
   disabled?: boolean;
+  showResultTooltips?: boolean;
 }
 
 const SEARCH_DEBOUNCE_MS = 250;
@@ -22,10 +23,11 @@ export function UserSearchPicker({
   onSelectUser,
   placeholder = "Search members by name, username, or email prefix",
   disabled = false,
+  showResultTooltips = true,
 }: UserSearchPickerProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
-  const pickerSurfaceClassName = isDarkMode ? currentTheme.inputBg : "bg-gray-50";
+  const pickerSurfaceClassName = "bg-input-background dark:bg-input/30";
 
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ProjectUser[]>([]);
@@ -210,34 +212,40 @@ export function UserSearchPicker({
                 {visibleResults.map((user, index) => {
                   const isHighlighted = index === highlightedIndex;
 
+                  const resultButton = (
+                    <button
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onMouseEnter={() => setHighlightedIndex(index)}
+                      onClick={() => handleSelectUser(user)}
+                      className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors ${
+                        isHighlighted
+                          ? `${currentTheme.primaryBg} ${currentTheme.primaryText}`
+                          : `${currentTheme.text} ${isDarkMode ? "hover:bg-zinc-800/80" : "hover:bg-slate-50"}`
+                      }`}
+                    >
+                      <AppAvatar
+                        username={user.username}
+                        fullName={user.displayName}
+                        size={36}
+                        className="mt-0.5"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold">{user.displayName}</p>
+                        <p className={`truncate text-xs ${isHighlighted ? "opacity-80" : currentTheme.textMuted}`}>
+                          @{user.username} • {user.email}
+                        </p>
+                      </div>
+                    </button>
+                  );
+
+                  if (!showResultTooltips) {
+                    return <div key={user.id}>{resultButton}</div>;
+                  }
+
                   return (
                     <Tooltip key={user.id}>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onMouseDown={(event) => event.preventDefault()}
-                          onMouseEnter={() => setHighlightedIndex(index)}
-                          onClick={() => handleSelectUser(user)}
-                          className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors ${
-                            isHighlighted
-                              ? `${currentTheme.primaryBg} ${currentTheme.primaryText}`
-                              : `${currentTheme.text} ${isDarkMode ? "hover:bg-zinc-800/80" : "hover:bg-slate-50"}`
-                          }`}
-                        >
-                          <AppAvatar
-                            username={user.username}
-                            fullName={user.displayName}
-                            size={36}
-                            className="mt-0.5"
-                          />
-                          <div className="min-w-0">
-                            <p className="truncate font-semibold">{user.displayName}</p>
-                            <p className={`truncate text-xs ${isHighlighted ? "opacity-80" : currentTheme.textMuted}`}>
-                              @{user.username} • {user.email}
-                            </p>
-                          </div>
-                        </button>
-                      </TooltipTrigger>
+                      <TooltipTrigger asChild>{resultButton}</TooltipTrigger>
                       <TooltipContent side="right" sideOffset={8}>Add {user.displayName}</TooltipContent>
                     </Tooltip>
                   );

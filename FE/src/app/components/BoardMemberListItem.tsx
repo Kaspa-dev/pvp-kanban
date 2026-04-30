@@ -15,6 +15,8 @@ interface BoardMemberListItemProps {
   surfaceClassName: string;
   action?: ReactNode;
   hoverBorderClassName?: string;
+  showRoleIcon?: boolean;
+  variant?: "card" | "flat";
 }
 
 export function BoardMemberListItem({
@@ -26,13 +28,17 @@ export function BoardMemberListItem({
   surfaceClassName,
   action,
   hoverBorderClassName,
+  showRoleIcon = true,
+  variant = "card",
 }: BoardMemberListItemProps) {
   const isOwner = role === "owner";
+  const containerClassName =
+    variant === "flat"
+      ? `flex items-center justify-between gap-3 py-3 ${surfaceClassName}`
+      : `flex items-center justify-between gap-3 rounded-xl border p-3 ${surfaceClassName} ${currentTheme.border} ${hoverBorderClassName ?? ""}`;
 
   return (
-    <div
-      className={`flex items-center justify-between gap-3 rounded-xl border p-3 ${surfaceClassName} ${currentTheme.border} ${hoverBorderClassName ?? ""}`}
-    >
+    <div className={containerClassName}>
       <div className="flex min-w-0 items-center gap-3">
         <AppAvatar
           username={username}
@@ -48,7 +54,7 @@ export function BoardMemberListItem({
           ) : null}
           {role ? (
             <div className="flex items-center gap-1.5">
-              {isOwner ? <Crown className="h-3.5 w-3.5 text-amber-500" /> : null}
+              {isOwner && showRoleIcon ? <Crown className="h-3.5 w-3.5 text-amber-500" /> : null}
               <p className={`text-xs ${currentTheme.textMuted}`}>
                 {isOwner ? "Owner" : "Team Member"}
               </p>

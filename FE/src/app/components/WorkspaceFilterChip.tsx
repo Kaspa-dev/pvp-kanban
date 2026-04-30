@@ -52,9 +52,10 @@ export function WorkspaceFilterChip({
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const controlSurfaceClassName = "bg-input-background bg-white dark:bg-input/30";
+  const activeFilterChipClassName = `${currentTheme.primaryBorder} ${controlSurfaceClassName} ${currentTheme.primaryText}`;
   const keybindBaseClassName = "inline-flex shrink-0 items-center justify-center rounded-md border px-2 py-1 text-[10px] font-semibold leading-none transition-colors duration-300 ease-out";
   const keybindClassName = isActive
-    ? `${keybindBaseClassName} ${currentTheme.primaryBorder} ${currentTheme.primaryBg} ${isDarkMode ? "text-white" : "text-gray-950"}`
+    ? `${keybindBaseClassName} ${activeFilterChipClassName}`
     : `${keybindBaseClassName}`;
   const renderedShortcut = shortcut
     ? enhanceShortcutNode(shortcut, keybindClassName)
@@ -66,7 +67,11 @@ export function WorkspaceFilterChip({
       onClick={onClick}
       className={`group inline-flex h-11 items-center justify-center px-4 text-sm font-medium ${
         isActive
-          ? `${currentTheme.primaryText} ${getInputLikeControlClassName(currentTheme, { selected: true, surfaceClassName: controlSurfaceClassName })}`
+          ? `${getInputLikeControlClassName(currentTheme, {
+              selected: true,
+              surfaceClassName: controlSurfaceClassName,
+              selectedSurfaceClassName: controlSurfaceClassName,
+            })} ${activeFilterChipClassName}`
           : `${currentTheme.textSecondary} ${getInputLikeControlClassName(currentTheme, { surfaceClassName: controlSurfaceClassName })}`
       }`}
       aria-pressed={isActive}

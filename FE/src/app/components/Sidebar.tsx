@@ -1,4 +1,4 @@
-import { Plus, Tag } from "lucide-react";
+import { Plus, Settings2, Tag } from "lucide-react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { BoardLogo } from "./BoardLogo";
 import { OverflowTooltip } from "./OverflowTooltip";
@@ -7,9 +7,11 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
 import { MAX_BOARD_LABELS } from "../utils/labels";
 import { getIconActionButtonClassName } from "./iconActionButtonStyles";
+import { UtilityIconButton } from "./UtilityIconButton";
 import {
   Sidebar as WorkspaceSidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarHeader,
@@ -20,6 +22,9 @@ import {
 interface SidebarProps {
   onCreateTask: () => void;
   onOpenLabels: () => void;
+  onOpenBoardSettings?: () => void;
+  showBoardSettings?: boolean;
+  isBoardSettingsActive?: boolean;
   labelCount?: number;
   boardName?: string;
   boardLogoIconKey?: BoardLogoIconKey;
@@ -30,6 +35,9 @@ interface SidebarProps {
 export function Sidebar({
   onCreateTask,
   onOpenLabels,
+  onOpenBoardSettings,
+  showBoardSettings = false,
+  isBoardSettingsActive = false,
   labelCount = 0,
   boardName,
   boardLogoIconKey,
@@ -73,7 +81,7 @@ export function Sidebar({
           aria-hidden="true"
           className="pointer-events-none absolute inset-[6px]"
         />
-        <div className="relative z-10 flex w-full flex-col">
+        <div className="relative z-10 flex h-full w-full flex-col justify-between">
           <SidebarHeader className={`min-h-[7.25rem] gap-0 border-b ${isCollapsed ? "px-2 py-2.5" : "px-2.5 py-2.5"} ${currentTheme.border}`}>
             <div className={`flex flex-col ${isCollapsed ? "items-center gap-1.5" : "items-start gap-2.5"}`}>
               <div className="shrink-0">
@@ -160,6 +168,33 @@ export function Sidebar({
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>
+
+          {showBoardSettings && onOpenBoardSettings ? (
+            <SidebarFooter className={`${isCollapsed ? "px-1.5 py-2.5" : "px-2.5 py-3"} border-t ${currentTheme.border}`}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <UtilityIconButton
+                    type="button"
+                    size="md"
+                    emphasis="default"
+                    onClick={() => {
+                      closeMobileSidebar();
+                      onOpenBoardSettings();
+                    }}
+                    className={isCollapsed ? "self-center" : "w-full justify-start gap-2.5 px-3 text-sm font-semibold"}
+                    aria-label="Open board settings"
+                    aria-current={isBoardSettingsActive ? "page" : undefined}
+                  >
+                    <Settings2 className="h-4.5 w-4.5 shrink-0" />
+                    {!isCollapsed ? <span className="truncate leading-none">Board Settings</span> : null}
+                  </UtilityIconButton>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={10}>
+                  Open board settings
+                </TooltipContent>
+              </Tooltip>
+            </SidebarFooter>
+          ) : null}
         </div>
       </div>
     </WorkspaceSidebar>

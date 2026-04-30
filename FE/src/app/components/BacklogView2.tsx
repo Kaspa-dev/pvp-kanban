@@ -1,4 +1,4 @@
-import { Inbox, Play, Plus } from "lucide-react";
+import { Inbox, LoaderCircle, Play, Plus } from "lucide-react";
 import { useDrop } from "react-dnd";
 import { KanbanCard } from "./KanbanCard";
 import { CustomScrollArea } from "./CustomScrollArea";
@@ -28,7 +28,6 @@ interface BacklogViewProps {
   isPlanningPokerCreating: boolean;
   isPlanningPokerDeleting: boolean;
   onCreatePlanningPokerSession: () => void;
-  onRefreshPlanningPokerSession: () => void;
   onDeletePlanningPokerSession: () => void;
 }
 
@@ -56,7 +55,6 @@ export function BacklogView2({
   isPlanningPokerCreating,
   isPlanningPokerDeleting,
   onCreatePlanningPokerSession,
-  onRefreshPlanningPokerSession,
   onDeletePlanningPokerSession,
 }: BacklogViewProps) {
   const { theme, isDarkMode } = useTheme();
@@ -66,10 +64,13 @@ export function BacklogView2({
   const primaryActionButtonClassName = `group relative inline-flex items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r font-bold text-white shadow-lg transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} ${currentTheme.primary}`;
   const queueActionButtonClassName = `${primaryActionButtonClassName} gap-2 px-5 py-3 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-lg`;
   const inlineActionButtonClassName = `group inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-0 ${currentTheme.focus} ${currentTheme.border} ${currentTheme.textSecondary} ${isDarkMode ? "bg-white/[0.03] hover:bg-white/[0.06]" : "bg-slate-50 hover:bg-white"} hover:${currentTheme.primaryText}`;
+  const planningPokerActionButtonClassName = `${queueActionButtonClassName} px-4 text-sm`;
   const regionDividerClassName = currentTheme.border;
   const activeDropRegionClassName = isDarkMode ? "bg-white/[0.03]" : "bg-black/[0.02]";
   const emptyStateContainerClassName = `${isDarkMode ? "border-white/12 bg-white/[0.03]" : "border-slate-300/70 bg-slate-100/80"} rounded-xl border border-dashed`;
   const emptyStateIconClassName = `${currentTheme.textMuted} h-5 w-5`;
+  const canLaunchPlanningPoker =
+    !planningPokerSession && planningPokerEligibleTaskCount > 0 && !isPlanningPokerLoading && !isPlanningPokerCreating;
 
   const [{ isOverQueue }, queueDrop] = useDrop<DragCardItem, void, { isOverQueue: boolean }>({
     accept: "CARD",
@@ -127,18 +128,19 @@ export function BacklogView2({
           </p>
         </div>
 
-        <div className="shrink-0">
-          <PlanningPokerLaunchCard
-            session={planningPokerSession}
-            eligibleTaskCount={planningPokerEligibleTaskCount}
-            isLoading={isPlanningPokerLoading}
-            isCreating={isPlanningPokerCreating}
-            isDeleting={isPlanningPokerDeleting}
-            onCreateSession={onCreatePlanningPokerSession}
-            onRefreshSession={onRefreshPlanningPokerSession}
-            onDeleteSession={onDeletePlanningPokerSession}
-          />
-        </div>
+        {planningPokerSession ? (
+          <div className="shrink-0">
+            <PlanningPokerLaunchCard
+              session={planningPokerSession}
+              eligibleTaskCount={planningPokerEligibleTaskCount}
+              isLoading={isPlanningPokerLoading}
+              isCreating={isPlanningPokerCreating}
+              isDeleting={isPlanningPokerDeleting}
+              onCreateSession={onCreatePlanningPokerSession}
+              onDeleteSession={onDeletePlanningPokerSession}
+            />
+          </div>
+        ) : null}
 
         <div className="grid flex-1 min-h-0 grid-cols-1 gap-0 overflow-visible lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <section
@@ -240,23 +242,57 @@ export function BacklogView2({
                   </p>
                 </div>
 
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={onStartQueue}
-                      disabled={queuedCards.length === 0}
-                      className={queueActionButtonClassName}
-                    >
-                      <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_15%,rgba(255,255,255,0.24)_50%,transparent_85%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                      <span className="relative z-10 inline-flex items-center gap-2">
-                        <Play className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:scale-110" />
-                        <span>Start Queue</span>
-                      </span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" sideOffset={8}>Move all queued tasks into To Do</TooltipContent>
-                </Tooltip>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      {planningPokerSession ? (
+                        <button
+                          type="button"
+                          disabled
+                          aria-disabled="true"
+                          className={`${planningPokerActionButtonClassName} disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 disabled:hover:shadow-lg`}
+                        >
+                          <span>Open Planning Poker</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={onCreatePlanningPokerSession}
+                          disabled={!canLaunchPlanningPoker}
+                          className={`${planningPokerActionButtonClassName} disabled:cursor-not-allowed disabled:opacity-60`}
+                        >
+                          {isPlanningPokerCreating ? (
+                            <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+                          ) : null}
+                          <span>{isPlanningPokerCreating ? "Creating..." : "Launch Planning Poker"}</span>
+                        </button>
+                      )}
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" sideOffset={8}>
+                      {planningPokerSession
+                        ? "Manage the active planning poker session from the panel above"
+                        : "Create a live planning poker room for unestimated queued tasks"}
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={onStartQueue}
+                        disabled={queuedCards.length === 0}
+                        className={queueActionButtonClassName}
+                      >
+                        <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_15%,rgba(255,255,255,0.24)_50%,transparent_85%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                        <span className="relative z-10 inline-flex items-center gap-2">
+                          <Play className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:scale-110" />
+                          <span>Start Queue</span>
+                        </span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" sideOffset={8}>Move all queued tasks into To Do</TooltipContent>
+                  </Tooltip>
+                </div>
               </div>
             </div>
 

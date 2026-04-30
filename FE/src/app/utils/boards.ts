@@ -7,6 +7,13 @@ import {
 } from "./boardIdentity";
 
 export type BoardRole = "owner" | "member";
+export type BoardWorkflowStatusKey = "todo" | "inProgress" | "inReview" | "done" | "backlog";
+
+interface ApiBoardColumnLimit {
+  statusKey: BoardWorkflowStatusKey;
+  softLimit: number | null;
+  hardLimit: number | null;
+}
 
 interface ApiBoardMember {
   userId: number;
@@ -26,6 +33,7 @@ interface ApiBoard {
   createdAt: string;
   creatorUserId: number;
   isFavorite: boolean;
+  columnLimits?: ApiBoardColumnLimit[];
   members: ApiBoardMember[];
 }
 
@@ -59,6 +67,12 @@ export interface BoardMember {
   name: string;
 }
 
+export interface BoardColumnLimit {
+  statusKey: BoardWorkflowStatusKey;
+  softLimit: number | null;
+  hardLimit: number | null;
+}
+
 export interface Board {
   id: number;
   name: string;
@@ -68,6 +82,7 @@ export interface Board {
   createdAt: string;
   creatorUserId: number;
   isFavorite: boolean;
+  columnLimits: Partial<Record<BoardWorkflowStatusKey, BoardColumnLimit>>;
   members: BoardMember[];
 }
 
@@ -116,6 +131,14 @@ function normalizeMember(member: ApiBoardMember): BoardMember {
 }
 
 function normalizeBoard(board: ApiBoard): Board {
+  const columnLimits = (board.columnLimits ?? []).reduce<Partial<Record<BoardWorkflowStatusKey, BoardColumnLimit>>>(
+    (accumulator, limit) => {
+      accumulator[limit.statusKey] = limit;
+      return accumulator;
+    },
+    {},
+  );
+
   return {
     id: board.id,
     name: board.name,
@@ -125,6 +148,7 @@ function normalizeBoard(board: ApiBoard): Board {
     createdAt: board.createdAt,
     creatorUserId: board.creatorUserId,
     isFavorite: board.isFavorite,
+    columnLimits,
     members: board.members.map(normalizeMember),
   };
 }

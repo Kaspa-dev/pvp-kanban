@@ -23,6 +23,8 @@ interface KanbanColumnProps {
   onMoveToBacklog?: (cardId: number) => void;
   availableAssignees: TaskAssignee[];
   labels: Label[];
+  softLimit?: number | null;
+  hardLimit?: number | null;
 }
 
 export function KanbanColumn({ 
@@ -37,12 +39,18 @@ export function KanbanColumn({
   onEdit,
   onMoveToBacklog,
   availableAssignees,
-  labels
+  labels,
+  softLimit = null,
+  hardLimit = null,
 }: KanbanColumnProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const columnSurfaceClassName = isDarkMode ? "bg-zinc-950/52" : "bg-slate-50/88";
   const columnHeaderSurfaceClassName = isDarkMode ? "bg-zinc-900/46" : "bg-white/78";
+  const countDisplay = softLimit ? `${count} / ${softLimit}` : String(count);
+  const countLabel = softLimit
+    ? `${title}: ${count} tasks. Soft limit ${softLimit}.${hardLimit ? ` Hard limit ${hardLimit}.` : ""}`
+    : `${title}: ${count} tasks.`;
 
   const [{ isOver }, drop] = useDrop({
     accept: "CARD",
@@ -56,8 +64,6 @@ export function KanbanColumn({
     }),
   });
 
-  const badgeColor = currentTheme.badge[id as keyof typeof currentTheme.badge] || currentTheme.badge.todo;
-
   return (
     <div className="w-full min-h-0 lg:h-full">
       <div
@@ -70,8 +76,12 @@ export function KanbanColumn({
         <div className={`px-5 py-4 border-b-2 ${currentTheme.border} ${columnHeaderSurfaceClassName} rounded-t-2xl`}>
           <div className="flex items-center justify-between">
             <h2 className={`font-bold text-lg ${currentTheme.text}`}>{title}</h2>
-            <span className={`px-3 py-1.5 ${badgeColor} text-white rounded-full text-sm font-bold shadow-sm`}>
-              {count}
+            <span
+              className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${currentTheme.border} ${currentTheme.textSecondary}`}
+              aria-label={countLabel}
+              title={countLabel}
+            >
+              {countDisplay}
             </span>
           </div>
         </div>
@@ -107,8 +117,7 @@ export function KanbanColumn({
             </div>
           ) : (
             <div className={`flex min-h-[14rem] flex-col items-center justify-center text-center ${currentTheme.textMuted}`}>
-              <p className="mb-1 text-sm">No tasks</p>
-              <p className="text-xs opacity-60">Drag & drop tasks here</p>
+              <p className="text-sm">No tasks</p>
             </div>
           )}
         </CustomScrollArea>

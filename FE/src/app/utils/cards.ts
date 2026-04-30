@@ -152,7 +152,7 @@ export interface Cards {
 export type TaskQuickFilter = "all" | "assigned" | "due";
 export type BacklogStageFilter = "all" | "waiting" | "queued";
 export type BoardTaskListScope = "active" | "backlog";
-export type BoardTaskSortKey = "priority" | "title" | "status" | "storyPoints" | "assignee" | "readiness";
+export type BoardTaskSortKey = "priority" | "title" | "status" | "storyPoints" | "dueDate" | "assignee" | "readiness";
 export type BoardTaskSortDirection = "asc" | "desc";
 
 interface PagedBoardTaskListResponse {

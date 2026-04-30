@@ -20,7 +20,15 @@ public class BoardDto
     public DateTime CreatedAt { get; set; }
     public int CreatorUserId { get; set; }
     public bool IsFavorite { get; set; }
+    public List<BoardColumnLimitDto> ColumnLimits { get; set; } = new();
     public List<BoardMemberDto> Members { get; set; } = new();
+}
+
+public class BoardColumnLimitDto
+{
+    public string StatusKey { get; set; } = string.Empty;
+    public int? SoftLimit { get; set; }
+    public int? HardLimit { get; set; }
 }
 
 public class BoardListItemDto

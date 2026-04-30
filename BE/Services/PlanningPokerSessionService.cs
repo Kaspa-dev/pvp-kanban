@@ -37,15 +37,15 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
             .Include(task => task.Status)
             .Where(task =>
                 task.BoardId == boardId &&
+                task.IsQueued &&
                 task.StoryPoints == null &&
                 task.Status.Title == BacklogStatusTitle)
-            .OrderByDescending(task => task.IsQueued)
-            .ThenByDescending(task => task.Id)
+            .OrderByDescending(task => task.Id)
             .ToListAsync(cancellationToken);
 
         if (backlogTasks.Count == 0)
         {
-            throw new PlanningPokerValidationException("There are no unestimated backlog tasks for planning poker.");
+            throw new PlanningPokerValidationException("There are no unestimated queued tasks for planning poker.");
         }
 
         DateTime now = DateTime.UtcNow;

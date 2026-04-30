@@ -14,6 +14,7 @@ import { ConfirmDeleteDialog } from "../components/ConfirmDeleteDialog";
 import { ListView } from "../components/ListView";
 import { BacklogView2 } from "../components/BacklogView2";
 import { HistoryView } from "../components/HistoryView";
+import { BoardSettingsPage } from "../components/BoardSettingsPage";
 import { CoachmarkOverlay } from "../components/CoachmarkOverlay";
 import { PlanningPokerDeleteSessionDialog } from "../components/planning-poker/PlanningPokerDeleteSessionDialog";
 import { UtilityIconButton } from "../components/UtilityIconButton";
@@ -29,7 +30,7 @@ import {
   getDefaultGamificationSummary,
 } from "../utils/gamification";
 import { isApiError } from "../utils/auth";
-import { getBoard, Board as BoardType } from "../utils/boards";
+import { getBoard, Board as BoardType, isBoardOwner, updateBoard } from "../utils/boards";
 import {
   addTaskToQueue,
   Card,
@@ -82,6 +83,7 @@ const BOARD_VIEW_TABS: Array<{ value: BoardWorkspaceView; label: string; icon: t
   { value: "backlog", label: "Backlog", icon: ClipboardList },
   { value: "history", label: "History", icon: Clock },
 ];
+type BoardPageView = BoardWorkspaceView | "boardSettings";
 
 function getBoardWorkspaceTabTooltip(view: BoardWorkspaceView) {
   switch (view) {
@@ -187,7 +189,7 @@ export function Board() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLabelsModalOpen, setIsLabelsModalOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isGlobalSettingsOpen, setIsGlobalSettingsOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Card | null>(null);
   const [pendingReplay, setPendingReplay] = useState<{ flowId: ReturnType<typeof getCoachmarkFlowForView>; targetView: BoardWorkspaceView } | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; cardId: number | null; title: string }>({
@@ -196,7 +198,7 @@ export function Board() {
     title: "",
   });
 
-  const [view, setView] = useState<BoardWorkspaceView>("board");
+  const [view, setView] = useState<BoardPageView>("board");
   const [listFilters, setListFilters] = useState<TaskWorkspaceFilters>(DEFAULT_TASK_WORKSPACE_FILTERS);
   const [backlogFilters, setBacklogFilters] = useState<BacklogWorkspaceFilters>(DEFAULT_BACKLOG_WORKSPACE_FILTERS);
 
@@ -212,7 +214,6 @@ export function Board() {
   const [isLoadingBoard, setIsLoadingBoard] = useState(true);
   const [boardAccessState, setBoardAccessState] = useState<"available" | "forbidden" | "notFound">("available");
   const [loadError, setLoadError] = useState("");
-  const [actionError, setActionError] = useState("");
   const [workspaceReloadState, setWorkspaceReloadState] = useState<{ count: number; mode: "hard" | "soft" }>({
     count: 0,
     mode: "hard",
@@ -276,9 +277,8 @@ export function Board() {
         setCards(createEmptyCards());
         setBoardAccessState("notFound");
         setLoadError("");
-        setActionError("");
-        setIsLoadingBoard(false);
-        return;
+      setIsLoadingBoard(false);
+      return;
       }
 
       try {
@@ -292,8 +292,6 @@ export function Board() {
         }
         setBoardAccessState("available");
         setLoadError("");
-        setActionError("");
-
         const boardResult = await getBoard(numericBoardId);
 
         if (!isActive) {
@@ -370,6 +368,8 @@ export function Board() {
       })) ?? [],
     [currentBoard],
   );
+  const activeWorkspaceView: BoardWorkspaceView = view === "boardSettings" ? "board" : view;
+  const isBoardAdmin = currentBoard && user ? isBoardOwner(currentBoard, user.id) : false;
 
   const allCards = useMemo(() => flattenCards(cards), [cards]);
 
@@ -431,7 +431,7 @@ export function Board() {
       setGamificationSummary(summary);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to refresh your progress.";
-      setActionError(message);
+      showErrorToast(message);
     }
   };
 
@@ -500,8 +500,8 @@ export function Board() {
   );
 
   const planningPokerEligibleTaskCount = useMemo(
-    () => stagingCards.filter((card) => card.storyPoints === null).length,
-    [stagingCards],
+    () => queuedStagingCards.filter((card) => card.storyPoints === null).length,
+    [queuedStagingCards],
   );
 
   const workflowCards = useMemo(
@@ -520,8 +520,8 @@ export function Board() {
   );
 
   const currentBoardFlow = useMemo(
-    () => getCoachmarkFlowForView(view, workflowCards.length > 0),
-    [view, workflowCards.length],
+    () => getCoachmarkFlowForView(activeWorkspaceView, workflowCards.length > 0),
+    [activeWorkspaceView, workflowCards.length],
   );
   const boardWorkspaceWidthClassName = "mx-auto w-full max-w-[1850px]";
   const isCurrentViewDataRefreshing =
@@ -566,7 +566,7 @@ export function Board() {
   }, [isCurrentViewDataRefreshing, isRefreshIndicatorPinned]);
 
   const coachmarks = useBoardCoachmarks({
-    view,
+    view: activeWorkspaceView,
     hasWorkflowCards: workflowCards.length > 0,
     coachmarksEnabled: preferences.coachmarksEnabled,
     completedFlows: preferences.completedFlows,
@@ -574,13 +574,20 @@ export function Board() {
     isBlocked:
       isLoadingBoard ||
       isModalOpen ||
-      isSettingsOpen ||
+      isGlobalSettingsOpen ||
+      view === "boardSettings" ||
       editingTask !== null ||
       deleteDialog.isOpen,
     onFlowCompleted: (flowId) => {
       void markFlowCompleted(flowId);
     },
   });
+
+  useEffect(() => {
+    if (view === "boardSettings" && !isBoardAdmin) {
+      setView("board");
+    }
+  }, [isBoardAdmin, view]);
 
   const {
     activeFlowId,
@@ -599,7 +606,7 @@ export function Board() {
       isLoadingBoard ||
       !currentBoard ||
       isModalOpen ||
-      isSettingsOpen ||
+      isGlobalSettingsOpen ||
       editingTask !== null ||
       deleteDialog.isOpen ||
       activeFlowId !== null
@@ -634,6 +641,10 @@ export function Board() {
       }
 
       setView((currentView) => {
+        if (currentView === "boardSettings") {
+          return currentView;
+        }
+
         const currentIndex = WORKSPACE_VIEW_ORDER.indexOf(currentView);
         if (currentIndex === -1) {
           return currentView;
@@ -660,18 +671,16 @@ export function Board() {
     isRefreshingWorkspace,
     isLoadingBoard,
     isModalOpen,
-    isSettingsOpen,
+    isGlobalSettingsOpen,
     view,
   ]);
 
   const handleCardDrop = async (cardId: number, _fromColumnId: string, toColumnId: string) => {
     try {
-      setActionError("");
       await saveTask(cardId, { status: toColumnId as TaskStatus });
       showSuccessToast("Task status updated.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to move the task right now.";
-      setActionError(message);
       showErrorToast(message);
     }
   };
@@ -692,7 +701,6 @@ export function Board() {
     }
 
     try {
-      setActionError("");
       const createdTask = await createBoardTask(numericBoardId, {
         title: newCard.title,
         description: newCard.description,
@@ -711,7 +719,6 @@ export function Board() {
       showSuccessToast("Task created.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to create the task right now.";
-      setActionError(message);
       showErrorToast(message);
       throw new Error(message);
     }
@@ -728,7 +735,6 @@ export function Board() {
     }
 
     try {
-      setActionError("");
       await saveTask(cardId, { assignee: newAssignee });
       if (newAssignee) {
         showSuccessToast("Task assigned.");
@@ -737,7 +743,6 @@ export function Board() {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to update the assignee right now.";
-      setActionError(message);
       showErrorToast(message);
     }
   };
@@ -752,7 +757,6 @@ export function Board() {
     }
 
     try {
-      setActionError("");
       await deleteBoardTask(numericBoardId, deleteDialog.cardId);
       removeTaskFromState(deleteDialog.cardId);
       setDeleteDialog({ isOpen: false, cardId: null, title: "" });
@@ -760,7 +764,6 @@ export function Board() {
       await refreshProgress();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to delete the task right now.";
-      setActionError(message);
       showErrorToast(message);
     }
   };
@@ -792,13 +795,11 @@ export function Board() {
     }
 
     try {
-      setActionError("");
       await saveTask(cardId, updates);
       setEditingTask(null);
       showSuccessToast("Task changes saved.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to save the task right now.";
-      setActionError(message);
       showErrorToast(message);
       throw new Error(message);
     }
@@ -806,12 +807,10 @@ export function Board() {
 
   const handleMoveToBacklog = async (cardId: number) => {
     try {
-      setActionError("");
       await saveTask(cardId, { status: "backlog" });
       showSuccessToast("Task status updated.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to move the task back to staging right now.";
-      setActionError(message);
       showErrorToast(message);
     }
   };
@@ -822,13 +821,12 @@ export function Board() {
     }
 
     try {
-      setActionError("");
       const updatedTask = await addTaskToQueue(numericBoardId, cardId);
       setTaskInState(updatedTask);
       triggerWorkspaceRefetch("soft");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to add the task to the queue right now.";
-      setActionError(message);
+      showErrorToast(message);
     }
   };
 
@@ -838,13 +836,12 @@ export function Board() {
     }
 
     try {
-      setActionError("");
       const updatedTask = await removeTaskFromQueue(numericBoardId, cardId);
       setTaskInState(updatedTask);
       triggerWorkspaceRefetch("soft");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to remove the task from the queue right now.";
-      setActionError(message);
+      showErrorToast(message);
     }
   };
 
@@ -854,7 +851,6 @@ export function Board() {
     }
 
     try {
-      setActionError("");
       const startedTasks = await startBoardQueue(numericBoardId);
       startedTasks.forEach(setTaskInState);
       await refreshProgress();
@@ -862,25 +858,7 @@ export function Board() {
       setView("board");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to start the queue right now.";
-      setActionError(message);
-    }
-  };
-
-  const handleRefreshPlanningPokerSession = async () => {
-    if (!Number.isFinite(numericBoardId)) {
-      return;
-    }
-
-    try {
-      setActionError("");
-      setIsPlanningPokerLoading(true);
-      const session = await loadPlanningPokerSession(numericBoardId);
-      setPlanningPokerSession(session);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to refresh the planning poker session right now.";
-      setActionError(message);
-    } finally {
-      setIsPlanningPokerLoading(false);
+      showErrorToast(message);
     }
   };
 
@@ -890,13 +868,12 @@ export function Board() {
     }
 
     try {
-      setActionError("");
       setIsPlanningPokerCreating(true);
       const session = await createPlanningPokerSession(numericBoardId);
       setPlanningPokerSession(session);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to create the planning poker session right now.";
-      setActionError(message);
+      showErrorToast(message);
     } finally {
       setIsPlanningPokerCreating(false);
     }
@@ -908,7 +885,6 @@ export function Board() {
     }
 
     try {
-      setActionError("");
       setIsPlanningPokerApplying(true);
       const updatedTask = await applyPlanningPokerRecommendation(numericBoardId, sessionTaskId);
       setTaskInState(updatedTask);
@@ -916,7 +892,7 @@ export function Board() {
       setPlanningPokerSession(session);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to apply the planning poker recommendation right now.";
-      setActionError(message);
+      showErrorToast(message);
     } finally {
       setIsPlanningPokerApplying(false);
     }
@@ -928,18 +904,34 @@ export function Board() {
     }
 
     try {
-      setActionError("");
       setIsPlanningPokerDeleting(true);
       await deletePlanningPokerSession(numericBoardId);
       setPlanningPokerSession(null);
       setIsDeletePlanningPokerDialogOpen(false);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to delete the planning poker session right now.";
-      setActionError(message);
+      showErrorToast(message);
     } finally {
       setIsPlanningPokerDeleting(false);
     }
   };
+
+  const handleSaveBoardSettings = async (updates: {
+    name: string;
+    description: string;
+    logoIconKey: BoardType["logoIconKey"];
+    logoColorKey: BoardType["logoColorKey"];
+    memberUserIds: number[];
+  }) => {
+    if (!Number.isFinite(numericBoardId)) {
+      throw new Error("Unable to resolve the current board.");
+    }
+
+    const updatedBoard = await updateBoard(numericBoardId, updates);
+    setCurrentBoard(updatedBoard);
+    triggerWorkspaceRefetch("soft");
+  };
+
   const handleSaveLabels = async (drafts: LabelDraft[]) => {
     if (!Number.isFinite(numericBoardId)) {
       throw new Error("Unable to resolve the current board.");
@@ -1123,12 +1115,12 @@ export function Board() {
 
         <div className="relative z-10 shrink-0">
           <Toolbar
-            onOpenSettings={() => setIsSettingsOpen(true)}
+            onOpenSettings={() => setIsGlobalSettingsOpen(true)}
             onLogout={handleLogout}
             onProfileClick={() => navigate("/app/profile")}
             onReplayCurrentHints={
-              preferences.coachmarksEnabled && currentBoardFlow
-                ? () => replayFlowForView(view)
+              view !== "boardSettings" && preferences.coachmarksEnabled && currentBoardFlow
+                ? () => replayFlowForView(activeWorkspaceView)
                 : undefined
             }
             userProfile={{
@@ -1143,6 +1135,9 @@ export function Board() {
             <Sidebar
               onCreateTask={() => setIsModalOpen(true)}
               onOpenLabels={() => setIsLabelsModalOpen(true)}
+              onOpenBoardSettings={() => setView("boardSettings")}
+              showBoardSettings={isBoardAdmin}
+              isBoardSettingsActive={view === "boardSettings"}
               labelCount={labels.length}
               boardName={currentBoard.name}
               boardLogoIconKey={currentBoard.logoIconKey}
@@ -1165,7 +1160,7 @@ export function Board() {
                           <button
                             onClick={() => setView(value)}
                             className={`relative inline-flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-semibold transition-all ${
-                              view === value
+                              activeWorkspaceView === value && view !== "boardSettings"
                                 ? `bg-gradient-to-r ${currentTheme.primary} text-white shadow-sm`
                                 : `${currentTheme.textSecondary} hover:${currentTheme.primaryText} ${isDarkMode ? "hover:bg-white/[0.05]" : "hover:bg-black/[0.04]"}`
                             }`}
@@ -1217,15 +1212,7 @@ export function Board() {
                 </div>
               </div>
 
-              {actionError && (
-                <div className="shrink-0 px-8 pt-4 lg:px-10 xl:px-12">
-                  <div className={`${boardWorkspaceWidthClassName} rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700`}>
-                    {actionError}
-                  </div>
-                </div>
-              )}
-
-              {preferencesError && !actionError && (
+              {preferencesError && (
                 <div className="shrink-0 px-8 pt-4 lg:px-10 xl:px-12">
                   <div className={`${boardWorkspaceWidthClassName} rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800`}>
                     {preferencesError}
@@ -1277,10 +1264,10 @@ export function Board() {
 
                     <div className="flex-1 min-h-0">
                       <div className="grid h-full min-h-0 grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4" data-coachmark="board-columns-grid">
-                      <KanbanColumn boardId={numericBoardId} id="todo" title="To Do" count={workflowColumns.todo.length} cards={workflowColumns.todo} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
-                      <KanbanColumn boardId={numericBoardId} id="inProgress" title="In Progress" count={workflowColumns.inProgress.length} cards={workflowColumns.inProgress} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
-                      <KanbanColumn boardId={numericBoardId} id="inReview" title="In Review" count={workflowColumns.inReview.length} cards={workflowColumns.inReview} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
-                        <KanbanColumn boardId={numericBoardId} id="done" title="Done" count={workflowColumns.done.length} cards={workflowColumns.done} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                      <KanbanColumn boardId={numericBoardId} id="todo" title="To Do" count={workflowColumns.todo.length} softLimit={currentBoard.columnLimits.todo?.softLimit ?? null} hardLimit={currentBoard.columnLimits.todo?.hardLimit ?? null} cards={workflowColumns.todo} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                      <KanbanColumn boardId={numericBoardId} id="inProgress" title="In Progress" count={workflowColumns.inProgress.length} softLimit={currentBoard.columnLimits.inProgress?.softLimit ?? null} hardLimit={currentBoard.columnLimits.inProgress?.hardLimit ?? null} cards={workflowColumns.inProgress} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                      <KanbanColumn boardId={numericBoardId} id="inReview" title="In Review" count={workflowColumns.inReview.length} softLimit={currentBoard.columnLimits.inReview?.softLimit ?? null} hardLimit={currentBoard.columnLimits.inReview?.hardLimit ?? null} cards={workflowColumns.inReview} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                        <KanbanColumn boardId={numericBoardId} id="done" title="Done" count={workflowColumns.done.length} softLimit={currentBoard.columnLimits.done?.softLimit ?? null} hardLimit={currentBoard.columnLimits.done?.hardLimit ?? null} cards={workflowColumns.done} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
                       </div>
                     </div>
 
@@ -1361,7 +1348,6 @@ export function Board() {
                     isPlanningPokerCreating={isPlanningPokerCreating}
                     isPlanningPokerDeleting={isPlanningPokerDeleting}
                     onCreatePlanningPokerSession={() => void handleCreatePlanningPokerSession()}
-                    onRefreshPlanningPokerSession={() => void handleRefreshPlanningPokerSession()}
                     onDeletePlanningPokerSession={() => setIsDeletePlanningPokerDialogOpen(true)}
                   />
                 </main>
@@ -1399,6 +1385,13 @@ export function Board() {
                   labels={labels}
                 />
               )}
+
+              {view === "boardSettings" && (
+                <BoardSettingsPage
+                  board={currentBoard}
+                  onSave={handleSaveBoardSettings}
+                />
+              )}
             </SidebarInset>
 
             <AddCardModal
@@ -1429,8 +1422,8 @@ export function Board() {
             />
 
             <SettingsModal
-              isOpen={isSettingsOpen}
-              onClose={() => setIsSettingsOpen(false)}
+              isOpen={isGlobalSettingsOpen}
+              onClose={() => setIsGlobalSettingsOpen(false)}
               onOpenProfile={() => navigate("/app/profile")}
             />
 
