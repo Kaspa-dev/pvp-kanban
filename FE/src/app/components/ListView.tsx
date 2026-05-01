@@ -151,6 +151,7 @@ interface ListViewProps {
   onRefreshingChange?: (isRefreshing: boolean) => void;
   filters: TaskWorkspaceFilters | BacklogWorkspaceFilters;
   onFiltersChange: (filters: TaskWorkspaceFilters | BacklogWorkspaceFilters) => void;
+  onOpen?: (cardId: number) => void;
   onAssigneeChange: (cardId: number, assignee: TaskAssignee | null) => void | Promise<void>;
   onDelete: (cardId: number, title: string) => void;
   onEdit?: (cardId: number) => void;
@@ -171,6 +172,7 @@ export function ListView({
   onRefreshingChange,
   filters,
   onFiltersChange,
+  onOpen,
   onAssigneeChange,
   onDelete,
   onEdit,
@@ -1063,11 +1065,14 @@ export function ListView({
                                   </span>
                                 </div>
                               )}
-                              <OverflowTooltip
-                                text={card.title}
-                                className={`block max-w-full truncate text-[15px] font-semibold ${currentTheme.text}`}
-                                tooltipClassName="max-w-none whitespace-nowrap"
-                              />
+                              <button
+                                type="button"
+                                title={card.title}
+                                onClick={() => onOpen?.(card.id)}
+                                className={`block max-w-full truncate text-left text-[15px] font-semibold ${currentTheme.text} ${onOpen ? "hover:underline" : ""}`}
+                              >
+                                {card.title}
+                              </button>
                             </div>
                           </TableCell>
                           <TableCell className={`px-4 align-middle ${taskIndexDividerClassName}`}>

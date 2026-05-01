@@ -123,6 +123,33 @@ public class BoardTaskDto
     public string? TaskType { get; set; }
 }
 
+public class TaskCommentDto
+{
+    public int Id { get; set; }
+    public string Content { get; set; } = string.Empty;
+    public BoardMemberDto Author { get; set; } = new();
+    public int AuthorUserId { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public bool CanEdit { get; set; }
+    public bool CanDelete { get; set; }
+}
+
+public class TaskDetailsDto : BoardTaskDto
+{
+    public List<TaskCommentDto> Comments { get; set; } = new();
+}
+
+public class CreateTaskCommentRequestDto
+{
+    public string Content { get; set; } = string.Empty;
+}
+
+public class UpdateTaskCommentRequestDto
+{
+    public string Content { get; set; } = string.Empty;
+}
+
 public class PagedBoardTaskListResponseDto
 {
     public List<BoardTaskDto> Items { get; set; } = new();

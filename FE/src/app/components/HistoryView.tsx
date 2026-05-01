@@ -16,6 +16,7 @@ type HistoryCard = Card & {
 interface HistoryViewProps {
   boardId: number;
   cards: HistoryCard[];
+  onOpen?: (cardId: number) => void;
   onAssigneeChange: (cardId: number, assignee: TaskAssignee | null) => void;
   onDelete: (cardId: number, title: string) => void;
   onEdit?: (cardId: number) => void;
@@ -28,6 +29,7 @@ interface HistoryViewProps {
 export function HistoryView({ 
   boardId,
   cards, 
+  onOpen,
   onAssigneeChange, 
   onDelete,
   onEdit, 
@@ -191,6 +193,7 @@ export function HistoryView({
                         labelIds={card.labelIds}
                         assignee={card.assignee}
                         columnId="done"
+                        onOpen={onOpen}
                         onAssigneeChange={onAssigneeChange}
                         onDelete={onDelete}
                         onEdit={onEdit}

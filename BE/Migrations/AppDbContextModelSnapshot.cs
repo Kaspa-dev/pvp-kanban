@@ -167,22 +167,30 @@ namespace BE.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
+                    b.Property<int>("AuthorUserId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Content")
                         .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)");
 
-                    b.Property<int>("CreatorId")
-                        .HasColumnType("int");
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6)")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("TaskId")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatorId");
+                    b.HasIndex("AuthorUserId");
 
-                    b.HasIndex("TaskId");
+                    b.HasIndex("TaskId", "CreatedAt");
 
                     b.ToTable("Comments");
                 });
@@ -771,9 +779,9 @@ namespace BE.Migrations
 
             modelBuilder.Entity("BE.Models.Comment", b =>
                 {
-                    b.HasOne("BE.Models.User", "Creator")
+                    b.HasOne("BE.Models.User", "Author")
                         .WithMany("Comments")
-                        .HasForeignKey("CreatorId")
+                        .HasForeignKey("AuthorUserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -783,7 +791,7 @@ namespace BE.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Creator");
+                    b.Navigation("Author");
 
                     b.Navigation("Task");
                 });

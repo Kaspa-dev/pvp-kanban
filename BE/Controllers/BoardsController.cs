@@ -37,6 +37,7 @@ public class BoardsController(
     private const int MaxTaskPageSize = 24;
     private const int MaxTaskTitleLength = 128;
     private const int MaxTaskDescriptionLength = 2000;
+    private const int MaxTaskCommentLength = 2000;
     private const int MaxTaskLabels = 5;
     private const int MinTaskStoryPoints = 1;
     private const int MaxTaskStoryPoints = 100;
@@ -726,6 +727,42 @@ public class BoardsController(
         return Ok(tasks.Select(task => ToTaskDto(task, memberLookup)));
     }
 
+    [HttpGet("{boardId:int}/tasks/{taskId:int}")]
+    public async Task<ActionResult<TaskDetailsDto>> GetTask(int boardId, int taskId, CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        var (accessContext, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
+        if (failure is not null)
+        {
+            return failure;
+        }
+
+        Board board = accessContext!.Board;
+        Dictionary<int, BoardMemberDto> memberLookup = board.Memberships.ToDictionary(
+            membership => membership.UserId,
+            ToBoardMemberDto);
+
+        TaskEntity? task = await _context.Tasks
+            .Where(item => item.Id == taskId && item.BoardId == boardId)
+            .Include(item => item.Status)
+            .Include(item => item.Assignee)
+            .Include(item => item.LabeledTasks)
+            .Include(item => item.Comments)
+            .ThenInclude(comment => comment.Author)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (task is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(ToTaskDetailsDto(task, memberLookup, userId));
+    }
+
     [HttpGet("{boardId:int}/tasks/index")]
     public async Task<ActionResult<PagedBoardTaskListResponseDto>> GetTaskIndex(
         int boardId,
@@ -1077,6 +1114,183 @@ public class BoardsController(
         }
 
         _context.Tasks.Remove(task);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return NoContent();
+    }
+
+    [HttpGet("{boardId:int}/tasks/{taskId:int}/comments")]
+    public async Task<ActionResult<IEnumerable<TaskCommentDto>>> GetTaskComments(int boardId, int taskId, CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        var (accessContext, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
+        if (failure is not null)
+        {
+            return failure;
+        }
+
+        bool taskExists = await _context.Tasks
+            .AnyAsync(item => item.Id == taskId && item.BoardId == boardId, cancellationToken);
+
+        if (!taskExists)
+        {
+            return NotFound();
+        }
+
+        Board board = accessContext!.Board;
+        Dictionary<int, BoardMemberDto> memberLookup = board.Memberships.ToDictionary(
+            membership => membership.UserId,
+            ToBoardMemberDto);
+
+        var comments = await _context.Comments
+            .Where(item => item.TaskId == taskId && item.Task.BoardId == boardId)
+            .Include(item => item.Author)
+            .OrderBy(item => item.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        return Ok(comments.Select(comment => ToTaskCommentDto(comment, memberLookup, userId)));
+    }
+
+    [HttpPost("{boardId:int}/tasks/{taskId:int}/comments")]
+    public async Task<ActionResult<TaskCommentDto>> CreateTaskComment(
+        int boardId,
+        int taskId,
+        CreateTaskCommentRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        var (accessContext, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
+        if (failure is not null)
+        {
+            return failure;
+        }
+
+        bool taskExists = await _context.Tasks
+            .AnyAsync(item => item.Id == taskId && item.BoardId == boardId, cancellationToken);
+
+        if (!taskExists)
+        {
+            return NotFound();
+        }
+
+        if (!TryNormalizeTaskCommentContent(request.Content, out string normalizedContent, out string? validationMessage))
+        {
+            return BadRequest(new { message = validationMessage });
+        }
+
+        var comment = new Comment
+        {
+            TaskId = taskId,
+            AuthorUserId = userId,
+            Content = normalizedContent,
+            CreatedAt = DateTime.UtcNow,
+        };
+        comment.Author = accessContext!.Membership.User;
+
+        _context.Comments.Add(comment);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        Board board = accessContext.Board;
+        Dictionary<int, BoardMemberDto> memberLookup = board.Memberships.ToDictionary(
+            membership => membership.UserId,
+            ToBoardMemberDto);
+
+        return CreatedAtAction(
+            nameof(GetTaskComments),
+            new { boardId, taskId },
+            ToTaskCommentDto(comment, memberLookup, userId));
+    }
+
+    [HttpPatch("{boardId:int}/tasks/{taskId:int}/comments/{commentId:int}")]
+    public async Task<ActionResult<TaskCommentDto>> UpdateTaskComment(
+        int boardId,
+        int taskId,
+        int commentId,
+        UpdateTaskCommentRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        var (accessContext, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
+        if (failure is not null)
+        {
+            return failure;
+        }
+
+        Board board = accessContext!.Board;
+        Comment? comment = await _context.Comments
+            .Where(item => item.Id == commentId && item.TaskId == taskId && item.Task.BoardId == boardId)
+            .Include(item => item.Author)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (comment is null)
+        {
+            return NotFound();
+        }
+
+        if (comment.AuthorUserId != userId)
+        {
+            return Forbid();
+        }
+
+        if (!TryNormalizeTaskCommentContent(request.Content, out string normalizedContent, out string? validationMessage))
+        {
+            return BadRequest(new { message = validationMessage });
+        }
+
+        comment.Content = normalizedContent;
+        comment.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        Dictionary<int, BoardMemberDto> memberLookup = board.Memberships.ToDictionary(
+            membership => membership.UserId,
+            ToBoardMemberDto);
+
+        return Ok(ToTaskCommentDto(comment, memberLookup, userId));
+    }
+
+    [HttpDelete("{boardId:int}/tasks/{taskId:int}/comments/{commentId:int}")]
+    public async Task<IActionResult> DeleteTaskComment(int boardId, int taskId, int commentId, CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        var (_, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
+        if (failure is not null)
+        {
+            return failure;
+        }
+
+        Comment? comment = await _context.Comments
+            .FirstOrDefaultAsync(
+                item => item.Id == commentId && item.TaskId == taskId && item.Task.BoardId == boardId,
+                cancellationToken);
+
+        if (comment is null)
+        {
+            return NotFound();
+        }
+
+        if (comment.AuthorUserId != userId)
+        {
+            return Forbid();
+        }
+
+        _context.Comments.Remove(comment);
         await _context.SaveChangesAsync(cancellationToken);
 
         return NoContent();
@@ -2014,6 +2228,85 @@ public class BoardsController(
             DueDate = task.DueDate?.ToString("yyyy-MM-dd"),
             Priority = task.Priority?.ToString().ToLowerInvariant(),
             TaskType = task.Type?.ToString().ToLowerInvariant(),
+        };
+    }
+
+    private static TaskCommentDto ToTaskCommentDto(
+        Comment comment,
+        Dictionary<int, BoardMemberDto> memberLookup,
+        int currentUserId)
+    {
+        BoardMemberDto author = memberLookup.TryGetValue(comment.AuthorUserId, out BoardMemberDto? member)
+            ? member
+            : new BoardMemberDto
+            {
+                UserId = comment.AuthorUserId,
+                Username = comment.Author.Username,
+                DisplayName = $"{comment.Author.FirstName} {comment.Author.LastName}".Trim(),
+                Email = comment.Author.Email,
+                Color = "#9ca3af",
+                Role = "member",
+            };
+
+        return new TaskCommentDto
+        {
+            Id = comment.Id,
+            Content = comment.Content,
+            Author = author,
+            AuthorUserId = comment.AuthorUserId,
+            CreatedAt = comment.CreatedAt,
+            UpdatedAt = comment.UpdatedAt,
+            CanEdit = comment.AuthorUserId == currentUserId,
+            CanDelete = comment.AuthorUserId == currentUserId,
+        };
+    }
+
+    private static bool TryNormalizeTaskCommentContent(string? content, out string normalizedContent, out string? validationMessage)
+    {
+        normalizedContent = content?.Trim() ?? string.Empty;
+        validationMessage = null;
+
+        if (string.IsNullOrWhiteSpace(normalizedContent))
+        {
+            validationMessage = "Comment content is required.";
+            return false;
+        }
+
+        if (normalizedContent.Length > MaxTaskCommentLength)
+        {
+            validationMessage = $"Comment content can be up to {MaxTaskCommentLength} characters.";
+            return false;
+        }
+
+        return true;
+    }
+
+    private static TaskDetailsDto ToTaskDetailsDto(
+        TaskEntity task,
+        Dictionary<int, BoardMemberDto> memberLookup,
+        int currentUserId)
+    {
+        BoardTaskDto taskDto = ToTaskDto(task, memberLookup);
+
+        return new TaskDetailsDto
+        {
+            Id = taskDto.Id,
+            Title = taskDto.Title,
+            Description = taskDto.Description,
+            StatusKey = taskDto.StatusKey,
+            IsQueued = taskDto.IsQueued,
+            LabelIds = taskDto.LabelIds,
+            AssigneeUserId = taskDto.AssigneeUserId,
+            Assignee = taskDto.Assignee,
+            ReporterUserId = taskDto.ReporterUserId,
+            StoryPoints = taskDto.StoryPoints,
+            DueDate = taskDto.DueDate,
+            Priority = taskDto.Priority,
+            TaskType = taskDto.TaskType,
+            Comments = task.Comments
+                .OrderBy(comment => comment.CreatedAt)
+                .Select(comment => ToTaskCommentDto(comment, memberLookup, currentUserId))
+                .ToList(),
         };
     }
 

@@ -144,6 +144,38 @@ export interface Card {
   reporterUserId?: number;
 }
 
+export type TaskCommentAuthor = TaskAssignee;
+
+interface ApiTaskComment {
+  id: number;
+  content: string;
+  author: ApiAssignee;
+  authorUserId: number;
+  createdAt: string;
+  updatedAt?: string | null;
+  canEdit: boolean;
+  canDelete: boolean;
+}
+
+interface ApiTaskDetails extends ApiTask {
+  comments: ApiTaskComment[];
+}
+
+export interface TaskComment {
+  id: number;
+  content: string;
+  author: TaskCommentAuthor;
+  authorUserId: number;
+  createdAt: string;
+  updatedAt?: string | null;
+  canEdit: boolean;
+  canDelete: boolean;
+}
+
+export interface TaskDetails extends Card {
+  comments: TaskComment[];
+}
+
 export interface Cards {
   todo: Card[];
   inProgress: Card[];
@@ -263,6 +295,26 @@ export function normalizeTask(task: ApiTask): Card {
     priority: task.priority,
     taskType: task.taskType,
     reporterUserId: task.reporterUserId,
+  };
+}
+
+function normalizeTaskComment(comment: ApiTaskComment): TaskComment {
+  return {
+    id: comment.id,
+    content: comment.content,
+    author: normalizeAssignee(comment.author),
+    authorUserId: comment.authorUserId,
+    createdAt: comment.createdAt,
+    updatedAt: comment.updatedAt ?? null,
+    canEdit: comment.canEdit,
+    canDelete: comment.canDelete,
+  };
+}
+
+export function normalizeTaskDetails(task: ApiTaskDetails): TaskDetails {
+  return {
+    ...normalizeTask(task),
+    comments: (task.comments ?? []).map(normalizeTaskComment),
   };
 }
 
@@ -486,6 +538,79 @@ export async function updateBoardTask(
   );
 
   return normalizeTask(task);
+}
+
+export async function getBoardTaskDetails(
+  boardId: number | string,
+  taskId: number | string,
+): Promise<TaskDetails> {
+  const task = await apiJson<ApiTaskDetails>(
+    `/api/boards/${Number(boardId)}/tasks/${Number(taskId)}`,
+    { method: "GET" },
+    "Unable to load task details right now.",
+  );
+
+  return normalizeTaskDetails(task);
+}
+
+export async function getTaskComments(
+  boardId: number | string,
+  taskId: number | string,
+): Promise<TaskComment[]> {
+  const comments = await apiJson<ApiTaskComment[]>(
+    `/api/boards/${Number(boardId)}/tasks/${Number(taskId)}/comments`,
+    { method: "GET" },
+    "Unable to load comments right now.",
+  );
+
+  return comments.map(normalizeTaskComment);
+}
+
+export async function createTaskComment(
+  boardId: number | string,
+  taskId: number | string,
+  content: string,
+): Promise<TaskComment> {
+  const comment = await apiJson<ApiTaskComment>(
+    `/api/boards/${Number(boardId)}/tasks/${Number(taskId)}/comments`,
+    {
+      method: "POST",
+      body: JSON.stringify({ content }),
+    },
+    "Unable to create the comment right now.",
+  );
+
+  return normalizeTaskComment(comment);
+}
+
+export async function updateTaskComment(
+  boardId: number | string,
+  taskId: number | string,
+  commentId: number | string,
+  content: string,
+): Promise<TaskComment> {
+  const comment = await apiJson<ApiTaskComment>(
+    `/api/boards/${Number(boardId)}/tasks/${Number(taskId)}/comments/${Number(commentId)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ content }),
+    },
+    "Unable to update the comment right now.",
+  );
+
+  return normalizeTaskComment(comment);
+}
+
+export async function deleteTaskComment(
+  boardId: number | string,
+  taskId: number | string,
+  commentId: number | string,
+): Promise<void> {
+  await apiVoid(
+    `/api/boards/${Number(boardId)}/tasks/${Number(taskId)}/comments/${Number(commentId)}`,
+    { method: "DELETE" },
+    "Unable to delete the comment right now.",
+  );
 }
 
 export async function deleteBoardTask(

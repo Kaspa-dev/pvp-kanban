@@ -19,6 +19,7 @@ interface KanbanCardProps {
   labelIds: number[];
   assignee: TaskAssignee;
   columnId: string;
+  onOpen?: (cardId: number) => void;
   onAssigneeChange: (cardId: number, assignee: TaskAssignee | null) => void;
   onDelete: (cardId: number, title: string) => void;
   onEdit?: (cardId: number) => void;
@@ -40,6 +41,7 @@ export function KanbanCard({
   labelIds,
   assignee,
   columnId,
+  onOpen,
   onAssigneeChange,
   onDelete,
   onEdit,
@@ -145,15 +147,17 @@ export function KanbanCard({
                 </div>
               )}
 
-              <h3
+              <button
+                type="button"
                 title={title}
-                className={`mb-4 truncate font-bold text-[15px] leading-tight ${currentTheme.text}`}
+                onClick={() => onOpen?.(id)}
+                className={`mb-4 block max-w-full truncate text-left font-bold text-[15px] leading-tight ${currentTheme.text} ${onOpen ? "hover:underline" : ""}`}
               >
                 {priorityIndicator && (
                   <span className="sr-only">{priorityIndicator.label} priority. </span>
                 )}
                 {title}
-              </h3>
+              </button>
             </div>
 
             <div className="flex items-center justify-between gap-3">
