@@ -19,6 +19,7 @@ interface KanbanCardProps {
   labelIds: number[];
   assignee: TaskAssignee;
   columnId: string;
+  onOpen?: (cardId: number) => void;
   onAssigneeChange: (cardId: number, assignee: TaskAssignee | null) => void;
   onDelete: (cardId: number, title: string) => void;
   onEdit?: (cardId: number) => void;
@@ -40,6 +41,7 @@ export function KanbanCard({
   labelIds,
   assignee,
   columnId,
+  onOpen,
   onAssigneeChange,
   onDelete,
   onEdit,
@@ -97,6 +99,23 @@ export function KanbanCard({
   const hasTopMeta = Boolean(cardLabels.length > 0 || taskTypeDisplay || showDueDateInTopMeta || priorityIndicator);
   const canMoveToBacklog = columnId !== "backlog" && columnId !== "queue" && Boolean(onMoveToBacklog);
   const revealActionsClassName = "flex max-w-0 shrink-0 translate-y-1 items-center gap-2 overflow-hidden opacity-0 transition-[max-width,opacity,transform] duration-200 ease-out group-hover:max-w-[9rem] group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:max-w-[9rem] group-focus-within:translate-y-0 group-focus-within:opacity-100";
+  const isOpenable = Boolean(onOpen);
+
+  const handleOpen = () => {
+    onOpen?.(id);
+  };
+
+  const handleCardKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!isOpenable) {
+      return;
+    }
+
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onOpen?.(id);
+    }
+  };
+
   return (
     <div
       ref={drag}
@@ -106,9 +125,14 @@ export function KanbanCard({
       style={{
         cursor: isDragging ? "grabbing" : "default",
       }}
-    >
+      >
       <div
-        className={`relative overflow-hidden rounded-lg border-2 ${currentTheme.border} ${taskSurfaceClassName} shadow-none transition-[box-shadow] duration-200 ${taskHoverShadowClassName}`}
+        className={`relative overflow-hidden rounded-lg border-2 ${currentTheme.border} ${taskSurfaceClassName} shadow-none transition-[box-shadow] duration-200 ${taskHoverShadowClassName} ${isOpenable ? "cursor-pointer" : ""}`}
+        onClick={isOpenable ? handleOpen : undefined}
+        onKeyDown={handleCardKeyDown}
+        role={isOpenable ? "button" : undefined}
+        tabIndex={isOpenable ? 0 : undefined}
+        aria-label={isOpenable ? `Open task ${title}` : undefined}
       >
         <div className="px-4 py-4 pl-7">
           <div className="relative min-w-0">
@@ -145,20 +169,20 @@ export function KanbanCard({
                 </div>
               )}
 
-              <h3
+              <div
                 title={title}
-                className={`mb-4 truncate font-bold text-[15px] leading-tight ${currentTheme.text}`}
+                className={`mb-4 block max-w-full truncate text-left font-bold text-[15px] leading-tight ${currentTheme.text}`}
               >
                 {priorityIndicator && (
                   <span className="sr-only">{priorityIndicator.label} priority. </span>
                 )}
                 {title}
-              </h3>
+              </div>
             </div>
 
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <div onMouseDown={(e) => e.stopPropagation()}>
+                <div onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
                   <AssigneePopover
                     boardId={boardId}
                     currentAssignee={assignee}
@@ -176,6 +200,7 @@ export function KanbanCard({
                       <TooltipTrigger asChild>
                         <UtilityIconButton
                           onClick={() => onMoveToBacklog?.(id)}
+                          onClickCapture={(e) => e.stopPropagation()}
                           onMouseDown={(e) => e.stopPropagation()}
                         >
                           <Undo2 className="w-4 h-4" />
@@ -190,6 +215,7 @@ export function KanbanCard({
                       <TooltipTrigger asChild>
                         <UtilityIconButton
                           onClick={() => onEdit(id)}
+                          onClickCapture={(e) => e.stopPropagation()}
                           onMouseDown={(e) => e.stopPropagation()}
                         >
                           <Edit className="w-4 h-4" />
@@ -203,6 +229,7 @@ export function KanbanCard({
                     <TooltipTrigger asChild>
                       <UtilityIconButton
                         onClick={() => onDelete(id, title)}
+                        onClickCapture={(e) => e.stopPropagation()}
                         onMouseDown={(e) => e.stopPropagation()}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -212,7 +239,9 @@ export function KanbanCard({
                   </Tooltip>
                 </div>
 
-                {footerAction}
+                <div onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+                  {footerAction}
+                </div>
               </div>
             </div>
 

@@ -17,6 +17,7 @@ interface KanbanColumnProps {
   count: number;
   cards: ColumnCard[];
   onCardDrop: (cardId: number, fromColumnId: string, toColumnId: string) => void;
+  onOpen?: (cardId: number) => void;
   onAssigneeChange: (cardId: number, assignee: TaskAssignee | null) => void;
   onDelete: (cardId: number, title: string) => void;
   onEdit?: (cardId: number) => void;
@@ -39,6 +40,7 @@ export function KanbanColumn({
   count,
   cards, 
   onCardDrop,
+  onOpen,
   onAssigneeChange,
   onDelete,
   onEdit,
@@ -108,6 +110,7 @@ export function KanbanColumn({
                   labelIds={card.labelIds}
                   assignee={card.assignee}
                   columnId={id}
+                  onOpen={onOpen}
                   onAssigneeChange={onAssigneeChange}
                   onDelete={onDelete}
                   onEdit={onEdit}

@@ -341,11 +341,16 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Comment>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Content).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.Content).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.CreatedAt)
+                .IsRequired()
+                .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.Property(e => e.UpdatedAt);
+            entity.HasIndex(e => new { e.TaskId, e.CreatedAt });
 
-            entity.HasOne(e => e.Creator)
+            entity.HasOne(e => e.Author)
                 .WithMany(u => u.Comments)
-                .HasForeignKey(e => e.CreatorId)
+                .HasForeignKey(e => e.AuthorUserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasOne(e => e.Task)

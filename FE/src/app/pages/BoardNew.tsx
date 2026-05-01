@@ -451,6 +451,10 @@ export function Board() {
     navigate("/login");
   };
 
+  const handleOpenTask = (taskId: number) => {
+    navigate(`/app/${numericBoardId}/tasks/${taskId}`);
+  };
+
   const refreshProgress = async () => {
     if (!user) {
       return;
@@ -1308,10 +1312,10 @@ export function Board() {
 
                     <div className="flex-1 min-h-0">
                       <div className="grid h-full min-h-0 grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4" data-coachmark="board-columns-grid">
-                      <KanbanColumn boardId={numericBoardId} id="todo" title="To Do" count={workflowColumns.todo.length} softLimit={currentBoard.columnLimits.todo?.softLimit ?? null} hardLimit={currentBoard.columnLimits.todo?.hardLimit ?? null} cards={workflowColumns.todo} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} suggestedAssignees={suggestedAssignees} labels={labels} />
-                      <KanbanColumn boardId={numericBoardId} id="inProgress" title="In Progress" count={workflowColumns.inProgress.length} softLimit={currentBoard.columnLimits.inProgress?.softLimit ?? null} hardLimit={currentBoard.columnLimits.inProgress?.hardLimit ?? null} cards={workflowColumns.inProgress} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} suggestedAssignees={suggestedAssignees} labels={labels} />
-                      <KanbanColumn boardId={numericBoardId} id="inReview" title="In Review" count={workflowColumns.inReview.length} softLimit={currentBoard.columnLimits.inReview?.softLimit ?? null} hardLimit={currentBoard.columnLimits.inReview?.hardLimit ?? null} cards={workflowColumns.inReview} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} suggestedAssignees={suggestedAssignees} labels={labels} />
-                        <KanbanColumn boardId={numericBoardId} id="done" title="Done" count={workflowColumns.done.length} softLimit={currentBoard.columnLimits.done?.softLimit ?? null} hardLimit={currentBoard.columnLimits.done?.hardLimit ?? null} cards={workflowColumns.done} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} suggestedAssignees={suggestedAssignees} labels={labels} />
+                      <KanbanColumn boardId={numericBoardId} id="todo" title="To Do" count={workflowColumns.todo.length} softLimit={currentBoard.columnLimits.todo?.softLimit ?? null} hardLimit={currentBoard.columnLimits.todo?.hardLimit ?? null} cards={workflowColumns.todo} onCardDrop={handleCardDrop} onOpen={handleOpenTask} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} suggestedAssignees={suggestedAssignees} labels={labels} />
+                      <KanbanColumn boardId={numericBoardId} id="inProgress" title="In Progress" count={workflowColumns.inProgress.length} softLimit={currentBoard.columnLimits.inProgress?.softLimit ?? null} hardLimit={currentBoard.columnLimits.inProgress?.hardLimit ?? null} cards={workflowColumns.inProgress} onCardDrop={handleCardDrop} onOpen={handleOpenTask} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} suggestedAssignees={suggestedAssignees} labels={labels} />
+                      <KanbanColumn boardId={numericBoardId} id="inReview" title="In Review" count={workflowColumns.inReview.length} softLimit={currentBoard.columnLimits.inReview?.softLimit ?? null} hardLimit={currentBoard.columnLimits.inReview?.hardLimit ?? null} cards={workflowColumns.inReview} onCardDrop={handleCardDrop} onOpen={handleOpenTask} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} suggestedAssignees={suggestedAssignees} labels={labels} />
+                        <KanbanColumn boardId={numericBoardId} id="done" title="Done" count={workflowColumns.done.length} softLimit={currentBoard.columnLimits.done?.softLimit ?? null} hardLimit={currentBoard.columnLimits.done?.hardLimit ?? null} cards={workflowColumns.done} onCardDrop={handleCardDrop} onOpen={handleOpenTask} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} suggestedAssignees={suggestedAssignees} labels={labels} />
                       </div>
                     </div>
 
@@ -1360,6 +1364,7 @@ export function Board() {
                       onRefreshingChange={setIsTaskIndexRefreshing}
                       filters={listFilters}
                       onFiltersChange={(filters) => setListFilters(filters as TaskWorkspaceFilters)}
+                      onOpen={handleOpenTask}
                       onAssigneeChange={handleAssigneeChange}
                       onDelete={handleDeleteRequest}
                       onEdit={handleEditTask}
@@ -1378,6 +1383,7 @@ export function Board() {
                     boardId={numericBoardId}
                     backlogCards={plainStagingCards}
                     queuedCards={queuedStagingCards}
+                    onOpen={handleOpenTask}
                     onAssigneeChange={handleAssigneeChange}
                     onDelete={handleDeleteRequest}
                     onEdit={handleEditTask}
@@ -1408,6 +1414,7 @@ export function Board() {
                   onRefreshingChange={setIsTaskIndexRefreshing}
                   filters={backlogFilters}
                   onFiltersChange={(filters) => setBacklogFilters(filters as BacklogWorkspaceFilters)}
+                  onOpen={handleOpenTask}
                   onAssigneeChange={handleAssigneeChange}
                   onDelete={handleDeleteRequest}
                   onEdit={handleEditTask}
@@ -1424,6 +1431,7 @@ export function Board() {
                 <HistoryView
                   boardId={numericBoardId}
                   cards={allCards}
+                  onOpen={handleOpenTask}
                   onAssigneeChange={handleAssigneeChange}
                   onDelete={handleDeleteRequest}
                   onEdit={handleEditTask}
