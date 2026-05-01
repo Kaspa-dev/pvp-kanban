@@ -644,23 +644,33 @@ export function Projects() {
                 Manage your boards and bring your projects to life
               </p>
             </div>
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              data-coachmark="projects-create-board"
-              className={`flex items-center gap-2.5 px-7 py-3.5 bg-gradient-to-r ${currentTheme.primary} text-white font-bold rounded-xl hover:scale-105 hover:shadow-2xl transition-all shadow-lg group`}
-            >
-              <Tooltip delayDuration={PROJECTS_TOOLTIP_DELAY}>
-                <TooltipTrigger asChild>
-                  <span className="inline-flex items-center gap-2.5">
-                    <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-                    <span>New Project</span>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" sideOffset={8}>
-                  {CREATE_PROJECT_TOOLTIP}
-                </TooltipContent>
-              </Tooltip>
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={() => navigate("/app/my-tasks")}
+                className={`inline-flex items-center gap-2.5 rounded-xl border px-5 py-3 text-sm font-semibold ${currentTheme.border} ${currentTheme.textSecondary} ${workspaceSurface.controlSurfaceClassName} ${workspaceSurface.controlSurfaceHoverClassName}`}
+                type="button"
+              >
+                <ListTodo className="h-4.5 w-4.5" />
+                My Tasks
+              </button>
+              <button
+                onClick={() => setIsCreateModalOpen(true)}
+                data-coachmark="projects-create-board"
+                className={`flex items-center gap-2.5 px-7 py-3.5 bg-gradient-to-r ${currentTheme.primary} text-white font-bold rounded-xl hover:scale-105 hover:shadow-2xl transition-all shadow-lg group`}
+              >
+                <Tooltip delayDuration={PROJECTS_TOOLTIP_DELAY}>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex items-center gap-2.5">
+                      <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+                      <span>New Project</span>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" sideOffset={8}>
+                    {CREATE_PROJECT_TOOLTIP}
+                  </TooltipContent>
+                </Tooltip>
+              </button>
+            </div>
           </div>
 
           <div className={`relative z-10 mt-8 pt-6 border-t ${currentTheme.accentDivider}`}>
@@ -1072,6 +1082,7 @@ export function Projects() {
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
         onOpenProfile={() => navigate("/app/profile")}
+        onOpenMyTasks={() => navigate("/app/my-tasks")}
       />
 
       <CoachmarkOverlay

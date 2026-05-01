@@ -1,4 +1,4 @@
-import { X, User } from "lucide-react";
+import { ClipboardList, User, X } from "lucide-react";
 import { useEffect } from "react";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import { CustomScrollArea } from "./CustomScrollArea";
@@ -9,9 +9,10 @@ interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenProfile?: () => void;
+  onOpenMyTasks?: () => void;
 }
 
-export function SettingsModal({ isOpen, onClose, onOpenProfile }: SettingsModalProps) {
+export function SettingsModal({ isOpen, onClose, onOpenProfile, onOpenMyTasks }: SettingsModalProps) {
   const { theme, isDarkMode } = useTheme();
   const [gamificationEnabled, setGamificationEnabled] = useLocalStorageBoolean("settings.gamification", true);
   const [notificationsEnabled, setNotificationsEnabled] = useLocalStorageBoolean("settings.notifications", true);
@@ -74,26 +75,49 @@ export function SettingsModal({ isOpen, onClose, onOpenProfile }: SettingsModalP
                   <User className={`w-5 h-5 ${currentTheme.primaryText}`} />
                   <h3 className={`text-lg font-bold ${currentTheme.text}`}>Account</h3>
                 </div>
-                <button
-                  onClick={() => {
-                    onOpenProfile?.();
-                    onClose();
-                  }}
-                  className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${currentTheme.border} hover:${currentTheme.borderHover} ${currentTheme.isDark ? currentTheme.bgSecondary : ''}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${currentTheme.primary} flex items-center justify-center shadow-md`}>
-                      <User className="w-5 h-5 text-white" />
+                <div className="space-y-3">
+                  <button
+                    onClick={() => {
+                      onOpenProfile?.();
+                      onClose();
+                    }}
+                    className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${currentTheme.border} hover:${currentTheme.borderHover} ${currentTheme.isDark ? currentTheme.bgSecondary : ''}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${currentTheme.primary} flex items-center justify-center shadow-md`}>
+                        <User className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="text-left">
+                        <p className={`font-semibold ${currentTheme.text}`}>Profile & Account Settings</p>
+                        <p className={`text-xs ${currentTheme.textMuted} mt-0.5`}>Manage your profile and preferences</p>
+                      </div>
                     </div>
-                    <div className="text-left">
-                      <p className={`font-semibold ${currentTheme.text}`}>Profile & Account Settings</p>
-                      <p className={`text-xs ${currentTheme.textMuted} mt-0.5`}>Manage your profile and preferences</p>
+                    <svg className={`w-5 h-5 ${currentTheme.textMuted}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      onOpenMyTasks?.();
+                      onClose();
+                    }}
+                    className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${currentTheme.border} hover:${currentTheme.borderHover} ${currentTheme.isDark ? currentTheme.bgSecondary : ''}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${currentTheme.primary} flex items-center justify-center shadow-md`}>
+                        <ClipboardList className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="text-left">
+                        <p className={`font-semibold ${currentTheme.text}`}>My Tasks</p>
+                        <p className={`text-xs ${currentTheme.textMuted} mt-0.5`}>Review tasks assigned to you across boards</p>
+                      </div>
                     </div>
-                  </div>
-                  <svg className={`w-5 h-5 ${currentTheme.textMuted}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
+                    <svg className={`w-5 h-5 ${currentTheme.textMuted}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           </CustomScrollArea>

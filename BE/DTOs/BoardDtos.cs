@@ -135,6 +135,32 @@ public class BoardTaskListQueryDto
     public int PageSize { get; set; } = 10;
 }
 
+public class MyTaskListQueryDto
+{
+    public string Scope { get; set; } = "active";
+}
+
+public class MyTaskItemDto
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string StatusKey { get; set; } = string.Empty;
+    public bool IsQueued { get; set; }
+    public List<int> LabelIds { get; set; } = new();
+    public int? AssigneeUserId { get; set; }
+    public BoardMemberDto? Assignee { get; set; }
+    public int ReporterUserId { get; set; }
+    public int? StoryPoints { get; set; }
+    public string? DueDate { get; set; }
+    public string? Priority { get; set; }
+    public string? TaskType { get; set; }
+    public int BoardId { get; set; }
+    public string BoardName { get; set; } = string.Empty;
+    public string BoardLogoIconKey { get; set; } = string.Empty;
+    public string BoardLogoColorKey { get; set; } = string.Empty;
+}
+
 public class PlanningPokerParticipantDto
 {
     public int ParticipantId { get; set; }

@@ -1,5 +1,6 @@
 import { apiJson, apiVoid } from "./auth";
 import type { BoardMember, BoardRole } from "./boards";
+import type { BoardLogoColorKey, BoardLogoIconKey } from "./boardIdentity";
 import { STORY_POINTS_MAX, STORY_POINTS_MIN } from "./gamification";
 
 export type TaskStatus = "todo" | "inProgress" | "inReview" | "done" | "backlog";
@@ -154,6 +155,7 @@ export type BacklogStageFilter = "all" | "waiting" | "queued";
 export type BoardTaskListScope = "active" | "backlog";
 export type BoardTaskSortKey = "priority" | "title" | "status" | "storyPoints" | "dueDate" | "assignee" | "readiness";
 export type BoardTaskSortDirection = "asc" | "desc";
+export type MyTasksScope = "active" | "all";
 
 interface PagedBoardTaskListResponse {
   items: ApiTask[];
@@ -163,12 +165,32 @@ interface PagedBoardTaskListResponse {
   totalPages: number;
 }
 
+interface ApiMyTaskItem extends ApiTask {
+  boardId: number;
+  boardName: string;
+  boardLogoIconKey: BoardLogoIconKey;
+  boardLogoColorKey: BoardLogoColorKey;
+}
+
+type ApiMyTasksResponse =
+  | ApiMyTaskItem[]
+  | {
+      items: ApiMyTaskItem[];
+    };
+
 export interface BoardTaskListPage {
   items: Card[];
   page: number;
   pageSize: number;
   totalItems: number;
   totalPages: number;
+}
+
+export interface MyTask extends Card {
+  boardId: number;
+  boardName: string;
+  boardLogoIconKey: BoardLogoIconKey;
+  boardLogoColorKey: BoardLogoColorKey;
 }
 
 export interface GetBoardTaskPageInput {
@@ -237,6 +259,16 @@ export function normalizeTask(task: ApiTask): Card {
     priority: task.priority,
     taskType: task.taskType,
     reporterUserId: task.reporterUserId,
+  };
+}
+
+export function normalizeMyTask(task: ApiMyTaskItem): MyTask {
+  return {
+    ...normalizeTask(task),
+    boardId: task.boardId,
+    boardName: task.boardName,
+    boardLogoIconKey: task.boardLogoIconKey,
+    boardLogoColorKey: task.boardLogoColorKey,
   };
 }
 
@@ -355,6 +387,20 @@ export async function getBoardTaskPage(
     totalItems: response.totalItems,
     totalPages: response.totalPages,
   };
+}
+
+export async function getMyTasks(scope: MyTasksScope = "active"): Promise<MyTask[]> {
+  const normalizedScope: MyTasksScope = scope === "all" ? "all" : "active";
+  const response = await apiJson<ApiMyTasksResponse>(
+    `/api/users/me/tasks?scope=${normalizedScope}`,
+    {
+      method: "GET",
+    },
+    "Unable to load your tasks right now.",
+  );
+
+  const items = Array.isArray(response) ? response : response.items;
+  return items.map(normalizeMyTask);
 }
 
 export async function createBoardTask(

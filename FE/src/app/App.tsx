@@ -7,6 +7,7 @@ import { Projects } from './pages/Projects';
 import { Board } from './pages/BoardNew';
 import { PlanningPokerRoom } from './pages/PlanningPokerRoom';
 import { Profile } from './pages/Profile';
+import { MyTasks } from './pages/MyTasks';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -58,6 +59,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Profile />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app/my-tasks"
+        element={
+          <ProtectedRoute>
+            <MyTasks />
           </ProtectedRoute>
         }
       />
