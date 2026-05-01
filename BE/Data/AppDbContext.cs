@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
 
     // Board & Task related tables
     public DbSet<Board> Boards => Set<Board>();
+    public DbSet<BoardColumnLimit> BoardColumnLimits => Set<BoardColumnLimit>();
     public DbSet<BoardMembership> BoardMemberships => Set<BoardMembership>();
     public DbSet<BoardFavorite> BoardFavorites => Set<BoardFavorite>();
     public DbSet<PlanningPokerSession> PlanningPokerSessions => Set<PlanningPokerSession>();
@@ -110,6 +111,17 @@ public class AppDbContext : DbContext
                 .WithMany(u => u.Boards)
                 .HasForeignKey(e => e.CreatorId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<BoardColumnLimit>(entity =>
+        {
+            entity.HasKey(e => new { e.BoardId, e.StatusKey });
+            entity.Property(e => e.StatusKey).IsRequired().HasMaxLength(32);
+
+            entity.HasOne(e => e.Board)
+                .WithMany(b => b.ColumnLimits)
+                .HasForeignKey(e => e.BoardId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<PlanningPokerSession>(entity =>

@@ -581,7 +581,23 @@ export function Projects() {
       memberUserIds: number[];
     },
   ) => {
-    const updatedBoard = await updateBoard(boardId, updates);
+    const existingBoard =
+      (selectedBoard?.id === boardId ? selectedBoard : null) ??
+      boardList?.items.find((board) => board.id === boardId);
+
+    if (!existingBoard) {
+      throw new Error("Unable to load the current board limits.");
+    }
+
+    const editableColumnStatusKeys = ["todo", "inProgress", "inReview", "done"] as const;
+    const updatedBoard = await updateBoard(boardId, {
+      ...updates,
+      columnLimits: editableColumnStatusKeys.map((statusKey) => ({
+        statusKey,
+        softLimit: existingBoard.columnLimits[statusKey]?.softLimit ?? null,
+        hardLimit: existingBoard.columnLimits[statusKey]?.hardLimit ?? null,
+      })),
+    });
     setSelectedBoard(updatedBoard);
     refreshBoards();
   };

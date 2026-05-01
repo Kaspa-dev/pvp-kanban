@@ -5,6 +5,7 @@ import { Label } from "../utils/labels";
 import * as Popover from "@radix-ui/react-popover";
 import { CustomScrollArea } from "./CustomScrollArea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { LabelBadge } from "./LabelBadge";
 
 interface LabelSelectorProps {
   availableLabels: Label[];
@@ -26,7 +27,7 @@ export function LabelSelector({
   const pickerShadowClassName = isDarkMode
     ? "shadow-[0_20px_48px_rgba(0,0,0,0.58)]"
     : "shadow-[0_20px_44px_rgba(15,23,42,0.22)]";
-  const labelChipClassName = "inline-flex min-w-0 max-w-[12rem] items-center rounded-full px-3 py-1.5 text-xs font-semibold text-white shadow-sm";
+  const labelChipClassName = "max-w-[12rem] px-3 py-1.5 text-xs font-semibold shadow-sm";
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -126,12 +127,7 @@ export function LabelSelector({
                                 }`
                             }`}
                           >
-                            <span
-                              className={labelChipClassName}
-                              style={{ backgroundColor: label.color }}
-                            >
-                              <span className="truncate">{label.name}</span>
-                            </span>
+                            <LabelBadge label={label} className={labelChipClassName} />
                             {isSelected && (
                               <Check className="h-4 w-4 shrink-0" />
                             )}
@@ -155,23 +151,24 @@ export function LabelSelector({
           {selectedLabels.map((label) => (
             <div
               key={label.id}
-              className={`${labelChipClassName} gap-1.5 text-sm font-medium`}
-              style={{ backgroundColor: label.color }}
+              className="contents"
             >
-              <span>{label.name}</span>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => removeLabel(label.id)}
-                    className="inline-flex h-4 w-4 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/12 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55"
-                    aria-label={`Remove ${label.name}`}
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={8}>Remove {label.name}</TooltipContent>
-              </Tooltip>
+              <LabelBadge label={label} className={`${labelChipClassName} gap-1.5 text-sm font-medium`}>
+                <span className="truncate">{label.name}</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => removeLabel(label.id)}
+                      className="inline-flex h-4 w-4 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/12 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55 dark:text-gray-900/80 dark:hover:bg-black/10 dark:hover:text-gray-900 dark:focus-visible:ring-black/45"
+                      aria-label={`Remove ${label.name}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={8}>Remove {label.name}</TooltipContent>
+                </Tooltip>
+              </LabelBadge>
             </div>
           ))}
         </div>

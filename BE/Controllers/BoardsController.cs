@@ -42,6 +42,8 @@ public class BoardsController(
     private const int MaxTaskStoryPoints = 100;
     private const int MaxBoardLabels = 12;
     private const int MaxBoardLabelNameLength = 15;
+    private const int MinBoardColumnLimit = 1;
+    private const int MaxBoardColumnLimit = 20;
     private const string BoardLabelNameCharacterMessage = "Label names can contain only letters and spaces.";
     private static readonly Regex BoardLabelNamePattern = new(@"^\p{L}+(?: +\p{L}+)*$", RegexOptions.Compiled);
 
@@ -64,6 +66,14 @@ public class BoardsController(
         "#ec4899",
         "#ef4444",
         "#84cc16",
+    ];
+
+    private static readonly string[] EditableBoardColumnStatusKeys =
+    [
+        "todo",
+        "inProgress",
+        "inReview",
+        "done",
     ];
 
     private static readonly string[] AllowedBoardLogoIconKeys =
@@ -255,6 +265,16 @@ public class BoardsController(
             });
         }
 
+        foreach (BoardWorkflowLimit limit in BoardWorkflowLimits.GetConfigurableDefaults())
+        {
+            board.ColumnLimits.Add(new BoardColumnLimit
+            {
+                StatusKey = limit.StatusKey,
+                SoftLimit = limit.SoftLimit,
+                HardLimit = limit.HardLimit,
+            });
+        }
+
         _context.Boards.Add(board);
         await _context.SaveChangesAsync(cancellationToken);
 
@@ -262,6 +282,7 @@ public class BoardsController(
             .Include(item => item.Memberships)
             .ThenInclude(membership => membership.User)
             .Include(item => item.Favorites)
+            .Include(item => item.ColumnLimits)
             .SingleAsync(item => item.Id == board.Id, cancellationToken);
 
         return CreatedAtAction(nameof(GetBoard), new { boardId = board.Id }, ToBoardDto(createdBoard, userId));
@@ -554,6 +575,11 @@ public class BoardsController(
             return BadRequest(new { message = "Board logo color is invalid." });
         }
 
+        if (!TryNormalizeBoardColumnLimitUpdates(request.ColumnLimits, out List<BoardColumnLimitDto> normalizedColumnLimits, out string? columnLimitValidationMessage))
+        {
+            return BadRequest(new { message = columnLimitValidationMessage });
+        }
+
         Board board = accessContext!.Board;
         List<int> requestedMemberIds = request.MemberUserIds
             .Append(userId)
@@ -578,6 +604,25 @@ public class BoardsController(
         board.Description = description;
         board.LogoIconKey = logoIconKey;
         board.LogoColorKey = logoColorKey;
+
+        var existingColumnLimitsByStatus = board.ColumnLimits.ToDictionary(limit => limit.StatusKey, StringComparer.OrdinalIgnoreCase);
+        foreach (BoardColumnLimitDto normalizedColumnLimit in normalizedColumnLimits)
+        {
+            if (existingColumnLimitsByStatus.TryGetValue(normalizedColumnLimit.StatusKey, out BoardColumnLimit? existingLimit))
+            {
+                existingLimit.SoftLimit = normalizedColumnLimit.SoftLimit;
+                existingLimit.HardLimit = normalizedColumnLimit.HardLimit;
+                continue;
+            }
+
+            board.ColumnLimits.Add(new BoardColumnLimit
+            {
+                BoardId = board.Id,
+                StatusKey = normalizedColumnLimit.StatusKey,
+                SoftLimit = normalizedColumnLimit.SoftLimit,
+                HardLimit = normalizedColumnLimit.HardLimit,
+            });
+        }
 
         var existingMemberships = board.Memberships.ToDictionary(membership => membership.UserId);
         var removedMemberIds = existingMemberships.Keys.Except(requestedMemberIds).ToList();
@@ -625,6 +670,7 @@ public class BoardsController(
             .Include(item => item.Memberships)
             .ThenInclude(membership => membership.User)
             .Include(item => item.Favorites)
+            .Include(item => item.ColumnLimits)
             .SingleAsync(item => item.Id == board.Id, cancellationToken);
 
         return Ok(ToBoardDto(updatedBoard, userId));
@@ -1399,6 +1445,7 @@ public class BoardsController(
             .Include(item => item.Memberships)
             .ThenInclude(membership => membership.User)
             .Include(item => item.Favorites)
+            .Include(item => item.ColumnLimits)
             .Include(item => item.TaskStatuses)
             .Include(item => item.Labels)
             .FirstOrDefaultAsync(item => item.Id == boardId, cancellationToken);
@@ -1428,8 +1475,23 @@ public class BoardsController(
         CancellationToken cancellationToken,
         int itemsToAdd = 1)
     {
-        BoardWorkflowLimit? limit = BoardWorkflowLimits.GetLimit(statusKey);
-        if (limit is null || limit.HardLimit is null)
+        if (string.Equals(statusKey.Trim(), "backlog", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        BoardColumnLimit? limit = await _context.BoardColumnLimits
+            .FirstOrDefaultAsync(
+                item => item.BoardId == boardId && item.StatusKey == statusKey.Trim(),
+                cancellationToken);
+
+        int? resolvedHardLimit = limit?.HardLimit;
+        if (!resolvedHardLimit.HasValue && statusKey.Trim().Equals("done", StringComparison.OrdinalIgnoreCase))
+        {
+            resolvedHardLimit = MaxBoardColumnLimit;
+        }
+
+        if (resolvedHardLimit is not int hardLimit)
         {
             return null;
         }
@@ -1440,7 +1502,7 @@ public class BoardsController(
                 task.Status.Title == statusKey)
             .CountAsync(cancellationToken);
 
-        if (!BoardWorkflowLimits.WouldExceedHardLimit(limit, currentCount, itemsToAdd))
+        if (currentCount + itemsToAdd <= hardLimit)
         {
             return null;
         }
@@ -1450,7 +1512,7 @@ public class BoardsController(
 
         return BadRequest(new
         {
-            message = $"{label} has reached the hard limit of {limit.HardLimit}. Move work forward before adding {itemsToAdd} more {taskWord}."
+            message = $"{label} has reached the hard limit of {hardLimit}. Move work forward before adding {itemsToAdd} more {taskWord}."
         });
     }
 
@@ -1631,12 +1693,29 @@ public class BoardsController(
             CreatedAt = board.CreatedAt,
             CreatorUserId = board.CreatorId,
             IsFavorite = board.Favorites.Any(favorite => favorite.UserId == currentUserId),
-            ColumnLimits = BoardWorkflowLimits.GetAll()
-                .Select(limit => new BoardColumnLimitDto
+            ColumnLimits = EditableBoardColumnStatusKeys
+                .Select(statusKey =>
                 {
-                    StatusKey = limit.StatusKey,
-                    SoftLimit = limit.SoftLimit,
-                    HardLimit = limit.HardLimit,
+                    BoardColumnLimit? persistedLimit = board.ColumnLimits.FirstOrDefault(limit =>
+                        limit.StatusKey.Equals(statusKey, StringComparison.OrdinalIgnoreCase));
+                    BoardWorkflowLimit? defaultLimit = BoardWorkflowLimits.GetConfigurableDefaults().FirstOrDefault(limit =>
+                        limit.StatusKey.Equals(statusKey, StringComparison.OrdinalIgnoreCase));
+                    int? softLimit = persistedLimit?.SoftLimit ?? defaultLimit?.SoftLimit;
+                    int? hardLimit = persistedLimit?.HardLimit ?? defaultLimit?.HardLimit;
+
+                    if (statusKey.Equals("done", StringComparison.OrdinalIgnoreCase)
+                        && (!softLimit.HasValue || !hardLimit.HasValue))
+                    {
+                        softLimit ??= MaxBoardColumnLimit;
+                        hardLimit = MaxBoardColumnLimit;
+                    }
+
+                    return new BoardColumnLimitDto
+                    {
+                        StatusKey = statusKey,
+                        SoftLimit = softLimit,
+                        HardLimit = hardLimit,
+                    };
                 })
                 .ToList(),
             Members = board.Memberships
@@ -1702,6 +1781,72 @@ public class BoardsController(
         if (request.LabelIds.Count > 0)
         {
             query = query.Where(task => task.LabeledTasks.Any(labeledTask => request.LabelIds.Contains(labeledTask.LabelId)));
+        }
+
+        List<Priority> priorityFilters = new();
+        bool includeNoPriority = false;
+        foreach (string priorityFilter in request.Priorities.Select(value => value.Trim().ToLowerInvariant()).Distinct())
+        {
+            if (priorityFilter == "none")
+            {
+                includeNoPriority = true;
+                continue;
+            }
+
+            if (TryParsePriority(priorityFilter, out Priority? priority) && priority.HasValue)
+            {
+                priorityFilters.Add(priority.Value);
+            }
+        }
+
+        if (priorityFilters.Count > 0 || includeNoPriority)
+        {
+            bool includeLowPriority = priorityFilters.Contains(Priority.Low);
+            bool includeMediumPriority = priorityFilters.Contains(Priority.Medium);
+            bool includeHighPriority = priorityFilters.Contains(Priority.High);
+            bool includeCriticalPriority = priorityFilters.Contains(Priority.Critical);
+
+            query = query.Where(task =>
+                includeLowPriority && task.Priority == Priority.Low ||
+                includeMediumPriority && task.Priority == Priority.Medium ||
+                includeHighPriority && task.Priority == Priority.High ||
+                includeCriticalPriority && task.Priority == Priority.Critical ||
+                includeNoPriority && !task.Priority.HasValue);
+        }
+
+        List<BE.Models.Type> taskTypeFilters = new();
+        bool includeNoTaskType = false;
+        foreach (string taskTypeFilter in request.TaskTypes.Select(value => value.Trim().ToLowerInvariant()).Distinct())
+        {
+            if (taskTypeFilter == "none")
+            {
+                includeNoTaskType = true;
+                continue;
+            }
+
+            if (TryParseTaskType(taskTypeFilter, out BE.Models.Type? taskType) && taskType.HasValue)
+            {
+                taskTypeFilters.Add(taskType.Value);
+            }
+        }
+
+        if (taskTypeFilters.Count > 0 || includeNoTaskType)
+        {
+            bool includeStoryType = taskTypeFilters.Contains(BE.Models.Type.Story);
+            bool includeTaskType = taskTypeFilters.Contains(BE.Models.Type.Task);
+            bool includeSpikeType = taskTypeFilters.Contains(BE.Models.Type.Spike);
+            bool includeBugType = taskTypeFilters.Contains(BE.Models.Type.Bug);
+            bool includeFeatureType = taskTypeFilters.Contains(BE.Models.Type.Feature);
+            bool includeEpicType = taskTypeFilters.Contains(BE.Models.Type.Epic);
+
+            query = query.Where(task =>
+                includeStoryType && task.Type == BE.Models.Type.Story ||
+                includeTaskType && task.Type == BE.Models.Type.Task ||
+                includeSpikeType && task.Type == BE.Models.Type.Spike ||
+                includeBugType && task.Type == BE.Models.Type.Bug ||
+                includeFeatureType && task.Type == BE.Models.Type.Feature ||
+                includeEpicType && task.Type == BE.Models.Type.Epic ||
+                includeNoTaskType && !task.Type.HasValue);
         }
 
         if (string.Equals(request.QuickFilter, "assigned", StringComparison.OrdinalIgnoreCase))
@@ -1891,6 +2036,99 @@ public class BoardsController(
             User.FindFirstValue("sub");
 
         return int.TryParse(value, out userId);
+    }
+
+    private static bool TryNormalizeBoardColumnLimitUpdates(
+        IEnumerable<UpdateBoardColumnLimitDto>? requestColumnLimits,
+        out List<BoardColumnLimitDto> normalizedColumnLimits,
+        out string? validationMessage)
+    {
+        normalizedColumnLimits = new();
+        validationMessage = null;
+
+        List<UpdateBoardColumnLimitDto> requestedLimits = requestColumnLimits?.ToList() ?? [];
+        if (requestedLimits.Count != EditableBoardColumnStatusKeys.Length)
+        {
+            validationMessage = "Column task limits must include To Do, In Progress, In Review, and Done.";
+            return false;
+        }
+
+        var normalizedByStatus = new Dictionary<string, BoardColumnLimitDto>(StringComparer.OrdinalIgnoreCase);
+        foreach (UpdateBoardColumnLimitDto requestedLimit in requestedLimits)
+        {
+            string requestedStatusKey = requestedLimit.StatusKey?.Trim() ?? string.Empty;
+            string? normalizedStatusKey = EditableBoardColumnStatusKeys.FirstOrDefault(
+                statusKey => statusKey.Equals(requestedStatusKey, StringComparison.OrdinalIgnoreCase));
+
+            if (normalizedStatusKey is null)
+            {
+                validationMessage = "Only To Do, In Progress, In Review, and Done limits can be configured.";
+                return false;
+            }
+
+            if (!TryValidateBoardColumnLimitValue(requestedLimit.SoftLimit, out int? normalizedSoftLimit)
+                || !TryValidateBoardColumnLimitValue(requestedLimit.HardLimit, out int? normalizedHardLimit))
+            {
+                validationMessage = $"Column task limits must be blank or between {MinBoardColumnLimit} and {MaxBoardColumnLimit}.";
+                return false;
+            }
+
+            if (normalizedHardLimit.HasValue && normalizedSoftLimit.HasValue && normalizedHardLimit.Value < normalizedSoftLimit.Value)
+            {
+                validationMessage = $"{GetBoardStatusDisplayName(normalizedStatusKey)} hard limit cannot be lower than the soft limit.";
+                return false;
+            }
+
+            if (normalizedStatusKey.Equals("done", StringComparison.OrdinalIgnoreCase)
+                && (!normalizedSoftLimit.HasValue || !normalizedHardLimit.HasValue))
+            {
+                normalizedSoftLimit ??= MaxBoardColumnLimit;
+                normalizedHardLimit = MaxBoardColumnLimit;
+            }
+
+            if (!normalizedByStatus.TryAdd(
+                    normalizedStatusKey,
+                    new BoardColumnLimitDto
+                    {
+                        StatusKey = normalizedStatusKey,
+                        SoftLimit = normalizedSoftLimit,
+                        HardLimit = normalizedHardLimit,
+                    }))
+            {
+                validationMessage = "Each board column can be configured only once.";
+                return false;
+            }
+        }
+
+        foreach (string statusKey in EditableBoardColumnStatusKeys)
+        {
+            if (!normalizedByStatus.TryGetValue(statusKey, out BoardColumnLimitDto? limit))
+            {
+                validationMessage = "Column task limits must include To Do, In Progress, In Review, and Done.";
+                return false;
+            }
+
+            normalizedColumnLimits.Add(limit);
+        }
+
+        return true;
+    }
+
+    private static bool TryValidateBoardColumnLimitValue(int? value, out int? normalizedValue)
+    {
+        normalizedValue = null;
+        if (!value.HasValue)
+        {
+            return true;
+        }
+
+        if (value.Value is < MinBoardColumnLimit or > MaxBoardColumnLimit)
+        {
+            return false;
+        }
+
+        normalizedValue = value.Value;
+        return true;
     }
 
     private sealed record BoardAccessContext(Board Board, BoardMembership Membership);

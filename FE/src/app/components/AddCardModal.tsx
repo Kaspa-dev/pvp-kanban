@@ -28,6 +28,7 @@ interface AddCardModalProps {
   }) => Promise<void>;
   availableLabels: Label[];
   availableAssignees: TaskAssignee[];
+  suggestedAssignees?: TaskAssignee[];
 }
 
 export function AddCardModal({
@@ -37,6 +38,7 @@ export function AddCardModal({
   onAdd,
   availableLabels,
   availableAssignees,
+  suggestedAssignees,
 }: AddCardModalProps) {
   const formIdPrefix = "add-task";
   const [title, setTitle] = useState("");
@@ -208,6 +210,7 @@ export function AddCardModal({
       selectedLabelIds={selectedLabelIds}
       onSelectedLabelIdsChange={setSelectedLabelIds}
       availableAssignees={availableAssignees}
+      suggestedAssignees={suggestedAssignees}
       selectedAssignee={selectedAssignee}
       onSelectedAssigneeChange={setSelectedAssignee}
       storyPoints={storyPoints}

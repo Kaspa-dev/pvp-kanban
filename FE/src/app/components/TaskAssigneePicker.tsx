@@ -1,5 +1,6 @@
 import { Loader2, PencilLine, Search } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "../contexts/AuthContext";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import { searchBoardAssignees, TaskAssignee } from "../utils/cards";
 import { AppAvatar } from "./AppAvatar";
@@ -11,6 +12,7 @@ interface TaskAssigneePickerProps {
   id: string;
   boardId: number;
   availableAssignees: TaskAssignee[];
+  suggestedAssignees?: TaskAssignee[];
   selectedAssignee: TaskAssignee | null;
   onSelectedAssigneeChange: (assignee: TaskAssignee | null) => void;
 }
@@ -23,9 +25,11 @@ export function TaskAssigneePicker({
   id,
   boardId,
   availableAssignees,
+  suggestedAssignees = [],
   selectedAssignee,
   onSelectedAssigneeChange,
 }: TaskAssigneePickerProps) {
+  const { user } = useAuth();
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const pickerSurfaceClassName = isDarkMode ? currentTheme.inputBg : "bg-input-background";
@@ -51,6 +55,31 @@ export function TaskAssigneePicker({
     selectedAssignee && selectedAssignee.userId !== 0
       ? availableAssignees.find((assignee) => assignee.userId === selectedAssignee.userId) ?? selectedAssignee
       : null;
+  const currentUserId = user ? Number(user.id) : null;
+  const currentUserAssignee =
+    currentUserId !== null && Number.isFinite(currentUserId)
+      ? availableAssignees.find((assignee) => assignee.userId === currentUserId) ?? null
+      : null;
+  const shouldShowAssignToMe =
+    !!currentUserAssignee && selectedAssigneeOption?.userId !== currentUserAssignee.userId;
+  const selectableSuggestedAssignees = useMemo(() => {
+    const seenUserIds = new Set<number>();
+
+    return suggestedAssignees.filter((assignee) => {
+      if (
+        assignee.userId <= 0 ||
+        assignee.userId === selectedAssigneeOption?.userId ||
+        seenUserIds.has(assignee.userId)
+      ) {
+        return false;
+      }
+
+      seenUserIds.add(assignee.userId);
+      return true;
+    });
+  }, [selectedAssigneeOption?.userId, suggestedAssignees]);
+  const visibleAssignees = normalizedQuery ? results : selectableSuggestedAssignees;
+  const isShowingSuggestions = !normalizedQuery && selectableSuggestedAssignees.length > 0;
 
   useEffect(() => {
     if (isOpen) {
@@ -89,7 +118,7 @@ export function TaskAssigneePicker({
       setResults([]);
       setError("");
       setIsLoading(false);
-      setHighlightedIndex(-1);
+      setHighlightedIndex(selectableSuggestedAssignees.length > 0 ? 0 : -1);
       return;
     }
 
@@ -127,7 +156,7 @@ export function TaskAssigneePicker({
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [boardId, isOpen, normalizedQuery]);
+  }, [boardId, isOpen, normalizedQuery, selectableSuggestedAssignees.length]);
 
   const handleSelectAssignee = (assignee: TaskAssignee) => {
     onSelectedAssigneeChange(assignee);
@@ -147,6 +176,14 @@ export function TaskAssigneePicker({
     setIsOpen(false);
   };
 
+  const handleAssignToMe = () => {
+    if (!currentUserAssignee) {
+      return;
+    }
+
+    handleSelectAssignee(currentUserAssignee);
+  };
+
   const handleOpenSearch = () => {
     setQuery("");
     setResults([]);
@@ -162,27 +199,27 @@ export function TaskAssigneePicker({
       return;
     }
 
-    if (!isOpen || results.length === 0) {
+    if (!isOpen || visibleAssignees.length === 0) {
       return;
     }
 
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      setHighlightedIndex((previous) => (previous + 1) % results.length);
+      setHighlightedIndex((previous) => (previous + 1) % visibleAssignees.length);
       return;
     }
 
     if (event.key === "ArrowUp") {
       event.preventDefault();
       setHighlightedIndex((previous) =>
-        previous <= 0 ? results.length - 1 : previous - 1,
+        previous <= 0 ? visibleAssignees.length - 1 : previous - 1,
       );
       return;
     }
 
     if (event.key === "Enter") {
       event.preventDefault();
-      const assignee = results[highlightedIndex] ?? results[0];
+      const assignee = visibleAssignees[highlightedIndex] ?? visibleAssignees[0];
       if (assignee) {
         handleSelectAssignee(assignee);
       }
@@ -231,6 +268,23 @@ export function TaskAssigneePicker({
               </div>
 
               <div className="flex shrink-0 items-center gap-2">
+                {shouldShowAssignToMe ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <UtilityIconButton
+                        type="button"
+                        size="sm"
+                        emphasis="elevated"
+                        onClick={handleAssignToMe}
+                        className={subtleActionButtonClassName}
+                        aria-label="Assign task to me"
+                      >
+                        Assign to me
+                      </UtilityIconButton>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={8}>Assign to me</TooltipContent>
+                  </Tooltip>
+                ) : null}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <UtilityIconButton
@@ -284,7 +338,7 @@ export function TaskAssigneePicker({
                 }}
                 onFocus={() => {
                   setIsOpen(true);
-                  setHighlightedIndex(results.length > 0 ? 0 : -1);
+                  setHighlightedIndex(visibleAssignees.length > 0 ? 0 : -1);
                 }}
                 onKeyDown={handleKeyDown}
                 placeholder="Search members by name, username, or email prefix"
@@ -313,17 +367,22 @@ export function TaskAssigneePicker({
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               <span>Searching members...</span>
             </div>
-          ) : !normalizedQuery ? (
+          ) : !normalizedQuery && visibleAssignees.length === 0 ? (
             <div className={`flex ${RESULTS_PANEL_HEIGHT_CLASS} items-center justify-center px-4 py-3 text-sm ${currentTheme.textMuted}`}>
               Start typing to search board members.
             </div>
-          ) : results.length === 0 ? (
+          ) : normalizedQuery && results.length === 0 ? (
             <div className={`flex ${RESULTS_PANEL_HEIGHT_CLASS} items-center justify-center px-4 py-3 text-sm ${currentTheme.textMuted}`}>
               No board members match your search.
             </div>
           ) : (
-            <div id={listboxId} role="listbox" className={`${RESULTS_PANEL_HEIGHT_CLASS} py-2 ${pickerSurfaceClassName}`}>
-              {results.map((assignee, index) => {
+            <div id={listboxId} role="listbox" aria-label={isShowingSuggestions ? "Suggested assignees" : "Assignee search results"} className={`${RESULTS_PANEL_HEIGHT_CLASS} py-2 ${pickerSurfaceClassName}`}>
+              {isShowingSuggestions ? (
+                <p className={`px-4 pb-1 pt-0.5 text-[11px] font-semibold uppercase tracking-[0.16em] ${currentTheme.textMuted}`}>
+                  Suggested
+                </p>
+              ) : null}
+              {visibleAssignees.map((assignee, index) => {
                 const isSelected = selectedAssigneeOption?.userId === assignee.userId;
                 const isHighlighted = index === highlightedIndex;
 

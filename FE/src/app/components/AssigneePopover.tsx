@@ -1,5 +1,6 @@
 import { Loader2, Plus, Search } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useAuth } from "../contexts/AuthContext";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import { searchBoardAssignees, TaskAssignee } from "../utils/cards";
 import { AppAvatar } from "./AppAvatar";
@@ -13,6 +14,7 @@ interface AssigneePopoverProps {
   currentAssignee: TaskAssignee;
   onAssigneeChange: (assignee: TaskAssignee | null) => void;
   availableAssignees: TaskAssignee[];
+  suggestedAssignees?: TaskAssignee[];
 }
 
 const SEARCH_DEBOUNCE_MS = 250;
@@ -24,7 +26,9 @@ export function AssigneePopover({
   currentAssignee,
   onAssigneeChange,
   availableAssignees,
+  suggestedAssignees = [],
 }: AssigneePopoverProps) {
+  const { user } = useAuth();
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const pickerSurfaceClassName = isDarkMode ? currentTheme.inputBg : "bg-input-background";
@@ -54,6 +58,31 @@ export function AssigneePopover({
 
   const isUnassigned =
     resolvedCurrentAssignee.userId === 0 || resolvedCurrentAssignee.name === "Unassigned";
+  const currentUserId = user ? Number(user.id) : null;
+  const currentUserAssignee =
+    currentUserId !== null && Number.isFinite(currentUserId)
+      ? availableAssignees.find((assignee) => assignee.userId === currentUserId) ?? null
+      : null;
+  const shouldShowAssignToMe =
+    !!currentUserAssignee && resolvedCurrentAssignee.userId !== currentUserAssignee.userId;
+  const selectableSuggestedAssignees = useMemo(() => {
+    const seenUserIds = new Set<number>();
+
+    return suggestedAssignees.filter((assignee) => {
+      if (
+        assignee.userId <= 0 ||
+        assignee.userId === resolvedCurrentAssignee.userId ||
+        seenUserIds.has(assignee.userId)
+      ) {
+        return false;
+      }
+
+      seenUserIds.add(assignee.userId);
+      return true;
+    });
+  }, [resolvedCurrentAssignee.userId, suggestedAssignees]);
+  const visibleAssignees = normalizedQuery ? results : selectableSuggestedAssignees;
+  const isShowingSuggestions = !normalizedQuery && selectableSuggestedAssignees.length > 0;
 
   useEffect(() => {
     if (isOpen) {
@@ -70,7 +99,7 @@ export function AssigneePopover({
       setResults([]);
       setError("");
       setIsLoading(false);
-      setHighlightedIndex(-1);
+      setHighlightedIndex(selectableSuggestedAssignees.length > 0 ? 0 : -1);
       return;
     }
 
@@ -108,7 +137,7 @@ export function AssigneePopover({
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [boardId, isOpen, normalizedQuery]);
+  }, [boardId, isOpen, normalizedQuery, selectableSuggestedAssignees.length]);
 
   const resetSearchState = () => {
     requestIdRef.current += 1;
@@ -141,33 +170,41 @@ export function AssigneePopover({
     setIsOpen(false);
   };
 
+  const handleAssignToMe = () => {
+    if (!currentUserAssignee) {
+      return;
+    }
+
+    handleSelectAssignee(currentUserAssignee);
+  };
+
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Escape") {
       setIsOpen(false);
       return;
     }
 
-    if (!isOpen || results.length === 0) {
+    if (!isOpen || visibleAssignees.length === 0) {
       return;
     }
 
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      setHighlightedIndex((previous) => (previous + 1) % results.length);
+      setHighlightedIndex((previous) => (previous + 1) % visibleAssignees.length);
       return;
     }
 
     if (event.key === "ArrowUp") {
       event.preventDefault();
       setHighlightedIndex((previous) =>
-        previous <= 0 ? results.length - 1 : previous - 1,
+        previous <= 0 ? visibleAssignees.length - 1 : previous - 1,
       );
       return;
     }
 
     if (event.key === "Enter") {
       event.preventDefault();
-      const assignee = results[highlightedIndex] ?? results[0];
+      const assignee = visibleAssignees[highlightedIndex] ?? visibleAssignees[0];
       if (assignee) {
         handleSelectAssignee(assignee);
       }
@@ -233,22 +270,41 @@ export function AssigneePopover({
           <div className={`border-b px-4 py-3 ${currentTheme.border} ${pickerSurfaceClassName}`}>
             <div className="flex items-center justify-between gap-3">
               <p className={`text-sm font-semibold ${currentTheme.text}`}>Assign task</p>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <UtilityIconButton
-                    type="button"
-                    size="sm"
-                    emphasis="elevated"
-                    onClick={handleClear}
-                    className={`${subtleActionButtonClassName} ${isUnassigned ? "pointer-events-none invisible" : ""}`}
-                    aria-hidden={isUnassigned}
-                    tabIndex={isUnassigned ? -1 : 0}
-                  >
-                    Clear
-                  </UtilityIconButton>
-                </TooltipTrigger>
-                <TooltipContent side="left" sideOffset={8}>Clear assignee</TooltipContent>
-              </Tooltip>
+              <div className="flex shrink-0 items-center gap-2">
+                {shouldShowAssignToMe ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <UtilityIconButton
+                        type="button"
+                        size="sm"
+                        emphasis="elevated"
+                        onClick={handleAssignToMe}
+                        className={subtleActionButtonClassName}
+                        aria-label="Assign task to me"
+                      >
+                        Assign to me
+                      </UtilityIconButton>
+                    </TooltipTrigger>
+                    <TooltipContent side="left" sideOffset={8}>Assign to me</TooltipContent>
+                  </Tooltip>
+                ) : null}
+                {!isUnassigned ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <UtilityIconButton
+                        type="button"
+                        size="sm"
+                        emphasis="elevated"
+                        onClick={handleClear}
+                        className={subtleActionButtonClassName}
+                      >
+                        Clear
+                      </UtilityIconButton>
+                    </TooltipTrigger>
+                    <TooltipContent side="left" sideOffset={8}>Clear assignee</TooltipContent>
+                  </Tooltip>
+                ) : null}
+              </div>
             </div>
           </div>
 
@@ -271,7 +327,7 @@ export function AssigneePopover({
                 }}
                 onFocus={() => {
                   setIsOpen(true);
-                  setHighlightedIndex(results.length > 0 ? 0 : -1);
+                  setHighlightedIndex(visibleAssignees.length > 0 ? 0 : -1);
                 }}
                 onKeyDown={handleKeyDown}
                 placeholder="Search members by name, username, or email prefix"
@@ -290,17 +346,22 @@ export function AssigneePopover({
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               <span>Searching members...</span>
             </div>
-          ) : !normalizedQuery ? (
+          ) : !normalizedQuery && visibleAssignees.length === 0 ? (
             <div className={`flex ${RESULTS_PANEL_HEIGHT_CLASS} items-center justify-center px-4 py-3 text-sm ${currentTheme.textMuted}`}>
               Start typing to search board members.
             </div>
-          ) : results.length === 0 ? (
+          ) : normalizedQuery && results.length === 0 ? (
             <div className={`flex ${RESULTS_PANEL_HEIGHT_CLASS} items-center justify-center px-4 py-3 text-sm ${currentTheme.textMuted}`}>
               No board members match your search.
             </div>
           ) : (
-            <div id={listboxId} role="listbox" className={`${RESULTS_PANEL_HEIGHT_CLASS} py-2 ${pickerSurfaceClassName}`}>
-              {results.map((assignee, index) => {
+            <div id={listboxId} role="listbox" aria-label={isShowingSuggestions ? "Suggested assignees" : "Assignee search results"} className={`${RESULTS_PANEL_HEIGHT_CLASS} py-2 ${pickerSurfaceClassName}`}>
+              {isShowingSuggestions ? (
+                <p className={`px-4 pb-1 pt-0.5 text-[11px] font-semibold uppercase tracking-[0.16em] ${currentTheme.textMuted}`}>
+                  Suggested
+                </p>
+              ) : null}
+              {visibleAssignees.map((assignee, index) => {
                 const isSelected = !isUnassigned && resolvedCurrentAssignee.userId === assignee.userId;
                 const isHighlighted = index === highlightedIndex;
 

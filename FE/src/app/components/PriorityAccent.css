@@ -4,7 +4,7 @@
   bottom: var(--priority-accent-bottom);
   left: var(--priority-accent-left);
   z-index: 10;
-  width: var(--priority-accent-width);
+  width: var(--priority-accent-lane-width);
   pointer-events: none;
 }
 
@@ -12,14 +12,14 @@
   display: grid;
   grid-template-rows: var(--priority-accent-dash-template);
   align-items: center;
-  justify-items: stretch;
+  justify-items: center;
   gap: var(--priority-accent-gap);
   height: 100%;
 }
 
 .priority-accent__dots {
   display: block;
-  width: 100%;
+  width: var(--priority-accent-width);
   height: 100%;
   background-image: radial-gradient(
     circle,
@@ -33,14 +33,13 @@
 
 .priority-accent__segment {
   display: block;
-  width: 100%;
+  width: var(--priority-accent-width);
   height: var(--priority-accent-segment-height);
   align-self: center;
   border-radius: 999px;
   background: var(--priority-accent-color);
   box-shadow:
-    inset 1px 0 0 rgba(255, 255, 255, 0.14),
-    0 0 0.35rem var(--priority-accent-shadow);
+    0 0 0.18rem var(--priority-accent-shadow);
 }
 
 .priority-accent--critical .priority-accent__segment {

@@ -1,5 +1,5 @@
 import { endOfWeek, isWithinInterval, parseISO, startOfWeek } from "date-fns";
-import { Card } from "./cards";
+import { Card, PriorityFilterValue, TaskTypeFilterValue } from "./cards";
 import { Label } from "./labels";
 
 export type TaskQuickFilter = "all" | "assigned" | "due";
@@ -9,6 +9,8 @@ export interface TaskWorkspaceFilters {
   searchQuery: string;
   quickFilter: TaskQuickFilter;
   selectedLabelIds: number[];
+  selectedPriorities: PriorityFilterValue[];
+  selectedTaskTypes: TaskTypeFilterValue[];
 }
 
 export interface BacklogWorkspaceFilters extends TaskWorkspaceFilters {
@@ -19,6 +21,8 @@ export const DEFAULT_TASK_WORKSPACE_FILTERS: TaskWorkspaceFilters = {
   searchQuery: "",
   quickFilter: "all",
   selectedLabelIds: [],
+  selectedPriorities: [],
+  selectedTaskTypes: [],
 };
 
 export const DEFAULT_BACKLOG_WORKSPACE_FILTERS: BacklogWorkspaceFilters = {
@@ -50,6 +54,20 @@ export function filterCardsForWorkspace<T extends Card>(
     if (filters.selectedLabelIds.length > 0) {
       const matchesLabels = card.labelIds.some((labelId) => filters.selectedLabelIds.includes(labelId));
       if (!matchesLabels) {
+        return false;
+      }
+    }
+
+    if (filters.selectedPriorities.length > 0) {
+      const priorityValue = card.priority ?? "none";
+      if (!filters.selectedPriorities.includes(priorityValue)) {
+        return false;
+      }
+    }
+
+    if (filters.selectedTaskTypes.length > 0) {
+      const taskTypeValue = card.taskType ?? "none";
+      if (!filters.selectedTaskTypes.includes(taskTypeValue)) {
         return false;
       }
     }

@@ -5,6 +5,8 @@ import { STORY_POINTS_MAX, STORY_POINTS_MIN } from "./gamification";
 export type TaskStatus = "todo" | "inProgress" | "inReview" | "done" | "backlog";
 export type Priority = "low" | "medium" | "high" | "critical";
 export type TaskType = "story" | "task" | "bug" | "spike";
+export type PriorityFilterValue = Priority | "none";
+export type TaskTypeFilterValue = TaskType | "none";
 
 export const MAX_TASK_TITLE_LENGTH = 128;
 export const MAX_TASK_DESCRIPTION_LENGTH = 2000;
@@ -176,6 +178,8 @@ export interface GetBoardTaskPageInput {
   q?: string;
   quickFilter?: TaskQuickFilter;
   labelIds?: number[];
+  priorities?: PriorityFilterValue[];
+  taskTypes?: TaskTypeFilterValue[];
   stageFilter?: BacklogStageFilter;
   sort?: BoardTaskSortKey;
   direction?: BoardTaskSortDirection;
@@ -337,6 +341,14 @@ export async function getBoardTaskPage(
 
   input.labelIds?.forEach((labelId) => {
     params.append("labelIds", String(labelId));
+  });
+
+  input.priorities?.forEach((priority) => {
+    params.append("priorities", priority);
+  });
+
+  input.taskTypes?.forEach((taskType) => {
+    params.append("taskTypes", taskType);
   });
 
   const response = await apiJson<PagedBoardTaskListResponse>(

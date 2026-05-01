@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Label } from "../utils/labels";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import { CustomScrollArea } from "./CustomScrollArea";
-import { OverflowTooltip } from "./OverflowTooltip";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "./ui/hover-card";
 import { useIsMobile } from "./ui/use-mobile";
+import { LabelBadge } from "./LabelBadge";
 
 interface TaskLabelSummaryProps {
   labels: Label[];
@@ -123,11 +123,11 @@ export function TaskLabelSummary({
         } ${align === "center" ? "justify-center" : ""}`}
       >
       {visibleLabels.map((label) => (
-        <OverflowTooltip
+        <LabelBadge
           key={label.id}
-          text={label.name}
-          className={`${baseChipClassName} max-w-[6.25rem] shrink-0 truncate text-white sm:max-w-[7.5rem]`}
-          style={{ backgroundColor: label.color }}
+          label={label}
+          className={`${baseChipClassName} max-w-[6.25rem] shrink-0 truncate sm:max-w-[7.5rem]`}
+          tooltip
         />
       ))}
 
@@ -153,11 +153,11 @@ export function TaskLabelSummary({
             <CustomScrollArea viewportClassName="max-h-40 py-1 pr-1">
               <div className="flex flex-wrap gap-2">
                 {hiddenLabels.map((label) => (
-                  <OverflowTooltip
+                  <LabelBadge
                     key={label.id}
-                    text={label.name}
-                    className={`${baseChipClassName} max-w-[10.5rem] shrink-0 truncate text-white`}
-                    style={{ backgroundColor: label.color }}
+                    label={label}
+                    className={`${baseChipClassName} max-w-[10.5rem] shrink-0 truncate`}
+                    tooltip
                   />
                 ))}
               </div>
@@ -173,16 +173,14 @@ export function TaskLabelSummary({
           className="pointer-events-none fixed left-0 top-0 -z-10 flex flex-nowrap items-center gap-1.5 overflow-hidden opacity-0"
         >
           {labels.map((label, index) => (
-            <span
+            <LabelBadge
               key={label.id}
               ref={(element) => {
                 labelMeasureRefs.current[index] = element;
               }}
-              className={`${baseChipClassName} max-w-[6.25rem] shrink-0 truncate text-white sm:max-w-[7.5rem]`}
-              style={{ backgroundColor: label.color }}
-            >
-              {label.name}
-            </span>
+              label={label}
+              className={`${baseChipClassName} max-w-[6.25rem] shrink-0 truncate sm:max-w-[7.5rem]`}
+            />
           ))}
           {overflowCounts.map((count) => (
             <span

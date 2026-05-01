@@ -43,6 +43,7 @@ interface TaskFormModalProps {
   selectedLabelIds: number[];
   onSelectedLabelIdsChange: (labelIds: number[]) => void;
   availableAssignees: TaskAssignee[];
+  suggestedAssignees?: TaskAssignee[];
   selectedAssignee: TaskAssignee | null;
   onSelectedAssigneeChange: (assignee: TaskAssignee | null) => void;
   storyPoints?: number | null;
@@ -84,6 +85,7 @@ export function TaskFormModal({
   selectedLabelIds,
   onSelectedLabelIdsChange,
   availableAssignees,
+  suggestedAssignees,
   selectedAssignee,
   onSelectedAssigneeChange,
   storyPoints,
@@ -262,6 +264,7 @@ export function TaskFormModal({
           id={`${formIdPrefix}-assignee`}
           boardId={boardId}
           availableAssignees={availableAssignees}
+          suggestedAssignees={suggestedAssignees}
           selectedAssignee={selectedAssignee}
           onSelectedAssigneeChange={onSelectedAssigneeChange}
         />

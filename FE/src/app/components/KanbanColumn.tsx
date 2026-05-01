@@ -22,16 +22,21 @@ interface KanbanColumnProps {
   onEdit?: (cardId: number) => void;
   onMoveToBacklog?: (cardId: number) => void;
   availableAssignees: TaskAssignee[];
+  suggestedAssignees?: TaskAssignee[];
   labels: Label[];
   softLimit?: number | null;
   hardLimit?: number | null;
+}
+
+function getColumnLimitLabel(count: number, softLimit?: number | null, hardLimit?: number | null) {
+  return `${count} / ${softLimit ?? "-"} (${hardLimit ?? "-"})`;
 }
 
 export function KanbanColumn({ 
   boardId,
   id, 
   title, 
-  count, 
+  count,
   cards, 
   onCardDrop,
   onAssigneeChange,
@@ -39,18 +44,20 @@ export function KanbanColumn({
   onEdit,
   onMoveToBacklog,
   availableAssignees,
+  suggestedAssignees,
   labels,
-  softLimit = null,
-  hardLimit = null,
+  softLimit,
+  hardLimit,
 }: KanbanColumnProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const columnSurfaceClassName = isDarkMode ? "bg-zinc-950/52" : "bg-slate-50/88";
   const columnHeaderSurfaceClassName = isDarkMode ? "bg-zinc-900/46" : "bg-white/78";
-  const countDisplay = softLimit ? `${count} / ${softLimit}` : String(count);
-  const countLabel = softLimit
-    ? `${title}: ${count} tasks. Soft limit ${softLimit}.${hardLimit ? ` Hard limit ${hardLimit}.` : ""}`
-    : `${title}: ${count} tasks.`;
+  const columnLimitLabel = getColumnLimitLabel(count, softLimit, hardLimit);
+  const columnLimitClassName =
+    softLimit == null && hardLimit == null
+      ? `${currentTheme.textMuted} ${isDarkMode ? "bg-white/[0.03]" : "bg-slate-100"}`
+      : `${currentTheme.primaryText} ${isDarkMode ? "bg-white/[0.04]" : "bg-slate-100"}`;
 
   const [{ isOver }, drop] = useDrop({
     accept: "CARD",
@@ -74,14 +81,13 @@ export function KanbanColumn({
       >
         {/* Column Header */}
         <div className={`px-5 py-4 border-b-2 ${currentTheme.border} ${columnHeaderSurfaceClassName} rounded-t-2xl`}>
-          <div className="flex items-center justify-between">
-            <h2 className={`font-bold text-lg ${currentTheme.text}`}>{title}</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className={`min-w-0 truncate text-lg font-bold ${currentTheme.text}`}>{title}</h2>
             <span
-              className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${currentTheme.border} ${currentTheme.textSecondary}`}
-              aria-label={countLabel}
-              title={countLabel}
+              className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] ${columnLimitClassName}`}
+              aria-label={`${title} column limits: ${columnLimitLabel}`}
             >
-              {countDisplay}
+              {columnLimitLabel}
             </span>
           </div>
         </div>
@@ -107,6 +113,7 @@ export function KanbanColumn({
                   onEdit={onEdit}
                   onMoveToBacklog={onMoveToBacklog}
                   availableAssignees={availableAssignees}
+                  suggestedAssignees={suggestedAssignees}
                   labels={labels}
                   storyPoints={card.storyPoints}
                   dueDate={card.dueDate}
