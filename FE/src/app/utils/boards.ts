@@ -8,9 +8,10 @@ import {
 
 export type BoardRole = "owner" | "member";
 export type BoardWorkflowStatusKey = "todo" | "inProgress" | "inReview" | "done" | "backlog";
+export type EditableBoardWorkflowStatusKey = Exclude<BoardWorkflowStatusKey, "backlog">;
 
 interface ApiBoardColumnLimit {
-  statusKey: BoardWorkflowStatusKey;
+  statusKey: EditableBoardWorkflowStatusKey;
   softLimit: number | null;
   hardLimit: number | null;
 }
@@ -68,7 +69,7 @@ export interface BoardMember {
 }
 
 export interface BoardColumnLimit {
-  statusKey: BoardWorkflowStatusKey;
+  statusKey: EditableBoardWorkflowStatusKey;
   softLimit: number | null;
   hardLimit: number | null;
 }
@@ -268,6 +269,7 @@ export async function updateBoard(
     logoIconKey: BoardLogoIconKey;
     logoColorKey: BoardLogoColorKey;
     memberUserIds: number[];
+    columnLimits: BoardColumnLimit[];
   },
 ): Promise<Board> {
   const board = await apiJson<ApiBoard>(

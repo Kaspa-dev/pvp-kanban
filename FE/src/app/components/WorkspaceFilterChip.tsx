@@ -41,6 +41,10 @@ function enhanceShortcutNode(
   });
 }
 
+function getAccentBorderClassName(ringClassName: string) {
+  return ringClassName.replace(/\bring-/g, "border-");
+}
+
 export function WorkspaceFilterChip({
   label,
   isActive,
@@ -52,7 +56,9 @@ export function WorkspaceFilterChip({
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const controlSurfaceClassName = "bg-input-background bg-white dark:bg-input/30";
-  const activeFilterChipClassName = `${currentTheme.primaryBorder} ${controlSurfaceClassName} ${currentTheme.primaryText}`;
+  const activeFilterChipClassName = isDarkMode
+    ? `${currentTheme.primaryBorder} ${controlSurfaceClassName} ${currentTheme.primaryText}`
+    : `${getAccentBorderClassName(currentTheme.ring)} ${controlSurfaceClassName} ${currentTheme.primaryText}`;
   const keybindBaseClassName = "inline-flex shrink-0 items-center justify-center rounded-md border px-2 py-1 text-[10px] font-semibold leading-none transition-colors duration-300 ease-out";
   const keybindClassName = isActive
     ? `${keybindBaseClassName} ${activeFilterChipClassName}`

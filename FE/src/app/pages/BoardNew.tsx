@@ -30,7 +30,7 @@ import {
   getDefaultGamificationSummary,
 } from "../utils/gamification";
 import { isApiError } from "../utils/auth";
-import { getBoard, Board as BoardType, isBoardOwner, updateBoard } from "../utils/boards";
+import { getBoard, Board as BoardType, BoardColumnLimit, isBoardOwner, updateBoard } from "../utils/boards";
 import {
   addTaskToQueue,
   Card,
@@ -370,8 +370,38 @@ export function Board() {
   );
   const activeWorkspaceView: BoardWorkspaceView = view === "boardSettings" ? "board" : view;
   const isBoardAdmin = currentBoard && user ? isBoardOwner(currentBoard, user.id) : false;
+  const isBoardSettingsView = view === "boardSettings";
 
   const allCards = useMemo(() => flattenCards(cards), [cards]);
+  const suggestedAssignees = useMemo(() => {
+    const suggestions: TaskAssignee[] = [];
+    const seenUserIds = new Set<number>();
+
+    const addSuggestion = (assignee: TaskAssignee | null | undefined) => {
+      if (!assignee || assignee.userId <= 0 || seenUserIds.has(assignee.userId)) {
+        return;
+      }
+
+      seenUserIds.add(assignee.userId);
+      suggestions.push(assignee);
+    };
+
+    const currentUserId = user ? Number(user.id) : null;
+    if (currentUserId !== null && Number.isFinite(currentUserId)) {
+      addSuggestion(availableAssignees.find((assignee) => assignee.userId === currentUserId));
+    }
+
+    [...allCards]
+      .filter((card) => card.assigneeUserId !== null && card.assignee.userId > 0)
+      .sort((left, right) => right.id - left.id)
+      .forEach((card) => {
+        const canonicalAssignee =
+          availableAssignees.find((assignee) => assignee.userId === card.assignee.userId) ?? card.assignee;
+        addSuggestion(canonicalAssignee);
+      });
+
+    return suggestions.slice(0, 3);
+  }, [allCards, availableAssignees, user]);
 
   const setTaskInState = (task: Card) => {
     setCards((prevCards) => {
@@ -632,6 +662,10 @@ export function Board() {
         return;
       }
 
+      if (isBoardSettingsView) {
+        return;
+      }
+
       event.preventDefault();
       if (key === "r") {
         if (!isRefreshingWorkspace && !isLoadingBoard && !isTaskIndexRefreshing) {
@@ -667,6 +701,7 @@ export function Board() {
     currentBoard,
     deleteDialog.isOpen,
     editingTask,
+    isBoardSettingsView,
     isTaskIndexRefreshing,
     isRefreshingWorkspace,
     isLoadingBoard,
@@ -922,6 +957,7 @@ export function Board() {
     logoIconKey: BoardType["logoIconKey"];
     logoColorKey: BoardType["logoColorKey"];
     memberUserIds: number[];
+    columnLimits: BoardColumnLimit[];
   }) => {
     if (!Number.isFinite(numericBoardId)) {
       throw new Error("Unable to resolve the current board.");
@@ -1119,7 +1155,7 @@ export function Board() {
             onLogout={handleLogout}
             onProfileClick={() => navigate("/app/profile")}
             onReplayCurrentHints={
-              view !== "boardSettings" && preferences.coachmarksEnabled && currentBoardFlow
+              !isBoardSettingsView && preferences.coachmarksEnabled && currentBoardFlow
                 ? () => replayFlowForView(activeWorkspaceView)
                 : undefined
             }
@@ -1137,7 +1173,7 @@ export function Board() {
               onOpenLabels={() => setIsLabelsModalOpen(true)}
               onOpenBoardSettings={() => setView("boardSettings")}
               showBoardSettings={isBoardAdmin}
-              isBoardSettingsActive={view === "boardSettings"}
+              isBoardSettingsActive={isBoardSettingsView}
               labelCount={labels.length}
               boardName={currentBoard.name}
               boardLogoIconKey={currentBoard.logoIconKey}
@@ -1147,9 +1183,11 @@ export function Board() {
             <SidebarInset className="relative flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden bg-transparent">
               <div className={`shrink-0 border-b ${currentTheme.border} ${isDarkMode ? "bg-zinc-950/45" : "bg-white/72"} backdrop-blur-xl`}>
                 <div className={`${boardWorkspaceWidthClassName} flex items-center gap-2 pl-9 pr-6 py-2`}>
-                  <kbd className={`hidden rounded-md border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] ${currentTheme.border} ${currentTheme.textMuted} md:inline-flex`}>
-                    Q
-                  </kbd>
+                  {!isBoardSettingsView && (
+                    <kbd className={`hidden rounded-md border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] ${currentTheme.border} ${currentTheme.textMuted} md:inline-flex`}>
+                      Q
+                    </kbd>
+                  )}
                   <div
                     className="inline-flex max-w-full items-center gap-1 overflow-x-auto pl-1"
                     data-coachmark="toolbar-view-switcher"
@@ -1160,7 +1198,7 @@ export function Board() {
                           <button
                             onClick={() => setView(value)}
                             className={`relative inline-flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-semibold transition-all ${
-                              activeWorkspaceView === value && view !== "boardSettings"
+                              activeWorkspaceView === value && !isBoardSettingsView
                                 ? `bg-gradient-to-r ${currentTheme.primary} text-white shadow-sm`
                                 : `${currentTheme.textSecondary} hover:${currentTheme.primaryText} ${isDarkMode ? "hover:bg-white/[0.05]" : "hover:bg-black/[0.04]"}`
                             }`}
@@ -1176,38 +1214,44 @@ export function Board() {
                       </Tooltip>
                     ))}
                   </div>
-                  <kbd className={`hidden rounded-md border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] ${currentTheme.border} ${currentTheme.textMuted} md:inline-flex`}>
-                    E
-                  </kbd>
-                  <div className="ml-auto flex items-center gap-3">
-                    <div className="text-[11px] font-medium md:hidden">
-                      <span className={currentTheme.textMuted}>Q / E</span>
-                    </div>
+                  {!isBoardSettingsView && (
                     <kbd className={`hidden rounded-md border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] ${currentTheme.border} ${currentTheme.textMuted} md:inline-flex`}>
-                      R
+                      E
                     </kbd>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <UtilityIconButton
-                          onClick={() => refreshCurrentView("soft")}
-                          disabled={isCurrentViewRefreshing}
-                          size="md"
-                          emphasis="elevated"
-                          aria-label={isCurrentViewRefreshing ? "Refreshing board data" : "Refresh current view"}
-                          type="button"
-                          className={isCurrentViewRefreshing ? `${currentTheme.primaryText}` : ""}
-                        >
-                          {isCurrentViewRefreshing ? (
-                            <LoaderCircle className={`h-4 w-4 animate-spin [animation-duration:650ms] ${isDarkMode ? "brightness-125 saturate-125" : "brightness-110 saturate-125"}`} />
-                          ) : (
-                            <RotateCw className="h-4 w-4" />
-                          )}
-                        </UtilityIconButton>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" sideOffset={8}>
-                        {isCurrentViewRefreshing ? "Refreshing workspace data..." : "Reload the current workspace data (R)"}
-                      </TooltipContent>
-                    </Tooltip>
+                  )}
+                  <div className="ml-auto flex items-center gap-3">
+                    {!isBoardSettingsView && (
+                      <>
+                        <div className="text-[11px] font-medium md:hidden">
+                          <span className={currentTheme.textMuted}>Q / E</span>
+                        </div>
+                        <kbd className={`hidden rounded-md border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] ${currentTheme.border} ${currentTheme.textMuted} md:inline-flex`}>
+                          R
+                        </kbd>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <UtilityIconButton
+                              onClick={() => refreshCurrentView("soft")}
+                              disabled={isCurrentViewRefreshing}
+                              size="md"
+                              emphasis="elevated"
+                              aria-label={isCurrentViewRefreshing ? "Refreshing board data" : "Refresh current view"}
+                              type="button"
+                              className={isCurrentViewRefreshing ? `${currentTheme.primaryText}` : ""}
+                            >
+                              {isCurrentViewRefreshing ? (
+                                <LoaderCircle className={`h-4 w-4 animate-spin [animation-duration:650ms] ${isDarkMode ? "brightness-125 saturate-125" : "brightness-110 saturate-125"}`} />
+                              ) : (
+                                <RotateCw className="h-4 w-4" />
+                              )}
+                            </UtilityIconButton>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" sideOffset={8}>
+                            {isCurrentViewRefreshing ? "Refreshing workspace data..." : "Reload the current workspace data (R)"}
+                          </TooltipContent>
+                        </Tooltip>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1264,10 +1308,10 @@ export function Board() {
 
                     <div className="flex-1 min-h-0">
                       <div className="grid h-full min-h-0 grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4" data-coachmark="board-columns-grid">
-                      <KanbanColumn boardId={numericBoardId} id="todo" title="To Do" count={workflowColumns.todo.length} softLimit={currentBoard.columnLimits.todo?.softLimit ?? null} hardLimit={currentBoard.columnLimits.todo?.hardLimit ?? null} cards={workflowColumns.todo} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
-                      <KanbanColumn boardId={numericBoardId} id="inProgress" title="In Progress" count={workflowColumns.inProgress.length} softLimit={currentBoard.columnLimits.inProgress?.softLimit ?? null} hardLimit={currentBoard.columnLimits.inProgress?.hardLimit ?? null} cards={workflowColumns.inProgress} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
-                      <KanbanColumn boardId={numericBoardId} id="inReview" title="In Review" count={workflowColumns.inReview.length} softLimit={currentBoard.columnLimits.inReview?.softLimit ?? null} hardLimit={currentBoard.columnLimits.inReview?.hardLimit ?? null} cards={workflowColumns.inReview} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
-                        <KanbanColumn boardId={numericBoardId} id="done" title="Done" count={workflowColumns.done.length} softLimit={currentBoard.columnLimits.done?.softLimit ?? null} hardLimit={currentBoard.columnLimits.done?.hardLimit ?? null} cards={workflowColumns.done} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                      <KanbanColumn boardId={numericBoardId} id="todo" title="To Do" count={workflowColumns.todo.length} softLimit={currentBoard.columnLimits.todo?.softLimit ?? null} hardLimit={currentBoard.columnLimits.todo?.hardLimit ?? null} cards={workflowColumns.todo} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} suggestedAssignees={suggestedAssignees} labels={labels} />
+                      <KanbanColumn boardId={numericBoardId} id="inProgress" title="In Progress" count={workflowColumns.inProgress.length} softLimit={currentBoard.columnLimits.inProgress?.softLimit ?? null} hardLimit={currentBoard.columnLimits.inProgress?.hardLimit ?? null} cards={workflowColumns.inProgress} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} suggestedAssignees={suggestedAssignees} labels={labels} />
+                      <KanbanColumn boardId={numericBoardId} id="inReview" title="In Review" count={workflowColumns.inReview.length} softLimit={currentBoard.columnLimits.inReview?.softLimit ?? null} hardLimit={currentBoard.columnLimits.inReview?.hardLimit ?? null} cards={workflowColumns.inReview} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} suggestedAssignees={suggestedAssignees} labels={labels} />
+                        <KanbanColumn boardId={numericBoardId} id="done" title="Done" count={workflowColumns.done.length} softLimit={currentBoard.columnLimits.done?.softLimit ?? null} hardLimit={currentBoard.columnLimits.done?.hardLimit ?? null} cards={workflowColumns.done} onCardDrop={handleCardDrop} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} suggestedAssignees={suggestedAssignees} labels={labels} />
                       </div>
                     </div>
 
@@ -1321,6 +1365,7 @@ export function Board() {
                       onEdit={handleEditTask}
                       onMoveToBacklog={handleMoveToBacklog}
                       availableAssignees={availableAssignees}
+                      suggestedAssignees={suggestedAssignees}
                       labels={labels}
                     />
                   </div>
@@ -1340,6 +1385,7 @@ export function Board() {
                     onRemoveFromQueue={(cardId) => void handleRemoveFromQueue(cardId)}
                     onStartQueue={() => void handleStartQueue()}
                     availableAssignees={availableAssignees}
+                    suggestedAssignees={suggestedAssignees}
                     labels={labels}
                     onCreateTask={() => setIsModalOpen(true)}
                     planningPokerSession={planningPokerSession}
@@ -1368,6 +1414,7 @@ export function Board() {
                   onAddToQueue={handleAddToQueue}
                   onRemoveFromQueue={handleRemoveFromQueue}
                   availableAssignees={availableAssignees}
+                  suggestedAssignees={suggestedAssignees}
                   labels={labels}
                   onCreateTask={() => setIsModalOpen(true)}
                 />
@@ -1382,6 +1429,7 @@ export function Board() {
                   onEdit={handleEditTask}
                   onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)}
                   availableAssignees={availableAssignees}
+                  suggestedAssignees={suggestedAssignees}
                   labels={labels}
                 />
               )}
@@ -1401,6 +1449,7 @@ export function Board() {
               onAdd={handleAddCard}
               availableLabels={labels}
               availableAssignees={availableAssignees}
+              suggestedAssignees={suggestedAssignees}
             />
 
             <EditTaskModal
@@ -1412,6 +1461,7 @@ export function Board() {
               task={editingTask}
               availableLabels={labels}
               availableAssignees={availableAssignees}
+              suggestedAssignees={suggestedAssignees}
             />
 
             <ManageLabelsModal

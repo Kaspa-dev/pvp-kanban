@@ -4,31 +4,28 @@ public sealed record BoardWorkflowLimit(string StatusKey, int? SoftLimit, int? H
 
 public static class BoardWorkflowLimits
 {
-    private static readonly IReadOnlyDictionary<string, BoardWorkflowLimit> LimitsByStatus =
-        new Dictionary<string, BoardWorkflowLimit>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["todo"] = new("todo", SoftLimit: 8, HardLimit: 12),
-            ["inProgress"] = new("inProgress", SoftLimit: 4, HardLimit: 6),
-            ["inReview"] = new("inReview", SoftLimit: 3, HardLimit: 5),
-            ["done"] = new("done", SoftLimit: null, HardLimit: null),
-            ["backlog"] = new("backlog", SoftLimit: null, HardLimit: null),
-        };
+    private static readonly BoardWorkflowLimit[] ConfigurableDefaults =
+    [
+        new("todo", SoftLimit: 8, HardLimit: 12),
+        new("inProgress", SoftLimit: 4, HardLimit: 6),
+        new("inReview", SoftLimit: 3, HardLimit: 5),
+        new("done", SoftLimit: 20, HardLimit: 20),
+    ];
 
-    public static IReadOnlyCollection<BoardWorkflowLimit> GetAll()
+    private static readonly HashSet<string> ConfigurableStatusKeys = ConfigurableDefaults
+        .Select(limit => limit.StatusKey)
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    public static IReadOnlyCollection<BoardWorkflowLimit> GetConfigurableDefaults()
     {
-        return LimitsByStatus.Values.ToArray();
+        return ConfigurableDefaults
+            .Select(limit => new BoardWorkflowLimit(limit.StatusKey, limit.SoftLimit, limit.HardLimit))
+            .ToArray();
     }
 
-    public static BoardWorkflowLimit? GetLimit(string? statusKey)
+    public static bool IsConfigurableStatusKey(string? statusKey)
     {
-        if (string.IsNullOrWhiteSpace(statusKey))
-        {
-            return null;
-        }
-
-        return LimitsByStatus.TryGetValue(statusKey.Trim(), out BoardWorkflowLimit? limit)
-            ? limit
-            : null;
+        return !string.IsNullOrWhiteSpace(statusKey) && ConfigurableStatusKeys.Contains(statusKey.Trim());
     }
 
     public static bool WouldExceedSoftLimit(BoardWorkflowLimit? limit, int currentCount, int itemsToAdd = 1)

@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, HelpCircle, Plus, RotateCcw, Tag, Trash2 } from "lucide-react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { FormModalFrame } from "./FormModalFrame";
+import { LabelBadge } from "./LabelBadge";
 import { getInputLikeControlClassName } from "./inputLikeControlStyles";
-import { OverflowTooltip } from "./OverflowTooltip";
 import { UtilityIconButton } from "./UtilityIconButton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import {
@@ -55,7 +55,7 @@ export function ManageLabelsModal({
     currentTheme.textSecondary,
   );
   const addLabelButtonClassName = `group/add-label relative inline-flex items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r px-4 py-2.5 font-bold text-white shadow-lg transition-[transform,box-shadow] duration-200 hover:scale-[1.02] hover:shadow-2xl active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 disabled:hover:shadow-lg ${currentTheme.focus} ${currentTheme.primary}`;
-  const labelPreviewChipClassName = "inline-flex h-6 min-w-0 max-w-[11rem] items-center rounded-md px-2 text-xs font-medium leading-none text-white";
+  const labelPreviewChipClassName = "h-6 max-w-[11rem] rounded-md px-2 text-xs font-medium leading-none";
   const sectionTitleClassName = `text-lg font-semibold ${currentTheme.text}`;
   const sectionDescriptionClassName = `text-sm ${currentTheme.textMuted}`;
   const subtleUtilityButtonClassName = `w-auto gap-1.5 px-2.5 text-xs font-semibold shadow-none border-transparent bg-transparent ${currentTheme.textSecondary}`;
@@ -655,10 +655,10 @@ export function ManageLabelsModal({
                   <div className="flex min-w-0 items-center justify-between gap-3">
                     <div className="min-w-0 flex flex-1 items-center">
                       <div className="flex min-w-0 items-center gap-2">
-                        <OverflowTooltip
-                          text={draft.name.trim() || "Untitled label"}
+                        <LabelBadge
+                          label={{ name: draft.name.trim() || "Untitled label", color: draft.color }}
                           className={`${labelPreviewChipClassName} ${isDeleted ? "opacity-70" : ""}`}
-                          style={{ backgroundColor: draft.color }}
+                          tooltip
                         />
                         {draftStatusLabel ? (
                           <span className={`shrink-0 text-[11px] font-medium leading-none ${draftStatusClassName}`}>

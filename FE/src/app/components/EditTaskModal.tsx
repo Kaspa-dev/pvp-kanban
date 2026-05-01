@@ -41,6 +41,7 @@ interface EditTaskModalProps {
   } | null;
   availableLabels: Label[];
   availableAssignees: TaskAssignee[];
+  suggestedAssignees?: TaskAssignee[];
 }
 
 function getInitialTaskState(task: EditTaskModalProps["task"]) {
@@ -65,6 +66,7 @@ export function EditTaskModal({
   task,
   availableLabels,
   availableAssignees,
+  suggestedAssignees,
 }: EditTaskModalProps) {
   const formIdPrefix = "edit-task";
   const initialState = getInitialTaskState(task);
@@ -209,6 +211,7 @@ export function EditTaskModal({
       selectedLabelIds={selectedLabelIds}
       onSelectedLabelIdsChange={setSelectedLabelIds}
       availableAssignees={availableAssignees}
+      suggestedAssignees={suggestedAssignees}
       selectedAssignee={selectedAssignee}
       onSelectedAssigneeChange={setSelectedAssignee}
       storyPoints={storyPoints}

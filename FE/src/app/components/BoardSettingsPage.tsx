@@ -1,4 +1,4 @@
-import { Check, Fingerprint, HelpCircle, Users, X } from "lucide-react";
+import { Check, ChevronDown, Columns3, Fingerprint, HelpCircle, Users, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import {
@@ -9,12 +9,14 @@ import {
   DEFAULT_BOARD_LOGO_COLOR_KEY,
   DEFAULT_BOARD_LOGO_ICON_KEY,
 } from "../utils/boardIdentity";
-import { Board } from "../utils/boards";
+import { Board, BoardColumnLimit, EditableBoardWorkflowStatusKey } from "../utils/boards";
 import { ProjectUser } from "../utils/users";
 import { BoardLogo } from "./BoardLogo";
 import { BoardMemberListItem } from "./BoardMemberListItem";
+import { BoardStatusBadge } from "./BoardStatusBadge";
 import { UserSearchPicker } from "./UserSearchPicker";
 import { UtilityIconButton } from "./UtilityIconButton";
+import { getIconActionButtonClassName } from "./iconActionButtonStyles";
 import { getInputLikeControlClassName, getNativeInputFieldClassName } from "./inputLikeControlStyles";
 import {
   getPrimaryModalActionButtonClassName,
@@ -27,8 +29,19 @@ import { showErrorToast, showSuccessToast } from "../utils/toast";
 const MAX_BOARD_MEMBERS = 20;
 const MAX_BOARD_NAME_LENGTH = 128;
 const MAX_BOARD_DESCRIPTION_LENGTH = 500;
-const BOARD_DESCRIPTION_TEXTAREA_HEIGHT_CLASS = "min-h-24 max-h-48";
+const MAX_BOARD_COLUMN_LIMIT = 20;
+const BOARD_DESCRIPTION_TEXTAREA_HEIGHT_CLASS = "min-h-24";
 const fieldSurfaceClassName = "bg-input-background dark:bg-input/30";
+const BOARD_SETTINGS_ACCORDION_SECTIONS = ["general", "column-limits", "members"];
+const EDITABLE_COLUMN_LIMITS: ReadonlyArray<{
+  statusKey: EditableBoardWorkflowStatusKey;
+  label: string;
+}> = [
+  { statusKey: "todo", label: "To Do" },
+  { statusKey: "inProgress", label: "In Progress" },
+  { statusKey: "inReview", label: "In Review" },
+  { statusKey: "done", label: "Done" },
+];
 
 interface BoardSettingsDraft {
   name: string;
@@ -36,6 +49,13 @@ interface BoardSettingsDraft {
   logoIconKey: BoardLogoIconKey;
   logoColorKey: BoardLogoColorKey;
   memberUserIds: number[];
+  columnLimits: BoardColumnLimit[];
+}
+
+interface BoardColumnLimitInputDraft {
+  statusKey: EditableBoardWorkflowStatusKey;
+  softLimit: string;
+  hardLimit: string;
 }
 
 interface BoardSettingsPageProps {
@@ -50,6 +70,11 @@ function getInitialBoardSettingsDraft(board: Board): BoardSettingsDraft {
     logoIconKey: board.logoIconKey ?? DEFAULT_BOARD_LOGO_ICON_KEY,
     logoColorKey: board.logoColorKey ?? DEFAULT_BOARD_LOGO_COLOR_KEY,
     memberUserIds: board.members.map((member) => member.userId),
+    columnLimits: EDITABLE_COLUMN_LIMITS.map(({ statusKey }) => ({
+      statusKey,
+      softLimit: board.columnLimits[statusKey]?.softLimit ?? null,
+      hardLimit: board.columnLimits[statusKey]?.hardLimit ?? null,
+    })),
   };
 }
 
@@ -77,6 +102,47 @@ function haveSameMemberIds(left: number[], right: number[]) {
   return normalizedLeft.every((userId, index) => userId === normalizedRight[index]);
 }
 
+function haveSameColumnLimits(left: BoardColumnLimit[], right: BoardColumnLimit[]) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((leftLimit, index) => {
+    const rightLimit = right[index];
+    return (
+      leftLimit.statusKey === rightLimit.statusKey &&
+      leftLimit.softLimit === rightLimit.softLimit &&
+      leftLimit.hardLimit === rightLimit.hardLimit
+    );
+  });
+}
+
+function getColumnLimitInputDrafts(columnLimits: BoardColumnLimit[]): BoardColumnLimitInputDraft[] {
+  return columnLimits.map((limit) => ({
+    statusKey: limit.statusKey,
+    softLimit: limit.softLimit == null ? "" : String(limit.softLimit),
+    hardLimit: limit.hardLimit == null ? "" : String(limit.hardLimit),
+  }));
+}
+
+function parseColumnLimitValue(rawValue: string): { value: number | null; error: string | null } {
+  const normalizedValue = rawValue.trim();
+  if (!normalizedValue) {
+    return { value: null, error: null };
+  }
+
+  if (!/^\d+$/.test(normalizedValue)) {
+    return { value: null, error: `Use values between 1 and ${MAX_BOARD_COLUMN_LIMIT} or leave blank.` };
+  }
+
+  const parsedValue = Number(normalizedValue);
+  if (parsedValue < 1 || parsedValue > MAX_BOARD_COLUMN_LIMIT) {
+    return { value: null, error: `Use values between 1 and ${MAX_BOARD_COLUMN_LIMIT} or leave blank.` };
+  }
+
+  return { value: parsedValue, error: null };
+}
+
 export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
@@ -95,10 +161,16 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
   const [logoIconKey, setLogoIconKey] = useState<BoardLogoIconKey>(initialDraft.logoIconKey);
   const [logoColorKey, setLogoColorKey] = useState<BoardLogoColorKey>(initialDraft.logoColorKey);
   const [memberUserIds, setMemberUserIds] = useState<number[]>(initialDraft.memberUserIds);
+  const [columnLimitInputs, setColumnLimitInputs] = useState<BoardColumnLimitInputDraft[]>(
+    getColumnLimitInputDrafts(initialDraft.columnLimits),
+  );
   const [memberDirectory, setMemberDirectory] = useState<Record<number, ProjectUser>>(initialDirectory);
   const [showError, setShowError] = useState(false);
   const [hasTouchedName, setHasTouchedName] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [openSettingsSections, setOpenSettingsSections] = useState<string[]>([
+    ...BOARD_SETTINGS_ACCORDION_SECTIONS,
+  ]);
 
   useEffect(() => {
     setName(initialDraft.name);
@@ -106,10 +178,12 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
     setLogoIconKey(initialDraft.logoIconKey);
     setLogoColorKey(initialDraft.logoColorKey);
     setMemberUserIds(initialDraft.memberUserIds);
+    setColumnLimitInputs(getColumnLimitInputDrafts(initialDraft.columnLimits));
     setMemberDirectory(initialDirectory);
     setShowError(false);
     setHasTouchedName(false);
     setIsSubmitting(false);
+    setOpenSettingsSections([...BOARD_SETTINGS_ACCORDION_SECTIONS]);
   }, [initialDirectory, initialDraft]);
 
   const members = useMemo(
@@ -143,27 +217,75 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
   const totalMemberCount = members.length;
   const hasReachedMemberLimit = totalMemberCount >= MAX_BOARD_MEMBERS;
   const shouldShowNameError = (showError || hasTouchedName) && !name.trim();
+  const normalizedColumnLimitRows = useMemo(
+    () =>
+      columnLimitInputs.map((input) => {
+        const softLimitResult = parseColumnLimitValue(input.softLimit);
+        const hardLimitResult = parseColumnLimitValue(input.hardLimit);
+        const hardLimitError =
+          hardLimitResult.error ??
+          (softLimitResult.error || hardLimitResult.value == null || softLimitResult.value == null
+            ? null
+            : hardLimitResult.value < softLimitResult.value
+              ? "Hard limit must be at least the soft limit."
+              : null);
+
+        return {
+          ...input,
+          normalizedLimit: {
+            statusKey: input.statusKey,
+            softLimit: softLimitResult.value,
+            hardLimit: hardLimitResult.value,
+          } satisfies BoardColumnLimit,
+          softLimitError: softLimitResult.error,
+          hardLimitError,
+        };
+      }),
+    [columnLimitInputs],
+  );
+  const hasColumnLimitErrors = normalizedColumnLimitRows.some(
+    (row) => Boolean(row.softLimitError) || Boolean(row.hardLimitError),
+  );
+  const normalizedColumnLimits = normalizedColumnLimitRows.map((row) => row.normalizedLimit);
   const isDirty =
     name.trim() !== initialDraft.name ||
     description.trim() !== initialDraft.description ||
     logoIconKey !== initialDraft.logoIconKey ||
     logoColorKey !== initialDraft.logoColorKey ||
-    !haveSameMemberIds(memberUserIds, initialDraft.memberUserIds);
+    !haveSameMemberIds(memberUserIds, initialDraft.memberUserIds) ||
+    !haveSameColumnLimits(normalizedColumnLimits, initialDraft.columnLimits);
 
   const nameInputClassName = getNativeInputFieldClassName(currentTheme, {
     surfaceClassName: fieldSurfaceClassName,
   });
   const iconOptionSurfaceClassName = fieldSurfaceClassName;
-  const sectionDividerClassName = isDarkMode ? "bg-zinc-800" : "bg-gray-200";
   const sectionDescriptionClassName = `text-sm ${currentTheme.textMuted}`;
+  const subtleUtilityButtonClassName = `w-auto gap-1.5 px-2.5 text-xs font-semibold shadow-none border-transparent bg-transparent ${currentTheme.textSecondary}`;
   const helpIconButtonClassName = `inline-flex h-5 w-5 items-center justify-center rounded-full ${currentTheme.textMuted} transition-colors hover:${currentTheme.textSecondary} focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus}`;
-  const accordionTriggerClassName = `group rounded-none py-0 hover:no-underline`;
-
+  const accordionTriggerClassName = `group items-center rounded-none py-0 hover:no-underline`;
+  const accordionIndicator = (
+    <span
+      aria-hidden="true"
+      className={`${getIconActionButtonClassName(currentTheme, {
+        size: "sm",
+        emphasis: "default",
+      })} shrink-0`}
+    >
+      <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+    </span>
+  );
   const focusNameField = () => {
     window.requestAnimationFrame(() => {
       nameInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       nameInputRef.current?.focus();
     });
+  };
+  const areAllSettingsSectionsOpen = BOARD_SETTINGS_ACCORDION_SECTIONS.every((section) =>
+    openSettingsSections.includes(section),
+  );
+
+  const toggleAllSettingsSections = () => {
+    setOpenSettingsSections(areAllSettingsSectionsOpen ? [] : [...BOARD_SETTINGS_ACCORDION_SECTIONS]);
   };
 
   const resetDraft = () => {
@@ -172,10 +294,12 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
     setLogoIconKey(initialDraft.logoIconKey);
     setLogoColorKey(initialDraft.logoColorKey);
     setMemberUserIds(initialDraft.memberUserIds);
+    setColumnLimitInputs(getColumnLimitInputDrafts(initialDraft.columnLimits));
     setMemberDirectory(initialDirectory);
     setShowError(false);
     setHasTouchedName(false);
     setIsSubmitting(false);
+    setOpenSettingsSections([...BOARD_SETTINGS_ACCORDION_SECTIONS]);
   };
 
   const handleAddMember = (projectUser: ProjectUser) => {
@@ -213,6 +337,10 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
       return;
     }
 
+    if (hasColumnLimitErrors) {
+      return;
+    }
+
     if (!isDirty) {
       showSuccessToast("No board settings changes to save.");
       return;
@@ -226,6 +354,7 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
         logoIconKey,
         logoColorKey,
         memberUserIds,
+        columnLimits: normalizedColumnLimits,
       });
       showSuccessToast("Board settings saved.");
     } catch (error) {
@@ -245,23 +374,43 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
               <h1 className={`font-ui-condensed text-[2rem] font-semibold tracking-[0.01em] ${currentTheme.text}`}>
                 Board Settings
               </h1>
-              <p className={sectionDescriptionClassName}>
-                Update the board identity and member access without leaving the workspace.
-              </p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className={sectionDescriptionClassName}>
+                  Update the board identity and member access without leaving the workspace.
+                </p>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <UtilityIconButton
+                      type="button"
+                      size="sm"
+                      emphasis="elevated"
+                      onClick={toggleAllSettingsSections}
+                      className={subtleUtilityButtonClassName}
+                      aria-label={areAllSettingsSectionsOpen ? "Collapse all board settings sections" : "Expand all board settings sections"}
+                    >
+                      {areAllSettingsSectionsOpen ? "Collapse all" : "Expand all"}
+                    </UtilityIconButton>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={8}>
+                    {areAllSettingsSectionsOpen ? "Collapse all board settings sections" : "Expand all board settings sections"}
+                  </TooltipContent>
+                </Tooltip>
+              </div>
             </header>
 
             <Accordion
               type="multiple"
-              defaultValue={["general", "members"]}
+              value={openSettingsSections}
+              onValueChange={setOpenSettingsSections}
               className={`border-y ${currentTheme.border}`}
             >
               <AccordionItem value="general" className={`border-b ${currentTheme.border}`}>
-                <AccordionTrigger className={accordionTriggerClassName}>
-                  <div className="flex min-w-0 flex-1 items-start justify-between gap-4 py-5">
+                <AccordionTrigger className={accordionTriggerClassName} indicator={accordionIndicator}>
+                  <div className="flex min-w-0 flex-1 items-center gap-4 py-5">
                     <div className="min-w-0 space-y-1">
                       <div className="flex items-center gap-2">
                         <Fingerprint className={`h-4 w-4 ${currentTheme.primaryText}`} />
-                        <h2 className={`text-lg font-semibold ${currentTheme.text}`}>General</h2>
+                        <h2 className={`text-lg font-semibold ${currentTheme.text}`}>Board Identity</h2>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className={helpIconButtonClassName} aria-label="General settings help">
@@ -277,12 +426,11 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
                         Define how the board is named and recognized across the workspace.
                       </p>
                     </div>
-                    <BoardLogo iconKey={logoIconKey} colorKey={logoColorKey} size="md" />
                   </div>
                 </AccordionTrigger>
-                <AccordionContent className="pb-6">
-                  <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
-                    <div className="space-y-6">
+                <AccordionContent className="px-1 pb-6">
+                  <div className="grid items-stretch gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+                    <div className="flex h-full flex-col gap-6">
                       <div>
                         <div className="mb-2 flex items-center gap-2">
                           <label htmlFor="board-settings-name" className={`block text-sm font-semibold ${currentTheme.textSecondary}`}>
@@ -319,7 +467,7 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
                           {shouldShowNameError ? (
                             <p className="text-sm text-red-500">Board name is required.</p>
                           ) : (
-                            <p className={`text-xs ${currentTheme.textMuted}`}>Shown in the sidebar and workspace headers.</p>
+                            <div />
                           )}
                           <span className={`text-xs ${currentTheme.textMuted}`}>
                             {name.trim().length}/{MAX_BOARD_NAME_LENGTH}
@@ -327,7 +475,7 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
                         </div>
                       </div>
 
-                      <div>
+                      <div className="flex min-h-[16rem] flex-1 flex-col">
                         <div className="mb-2 flex items-center gap-2">
                           <label htmlFor="board-settings-description" className={`block text-sm font-semibold ${currentTheme.textSecondary}`}>
                             Description
@@ -350,12 +498,11 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
                           maxLength={MAX_BOARD_DESCRIPTION_LENGTH}
                           placeholder="Describe this board..."
                           rows={4}
-                          className={`w-full resize-y px-4 py-3 ${BOARD_DESCRIPTION_TEXTAREA_HEIGHT_CLASS} ${getNativeInputFieldClassName(currentTheme, {
+                          className={`h-full w-full flex-1 resize-y px-4 py-3 ${BOARD_DESCRIPTION_TEXTAREA_HEIGHT_CLASS} ${getNativeInputFieldClassName(currentTheme, {
                             surfaceClassName: fieldSurfaceClassName,
                           })}`}
                         />
-                        <div className="mt-2 flex items-center justify-between gap-2">
-                          <p className={`text-xs ${currentTheme.textMuted}`}>Visible to everyone who can access the board.</p>
+                        <div className="mt-2 flex items-center justify-end gap-2">
                           <span className={`text-xs ${currentTheme.textMuted}`}>
                             {description.trim().length}/{MAX_BOARD_DESCRIPTION_LENGTH}
                           </span>
@@ -378,7 +525,6 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
                             </TooltipContent>
                           </Tooltip>
                         </div>
-                        <p className={`text-xs ${currentTheme.textMuted}`}>Used in the sidebar and board previews.</p>
                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-2">
                           {BOARD_LOGO_ICON_OPTIONS.map((option) => {
                             const isSelected = option.key === logoIconKey;
@@ -425,7 +571,6 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
                             </TooltipContent>
                           </Tooltip>
                         </div>
-                        <p className={`text-xs ${currentTheme.textMuted}`}>Pick a color that stays readable in both themes.</p>
                         <div className="flex flex-wrap gap-2 py-1">
                           {BOARD_LOGO_COLOR_OPTIONS.map((option) => {
                             const isSelected = option.key === logoColorKey;
@@ -456,16 +601,128 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
                 </AccordionContent>
               </AccordionItem>
 
+              <AccordionItem value="column-limits" className={`border-b ${currentTheme.border}`}>
+                <AccordionTrigger className={accordionTriggerClassName} indicator={accordionIndicator}>
+                  <div className="flex min-w-0 flex-1 items-center gap-4 py-5">
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Columns3 className={`h-4 w-4 ${currentTheme.primaryText}`} />
+                        <h2 className={`text-lg font-semibold ${currentTheme.text}`}>Board Columns</h2>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button type="button" className={helpIconButtonClassName} aria-label="Column task limits help">
+                              <HelpCircle className="h-3.5 w-3.5" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" sideOffset={8}>
+                            Set work-in-progress thresholds per workflow column. Leave fields blank to disable them.
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <p className={sectionDescriptionClassName}>
+                        Configure workflow capacity for the active board columns.
+                      </p>
+                    </div>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-1 pb-6">
+                  <div className="mb-4 hidden md:grid md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_minmax(0,1fr)] md:gap-4">
+                    <div />
+                    <div className="space-y-0.5">
+                      <h3 className={`text-sm font-semibold ${currentTheme.textSecondary}`}>Soft limit</h3>
+                      <p className={`text-xs ${currentTheme.textMuted}`}>Warning threshold. Leave blank to disable.</p>
+                    </div>
+                    <div className="space-y-0.5">
+                      <h3 className={`text-sm font-semibold ${currentTheme.textSecondary}`}>Hard limit</h3>
+                      <p className={`text-xs ${currentTheme.textMuted}`}>Blocks more tasks. Up to 20, and cannot be lower than the soft limit.</p>
+                    </div>
+                  </div>
+
+                  <div className={`overflow-hidden border-y ${currentTheme.border}`}>
+                    {normalizedColumnLimitRows.map((row, index) => (
+                      <div
+                        key={row.statusKey}
+                        className={`grid gap-4 px-1 py-4 md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_minmax(0,1fr)] md:items-start ${index > 0 ? `border-t ${currentTheme.border}` : ""}`}
+                      >
+                        <div className="flex min-h-[52px] items-center">
+                          <BoardStatusBadge statusKey={row.statusKey} />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label
+                            htmlFor={`board-column-soft-${row.statusKey}`}
+                            className={`block text-sm font-semibold md:hidden ${currentTheme.textSecondary}`}
+                          >
+                            Soft limit
+                          </label>
+                          <input
+                            id={`board-column-soft-${row.statusKey}`}
+                            type="text"
+                            inputMode="numeric"
+                            value={row.softLimit}
+                            onChange={(event) =>
+                              setColumnLimitInputs((previous) =>
+                                previous.map((item) =>
+                                  item.statusKey === row.statusKey
+                                    ? { ...item, softLimit: event.target.value }
+                                    : item,
+                                ),
+                              )
+                            }
+                            placeholder="None"
+                            aria-label={`${EDITABLE_COLUMN_LIMITS.find((item) => item.statusKey === row.statusKey)?.label} soft limit`}
+                            className={`w-full px-4 py-3 ${getNativeInputFieldClassName(currentTheme, {
+                              surfaceClassName: fieldSurfaceClassName,
+                            })} ${row.softLimitError ? "border-red-500" : ""}`}
+                          />
+                          {row.softLimitError ? <p className="text-sm text-red-500">{row.softLimitError}</p> : null}
+                        </div>
+
+                        <div className="space-y-2">
+                          <label
+                            htmlFor={`board-column-hard-${row.statusKey}`}
+                            className={`block text-sm font-semibold md:hidden ${currentTheme.textSecondary}`}
+                          >
+                            Hard limit
+                          </label>
+                          <input
+                            id={`board-column-hard-${row.statusKey}`}
+                            type="text"
+                            inputMode="numeric"
+                            value={row.hardLimit}
+                            onChange={(event) =>
+                              setColumnLimitInputs((previous) =>
+                                previous.map((item) =>
+                                  item.statusKey === row.statusKey
+                                    ? { ...item, hardLimit: event.target.value }
+                                    : item,
+                                ),
+                              )
+                            }
+                            placeholder="None"
+                            aria-label={`${EDITABLE_COLUMN_LIMITS.find((item) => item.statusKey === row.statusKey)?.label} hard limit`}
+                            className={`w-full px-4 py-3 ${getNativeInputFieldClassName(currentTheme, {
+                              surfaceClassName: fieldSurfaceClassName,
+                            })} ${row.hardLimitError ? "border-red-500" : ""}`}
+                          />
+                          {row.hardLimitError ? <p className="text-sm text-red-500">{row.hardLimitError}</p> : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
               <AccordionItem value="members" className="border-b-0">
-                <AccordionTrigger className={accordionTriggerClassName}>
-                  <div className="flex min-w-0 flex-1 items-start justify-between gap-4 py-5">
+                <AccordionTrigger className={accordionTriggerClassName} indicator={accordionIndicator}>
+                  <div className="flex min-w-0 flex-1 items-center gap-4 py-5">
                     <div className="min-w-0 space-y-1">
                       <div className="flex items-center gap-2">
                         <Users className={`h-4 w-4 ${currentTheme.primaryText}`} />
-                        <h2 className={`text-lg font-semibold ${currentTheme.text}`}>Members</h2>
+                        <h2 className={`text-lg font-semibold ${currentTheme.text}`}>Manage Team Access</h2>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <button type="button" className={helpIconButtonClassName} aria-label="Board members help">
+                            <button type="button" className={helpIconButtonClassName} aria-label="Manage team access help">
                               <HelpCircle className="h-3.5 w-3.5" />
                             </button>
                           </TooltipTrigger>
@@ -473,37 +730,18 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
                             Add new collaborators here and remove members who no longer need board access.
                           </TooltipContent>
                         </Tooltip>
+                        <span className={`text-xs font-medium ${currentTheme.primaryText}`}>
+                          ({members.length} member{members.length !== 1 ? "s" : ""})
+                        </span>
                       </div>
                       <p className={sectionDescriptionClassName}>
                         Control who can work inside the board and keep the team roster current.
                       </p>
                     </div>
-                    <span className={`shrink-0 text-sm ${currentTheme.textMuted}`}>
-                      {totalMemberCount}/{MAX_BOARD_MEMBERS}
-                    </span>
                   </div>
                 </AccordionTrigger>
-                <AccordionContent className="pb-6">
+                <AccordionContent className="px-1 pt-2 pb-6">
                   <div className="space-y-6">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <h3 className={`text-sm font-semibold ${currentTheme.textSecondary}`}>Add member</h3>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button type="button" className={helpIconButtonClassName} aria-label="Add board member help">
-                              <HelpCircle className="h-3.5 w-3.5" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" sideOffset={8}>
-                            Search by display name, username, or email to invite someone into the board.
-                          </TooltipContent>
-                        </Tooltip>
-                      </div>
-                      <p className={`text-xs ${currentTheme.textMuted}`}>
-                        Owners stay protected. Team members can be removed before saving.
-                      </p>
-                    </div>
-
                     <UserSearchPicker
                       excludedUserIds={memberUserIds}
                       onSelectUser={handleAddMember}
@@ -511,6 +749,10 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
                       showResultTooltips={false}
                       placeholder={hasReachedMemberLimit ? "Member limit reached" : "Search members"}
                     />
+
+                    <p className={`text-sm ${currentTheme.textMuted}`}>
+                      Boards can have up to {MAX_BOARD_MEMBERS} members total. This board is currently using {totalMemberCount} of {MAX_BOARD_MEMBERS}.
+                    </p>
 
                     <div className={`overflow-hidden border-y ${currentTheme.border}`}>
                       {members.map((member, index) => {
@@ -574,7 +816,7 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !isDirty}
+              disabled={isSubmitting || !isDirty || hasColumnLimitErrors}
               className={`px-5 ${primaryActionButtonClassName}`}
             >
               {isSubmitting ? "Saving..." : "Save changes"}

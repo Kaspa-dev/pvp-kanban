@@ -1,4 +1,4 @@
-import { Trash2, Zap, Edit, FileText, Bug, Lightbulb, CheckSquare, CalendarDays, Undo2 } from "lucide-react";
+import { Trash2, Zap, Edit, FileText, Bug, Lightbulb, CheckSquare, Undo2 } from "lucide-react";
 import { useDrag } from "react-dnd";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { AssigneePopover } from "./AssigneePopover";
@@ -6,11 +6,11 @@ import { Label } from "../utils/labels";
 import { ReactNode } from "react";
 import { Priority, TaskAssignee, TaskType } from "../utils/cards";
 import { getPriorityIndicator } from "../utils/priorityColors";
-import { differenceInCalendarDays, format, parseISO } from "date-fns";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { TaskLabelSummary } from "./TaskLabelSummary";
 import { UtilityIconButton } from "./UtilityIconButton";
 import { PriorityAccent } from "./PriorityAccent";
+import { getTaskDueDateDisplay, TaskDueDateBadge } from "./TaskDueDateBadge";
 
 interface KanbanCardProps {
   boardId: number;
@@ -24,6 +24,7 @@ interface KanbanCardProps {
   onEdit?: (cardId: number) => void;
   onMoveToBacklog?: (cardId: number) => void;
   availableAssignees: TaskAssignee[];
+  suggestedAssignees?: TaskAssignee[];
   labels: Label[];
   storyPoints?: number;
   dueDate?: string | null;
@@ -44,6 +45,7 @@ export function KanbanCard({
   onEdit,
   onMoveToBacklog,
   availableAssignees,
+  suggestedAssignees,
   labels,
   storyPoints,
   dueDate,
@@ -71,44 +73,7 @@ export function KanbanCard({
     .filter((label): label is Label => label !== undefined);
 
   const priorityIndicator = getPriorityIndicator(priority);
-  const parsedDueDate = dueDate ? parseISO(dueDate) : null;
-  const formattedDueDate = parsedDueDate ? format(parsedDueDate, "MMM d") : null;
-  const dueDateOffset = parsedDueDate ? differenceInCalendarDays(parsedDueDate, new Date()) : null;
-  const dueDateDisplay = (() => {
-    if (!parsedDueDate || dueDateOffset === null) {
-      return null;
-    }
-
-    if (dueDateOffset < 0) {
-      return `Overdue ${Math.abs(dueDateOffset)}d`;
-    }
-
-    if (dueDateOffset === 0) {
-      return "Due today";
-    }
-
-    if (dueDateOffset === 1) {
-      return "Due tomorrow";
-    }
-
-    if (dueDateOffset <= 7) {
-      return `Due in ${dueDateOffset}d`;
-    }
-
-    return formattedDueDate;
-  })();
-  const dueDateClassName = dueDateOffset === null
-    ? currentTheme.textMuted
-    : dueDateOffset < 0
-      ? "font-semibold text-rose-600 dark:text-rose-300"
-      : dueDateOffset === 0
-        ? "text-orange-600 underline decoration-orange-400/70 underline-offset-2 dark:text-orange-300 dark:decoration-orange-300/70"
-        : dueDateOffset <= 7
-          ? "text-sky-600 dark:text-sky-300"
-          : currentTheme.textMuted;
-  const dueDateTooltip = dueDateDisplay && formattedDueDate && dueDateDisplay !== formattedDueDate
-    ? `${dueDateDisplay} (${formattedDueDate})`
-    : formattedDueDate;
+  const dueDateDisplay = getTaskDueDateDisplay(dueDate);
 
   const getTaskTypeDisplay = () => {
     switch (taskType) {
@@ -126,8 +91,12 @@ export function KanbanCard({
   };
 
   const taskTypeDisplay = getTaskTypeDisplay();
-  const hasTopMeta = Boolean(storyPoints || cardLabels.length > 0 || taskTypeDisplay || formattedDueDate || priorityIndicator);
+  const showDueDateInTopMeta = Boolean(dueDateDisplay && footerAction);
+  const showRestingDueDate = Boolean(dueDateDisplay && !footerAction);
+  const hasStoryPoints = storyPoints !== undefined && storyPoints > 0;
+  const hasTopMeta = Boolean(cardLabels.length > 0 || taskTypeDisplay || showDueDateInTopMeta || priorityIndicator);
   const canMoveToBacklog = columnId !== "backlog" && columnId !== "queue" && Boolean(onMoveToBacklog);
+  const revealActionsClassName = "flex max-w-0 shrink-0 translate-y-1 items-center gap-2 overflow-hidden opacity-0 transition-[max-width,opacity,transform] duration-200 ease-out group-hover:max-w-[9rem] group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:max-w-[9rem] group-focus-within:translate-y-0 group-focus-within:opacity-100";
   return (
     <div
       ref={drag}
@@ -143,37 +112,28 @@ export function KanbanCard({
       >
         <div className="px-4 py-4 pl-7">
           <div className="relative min-w-0">
+            {hasStoryPoints && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className={`absolute right-0 top-0 flex shrink-0 items-center gap-1 font-medium ${currentTheme.textMuted}`}>
+                    <Zap className="h-4 w-4" />
+                    <span className="text-sm">{storyPoints}</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={8}>{storyPoints} story points</TooltipContent>
+              </Tooltip>
+            )}
+
             <div>
               {hasTopMeta && (
-                <div className={`mb-2 flex min-w-0 items-center gap-2 overflow-hidden ${currentTheme.textMuted}`}>
-                  {storyPoints !== undefined && storyPoints > 0 && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className={`flex shrink-0 items-center gap-1 font-medium ${currentTheme.textMuted}`}>
-                          <Zap className="h-4 w-4" />
-                          <span className="text-sm">{storyPoints}</span>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" sideOffset={8}>{storyPoints} story points</TooltipContent>
-                    </Tooltip>
-                  )}
+                <div className={`mb-2 flex min-w-0 items-center gap-2 overflow-hidden ${hasStoryPoints ? "pr-14" : ""} ${currentTheme.textMuted}`}>
                   {taskTypeDisplay && (
                     <div className="flex shrink-0 items-center gap-1.5">
                       {taskTypeDisplay.icon}
                       <span className="text-xs font-medium">{taskTypeDisplay.label}</span>
                     </div>
                   )}
-                  {dueDateDisplay && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className={`flex shrink-0 items-center gap-1.5 ${dueDateClassName}`}>
-                          <CalendarDays className="w-3.5 h-3.5" />
-                          <span className="text-xs font-medium">{dueDateDisplay}</span>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" sideOffset={8}>{dueDateTooltip}</TooltipContent>
-                    </Tooltip>
-                  )}
+                  {showDueDateInTopMeta && <TaskDueDateBadge dueDate={dueDate} className="shrink-0" />}
                   {cardLabels.length > 0 && (
                     <TaskLabelSummary
                       labels={cardLabels}
@@ -204,54 +164,64 @@ export function KanbanCard({
                     currentAssignee={assignee}
                     onAssigneeChange={(newAssignee) => onAssigneeChange(id, newAssignee)}
                     availableAssignees={availableAssignees}
+                    suggestedAssignees={suggestedAssignees}
                   />
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap justify-end">
-                {canMoveToBacklog && (
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <div className={revealActionsClassName}>
+                  {canMoveToBacklog && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <UtilityIconButton
+                          onClick={() => onMoveToBacklog?.(id)}
+                          onMouseDown={(e) => e.stopPropagation()}
+                        >
+                          <Undo2 className="w-4 h-4" />
+                        </UtilityIconButton>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" sideOffset={8}>Move to staging</TooltipContent>
+                    </Tooltip>
+                  )}
+
+                  {onEdit && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <UtilityIconButton
+                          onClick={() => onEdit(id)}
+                          onMouseDown={(e) => e.stopPropagation()}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </UtilityIconButton>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" sideOffset={8}>Edit task</TooltipContent>
+                    </Tooltip>
+                  )}
+
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <UtilityIconButton
-                        onClick={() => onMoveToBacklog?.(id)}
+                        onClick={() => onDelete(id, title)}
                         onMouseDown={(e) => e.stopPropagation()}
                       >
-                        <Undo2 className="w-4 h-4" />
+                        <Trash2 className="w-4 h-4" />
                       </UtilityIconButton>
                     </TooltipTrigger>
-                    <TooltipContent side="top" sideOffset={8}>Move to staging</TooltipContent>
+                    <TooltipContent side="top" sideOffset={8}>Delete task</TooltipContent>
                   </Tooltip>
-                )}
-
-                {onEdit && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <UtilityIconButton
-                        onClick={() => onEdit(id)}
-                        onMouseDown={(e) => e.stopPropagation()}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </UtilityIconButton>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" sideOffset={8}>Edit task</TooltipContent>
-                  </Tooltip>
-                )}
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <UtilityIconButton
-                      onClick={() => onDelete(id, title)}
-                      onMouseDown={(e) => e.stopPropagation()}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </UtilityIconButton>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" sideOffset={8}>Delete task</TooltipContent>
-                </Tooltip>
+                </div>
 
                 {footerAction}
               </div>
             </div>
+
+            {showRestingDueDate && (
+              <TaskDueDateBadge
+                dueDate={dueDate}
+                className="absolute bottom-0 right-0 px-1 py-1 transition-[opacity,transform] duration-200 ease-out group-hover:pointer-events-none group-hover:translate-y-1 group-hover:opacity-0 group-focus-within:pointer-events-none group-focus-within:translate-y-1 group-focus-within:opacity-0"
+              />
+            )}
           </div>
         </div>
         {priority ? <PriorityAccent priority={priority} isDarkMode={isDarkMode} /> : null}

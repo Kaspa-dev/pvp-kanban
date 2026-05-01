@@ -2,37 +2,39 @@ import { useEffect, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import {
   Bug,
-  CalendarDays,
   Check,
   ChevronDown,
   CheckSquare,
   Edit,
   FileText,
+  Flag,
   Lightbulb,
   Loader2,
   Plus,
   Search,
+  Shapes,
   Tag,
   Trash2,
   Undo2,
   X,
   Zap,
 } from "lucide-react";
-import { differenceInCalendarDays, format, parseISO } from "date-fns";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { AssigneePopover } from "./AssigneePopover";
 import { OverflowTooltip } from "./OverflowTooltip";
 import { Label } from "../utils/labels";
-import { getPriorityIndicator } from "../utils/priorityColors";
+import { getPriorityColor, getPriorityIndicator, PRIORITY_COLORS } from "../utils/priorityColors";
 import {
   BacklogStageFilter,
   BoardTaskListPage,
   BoardTaskSortDirection,
   BoardTaskSortKey,
   getBoardTaskPage,
+  PriorityFilterValue,
   TaskAssignee,
   TaskQuickFilter,
   TaskType,
+  TaskTypeFilterValue,
 } from "../utils/cards";
 import { PriorityBadge } from "./PriorityBadge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -42,7 +44,10 @@ import {
   TaskWorkspaceFilters,
 } from "../utils/taskWorkspaceFilters";
 import { TaskLabelSummary } from "./TaskLabelSummary";
+import { BoardStatusBadge } from "./BoardStatusBadge";
+import { LabelBadge } from "./LabelBadge";
 import { TaskIndexHeaderCell } from "./TaskIndexHeaderCell";
+import { TaskDueDateBadge, getTaskDueDateDisplay } from "./TaskDueDateBadge";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import { getIconActionButtonClassName } from "./iconActionButtonStyles";
 import { getInputLikeControlClassName, getNativeInputFieldClassName } from "./inputLikeControlStyles";
@@ -65,6 +70,49 @@ const EMPTY_TASK_PAGE: BoardTaskListPage = {
   totalItems: 0,
   totalPages: 0,
 };
+const PRIORITY_FILTER_OPTIONS: PriorityFilterValue[] = ["low", "medium", "high", "critical", "none"];
+const TASK_TYPE_FILTER_OPTIONS: TaskTypeFilterValue[] = ["story", "task", "bug", "spike", "none"];
+
+function getPriorityFilterSummary(selectedPriorities: PriorityFilterValue[]): string {
+  if (selectedPriorities.length === 0) {
+    return "Priority";
+  }
+
+  if (selectedPriorities.length === 1) {
+    const [priority] = selectedPriorities;
+    return priority === "none" ? "No priority" : `${PRIORITY_COLORS[priority].label} priority`;
+  }
+
+  return `${selectedPriorities.length} priorities selected`;
+}
+
+function getTaskTypeLabel(taskType: TaskType): string {
+  switch (taskType) {
+    case "story":
+      return "Story";
+    case "bug":
+      return "Bug";
+    case "task":
+      return "Task";
+    case "spike":
+      return "Spike";
+    default:
+      return taskType;
+  }
+}
+
+function getTaskTypeFilterSummary(selectedTaskTypes: TaskTypeFilterValue[]): string {
+  if (selectedTaskTypes.length === 0) {
+    return "Task Type";
+  }
+
+  if (selectedTaskTypes.length === 1) {
+    const [taskType] = selectedTaskTypes;
+    return taskType === "none" ? "No task type" : getTaskTypeLabel(taskType);
+  }
+
+  return `${selectedTaskTypes.length} task types selected`;
+}
 
 function getResultsSummaryText(page: number, pageSize: number, totalItems: number): string {
   if (totalItems === 0) {
@@ -110,6 +158,7 @@ interface ListViewProps {
   onAddToQueue?: (cardId: number) => void | Promise<void>;
   onRemoveFromQueue?: (cardId: number) => void | Promise<void>;
   availableAssignees: TaskAssignee[];
+  suggestedAssignees?: TaskAssignee[];
   labels: Label[];
   onCreateTask?: () => void;
 }
@@ -129,6 +178,7 @@ export function ListView({
   onAddToQueue,
   onRemoveFromQueue,
   availableAssignees,
+  suggestedAssignees,
   labels,
   onCreateTask,
 }: ListViewProps) {
@@ -144,12 +194,26 @@ export function ListView({
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [isLabelFilterOpen, setIsLabelFilterOpen] = useState(false);
+  const [isPriorityFilterOpen, setIsPriorityFilterOpen] = useState(false);
+  const [isTaskTypeFilterOpen, setIsTaskTypeFilterOpen] = useState(false);
 
   const workspaceWidthClassName = "mx-auto w-full max-w-[1850px]";
   const filterSearchQuery = filters.searchQuery;
   const filterQuickFilter = filters.quickFilter;
+  const selectedPriorities = filters.selectedPriorities ?? [];
+  const selectedTaskTypes = filters.selectedTaskTypes ?? [];
   const selectedLabelKey = [...filters.selectedLabelIds].sort((left, right) => left - right).join(",");
+  const selectedPriorityKey = [...selectedPriorities].sort().join(",");
+  const selectedTaskTypeKey = [...selectedTaskTypes].sort().join(",");
   const stageFilter = isBacklogMode ? (filters as BacklogWorkspaceFilters).stageFilter : "all";
+  const taskIndexFilterKey = [
+    filterQuickFilter,
+    filterSearchQuery,
+    selectedLabelKey,
+    selectedPriorityKey,
+    selectedTaskTypeKey,
+    stageFilter,
+  ].join("|");
   const missingRowCount = Math.max(0, TASKS_PER_PAGE - taskPage.items.length);
   const reservedTableMinHeight =
     missingRowCount > 0
@@ -161,6 +225,8 @@ export function ListView({
     filterSearchQuery.length > 0 ||
     filterQuickFilter !== "all" ||
     filters.selectedLabelIds.length > 0 ||
+    selectedPriorities.length > 0 ||
+    selectedTaskTypes.length > 0 ||
     (isBacklogMode && stageFilter !== "all");
 
   useEffect(() => {
@@ -187,7 +253,7 @@ export function ListView({
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterQuickFilter, filterSearchQuery, selectedLabelKey, stageFilter, sortState.direction, sortState.key]);
+  }, [sortState.direction, sortState.key, taskIndexFilterKey]);
 
   useEffect(() => {
     if (!Number.isFinite(boardId)) {
@@ -199,6 +265,12 @@ export function ListView({
     const selectedLabelIdsForRequest = selectedLabelKey
       ? selectedLabelKey.split(",").map((labelId) => Number(labelId))
       : [];
+    const selectedPrioritiesForRequest = selectedPriorityKey
+      ? selectedPriorityKey.split(",") as PriorityFilterValue[]
+      : [];
+    const selectedTaskTypesForRequest = selectedTaskTypeKey
+      ? selectedTaskTypeKey.split(",") as TaskTypeFilterValue[]
+      : [];
 
     setIsLoading(true);
     setLoadError("");
@@ -209,6 +281,8 @@ export function ListView({
       q: filterSearchQuery,
       quickFilter: filterQuickFilter,
       labelIds: selectedLabelIdsForRequest,
+      priorities: selectedPrioritiesForRequest,
+      taskTypes: selectedTaskTypesForRequest,
       stageFilter: isBacklogMode ? stageFilter : undefined,
       sort: sortState.key ?? undefined,
       direction: sortState.direction ?? undefined,
@@ -258,9 +332,12 @@ export function ListView({
     pageSize,
     refreshToken,
     selectedLabelKey,
+    selectedPriorityKey,
+    selectedTaskTypeKey,
+    stageFilter,
+    taskIndexFilterKey,
     sortState.direction,
     sortState.key,
-    stageFilter,
     taskDataVersion,
   ]);
 
@@ -312,6 +389,10 @@ export function ListView({
 
   const setQuickFilter = (quickFilter: TaskQuickFilter) => onFiltersChange({ ...filters, quickFilter });
   const setSelectedLabelIds = (selectedLabelIds: number[]) => onFiltersChange({ ...filters, selectedLabelIds });
+  const setSelectedPriorities = (nextSelectedPriorities: PriorityFilterValue[]) =>
+    onFiltersChange({ ...filters, selectedPriorities: nextSelectedPriorities });
+  const setSelectedTaskTypes = (nextSelectedTaskTypes: TaskTypeFilterValue[]) =>
+    onFiltersChange({ ...filters, selectedTaskTypes: nextSelectedTaskTypes });
   const setStageFilter = (nextStageFilter: BacklogStageFilter) => {
     if (!isBacklogMode) {
       return;
@@ -332,6 +413,26 @@ export function ListView({
     setSelectedLabelIds([...filters.selectedLabelIds, labelId]);
   };
 
+  const toggleSelectedPriority = (priority: PriorityFilterValue) => {
+    setCurrentPage(1);
+    if (selectedPriorities.includes(priority)) {
+      setSelectedPriorities(selectedPriorities.filter((value) => value !== priority));
+      return;
+    }
+
+    setSelectedPriorities([...selectedPriorities, priority]);
+  };
+
+  const toggleSelectedTaskType = (taskType: TaskTypeFilterValue) => {
+    setCurrentPage(1);
+    if (selectedTaskTypes.includes(taskType)) {
+      setSelectedTaskTypes(selectedTaskTypes.filter((value) => value !== taskType));
+      return;
+    }
+
+    setSelectedTaskTypes([...selectedTaskTypes, taskType]);
+  };
+
   const clearCurrentFilters = () => {
     setSearchInput("");
     if (isBacklogMode) {
@@ -340,6 +441,8 @@ export function ListView({
         searchQuery: "",
         quickFilter: "all",
         selectedLabelIds: [],
+        selectedPriorities: [],
+        selectedTaskTypes: [],
         stageFilter: "all",
       });
       return;
@@ -350,6 +453,8 @@ export function ListView({
       searchQuery: "",
       quickFilter: "all",
       selectedLabelIds: [],
+      selectedPriorities: [],
+      selectedTaskTypes: [],
     });
   };
 
@@ -374,24 +479,6 @@ export function ListView({
     } finally {
       setPendingRowIds((current) => current.filter((value) => value !== cardId));
     }
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusMap: Record<string, { label: string; className: string }> = {
-      todo: { label: "To Do", className: currentTheme.badge.todo },
-      inProgress: { label: "In Progress", className: currentTheme.badge.inProgress },
-      inReview: { label: "In Review", className: currentTheme.badge.inReview },
-      done: { label: "Done", className: currentTheme.badge.done },
-      backlog: { label: "Staging", className: currentTheme.badge.backlog },
-    };
-
-    const statusInfo = statusMap[status] || statusMap.todo;
-
-    return (
-      <span className={`inline-flex h-7 items-center rounded-full px-3 text-xs font-bold text-white ${statusInfo.className}`}>
-        {statusInfo.label}
-      </span>
-    );
   };
 
   const getQueueBadge = (isQueued: boolean) => (
@@ -426,49 +513,6 @@ export function ListView({
     }
   };
 
-  const getDueDateInfo = (dueDate?: string | null) => {
-    if (!dueDate) {
-      return null;
-    }
-
-    const parsedDueDate = parseISO(dueDate);
-    const formattedDate = format(parsedDueDate, "MMM d");
-    const dayOffset = differenceInCalendarDays(parsedDueDate, new Date());
-    const displayText = (() => {
-      if (dayOffset < 0) {
-        return `Overdue ${Math.abs(dayOffset)}d`;
-      }
-
-      if (dayOffset === 0) {
-        return "Due today";
-      }
-
-      if (dayOffset === 1) {
-        return "Due tomorrow";
-      }
-
-      if (dayOffset <= 7) {
-        return `Due in ${dayOffset}d`;
-      }
-
-      return formattedDate;
-    })();
-    const className = dayOffset < 0
-      ? "font-semibold text-rose-600 dark:text-rose-300"
-      : dayOffset === 0
-        ? "text-orange-600 underline decoration-orange-400/70 underline-offset-2 dark:text-orange-300 dark:decoration-orange-300/70"
-        : dayOffset <= 7
-          ? "text-sky-600 dark:text-sky-300"
-          : currentTheme.textMuted;
-    const tooltipText = displayText !== formattedDate ? `${displayText} (${formattedDate})` : formattedDate;
-
-    return {
-      className,
-      displayText,
-      tooltipText,
-    };
-  };
-
   const toolbarLabelClassName = `text-[11px] font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`;
   const listSearchInputClassName = getNativeInputFieldClassName(currentTheme, {
     surfaceClassName: getWorkspaceControlSurfaceClassName(),
@@ -477,7 +521,7 @@ export function ListView({
   const labelFilterTriggerClassName = getInputLikeControlClassName(currentTheme, {
     surfaceClassName: labelFilterTriggerSurfaceClassName,
   });
-  const labelFilterChipClassName = "inline-flex min-w-0 max-w-[12rem] items-center rounded-full px-3 py-1.5 text-xs font-semibold text-white shadow-sm";
+  const labelFilterChipClassName = "max-w-[12rem] px-3 py-1.5 text-xs font-semibold shadow-sm";
   const primaryActionButtonClassName = `group relative inline-flex items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r font-bold text-white shadow-lg transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} ${currentTheme.primary}`;
   const iconActionButtonClassName = getIconActionButtonClassName(currentTheme);
   const rowTextActionButtonClassName = `inline-flex h-8 items-center justify-center rounded-lg border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-0 ${currentTheme.focus} ${currentTheme.border} ${currentTheme.textSecondary} ${isDarkMode ? "bg-white/[0.03] hover:bg-white/[0.06]" : "bg-slate-50 hover:bg-white"} hover:${currentTheme.text}`;
@@ -491,6 +535,12 @@ export function ListView({
   const labelFilterTooltipText = isBacklogMode
     ? "Filter backlog tasks by one or more board labels."
     : "Filter active tasks by one or more board labels.";
+  const priorityFilterTooltipText = isBacklogMode
+    ? "Filter backlog tasks by priority, including tasks without a priority."
+    : "Filter active tasks by priority, including tasks without a priority.";
+  const taskTypeFilterTooltipText = isBacklogMode
+    ? "Filter backlog tasks by task type, including tasks without a type."
+    : "Filter active tasks by task type, including tasks without a type.";
 
   return (
     <div className={`${currentTheme.bgSecondary} h-full overflow-auto`}>
@@ -530,8 +580,9 @@ export function ListView({
           className={`mt-6 border-t ${currentTheme.border} py-4`}
           data-coachmark={isBacklogMode ? "backlog-filters" : "list-filters"}
         >
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-end">
-            <div className="flex min-w-0 flex-col gap-2 xl:flex-[1.25]">
+          <div className="flex flex-col gap-4">
+            <div className="grid gap-4 xl:grid-cols-[minmax(18rem,1fr)_auto] xl:items-end">
+            <div className="flex min-w-0 flex-col gap-2 xl:min-w-[20rem]">
               <span className={toolbarLabelClassName}>Search tasks</span>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -552,7 +603,7 @@ export function ListView({
               </Tooltip>
             </div>
 
-            <div className="flex min-w-0 flex-col gap-4 xl:flex-row xl:items-end">
+            <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-end xl:justify-end">
               <div className="flex flex-col gap-2">
                 <span className={toolbarLabelClassName}>Quick filters</span>
                 <div className="flex flex-wrap items-center gap-2 xl:min-h-11">
@@ -599,7 +650,149 @@ export function ListView({
                 </div>
               )}
 
-              <div className="flex min-w-0 flex-col gap-2 xl:w-72 xl:flex-none">
+            </div>
+            </div>
+
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+              <div className="grid gap-4 md:grid-cols-2 xl:flex xl:items-end">
+                <div className="flex min-w-0 flex-col gap-2 xl:w-56">
+                  <span className={toolbarLabelClassName}>Priority</span>
+                  <Popover.Root open={isPriorityFilterOpen} onOpenChange={setIsPriorityFilterOpen}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Popover.Trigger asChild>
+                          <button
+                            type="button"
+                            className={`flex h-11 w-full items-center justify-between gap-3 px-4 text-left text-sm shadow-none ${currentTheme.text} ${labelFilterTriggerClassName} hover:!bg-white dark:hover:!bg-input/30 ${
+                              isPriorityFilterOpen ? `border-transparent ring-2 ${currentTheme.ring}` : ""
+                            }`}
+                          >
+                            <span className="flex min-w-0 items-center gap-2">
+                              <Flag className={`h-4 w-4 shrink-0 ${selectedPriorities.length > 0 ? currentTheme.primaryText : currentTheme.textMuted}`} />
+                              <span className={`truncate ${selectedPriorities.length === 0 ? currentTheme.textMuted : currentTheme.text}`}>
+                                {getPriorityFilterSummary(selectedPriorities)}
+                              </span>
+                            </span>
+                            <ChevronDown className={`h-4 w-4 shrink-0 ${currentTheme.textMuted}`} />
+                          </button>
+                        </Popover.Trigger>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" sideOffset={8}>
+                        {priorityFilterTooltipText}
+                      </TooltipContent>
+                    </Tooltip>
+                    <Popover.Portal>
+                      <Popover.Content
+                        sideOffset={8}
+                        align="start"
+                        className={`z-50 w-64 overflow-hidden rounded-xl border p-1 ${currentTheme.border} ${currentTheme.cardBg} shadow-xl animate-in fade-in zoom-in-95 duration-200`}
+                      >
+                        <div className={`space-y-1 rounded-lg ${currentTheme.cardBg}`}>
+                          {PRIORITY_FILTER_OPTIONS.map((priority) => {
+                            const isSelected = selectedPriorities.includes(priority);
+                            const priorityValue = priority === "none" ? null : priority;
+                            const label = priorityValue ? `${PRIORITY_COLORS[priorityValue].label} priority` : "No priority";
+                            const chipClassName = priorityValue && isDarkMode
+                              ? "text-gray-900"
+                              : "text-white";
+
+                            return (
+                              <button
+                                key={priority}
+                                type="button"
+                                onClick={() => toggleSelectedPriority(priority)}
+                                aria-pressed={isSelected}
+                                className={`relative flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                                  isSelected
+                                    ? `${currentTheme.primaryBg} ${currentTheme.primaryText} hover:brightness-[0.98] dark:hover:brightness-110`
+                                    : `${currentTheme.cardBg} ${currentTheme.textSecondary} hover:${currentTheme.primaryBg} hover:${currentTheme.primaryText}`
+                                }`}
+                              >
+                                {priorityValue === null ? (
+                                  <span>{label}</span>
+                                ) : (
+                                  <span
+                                    className={`inline-flex h-7 items-center rounded-xl px-3 text-xs font-semibold ${chipClassName}`}
+                                    style={{ backgroundColor: getPriorityColor(priorityValue, isDarkMode) }}
+                                  >
+                                    {label}
+                                  </span>
+                                )}
+                                {isSelected && <Check className="h-4 w-4 shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </Popover.Content>
+                    </Popover.Portal>
+                  </Popover.Root>
+                </div>
+
+              <div className="flex min-w-0 flex-col gap-2 xl:w-56">
+                <span className={toolbarLabelClassName}>Task Type</span>
+                <Popover.Root open={isTaskTypeFilterOpen} onOpenChange={setIsTaskTypeFilterOpen}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Popover.Trigger asChild>
+                        <button
+                          type="button"
+                          className={`flex h-11 w-full items-center justify-between gap-3 px-4 text-left text-sm shadow-none ${currentTheme.text} ${labelFilterTriggerClassName} hover:!bg-white dark:hover:!bg-input/30 ${
+                            isTaskTypeFilterOpen ? `border-transparent ring-2 ${currentTheme.ring}` : ""
+                          }`}
+                        >
+                          <span className="flex min-w-0 items-center gap-2">
+                            <Shapes className={`h-4 w-4 shrink-0 ${selectedTaskTypes.length > 0 ? currentTheme.primaryText : currentTheme.textMuted}`} />
+                            <span className={`truncate ${selectedTaskTypes.length === 0 ? currentTheme.textMuted : currentTheme.text}`}>
+                              {getTaskTypeFilterSummary(selectedTaskTypes)}
+                            </span>
+                          </span>
+                          <ChevronDown className={`h-4 w-4 shrink-0 ${currentTheme.textMuted}`} />
+                        </button>
+                      </Popover.Trigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={8}>
+                      {taskTypeFilterTooltipText}
+                    </TooltipContent>
+                  </Tooltip>
+                  <Popover.Portal>
+                    <Popover.Content
+                      sideOffset={8}
+                      align="start"
+                      className={`z-50 w-64 overflow-hidden rounded-xl border p-1 ${currentTheme.border} ${currentTheme.cardBg} shadow-xl animate-in fade-in zoom-in-95 duration-200`}
+                    >
+                      <div className={`space-y-1 rounded-lg ${currentTheme.cardBg}`}>
+                        {TASK_TYPE_FILTER_OPTIONS.map((taskType) => {
+                          const isSelected = selectedTaskTypes.includes(taskType);
+                          const taskTypeDisplay = taskType === "none" ? null : getTaskTypeDisplay(taskType);
+                          const label = taskType === "none" ? "No task type" : taskTypeDisplay?.label ?? getTaskTypeLabel(taskType);
+
+                          return (
+                            <button
+                              key={taskType}
+                              type="button"
+                              onClick={() => toggleSelectedTaskType(taskType)}
+                              aria-pressed={isSelected}
+                              className={`relative flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                                isSelected
+                                  ? `${currentTheme.primaryBg} ${currentTheme.primaryText} hover:brightness-[0.98] dark:hover:brightness-110`
+                                  : `${currentTheme.cardBg} ${currentTheme.textSecondary} hover:${currentTheme.primaryBg} hover:${currentTheme.primaryText}`
+                              }`}
+                            >
+                              <span className="inline-flex min-w-0 items-center gap-2">
+                                {taskTypeDisplay?.icon}
+                                <span>{label}</span>
+                              </span>
+                              {isSelected && <Check className="h-4 w-4 shrink-0" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </Popover.Content>
+                  </Popover.Portal>
+                </Popover.Root>
+              </div>
+
+              <div className="flex min-w-0 flex-col gap-2 xl:w-72">
                 <span className={toolbarLabelClassName}>Labels</span>
                 <Popover.Root open={isLabelFilterOpen} onOpenChange={setIsLabelFilterOpen}>
                   <Tooltip>
@@ -653,9 +846,7 @@ export function ListView({
                                           : `${currentTheme.cardBg} ${currentTheme.textSecondary} hover:${currentTheme.primaryBg} hover:${currentTheme.primaryText}`
                                       }`}
                                     >
-                                      <span className={labelFilterChipClassName} style={{ backgroundColor: label.color }}>
-                                        <span className="truncate">{label.name}</span>
-                                      </span>
+                                      <LabelBadge label={label} className={labelFilterChipClassName} />
                                       {isSelected && <Check className="h-4 w-4 shrink-0" />}
                                     </button>
                                   </TooltipTrigger>
@@ -672,9 +863,10 @@ export function ListView({
                   </Popover.Portal>
                 </Popover.Root>
               </div>
-            </div>
 
-            <div className="xl:ml-auto xl:pt-[1.625rem]">
+              </div>
+
+            <div className="flex items-end xl:justify-end">
               <WorkspaceClearButton
                 onClick={clearCurrentFilters}
                 disabled={!hasActiveFilters}
@@ -682,6 +874,7 @@ export function ListView({
                 shortcut={<kbd className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${currentTheme.border} ${currentTheme.textMuted}`}>Esc</kbd>}
               />
             </div>
+          </div>
           </div>
 
           <div className={`mt-4 min-h-11 border-t pt-4 ${currentTheme.border}`}>
@@ -693,10 +886,10 @@ export function ListView({
                 }
 
                 return (
-                  <div
+                  <LabelBadge
                     key={labelId}
-                    className="inline-flex h-7 items-center gap-2 rounded-full px-3 text-xs font-semibold text-white"
-                    style={{ backgroundColor: label.color }}
+                    label={label}
+                    className="h-7 gap-2 px-3 text-xs font-semibold"
                   >
                     <OverflowTooltip
                       text={label.name}
@@ -708,7 +901,7 @@ export function ListView({
                         <button
                           type="button"
                           onClick={() => toggleSelectedLabelId(labelId)}
-                          className="inline-flex h-4 w-4 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/12 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55"
+                          className="inline-flex h-4 w-4 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/12 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55 dark:text-gray-900/80 dark:hover:bg-black/10 dark:hover:text-gray-900 dark:focus-visible:ring-black/45"
                           aria-label={`Remove ${label.name}`}
                         >
                           <X className="h-3 w-3" />
@@ -716,7 +909,7 @@ export function ListView({
                       </TooltipTrigger>
                       <TooltipContent side="top" sideOffset={8}>Remove {label.name}</TooltipContent>
                     </Tooltip>
-                  </div>
+                  </LabelBadge>
                 );
               })}
             </div>
@@ -739,7 +932,6 @@ export function ListView({
                 <TableRow className={`border-b-2 ${currentTheme.border} hover:bg-transparent`}>
                   <TaskIndexHeaderCell
                     label="Priority"
-                    align="center"
                     widthClassName="w-36"
                     dividerClassName={taskIndexDividerClassName}
                     sortDirection={sortState.key === "priority" ? sortState.direction : null}
@@ -760,7 +952,6 @@ export function ListView({
                   />
                   <TaskIndexHeaderCell
                     label="Due Date"
-                    align="center"
                     widthClassName="w-40"
                     dividerClassName={taskIndexDividerClassName}
                     sortDirection={sortState.key === "dueDate" ? sortState.direction : null}
@@ -771,7 +962,6 @@ export function ListView({
                   />
                   <TaskIndexHeaderCell
                     label={isBacklogMode ? "Queue" : "Status"}
-                    align="center"
                     widthClassName="w-36"
                     dividerClassName={taskIndexDividerClassName}
                     sortDirection={sortState.key === (isBacklogMode ? "readiness" : "status") ? sortState.direction : null}
@@ -801,7 +991,6 @@ export function ListView({
                   />
                   <TaskIndexHeaderCell
                     label="Story Points"
-                    align="center"
                     widthClassName="w-36"
                     dividerClassName={taskIndexDividerClassName}
                     sortDirection={sortState.key === "storyPoints" ? sortState.direction : null}
@@ -833,7 +1022,7 @@ export function ListView({
                       const cardLabels = getCardLabels(card.labelIds);
                       const taskTypeDisplay = getTaskTypeDisplay(card.taskType);
                       const priorityIndicator = getPriorityIndicator(card.priority);
-                      const dueDateInfo = getDueDateInfo(card.dueDate);
+                      const dueDateInfo = getTaskDueDateDisplay(card.dueDate);
                       const isRowPending = pendingRowIds.includes(card.id);
                       const isLastVisibleRow = card.id === taskPage.items[taskPage.items.length - 1]?.id;
                       const shouldDropBottomBorder = isLastVisibleRow && missingRowCount === 0;
@@ -846,7 +1035,7 @@ export function ListView({
                         >
                           <TableCell className={`px-4 align-middle ${taskIndexDividerClassName}`}>
                             {card.priority ? (
-                              <div className="flex items-center justify-center">
+                              <div className="flex items-center justify-start">
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <div className="cursor-help">
@@ -859,7 +1048,7 @@ export function ListView({
                                 </Tooltip>
                               </div>
                             ) : (
-                              <div className="text-center">
+                              <div className="text-left">
                                 <span className="sr-only">No priority</span>
                               </div>
                             )}
@@ -883,26 +1072,18 @@ export function ListView({
                           </TableCell>
                           <TableCell className={`px-4 align-middle ${taskIndexDividerClassName}`}>
                             {dueDateInfo ? (
-                              <div className="flex items-center justify-center">
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div className={`inline-flex items-center gap-1.5 text-xs font-medium ${dueDateInfo.className}`}>
-                                      <CalendarDays className="h-3.5 w-3.5" />
-                                      <span>{dueDateInfo.displayText}</span>
-                                    </div>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="top" sideOffset={8}>{dueDateInfo.tooltipText}</TooltipContent>
-                                </Tooltip>
+                              <div className="flex items-center justify-start">
+                                <TaskDueDateBadge dueDate={card.dueDate} />
                               </div>
                             ) : (
-                              <div className="text-center">
+                              <div className="text-left">
                                 <span className="sr-only">No due date</span>
                               </div>
                             )}
                           </TableCell>
                           <TableCell className={`px-4 align-middle ${taskIndexDividerClassName}`}>
-                            <div className="flex items-center justify-center">
-                              {isBacklogMode ? getQueueBadge(Boolean(card.isQueued)) : getStatusBadge(card.status)}
+                            <div className="flex items-center justify-start">
+                              {isBacklogMode ? getQueueBadge(Boolean(card.isQueued)) : <BoardStatusBadge statusKey={card.status} />}
                             </div>
                           </TableCell>
                           <TableCell className={`px-4 align-middle ${taskIndexDividerClassName}`}>
@@ -925,12 +1106,13 @@ export function ListView({
                                 currentAssignee={card.assignee}
                                 onAssigneeChange={(newAssignee) => void runRowAction(card.id, () => onAssigneeChange(card.id, newAssignee))}
                                 availableAssignees={availableAssignees}
+                                suggestedAssignees={suggestedAssignees}
                               />
                             </div>
                           </TableCell>
                           <TableCell className={`px-4 align-middle ${taskIndexDividerClassName}`}>
                             {card.storyPoints ? (
-                              <div className="flex items-center justify-center">
+                              <div className="flex items-center justify-start">
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <div className={`inline-flex items-center gap-1.5 text-sm font-medium ${currentTheme.textMuted}`}>
@@ -942,7 +1124,7 @@ export function ListView({
                                 </Tooltip>
                               </div>
                             ) : (
-                              <div className="text-center">
+                              <div className="text-left">
                                 <span className="sr-only">No story points</span>
                               </div>
                             )}

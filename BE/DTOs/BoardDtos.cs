@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Mvc;
+
 namespace BE.DTOs;
 
 public class BoardMemberDto
@@ -94,6 +96,14 @@ public class UpdateBoardRequestDto
     public string LogoIconKey { get; set; } = string.Empty;
     public string LogoColorKey { get; set; } = string.Empty;
     public List<int> MemberUserIds { get; set; } = new();
+    public List<UpdateBoardColumnLimitDto> ColumnLimits { get; set; } = new();
+}
+
+public class UpdateBoardColumnLimitDto
+{
+    public string StatusKey { get; set; } = string.Empty;
+    public int? SoftLimit { get; set; }
+    public int? HardLimit { get; set; }
 }
 
 public class BoardTaskDto
@@ -128,6 +138,10 @@ public class BoardTaskListQueryDto
     public string? Q { get; set; }
     public string QuickFilter { get; set; } = "all";
     public List<int> LabelIds { get; set; } = new();
+    [FromQuery(Name = "priorities")]
+    public List<string> Priorities { get; set; } = new();
+    [FromQuery(Name = "taskTypes")]
+    public List<string> TaskTypes { get; set; } = new();
     public string StageFilter { get; set; } = "all";
     public string? Sort { get; set; }
     public string? Direction { get; set; }

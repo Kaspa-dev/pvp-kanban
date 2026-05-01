@@ -4,6 +4,7 @@ import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { Label } from "../utils/labels";
 import { BacklogStageFilter, TaskQuickFilter } from "../utils/taskWorkspaceFilters";
 import { CustomScrollArea } from "./CustomScrollArea";
+import { LabelBadge } from "./LabelBadge";
 
 interface TaskFilterBarProps {
   searchQuery: string;
@@ -154,8 +155,10 @@ export function TaskFilterBar({
                                       : `${currentTheme.text} ${isDarkMode ? "hover:bg-zinc-800" : "hover:bg-gray-50"}`
                                   }`}
                                 >
-                                  <span className="h-3.5 w-3.5 shrink-0 rounded-full" style={{ backgroundColor: label.color }} />
-                                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{label.name}</span>
+                                  <LabelBadge
+                                    label={label}
+                                    className="max-w-[12rem] px-3 py-1.5 text-xs font-semibold shadow-sm"
+                                  />
                                 </button>
                               );
                             })}
@@ -215,11 +218,12 @@ export function TaskFilterBar({
                     key={labelId}
                     type="button"
                     onClick={() => toggleLabel(labelId)}
-                    className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold text-white shadow-sm"
-                    style={{ backgroundColor: label.color }}
+                    className="contents"
                   >
-                    <span className="max-w-[10rem] truncate">{label.name}</span>
-                    <span aria-hidden="true">x</span>
+                    <LabelBadge label={label} className="gap-2 px-3 py-1.5 text-xs font-semibold shadow-sm">
+                      <span className="max-w-[10rem] truncate">{label.name}</span>
+                      <span aria-hidden="true">x</span>
+                    </LabelBadge>
                   </button>
                 );
               })}

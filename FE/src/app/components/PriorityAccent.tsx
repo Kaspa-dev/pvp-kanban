@@ -13,6 +13,7 @@ interface PriorityAccentProps {
 interface AccentConfig {
   variant: "segments" | "dots";
   width: string;
+  laneWidth: string;
   top: string;
   bottom: string;
   left: string;
@@ -40,7 +41,8 @@ function getAccentConfig(priority: Priority): AccentConfig {
     case "low":
       return {
         variant: "segments",
-        width: "3px",
+        width: "1.75px",
+        laneWidth: "6px",
         top: "12px",
         bottom: "12px",
         left: "8px",
@@ -52,7 +54,8 @@ function getAccentConfig(priority: Priority): AccentConfig {
     case "medium":
       return {
         variant: "segments",
-        width: "4px",
+        width: "2.75px",
+        laneWidth: "6px",
         top: "12px",
         bottom: "12px",
         left: "8px",
@@ -64,7 +67,8 @@ function getAccentConfig(priority: Priority): AccentConfig {
     case "high":
       return {
         variant: "segments",
-        width: "5px",
+        width: "3.75px",
+        laneWidth: "6px",
         top: "11px",
         bottom: "11px",
         left: "8px",
@@ -76,7 +80,8 @@ function getAccentConfig(priority: Priority): AccentConfig {
     case "critical":
       return {
         variant: "segments",
-        width: "6px",
+        width: "4.5px",
+        laneWidth: "6px",
         top: "10px",
         bottom: "10px",
         left: "8px",
@@ -88,7 +93,8 @@ function getAccentConfig(priority: Priority): AccentConfig {
     default:
       return {
         variant: "segments",
-        width: "3px",
+        width: "1.75px",
+        laneWidth: "6px",
         top: "12px",
         bottom: "12px",
         left: "8px",
@@ -125,6 +131,7 @@ export function PriorityAccent({
 
   const style = {
     "--priority-accent-width": config.width,
+    "--priority-accent-lane-width": config.laneWidth,
     "--priority-accent-top": config.top,
     "--priority-accent-bottom": config.bottom,
     "--priority-accent-left": config.left,
