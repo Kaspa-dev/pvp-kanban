@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using System.Text.Json;
+using TaskEntity = BE.Models.Task;
 
 namespace BE.Controllers;
 
@@ -165,6 +166,49 @@ public class UsersController : ControllerBase
 
         UserProgressDto progress = await _gamificationService.GetUserProgressAsync(userId, cancellationToken);
         return Ok(progress);
+    }
+
+    // GET api/users/me/tasks?scope=active
+    [HttpGet("me/tasks")]
+    public async Task<ActionResult<IEnumerable<MyTaskItemDto>>> GetMyTasks(
+        [FromQuery] MyTaskListQueryDto query,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        string scope = NormalizeMyTaskScope(query.Scope);
+
+        IQueryable<TaskEntity> tasksQuery = _context.Tasks
+            .AsNoTracking()
+            .Include(task => task.Status)
+            .Include(task => task.LabeledTasks)
+            .Include(task => task.Board)
+                .ThenInclude(board => board.Memberships)
+                    .ThenInclude(membership => membership.User)
+            .Where(task =>
+                task.AssigneeId == userId &&
+                (task.Board.CreatorId == userId || task.Board.Memberships.Any(membership => membership.UserId == userId)));
+
+        if (scope == "active")
+        {
+            tasksQuery = tasksQuery.Where(task => task.Status.Title.ToLower() != "done");
+        }
+
+        List<TaskEntity> taskEntities = await tasksQuery
+            .OrderBy(task => task.DueDate.HasValue ? 0 : 1)
+            .ThenBy(task => task.DueDate)
+            .ThenBy(task => task.Board.Title)
+            .ThenBy(task => task.Title)
+            .ToListAsync(cancellationToken);
+
+        List<MyTaskItemDto> tasks = taskEntities
+            .Select(ToMyTaskItemDto)
+            .ToList();
+
+        return Ok(tasks);
     }
 
     // GET api/users/me/gamification-summary
@@ -383,6 +427,13 @@ public class UsersController : ControllerBase
         return null;
     }
 
+    private static string NormalizeMyTaskScope(string? scope)
+    {
+        return string.Equals(scope?.Trim(), "all", StringComparison.OrdinalIgnoreCase)
+            ? "all"
+            : "active";
+    }
+
     private static AuthUserDto ToAuthUserDto(User user)
     {
         return new AuthUserDto
@@ -393,6 +444,50 @@ public class UsersController : ControllerBase
             FirstName = user.FirstName,
             LastName = user.LastName,
             DisplayName = $"{user.FirstName} {user.LastName}".Trim(),
+        };
+    }
+
+    private static BoardMemberDto ToBoardMemberDto(BoardMembership membership)
+    {
+        return new BoardMemberDto
+        {
+            UserId = membership.UserId,
+            Username = membership.User.Username,
+            DisplayName = $"{membership.User.FirstName} {membership.User.LastName}".Trim(),
+            Email = membership.User.Email,
+            Color = membership.Color,
+            Role = membership.Role.ToString().ToLowerInvariant(),
+        };
+    }
+
+    private static MyTaskItemDto ToMyTaskItemDto(TaskEntity task)
+    {
+        BoardMembership? assigneeMembership = task.AssigneeId.HasValue
+            ? task.Board.Memberships.FirstOrDefault(membership => membership.UserId == task.AssigneeId.Value)
+            : null;
+
+        return new MyTaskItemDto
+        {
+            Id = task.Id,
+            Title = task.Title,
+            Description = task.Description,
+            StatusKey = task.Status.Title,
+            IsQueued = task.IsQueued,
+            LabelIds = task.LabeledTasks
+                .Select(labeledTask => labeledTask.LabelId)
+                .OrderBy(labelId => labelId)
+                .ToList(),
+            AssigneeUserId = task.AssigneeId,
+            Assignee = assigneeMembership is null ? null : ToBoardMemberDto(assigneeMembership),
+            ReporterUserId = task.ReporterId,
+            StoryPoints = task.StoryPoints,
+            DueDate = task.DueDate?.ToString("yyyy-MM-dd"),
+            Priority = task.Priority?.ToString().ToLowerInvariant(),
+            TaskType = task.Type?.ToString().ToLowerInvariant(),
+            BoardId = task.BoardId,
+            BoardName = task.Board.Title,
+            BoardLogoIconKey = task.Board.LogoIconKey,
+            BoardLogoColorKey = task.Board.LogoColorKey,
         };
     }
 
