@@ -1980,9 +1980,12 @@ public class BoardsController(
         BoardTaskListQueryDto request)
     {
         bool isBacklogScope = string.Equals(request.Scope, "backlog", StringComparison.OrdinalIgnoreCase);
+        bool isHistoryScope = string.Equals(request.Scope, "history", StringComparison.OrdinalIgnoreCase);
         query = isBacklogScope
             ? query.Where(task => task.Status.Title == "backlog")
-            : query.Where(task => task.Status.Title != "backlog");
+            : isHistoryScope
+                ? query.Where(task => task.Status.Title == "done")
+                : query.Where(task => task.Status.Title != "backlog");
 
         if (!string.IsNullOrWhiteSpace(request.Q))
         {

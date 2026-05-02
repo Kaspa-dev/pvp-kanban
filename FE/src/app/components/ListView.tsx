@@ -144,7 +144,7 @@ function isEditableKeyboardTarget(target: EventTarget | null): boolean {
 }
 
 interface ListViewProps {
-  mode: "active" | "backlog";
+  mode: "active" | "backlog" | "history";
   boardId: number;
   taskDataVersion: number;
   refreshToken: number;
@@ -187,6 +187,7 @@ export function ListView({
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const isBacklogMode = mode === "backlog";
+  const isHistoryMode = mode === "history";
   const [pendingRowIds, setPendingRowIds] = useState<number[]>([]);
   const [searchInput, setSearchInput] = useState(filters.searchQuery);
   const [sortState, setSortState] = useState<SortState>({ key: null, direction: null });
@@ -279,7 +280,7 @@ export function ListView({
     onRefreshingChange?.(true);
 
     void getBoardTaskPage(boardId, {
-      scope: isBacklogMode ? "backlog" : "active",
+      scope: isBacklogMode ? "backlog" : isHistoryMode ? "history" : "active",
       q: filterSearchQuery,
       quickFilter: filterQuickFilter,
       labelIds: selectedLabelIdsForRequest,
@@ -330,6 +331,7 @@ export function ListView({
     filterQuickFilter,
     filterSearchQuery,
     isBacklogMode,
+    isHistoryMode,
     onRefreshingChange,
     pageSize,
     refreshToken,
@@ -533,24 +535,52 @@ export function ListView({
   const taskIndexDividerClassName = "";
   const searchTooltipText = isBacklogMode
     ? "Search backlog tasks by title or by the labels attached to them."
-    : "Search active tasks by title or by the labels attached to them.";
+    : isHistoryMode
+      ? "Search completed tasks by title or by the labels attached to them."
+      : "Search active tasks by title or by the labels attached to them.";
   const labelFilterTooltipText = isBacklogMode
     ? "Filter backlog tasks by one or more board labels."
-    : "Filter active tasks by one or more board labels.";
+    : isHistoryMode
+      ? "Filter completed tasks by one or more board labels."
+      : "Filter active tasks by one or more board labels.";
   const priorityFilterTooltipText = isBacklogMode
     ? "Filter backlog tasks by priority, including tasks without a priority."
-    : "Filter active tasks by priority, including tasks without a priority.";
+    : isHistoryMode
+      ? "Filter completed tasks by priority, including tasks without a priority."
+      : "Filter active tasks by priority, including tasks without a priority.";
   const taskTypeFilterTooltipText = isBacklogMode
     ? "Filter backlog tasks by task type, including tasks without a type."
-    : "Filter active tasks by task type, including tasks without a type.";
+    : isHistoryMode
+      ? "Filter completed tasks by task type, including tasks without a type."
+      : "Filter active tasks by task type, including tasks without a type.";
+  const headerCoachmark = isBacklogMode ? "backlog-header" : isHistoryMode ? "history-header" : "list-header";
+  const filterCoachmark = isBacklogMode ? "backlog-filters" : "list-filters";
+  const tableCoachmark = isBacklogMode ? "backlog-table" : isHistoryMode ? "history-list" : "list-table";
+  const pageTitle = isBacklogMode ? "Backlog" : isHistoryMode ? "History" : "List";
+  const pageDescription = isBacklogMode
+    ? "Review upcoming work, stage ready tasks into the queue, and keep the backlog prepared for what comes next."
+    : isHistoryMode
+      ? "Review completed board work in one place, then sort and filter it to revisit what has already been delivered."
+      : "Scan active board work in one place, then sort and filter it to focus on what needs attention right now.";
+  const tableLabel = isBacklogMode ? "Backlog tasks" : isHistoryMode ? "Completed board tasks" : "Active board tasks";
+  const clearFiltersTooltip = isBacklogMode ? "Reset backlog filters" : isHistoryMode ? "Reset history filters" : "Reset list filters";
+  const quickFilterOptions = [
+    {
+      id: "all" as const,
+      label: isHistoryMode ? "All completed" : "All tasks",
+      tooltip: isHistoryMode ? "Show every completed task in this view" : "Show every task in this view",
+    },
+    { id: "assigned" as const, label: "Assigned to me", tooltip: "Show only tasks assigned to you" },
+    { id: "due" as const, label: "Due this week", tooltip: "Show tasks due within the next 7 days" },
+  ];
 
   return (
     <div className={`${currentTheme.bgSecondary} h-full overflow-auto`}>
       <div className={`${workspaceWidthClassName} flex flex-col px-8 py-6 lg:px-10 xl:px-12`}>
-        <div className="shrink-0" data-coachmark={isBacklogMode ? "backlog-header" : "list-header"}>
+        <div className="shrink-0" data-coachmark={headerCoachmark}>
           <div className="flex items-center justify-between gap-4">
             <h1 className={`font-ui-condensed text-[2rem] font-semibold tracking-[0.01em] ${currentTheme.text}`}>
-              {isBacklogMode ? "Backlog" : "List"}
+              {pageTitle}
             </h1>
             {onCreateTask && isBacklogMode && (
               <Tooltip>
@@ -572,15 +602,13 @@ export function ListView({
             )}
           </div>
           <p className={`mt-2 text-base ${currentTheme.textMuted}`}>
-            {isBacklogMode
-              ? "Review upcoming work, stage ready tasks into the queue, and keep the backlog prepared for what comes next."
-              : "Scan active board work in one place, then sort and filter it to focus on what needs attention right now."}
+            {pageDescription}
           </p>
         </div>
 
         <div
           className={`mt-6 border-t ${currentTheme.border} py-4`}
-          data-coachmark={isBacklogMode ? "backlog-filters" : "list-filters"}
+          data-coachmark={filterCoachmark}
         >
           <div className="flex flex-col gap-4">
             <div className="grid gap-4 xl:grid-cols-[minmax(18rem,1fr)_auto] xl:items-end">
@@ -606,14 +634,10 @@ export function ListView({
             </div>
 
             <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-end xl:justify-end">
-              <div className="flex flex-col gap-2">
-                <span className={toolbarLabelClassName}>Quick filters</span>
-                <div className="flex flex-wrap items-center gap-2 xl:min-h-11">
-                  {[
-                    { id: "all" as const, label: "All tasks", tooltip: "Show every task in this view" },
-                    { id: "assigned" as const, label: "Assigned to me", tooltip: "Show only tasks assigned to you" },
-                    { id: "due" as const, label: "Due this week", tooltip: "Show tasks due within the next 7 days" },
-                  ].map((filter) => {
+                <div className="flex flex-col gap-2">
+                  <span className={toolbarLabelClassName}>Quick filters</span>
+                  <div className="flex flex-wrap items-center gap-2 xl:min-h-11">
+                  {quickFilterOptions.map((filter) => {
                     const isActive = filters.quickFilter === filter.id;
                     return (
                       <WorkspaceFilterChip
@@ -872,7 +896,7 @@ export function ListView({
               <WorkspaceClearButton
                 onClick={clearCurrentFilters}
                 disabled={!hasActiveFilters}
-                tooltip={isBacklogMode ? "Reset backlog filters" : "Reset list filters"}
+                tooltip={clearFiltersTooltip}
                 shortcut={<kbd className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${currentTheme.border} ${currentTheme.textMuted}`}>Esc</kbd>}
               />
             </div>
@@ -918,10 +942,10 @@ export function ListView({
           </div>
         </div>
 
-        <div className="mt-4" data-coachmark={isBacklogMode ? "backlog-table" : "list-table"}>
+        <div className="mt-4" data-coachmark={tableCoachmark}>
           <div className="py-2.5">
             <span className={`text-sm font-semibold tracking-[0.01em] ${currentTheme.text}`}>
-              {isBacklogMode ? "Backlog tasks" : "Active board tasks"}
+              {tableLabel}
             </span>
           </div>
 

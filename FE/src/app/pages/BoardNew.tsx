@@ -13,7 +13,6 @@ import { SettingsModal } from "../components/SettingsModal";
 import { ConfirmDeleteDialog } from "../components/ConfirmDeleteDialog";
 import { ListView } from "../components/ListView";
 import { BacklogView2 } from "../components/BacklogView2";
-import { HistoryView } from "../components/HistoryView";
 import { BoardSettingsPage } from "../components/BoardSettingsPage";
 import { CoachmarkOverlay } from "../components/CoachmarkOverlay";
 import { PlanningPokerDeleteSessionDialog } from "../components/planning-poker/PlanningPokerDeleteSessionDialog";
@@ -201,6 +200,7 @@ export function Board() {
   const [view, setView] = useState<BoardPageView>("board");
   const [listFilters, setListFilters] = useState<TaskWorkspaceFilters>(DEFAULT_TASK_WORKSPACE_FILTERS);
   const [backlogFilters, setBacklogFilters] = useState<BacklogWorkspaceFilters>(DEFAULT_BACKLOG_WORKSPACE_FILTERS);
+  const [historyFilters, setHistoryFilters] = useState<TaskWorkspaceFilters>(DEFAULT_TASK_WORKSPACE_FILTERS);
 
   const [labels, setLabels] = useState<Label[]>([]);
   const [cards, setCards] = useState<Cards>(createEmptyCards());
@@ -1428,9 +1428,14 @@ export function Board() {
               )}
 
               {view === "history" && (
-                <HistoryView
+                <ListView
+                  mode="history"
                   boardId={numericBoardId}
-                  cards={allCards}
+                  taskDataVersion={taskDataVersion}
+                  refreshToken={taskIndexRefreshToken}
+                  onRefreshingChange={setIsTaskIndexRefreshing}
+                  filters={historyFilters}
+                  onFiltersChange={(filters) => setHistoryFilters(filters as TaskWorkspaceFilters)}
                   onOpen={handleOpenTask}
                   onAssigneeChange={handleAssigneeChange}
                   onDelete={handleDeleteRequest}
