@@ -186,7 +186,7 @@ export interface Cards {
 
 export type TaskQuickFilter = "all" | "assigned" | "due";
 export type BacklogStageFilter = "all" | "waiting" | "queued";
-export type BoardTaskListScope = "active" | "backlog";
+export type BoardTaskListScope = "active" | "backlog" | "history";
 export type BoardTaskSortKey = "priority" | "title" | "status" | "storyPoints" | "dueDate" | "assignee" | "readiness";
 export type BoardTaskSortDirection = "asc" | "desc";
 export type MyTasksScope = "active" | "all";
