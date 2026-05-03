@@ -2,7 +2,7 @@
 
 ## Summary
 
-Add a dedicated user milestones feature that rewards meaningful product usage such as completing tasks, creating boards, starting and finishing sprints, collaborating with teammates, and running planning poker sessions. Users should be able to open a milestones page from their profile to review unlocked milestones, track progress toward count-based milestones, and see what goals are coming up next.
+Add a dedicated user milestones feature that rewards meaningful product usage such as completing tasks, creating boards, collaborating with teammates, and running planning poker sessions. Users should be able to open a milestones page from their profile to review unlocked milestones, track progress toward count-based milestones, and see what goals are coming up next.
 
 This feature should extend the existing gamification direction without depending on XP milestones. The first release should support a broad but curated set of milestone categories that can be expanded later without redesigning the system.
 
@@ -44,7 +44,6 @@ Milestones should be grouped by category so the broad v1 stays easy to scan:
 
 - Tasks
 - Boards
-- Sprints
 - Collaboration
 - Planning Poker
 
@@ -88,13 +87,6 @@ The first release should ship with milestone definitions that are broad but conf
 
 - First Board Created
 - 5 Boards Created
-
-### Sprints
-
-- First Sprint Started
-- 5 Sprints Started
-- First Sprint Finished
-- 5 Sprints Finished
 
 ### Collaboration
 
@@ -142,7 +134,6 @@ Milestones should be evaluated from trusted backend data:
 
 - Task completion milestones from task completion records already tied to gamification history.
 - Board creation milestones from boards where the user is the creator.
-- Sprint milestones from persisted sprint lifecycle records already used by board workflow.
 - Member invitation milestones from board membership additions performed through the board owner flow.
 - Comment milestones from stored task comments authored by the user.
 - Planning poker milestones from sessions created by the user.
@@ -169,7 +160,6 @@ This service can be invoked from existing backend flows where actions already oc
 
 - Task completion transitions
 - Board creation
-- Sprint start and sprint finish actions
 - Member invitation or membership creation
 - Comment creation
 - Planning poker session creation
