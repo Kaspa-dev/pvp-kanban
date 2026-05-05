@@ -489,6 +489,7 @@ public class UsersController : ControllerBase
             Description = task.Description,
             StatusKey = task.Status.Title,
             IsQueued = task.IsQueued,
+            ColumnPosition = task.ColumnPosition,
             LabelIds = task.LabeledTasks
                 .Select(labeledTask => labeledTask.LabelId)
                 .OrderBy(labelId => labelId)

@@ -319,6 +319,8 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Description).HasMaxLength(2000);
             entity.Property(e => e.StoryPoints);
             entity.Property(e => e.IsQueued).HasDefaultValue(false);
+            entity.Property(e => e.ColumnPosition).HasDefaultValue(0);
+            entity.Property(e => e.StatusEnteredAtUtc);
             entity.Property(e => e.Priority)
                 .HasConversion<string>()
                 .HasMaxLength(16);

@@ -4,6 +4,7 @@ import type { BoardLogoColorKey, BoardLogoIconKey } from "./boardIdentity";
 import { STORY_POINTS_MAX, STORY_POINTS_MIN } from "./gamification";
 
 export type TaskStatus = "todo" | "inProgress" | "inReview" | "done" | "backlog";
+export type BoardColumnTaskStatus = Exclude<TaskStatus, "backlog">;
 export type Priority = "low" | "medium" | "high" | "critical";
 export type TaskType = "story" | "task" | "bug" | "spike";
 export type PriorityFilterValue = Priority | "none";
@@ -96,6 +97,7 @@ export interface ApiTask {
   title: string;
   description: string;
   statusKey: TaskStatus;
+  columnPosition: number;
   isQueued: boolean;
   labelIds: number[];
   assigneeUserId: number | null;
@@ -103,6 +105,7 @@ export interface ApiTask {
   reporterUserId: number;
   storyPoints?: number;
   dueDate?: string | null;
+  statusEnteredAtUtc?: string | null;
   priority?: Priority;
   taskType?: TaskType;
 }
@@ -136,9 +139,11 @@ export interface Card {
   assignee: TaskAssignee;
   assigneeUserId: number | null;
   status: TaskStatus;
+  columnPosition: number;
   isQueued?: boolean;
   storyPoints?: number;
   dueDate?: string | null;
+  statusEnteredAtUtc?: string | null;
   priority?: Priority;
   taskType?: TaskType;
   reporterUserId?: number;
@@ -290,9 +295,11 @@ export function normalizeTask(task: ApiTask): Card {
     assignee: normalizeAssignee(task.assignee),
     assigneeUserId: task.assigneeUserId,
     status: task.statusKey,
+    columnPosition: task.columnPosition ?? 0,
     isQueued: task.isQueued ?? false,
     storyPoints: task.storyPoints,
     dueDate: task.dueDate ?? null,
+    statusEnteredAtUtc: task.statusEnteredAtUtc ?? null,
     priority: task.priority,
     taskType: task.taskType,
     reporterUserId: task.reporterUserId,
@@ -340,10 +347,19 @@ export function createEmptyCards(): Cards {
 }
 
 export function groupCards(tasks: Card[]): Cards {
-  return tasks.reduce<Cards>((acc, task) => {
+  const groupedCards = tasks.reduce<Cards>((acc, task) => {
     acc[task.status].push(task);
     return acc;
   }, createEmptyCards());
+
+  (Object.keys(groupedCards) as TaskStatus[]).forEach((status) => {
+    groupedCards[status].sort((firstTask, secondTask) => {
+      const positionDifference = firstTask.columnPosition - secondTask.columnPosition;
+      return positionDifference !== 0 ? positionDifference : secondTask.id - firstTask.id;
+    });
+  });
+
+  return groupedCards;
 }
 
 export function flattenCards(cards: Cards): Card[] {
@@ -588,6 +604,29 @@ export async function updateBoardTask(
       }),
     },
     "Unable to save the task right now.",
+  );
+
+  return normalizeTask(task);
+}
+
+export async function updateBoardTaskPosition(
+  boardId: number | string,
+  taskId: number | string,
+  input: {
+    targetStatusKey: BoardColumnTaskStatus;
+    targetIndex: number;
+  },
+): Promise<Card> {
+  const task = await apiJson<ApiTask>(
+    `/api/boards/${Number(boardId)}/tasks/${Number(taskId)}/position`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        targetStatusKey: input.targetStatusKey,
+        targetIndex: input.targetIndex,
+      }),
+    },
+    "Unable to move the task right now.",
   );
 
   return normalizeTask(task);

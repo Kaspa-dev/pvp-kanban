@@ -32,6 +32,7 @@ import { isApiError } from "../utils/auth";
 import { getBoard, Board as BoardType, BoardColumnLimit, isBoardOwner, updateBoard } from "../utils/boards";
 import {
   addTaskToQueue,
+  BoardColumnTaskStatus,
   Card,
   Cards,
   createBoardTask,
@@ -48,6 +49,7 @@ import {
   flattenCards,
   groupCards,
   updateBoardTask,
+  updateBoardTaskPosition,
 } from "../utils/cards";
 import {
   Label,
@@ -175,6 +177,57 @@ function areTaskEditUpdatesUnchanged(
     (existingTask.taskType ?? null) === (updates.taskType ?? null) &&
     (existingTask.dueDate ?? null) === (updates.dueDate ?? null)
   );
+}
+
+const BOARD_CARD_ORDER_STATUSES: TaskStatus[] = ["todo", "inProgress", "inReview", "done", "backlog"];
+
+function moveCardToColumnPosition(
+  currentCards: Cards,
+  cardId: number,
+  targetStatus: BoardColumnTaskStatus,
+  targetIndex: number,
+  replacementTask?: Card,
+): Cards {
+  const nextCards: Cards = {
+    todo: [...currentCards.todo],
+    inProgress: [...currentCards.inProgress],
+    inReview: [...currentCards.inReview],
+    done: [...currentCards.done],
+    backlog: [...currentCards.backlog],
+  };
+
+  let movingTask: Card | undefined;
+
+  for (const status of BOARD_CARD_ORDER_STATUSES) {
+    const existingIndex = nextCards[status].findIndex((task) => task.id === cardId);
+    if (existingIndex !== -1) {
+      movingTask = nextCards[status][existingIndex];
+      nextCards[status].splice(existingIndex, 1);
+      break;
+    }
+  }
+
+  if (!movingTask) {
+    return currentCards;
+  }
+
+  const targetColumn = nextCards[targetStatus];
+  const clampedTargetIndex = Math.max(0, Math.min(targetIndex, targetColumn.length));
+  targetColumn.splice(clampedTargetIndex, 0, {
+    ...movingTask,
+    ...replacementTask,
+    status: targetStatus,
+    columnPosition: clampedTargetIndex,
+  });
+
+  for (const status of BOARD_CARD_ORDER_STATUSES) {
+    nextCards[status] = nextCards[status].map((task, index) => ({
+      ...task,
+      columnPosition: index,
+    }));
+  }
+
+  return nextCards;
 }
 
 export function Board() {
@@ -691,12 +744,50 @@ export function Board() {
     view,
   ]);
 
-  const handleCardDrop = async (cardId: number, _fromColumnId: string, toColumnId: string) => {
+  const handleCardDrop = async (
+    cardId: number,
+    fromColumnId: string,
+    toColumnId: string,
+    targetIndex = 0,
+  ) => {
+    if (!Number.isFinite(numericBoardId)) {
+      return;
+    }
+
+    const existingTask = allCards.find((card) => card.id === cardId);
+    if (!existingTask || toColumnId === "backlog") {
+      return;
+    }
+
+    const targetStatus = toColumnId as BoardColumnTaskStatus;
+    const previousCards = cards;
+    const statusChanged = fromColumnId !== toColumnId;
+
+    setCards((currentCards) => moveCardToColumnPosition(currentCards, cardId, targetStatus, targetIndex));
+
     try {
-      await saveTask(cardId, { status: toColumnId as TaskStatus }, { refetchWorkspace: false });
+      const updatedTask = await updateBoardTaskPosition(numericBoardId, cardId, {
+        targetStatusKey: targetStatus,
+        targetIndex,
+      });
+
+      setCards((currentCards) =>
+        moveCardToColumnPosition(
+          currentCards,
+          cardId,
+          updatedTask.status as BoardColumnTaskStatus,
+          updatedTask.columnPosition,
+          updatedTask,
+        ),
+      );
+      invalidateBoardAssigneeSuggestions(numericBoardId);
+      await refreshProgress();
       triggerWorkspaceRefetch("soft");
-      showSuccessToast("Task status updated.");
+      if (statusChanged) {
+        showSuccessToast("Task status updated.");
+      }
     } catch (error) {
+      setCards(previousCards);
       const message = error instanceof Error ? error.message : "Unable to move the task right now.";
       showErrorToast(message);
     }

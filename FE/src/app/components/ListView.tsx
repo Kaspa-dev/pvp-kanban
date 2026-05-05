@@ -46,6 +46,8 @@ import { BoardStatusBadge } from "./BoardStatusBadge";
 import { LabelBadge } from "./LabelBadge";
 import { TaskIndexHeaderCell } from "./TaskIndexHeaderCell";
 import { TaskDueDateBadge } from "./TaskDueDateBadge";
+import { TaskColumnAgeBadge } from "./TaskColumnAgeBadge";
+import { getTaskColumnAgeDisplay } from "../utils/taskColumnAge";
 import { getTaskDueDateDisplay } from "../utils/taskDueDate";
 import { TaskAssigneeControl } from "./TaskAssigneeControl";
 import { TaskAssigneeFilterPopover } from "./TaskAssigneeFilterPopover";
@@ -1147,6 +1149,9 @@ export function ListView({
                       const taskTypeDisplay = getTaskTypeDisplay(card.taskType);
                       const priorityIndicator = getPriorityIndicator(card.priority);
                       const dueDateInfo = getTaskDueDateDisplay(card.dueDate);
+                      const columnAgeInfo = !isBacklogMode && !isHistoryMode
+                        ? getTaskColumnAgeDisplay(card.statusEnteredAtUtc, card.status)
+                        : null;
                       const isRowPending = pendingRowIds.includes(card.id);
                       const isLastVisibleRow = card.id === taskPage.items[taskPage.items.length - 1]?.id;
                       const shouldDropBottomBorder = isLastVisibleRow && missingRowCount === 0;
@@ -1201,9 +1206,14 @@ export function ListView({
                             </div>
                           </TableCell>
                           <TableCell className={`px-4 align-middle ${taskIndexDividerClassName}`}>
-                            {dueDateInfo ? (
+                            {dueDateInfo || columnAgeInfo ? (
                               <div className="flex items-center justify-center">
-                                <TaskDueDateBadge dueDate={card.dueDate} />
+                                <div className="flex items-center gap-2">
+                                  {columnAgeInfo ? (
+                                    <TaskColumnAgeBadge statusEnteredAtUtc={card.statusEnteredAtUtc} status={card.status} />
+                                  ) : null}
+                                  {dueDateInfo ? <TaskDueDateBadge dueDate={card.dueDate} /> : null}
+                                </div>
                               </div>
                             ) : (
                               <div className="text-center">

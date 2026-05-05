@@ -17,7 +17,7 @@ interface KanbanColumnProps {
   title: string;
   count: number;
   cards: ColumnCard[];
-  onCardDrop: (cardId: number, fromColumnId: string, toColumnId: string) => void;
+  onCardDrop: (cardId: number, fromColumnId: string, toColumnId: string, targetIndex?: number) => void;
   onOpen?: (cardId: number) => void;
   onAssigneeChange: (cardId: number, assignee: TaskAssignee | null) => void;
   onDelete: (cardId: number, title: string) => void;
@@ -153,20 +153,20 @@ export function KanbanColumn({
   const [{ isOver, canDrop, draggedColumnId }, drop] = useDrop<DraggedKanbanCard, void, { isOver: boolean; canDrop: boolean; draggedColumnId: string | null }>({
     accept: "CARD",
     canDrop: () => true,
-    drop: (item) => {
-      if (item.columnId === id) {
+    drop: (item, monitor) => {
+      if (monitor.didDrop()) {
         return;
       }
 
-      if (isHardLimitReached) {
+      if (item.columnId !== id && isHardLimitReached) {
         showBlockedDropFeedback();
         return;
       }
 
-      onCardDrop(item.id, item.columnId, id);
+      onCardDrop(item.id, item.columnId, id, 0);
     },
     collect: (monitor) => ({
-      isOver: monitor.isOver(),
+      isOver: monitor.isOver({ shallow: true }),
       canDrop: monitor.canDrop(),
       draggedColumnId: monitor.getItem()?.columnId ?? null,
     }),
@@ -264,15 +264,17 @@ export function KanbanColumn({
         >
           {cards.length > 0 ? (
             <div className="space-y-3">
-              {cards.map((card) => (
+              {cards.map((card, index) => (
                 <KanbanCard
                   key={card.id}
                   boardId={boardId}
                   id={card.id}
+                  index={index}
                   title={card.title}
                   labelIds={card.labelIds}
                   assignee={card.assignee}
                   columnId={id}
+                  onCardDrop={onCardDrop}
                   onOpen={onOpen}
                   onAssigneeChange={onAssigneeChange}
                   onDelete={onDelete}
@@ -282,8 +284,10 @@ export function KanbanColumn({
                   labels={labels}
                   storyPoints={card.storyPoints}
                   dueDate={card.dueDate}
+                  statusEnteredAtUtc={card.statusEnteredAtUtc}
                   priority={card.priority}
                   taskType={card.taskType}
+                  showColumnAge
                 />
               ))}
             </div>

@@ -762,7 +762,8 @@ public class BoardsController(
             .Include(task => task.Status)
             .Include(task => task.Assignee)
             .Include(task => task.LabeledTasks)
-            .OrderByDescending(task => task.Id)
+            .OrderBy(task => task.ColumnPosition)
+            .ThenByDescending(task => task.Id)
             .ToListAsync(cancellationToken);
 
         return Ok(tasks.Select(task => ToTaskDto(task, memberLookup)));
@@ -955,7 +956,6 @@ public class BoardsController(
             Title = normalizedTitle,
             Description = normalizedDescription,
             BoardId = boardId,
-            StatusId = status!.Id,
             AssigneeId = request.AssigneeUserId,
             ReporterId = userId,
             StoryPoints = request.StoryPoints,
@@ -964,6 +964,8 @@ public class BoardsController(
             Priority = priority,
             Type = taskType,
         };
+
+        await MoveTaskToColumnPositionAsync(task, status!, 0, cancellationToken);
 
         foreach (int labelId in requestedLabelIds)
         {
@@ -1103,12 +1105,15 @@ public class BoardsController(
 
         task.Title = normalizedTitle;
         task.Description = normalizedDescription;
-        task.StatusId = status!.Id;
         task.AssigneeId = request.AssigneeUserId;
         task.StoryPoints = request.StoryPoints;
         task.DueDate = dueDate;
         task.Priority = priority;
         task.Type = taskType;
+        if (!string.Equals(previousStatusKey, status!.Title, StringComparison.OrdinalIgnoreCase))
+        {
+            await MoveTaskToColumnPositionAsync(task, status, 0, cancellationToken);
+        }
         if (!string.Equals(status.Title, "backlog", StringComparison.OrdinalIgnoreCase))
         {
             task.IsQueued = false;
@@ -1127,6 +1132,76 @@ public class BoardsController(
 
         await _gamificationService.ApplyTaskTransitionXpAsync(task, previousStatusKey, status.Title, cancellationToken);
         await SaveChangesWithMilestoneRecoveryAsync(cancellationToken);
+
+        var memberLookup = board.Memberships.ToDictionary(
+            membership => membership.UserId,
+            ToBoardMemberDto);
+
+        return Ok(ToTaskDto(task, memberLookup));
+    }
+
+    [HttpPatch("{boardId:int}/tasks/{taskId:int}/position")]
+    public async Task<ActionResult<BoardTaskDto>> UpdateTaskPosition(
+        int boardId,
+        int taskId,
+        UpdateTaskPositionRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        var (accessContext, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
+        if (failure is not null)
+        {
+            return failure;
+        }
+
+        Board board = accessContext!.Board;
+        string requestedStatusKey = request.TargetStatusKey?.Trim() ?? string.Empty;
+        string? normalizedStatusKey = EditableBoardColumnStatusKeys.FirstOrDefault(
+            statusKey => statusKey.Equals(requestedStatusKey, StringComparison.OrdinalIgnoreCase));
+        if (normalizedStatusKey is null || !TryResolveTaskStatus(board, normalizedStatusKey, out BoardTaskStatus? status))
+        {
+            return BadRequest(new { message = "Task status is invalid." });
+        }
+
+        TaskEntity? task = await _context.Tasks
+            .Where(item => item.Id == taskId && item.BoardId == boardId)
+            .Include(item => item.Status)
+            .Include(item => item.Assignee)
+            .Include(item => item.LabeledTasks)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (task is null)
+        {
+            return NotFound();
+        }
+
+        string previousStatusKey = task.Status.Title;
+        bool statusChanged = !string.Equals(previousStatusKey, status!.Title, StringComparison.OrdinalIgnoreCase);
+        if (statusChanged)
+        {
+            ActionResult? updateTaskLimitFailure = await GetHardLimitFailureAsync(boardId, status.Title, cancellationToken);
+            if (updateTaskLimitFailure is not null)
+            {
+                return updateTaskLimitFailure;
+            }
+        }
+
+        await MoveTaskToColumnPositionAsync(task, status, request.TargetIndex, cancellationToken);
+        if (!string.Equals(status.Title, "backlog", StringComparison.OrdinalIgnoreCase))
+        {
+            task.IsQueued = false;
+        }
+
+        if (statusChanged)
+        {
+            await _gamificationService.ApplyTaskTransitionXpAsync(task, previousStatusKey, status.Title, cancellationToken);
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
 
         var memberLookup = board.Memberships.ToDictionary(
             membership => membership.UserId,
@@ -1474,10 +1549,46 @@ public class BoardsController(
             return startQueueLimitFailure;
         }
 
-        foreach (TaskEntity task in startableTasks)
+        var startableTaskIds = startableTasks
+            .Select(task => task.Id)
+            .ToHashSet();
+        int backlogStatusId = startableTasks[0].StatusId;
+
+        List<TaskEntity> existingTodoTasks = await _context.Tasks
+            .Where(task =>
+                task.BoardId == boardId &&
+                task.StatusId == todoStatus.Id &&
+                !startableTaskIds.Contains(task.Id))
+            .OrderBy(task => task.ColumnPosition)
+            .ThenByDescending(task => task.Id)
+            .ToListAsync(cancellationToken);
+
+        List<TaskEntity> remainingBacklogTasks = await _context.Tasks
+            .Where(task =>
+                task.BoardId == boardId &&
+                task.StatusId == backlogStatusId &&
+                !startableTaskIds.Contains(task.Id))
+            .OrderBy(task => task.ColumnPosition)
+            .ThenByDescending(task => task.Id)
+            .ToListAsync(cancellationToken);
+
+        for (int index = 0; index < existingTodoTasks.Count; index++)
         {
+            existingTodoTasks[index].ColumnPosition = startableTasks.Count + index;
+        }
+
+        for (int index = 0; index < remainingBacklogTasks.Count; index++)
+        {
+            remainingBacklogTasks[index].ColumnPosition = index;
+        }
+
+        for (int index = 0; index < startableTasks.Count; index++)
+        {
+            TaskEntity task = startableTasks[index];
             task.StatusId = todoStatus.Id;
             task.Status = todoStatus;
+            task.ColumnPosition = index;
+            task.StatusEnteredAtUtc = DateTime.UtcNow;
             task.IsQueued = false;
         }
 
@@ -1764,6 +1875,64 @@ public class BoardsController(
         await _context.SaveChangesAsync(cancellationToken);
 
         return NoContent();
+    }
+
+    private async System.Threading.Tasks.Task MoveTaskToColumnPositionAsync(
+        TaskEntity task,
+        BoardTaskStatus targetStatus,
+        int requestedTargetIndex,
+        CancellationToken cancellationToken)
+    {
+        bool isStatusChanged = task.StatusId != targetStatus.Id;
+
+        if (task.Id > 0 && isStatusChanged)
+        {
+            await CompactColumnPositionsAsync(task.BoardId, task.StatusId, task.Id, cancellationToken);
+        }
+
+        List<TaskEntity> targetTasks = await _context.Tasks
+            .Where(item =>
+                item.BoardId == task.BoardId &&
+                item.StatusId == targetStatus.Id &&
+                item.Id != task.Id)
+            .OrderBy(item => item.ColumnPosition)
+            .ThenByDescending(item => item.Id)
+            .ToListAsync(cancellationToken);
+
+        int targetIndex = Math.Clamp(requestedTargetIndex, 0, targetTasks.Count);
+        for (int index = 0; index < targetTasks.Count; index++)
+        {
+            targetTasks[index].ColumnPosition = index >= targetIndex ? index + 1 : index;
+        }
+
+        task.StatusId = targetStatus.Id;
+        task.Status = targetStatus;
+        task.ColumnPosition = targetIndex;
+        if (isStatusChanged)
+        {
+            task.StatusEnteredAtUtc = DateTime.UtcNow;
+        }
+    }
+
+    private async System.Threading.Tasks.Task CompactColumnPositionsAsync(
+        int boardId,
+        int statusId,
+        int excludedTaskId,
+        CancellationToken cancellationToken)
+    {
+        List<TaskEntity> columnTasks = await _context.Tasks
+            .Where(task =>
+                task.BoardId == boardId &&
+                task.StatusId == statusId &&
+                task.Id != excludedTaskId)
+            .OrderBy(task => task.ColumnPosition)
+            .ThenByDescending(task => task.Id)
+            .ToListAsync(cancellationToken);
+
+        for (int index = 0; index < columnTasks.Count; index++)
+        {
+            columnTasks[index].ColumnPosition = index;
+        }
     }
 
     private async Task<(BoardAccessContext? Context, ActionResult? Failure)> GetBoardAccessAsync(
@@ -2356,6 +2525,7 @@ public class BoardsController(
             Description = task.Description,
             StatusKey = task.Status.Title,
             IsQueued = task.IsQueued,
+            ColumnPosition = task.ColumnPosition,
             LabelIds = task.LabeledTasks
                 .Select(labeledTask => labeledTask.LabelId)
                 .OrderBy(id => id)
@@ -2367,6 +2537,7 @@ public class BoardsController(
             ReporterUserId = task.ReporterId,
             StoryPoints = task.StoryPoints,
             DueDate = task.DueDate?.ToString("yyyy-MM-dd"),
+            StatusEnteredAtUtc = task.StatusEnteredAtUtc,
             Priority = task.Priority?.ToString().ToLowerInvariant(),
             TaskType = task.Type?.ToString().ToLowerInvariant(),
         };
@@ -2436,12 +2607,14 @@ public class BoardsController(
             Description = taskDto.Description,
             StatusKey = taskDto.StatusKey,
             IsQueued = taskDto.IsQueued,
+            ColumnPosition = taskDto.ColumnPosition,
             LabelIds = taskDto.LabelIds,
             AssigneeUserId = taskDto.AssigneeUserId,
             Assignee = taskDto.Assignee,
             ReporterUserId = taskDto.ReporterUserId,
             StoryPoints = taskDto.StoryPoints,
             DueDate = taskDto.DueDate,
+            StatusEnteredAtUtc = taskDto.StatusEnteredAtUtc,
             Priority = taskDto.Priority,
             TaskType = taskDto.TaskType,
             Comments = task.Comments

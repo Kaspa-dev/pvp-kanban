@@ -523,6 +523,11 @@ namespace BE.Migrations
                     b.Property<int>("BoardId")
                         .HasColumnType("int");
 
+                    b.Property<int>("ColumnPosition")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(2000)
@@ -548,6 +553,9 @@ namespace BE.Migrations
 
                     b.Property<int?>("StoryPoints")
                         .HasColumnType("int");
+
+                    b.Property<DateTime?>("StatusEnteredAtUtc")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int?>("TeamId")
                         .HasColumnType("int");

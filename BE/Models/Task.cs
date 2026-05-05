@@ -12,9 +12,11 @@ public class Task
     public int ReporterId { get; set; }
     public int? TeamId { get; set; } = null;
     public bool IsQueued { get; set; } = false;
+    public int ColumnPosition { get; set; } = 0;
     public Priority? Priority { get; set; } = null;
     public Type? Type { get; set; } = null;
     public DateTime? DueDate { get; set; } = null;
+    public DateTime? StatusEnteredAtUtc { get; set; } = null;
 
     public Board Board { get; set; } = null!;
     public Models.TaskStatus Status { get; set; } = null!;

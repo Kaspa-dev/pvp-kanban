@@ -113,12 +113,14 @@ public class BoardTaskDto
     public string Description { get; set; } = string.Empty;
     public string StatusKey { get; set; } = string.Empty;
     public bool IsQueued { get; set; }
+    public int ColumnPosition { get; set; }
     public List<int> LabelIds { get; set; } = new();
     public int? AssigneeUserId { get; set; }
     public BoardMemberDto? Assignee { get; set; }
     public int ReporterUserId { get; set; }
     public int? StoryPoints { get; set; }
     public string? DueDate { get; set; }
+    public DateTime? StatusEnteredAtUtc { get; set; }
     public string? Priority { get; set; }
     public string? TaskType { get; set; }
 }
@@ -190,6 +192,7 @@ public class MyTaskItemDto
     public string Description { get; set; } = string.Empty;
     public string StatusKey { get; set; } = string.Empty;
     public bool IsQueued { get; set; }
+    public int ColumnPosition { get; set; }
     public List<int> LabelIds { get; set; } = new();
     public int? AssigneeUserId { get; set; }
     public BoardMemberDto? Assignee { get; set; }
@@ -277,6 +280,12 @@ public class UpdateTaskRequestDto
     public string? DueDate { get; set; }
     public string? Priority { get; set; }
     public string? TaskType { get; set; }
+}
+
+public class UpdateTaskPositionRequestDto
+{
+    public string TargetStatusKey { get; set; } = string.Empty;
+    public int TargetIndex { get; set; }
 }
 
 public class CreatePlanningPokerSessionRequestDto

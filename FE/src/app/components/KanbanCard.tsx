@@ -1,9 +1,9 @@
 import { Trash2, Zap, Edit, FileText, Bug, Lightbulb, CheckSquare, Undo2 } from "lucide-react";
-import { useDrag } from "react-dnd";
+import { useDrag, useDrop } from "react-dnd";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { Label } from "../utils/labels";
-import { ReactNode } from "react";
-import { Priority, TaskAssignee, TaskType } from "../utils/cards";
+import { ReactNode, useCallback, useRef, useState } from "react";
+import { Priority, TaskAssignee, TaskStatus, TaskType } from "../utils/cards";
 import { getPriorityIndicator } from "../utils/priorityColors";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { TaskLabelSummary } from "./TaskLabelSummary";
@@ -12,14 +12,18 @@ import { PriorityAccent } from "./PriorityAccent";
 import { TaskDueDateBadge } from "./TaskDueDateBadge";
 import { getTaskDueDateDisplay } from "../utils/taskDueDate";
 import { TaskAssigneeControl } from "./TaskAssigneeControl";
+import { TaskColumnAgeBadge } from "./TaskColumnAgeBadge";
+import { getTaskColumnAgeDisplay } from "../utils/taskColumnAge";
 
 interface KanbanCardProps {
   boardId: number;
   id: number;
+  index?: number;
   title: string;
   labelIds: number[];
   assignee: TaskAssignee;
   columnId: string;
+  onCardDrop?: (cardId: number, fromColumnId: string, toColumnId: string, targetIndex: number) => void;
   onOpen?: (cardId: number) => void;
   onAssigneeChange: (cardId: number, assignee: TaskAssignee | null) => void;
   onDelete: (cardId: number, title: string) => void;
@@ -29,18 +33,30 @@ interface KanbanCardProps {
   labels: Label[];
   storyPoints?: number;
   dueDate?: string | null;
+  statusEnteredAtUtc?: string | null;
   priority?: Priority;
   taskType?: TaskType;
   footerAction?: ReactNode;
+  showColumnAge?: boolean;
 }
+
+type DraggedKanbanCard = {
+  id: number;
+  columnId: string;
+  index: number;
+};
+
+type DropEdge = "before" | "after";
 
 export function KanbanCard({
   boardId,
   id,
+  index = 0,
   title,
   labelIds,
   assignee,
   columnId,
+  onCardDrop,
   onOpen,
   onAssigneeChange,
   onDelete,
@@ -50,24 +66,78 @@ export function KanbanCard({
   labels,
   storyPoints,
   dueDate,
+  statusEnteredAtUtc,
   priority,
   taskType,
   footerAction,
+  showColumnAge = false,
 }: KanbanCardProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const [dropEdge, setDropEdge] = useState<DropEdge | null>(null);
   const taskSurfaceClassName = isDarkMode ? "bg-zinc-900/90" : "bg-white/95";
   const taskHoverShadowClassName = isDarkMode
     ? "group-hover:shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_20px_44px_rgba(0,0,0,0.46),0_0_34px_rgba(255,255,255,0.08)]"
     : "group-hover:shadow-[0_14px_28px_rgba(15,23,42,0.12),0_4px_12px_rgba(15,23,42,0.08)]";
 
-  const [{ isDragging }, drag] = useDrag({
+  const [{ isDragging }, drag] = useDrag<DraggedKanbanCard, void, { isDragging: boolean }>({
     type: "CARD",
-    item: { id, columnId },
+    item: { id, columnId, index },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
   });
+
+  const [{ isDropOver }, drop] = useDrop<DraggedKanbanCard, { handled: boolean } | void, { isDropOver: boolean }>({
+    accept: "CARD",
+    canDrop: (item) => Boolean(onCardDrop) && item.id !== id,
+    hover: (item, monitor) => {
+      if (!cardRef.current || !onCardDrop || item.id === id) {
+        setDropEdge(null);
+        return;
+      }
+
+      const clientOffset = monitor.getClientOffset();
+      if (!clientOffset) {
+        return;
+      }
+
+      const hoverRect = cardRef.current.getBoundingClientRect();
+      const hoverMiddleY = (hoverRect.bottom - hoverRect.top) / 2;
+      const hoverClientY = clientOffset.y - hoverRect.top;
+
+      setDropEdge(hoverClientY < hoverMiddleY ? "before" : "after");
+    },
+    drop: (item) => {
+      if (!onCardDrop || item.id === id || !dropEdge) {
+        setDropEdge(null);
+        return;
+      }
+
+      let nextTargetIndex = dropEdge === "after" ? index + 1 : index;
+      if (item.columnId === columnId && item.index < nextTargetIndex) {
+        nextTargetIndex -= 1;
+      }
+
+      onCardDrop(item.id, item.columnId, columnId, Math.max(0, nextTargetIndex));
+      setDropEdge(null);
+      return { handled: true };
+    },
+    collect: (monitor) => ({
+      isDropOver: monitor.isOver({ shallow: true }),
+    }),
+  });
+
+  const setCardDragDropRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      cardRef.current = node;
+      if (node) {
+        drag(drop(node));
+      }
+    },
+    [drag, drop],
+  );
 
   const cardLabels = labelIds
     .map((labelId) => labels.find((label) => label.id === labelId))
@@ -75,6 +145,8 @@ export function KanbanCard({
 
   const priorityIndicator = getPriorityIndicator(priority);
   const dueDateDisplay = getTaskDueDateDisplay(dueDate);
+  const columnAgeDisplay = showColumnAge ? getTaskColumnAgeDisplay(statusEnteredAtUtc, columnId as TaskStatus) : null;
+  const hasColumnAgeBadge = Boolean(columnAgeDisplay);
 
   const getTaskTypeDisplay = () => {
     switch (taskType) {
@@ -94,8 +166,10 @@ export function KanbanCard({
   const taskTypeDisplay = getTaskTypeDisplay();
   const showDueDateInTopMeta = Boolean(dueDateDisplay && footerAction);
   const showRestingDueDate = Boolean(dueDateDisplay && !footerAction);
+  const showColumnAgeInTopMeta = Boolean(hasColumnAgeBadge && footerAction);
+  const showRestingColumnAge = Boolean(hasColumnAgeBadge && !footerAction);
   const hasStoryPoints = storyPoints !== undefined && storyPoints > 0;
-  const hasTopMeta = Boolean(cardLabels.length > 0 || taskTypeDisplay || showDueDateInTopMeta || priorityIndicator);
+  const hasTopMeta = Boolean(cardLabels.length > 0 || taskTypeDisplay || showDueDateInTopMeta || showColumnAgeInTopMeta || priorityIndicator);
   const canMoveToBacklog = columnId !== "backlog" && columnId !== "queue" && Boolean(onMoveToBacklog);
   const revealActionsClassName = "flex max-w-0 shrink-0 translate-y-1 items-center gap-2 overflow-hidden opacity-0 transition-[max-width,opacity,transform] duration-200 ease-out group-hover:max-w-[9rem] group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:max-w-[9rem] group-focus-within:translate-y-0 group-focus-within:opacity-100";
   const isOpenable = Boolean(onOpen);
@@ -117,7 +191,7 @@ export function KanbanCard({
 
   return (
     <div
-      ref={drag}
+      ref={setCardDragDropRef}
       className={`relative z-0 isolate group overflow-visible p-1 transition-transform duration-200 hover:-translate-y-1 ${
         isDragging ? "opacity-50 scale-95" : "opacity-100"
       }`}
@@ -125,6 +199,13 @@ export function KanbanCard({
         cursor: isDragging ? "grabbing" : "default",
       }}
       >
+      {dropEdge && isDropOver && !isDragging ? (
+        <span
+          className={`pointer-events-none absolute left-3 right-3 z-30 h-1 rounded-full bg-gradient-to-r ${currentTheme.primary} shadow-[0_0_18px_rgba(99,102,241,0.36)]`}
+          style={dropEdge === "before" ? { top: 0 } : { bottom: 0 }}
+          aria-hidden="true"
+        />
+      ) : null}
       <div
         className={`relative overflow-hidden rounded-lg border-2 ${currentTheme.border} ${taskSurfaceClassName} shadow-none transition-[box-shadow] duration-200 ${taskHoverShadowClassName} ${isOpenable ? "cursor-pointer" : ""}`}
         onClick={isOpenable ? handleOpen : undefined}
@@ -155,6 +236,9 @@ export function KanbanCard({
                       {taskTypeDisplay.icon}
                       <span className="font-due-date text-xs font-medium">{taskTypeDisplay.label}</span>
                     </div>
+                  )}
+                  {showColumnAgeInTopMeta && (
+                    <TaskColumnAgeBadge statusEnteredAtUtc={statusEnteredAtUtc} status={columnId as TaskStatus} className="shrink-0" />
                   )}
                   {showDueDateInTopMeta && <TaskDueDateBadge dueDate={dueDate} className="shrink-0" />}
                   {cardLabels.length > 0 && (
@@ -250,11 +334,13 @@ export function KanbanCard({
               </div>
             </div>
 
-            {showRestingDueDate && (
-              <TaskDueDateBadge
-                dueDate={dueDate}
-                className="absolute bottom-0 right-0 px-1 py-1 transition-[opacity,transform] duration-200 ease-out group-hover:pointer-events-none group-hover:translate-y-1 group-hover:opacity-0 group-focus-within:pointer-events-none group-focus-within:translate-y-1 group-focus-within:opacity-0"
-              />
+            {(showRestingColumnAge || showRestingDueDate) && (
+              <div className="absolute bottom-0 right-0 flex items-center gap-2 px-1 py-1 transition-[opacity,transform] duration-200 ease-out group-hover:pointer-events-none group-hover:translate-y-1 group-hover:opacity-0 group-focus-within:pointer-events-none group-focus-within:translate-y-1 group-focus-within:opacity-0">
+                {showRestingColumnAge && (
+                  <TaskColumnAgeBadge statusEnteredAtUtc={statusEnteredAtUtc} status={columnId as TaskStatus} />
+                )}
+                {showRestingDueDate && <TaskDueDateBadge dueDate={dueDate} />}
+              </div>
             )}
           </div>
         </div>
