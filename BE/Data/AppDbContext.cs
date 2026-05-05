@@ -29,6 +29,8 @@ public class AppDbContext : DbContext
     public DbSet<Attachment> Attachments => Set<Attachment>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<XpEvent> XpEvents => Set<XpEvent>();
+    public DbSet<UserMilestone> UserMilestones => Set<UserMilestone>();
+    public DbSet<UserMilestoneEvent> UserMilestoneEvents => Set<UserMilestoneEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -96,6 +98,36 @@ public class AppDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.ReversesXpEventId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<UserMilestone>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.MilestoneKey).IsRequired().HasMaxLength(128);
+            entity.Property(e => e.ProgressValue).IsRequired();
+            entity.Property(e => e.UnlockedAtUtc).IsRequired();
+            entity.HasIndex(e => new { e.UserId, e.MilestoneKey }).IsUnique();
+            entity.HasIndex(e => new { e.UserId, e.UnlockedAtUtc });
+
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.Milestones)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserMilestoneEvent>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.EventType).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.EventKey).IsRequired().HasMaxLength(128);
+            entity.Property(e => e.CreatedAtUtc).IsRequired();
+            entity.HasIndex(e => new { e.EventType, e.EventKey }).IsUnique();
+            entity.HasIndex(e => new { e.UserId, e.EventType });
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Board>(entity =>

@@ -23,6 +23,7 @@ builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection(AuthOpt
 builder.Services.AddSingleton<ITokenService, TokenService>();
 builder.Services.AddScoped<IPlanningPokerSessionService, PlanningPokerSessionService>();
 builder.Services.AddScoped<IGamificationService, GamificationService>();
+builder.Services.AddScoped<IUserMilestoneService, UserMilestoneService>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>

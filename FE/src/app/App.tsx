@@ -7,6 +7,7 @@ import { Projects } from './pages/Projects';
 import { Board } from './pages/BoardNew';
 import { PlanningPokerRoom } from './pages/PlanningPokerRoom';
 import { Profile } from './pages/Profile';
+import { ProfileMilestones } from './pages/ProfileMilestones';
 import { MyTasks } from './pages/MyTasks';
 import { TaskDetailsPage } from './pages/TaskDetails';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -60,6 +61,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Profile />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app/profile/milestones"
+        element={
+          <ProtectedRoute>
+            <ProfileMilestones />
           </ProtectedRoute>
         }
       />

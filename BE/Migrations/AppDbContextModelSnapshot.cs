@@ -177,8 +177,8 @@ namespace BE.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6)")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("datetime(6)")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
 
                     b.Property<int>("TaskId")
                         .HasColumnType("int");
@@ -649,6 +649,68 @@ namespace BE.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("BE.Models.UserMilestone", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<string>("MilestoneKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<int>("ProgressValue")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UnlockedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "MilestoneKey")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "UnlockedAtUtc");
+
+                    b.ToTable("UserMilestones");
+                });
+
+            modelBuilder.Entity("BE.Models.UserMilestoneEvent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("EventKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventType", "EventKey")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "EventType");
+
+                    b.ToTable("UserMilestoneEvents");
+                });
+
             modelBuilder.Entity("BE.Models.XpEvent", b =>
                 {
                     b.Property<int>("Id")
@@ -1008,6 +1070,28 @@ namespace BE.Migrations
                     b.Navigation("Board");
                 });
 
+            modelBuilder.Entity("BE.Models.UserMilestone", b =>
+                {
+                    b.HasOne("BE.Models.User", "User")
+                        .WithMany("Milestones")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("BE.Models.UserMilestoneEvent", b =>
+                {
+                    b.HasOne("BE.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("BE.Models.XpEvent", b =>
                 {
                     b.HasOne("BE.Models.Board", "Board")
@@ -1118,6 +1202,8 @@ namespace BE.Migrations
                     b.Navigation("FavoriteBoards");
 
                     b.Navigation("Memberships");
+
+                    b.Navigation("Milestones");
 
                     b.Navigation("OwnedUnits");
 
