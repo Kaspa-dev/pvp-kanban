@@ -801,26 +801,24 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
-          </div>
-        </div>
 
-        <div className={`shrink-0 border-t ${currentTheme.border} ${isDarkMode ? "bg-zinc-950/45" : "bg-white/72"} backdrop-blur-xl`}>
-          <div className="mx-auto flex w-full max-w-[1180px] items-center justify-end gap-3 px-8 py-4 lg:px-10 xl:px-12">
-            <button
-              type="button"
-              onClick={resetDraft}
-              disabled={!isDirty && !showError && !hasTouchedName}
-              className={`px-5 ${secondaryActionButtonClassName}`}
-            >
-              Reset
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting || !isDirty || hasColumnLimitErrors}
-              className={`px-5 ${primaryActionButtonClassName}`}
-            >
-              {isSubmitting ? "Saving..." : "Save changes"}
-            </button>
+            <div className="flex flex-col items-stretch justify-end gap-3 pt-1 sm:flex-row sm:items-center">
+              <button
+                type="button"
+                onClick={resetDraft}
+                disabled={!isDirty && !showError && !hasTouchedName}
+                className={`w-full px-5 font-semibold sm:w-96 ${secondaryActionButtonClassName}`}
+              >
+                Reset
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting || !isDirty || hasColumnLimitErrors}
+                className={`w-full px-5 font-semibold sm:w-96 ${primaryActionButtonClassName}`}
+              >
+                {isSubmitting ? "Saving..." : "Save changes"}
+              </button>
+            </div>
           </div>
         </div>
       </form>

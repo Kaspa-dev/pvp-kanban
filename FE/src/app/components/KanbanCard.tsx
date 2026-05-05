@@ -1,7 +1,6 @@
 import { Trash2, Zap, Edit, FileText, Bug, Lightbulb, CheckSquare, Undo2 } from "lucide-react";
 import { useDrag } from "react-dnd";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
-import { AssigneePopover } from "./AssigneePopover";
 import { Label } from "../utils/labels";
 import { ReactNode } from "react";
 import { Priority, TaskAssignee, TaskType } from "../utils/cards";
@@ -10,7 +9,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { TaskLabelSummary } from "./TaskLabelSummary";
 import { UtilityIconButton } from "./UtilityIconButton";
 import { PriorityAccent } from "./PriorityAccent";
-import { getTaskDueDateDisplay, TaskDueDateBadge } from "./TaskDueDateBadge";
+import { TaskDueDateBadge } from "./TaskDueDateBadge";
+import { getTaskDueDateDisplay } from "../utils/taskDueDate";
+import { TaskAssigneeControl } from "./TaskAssigneeControl";
 
 interface KanbanCardProps {
   boardId: number;
@@ -25,7 +26,6 @@ interface KanbanCardProps {
   onEdit?: (cardId: number) => void;
   onMoveToBacklog?: (cardId: number) => void;
   availableAssignees: TaskAssignee[];
-  suggestedAssignees?: TaskAssignee[];
   labels: Label[];
   storyPoints?: number;
   dueDate?: string | null;
@@ -47,7 +47,6 @@ export function KanbanCard({
   onEdit,
   onMoveToBacklog,
   availableAssignees,
-  suggestedAssignees,
   labels,
   storyPoints,
   dueDate,
@@ -141,7 +140,7 @@ export function KanbanCard({
                 <TooltipTrigger asChild>
                   <div className={`absolute right-0 top-0 flex shrink-0 items-center gap-1 font-medium ${currentTheme.textMuted}`}>
                     <Zap className="h-4 w-4" />
-                    <span className="text-sm">{storyPoints}</span>
+                    <span className="font-due-date text-sm">{storyPoints}</span>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="top" sideOffset={8}>{storyPoints} story points</TooltipContent>
@@ -154,7 +153,7 @@ export function KanbanCard({
                   {taskTypeDisplay && (
                     <div className="flex shrink-0 items-center gap-1.5">
                       {taskTypeDisplay.icon}
-                      <span className="text-xs font-medium">{taskTypeDisplay.label}</span>
+                      <span className="font-due-date text-xs font-medium">{taskTypeDisplay.label}</span>
                     </div>
                   )}
                   {showDueDateInTopMeta && <TaskDueDateBadge dueDate={dueDate} className="shrink-0" />}
@@ -183,12 +182,12 @@ export function KanbanCard({
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <div onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
-                  <AssigneePopover
+                  <TaskAssigneeControl
                     boardId={boardId}
-                    currentAssignee={assignee}
-                    onAssigneeChange={(newAssignee) => onAssigneeChange(id, newAssignee)}
+                    taskId={id}
+                    assignee={assignee}
+                    onAssigneeChange={onAssigneeChange}
                     availableAssignees={availableAssignees}
-                    suggestedAssignees={suggestedAssignees}
                   />
                 </div>
               </div>
@@ -199,8 +198,10 @@ export function KanbanCard({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <UtilityIconButton
-                          onClick={() => onMoveToBacklog?.(id)}
-                          onClickCapture={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onMoveToBacklog?.(id);
+                          }}
                           onMouseDown={(e) => e.stopPropagation()}
                         >
                           <Undo2 className="w-4 h-4" />
@@ -214,8 +215,10 @@ export function KanbanCard({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <UtilityIconButton
-                          onClick={() => onEdit(id)}
-                          onClickCapture={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit(id);
+                          }}
                           onMouseDown={(e) => e.stopPropagation()}
                         >
                           <Edit className="w-4 h-4" />
@@ -228,8 +231,10 @@ export function KanbanCard({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <UtilityIconButton
-                        onClick={() => onDelete(id, title)}
-                        onClickCapture={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(id, title);
+                        }}
                         onMouseDown={(e) => e.stopPropagation()}
                       >
                         <Trash2 className="w-4 h-4" />

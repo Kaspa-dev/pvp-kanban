@@ -20,7 +20,6 @@ import {
   Zap,
 } from "lucide-react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
-import { AssigneePopover } from "./AssigneePopover";
 import { OverflowTooltip } from "./OverflowTooltip";
 import { Label } from "../utils/labels";
 import { getPriorityColor, getPriorityIndicator, PRIORITY_COLORS } from "../utils/priorityColors";
@@ -36,7 +35,6 @@ import {
   TaskType,
   TaskTypeFilterValue,
 } from "../utils/cards";
-import { PriorityBadge } from "./PriorityBadge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { CustomScrollArea } from "./CustomScrollArea";
 import {
@@ -47,7 +45,11 @@ import { TaskLabelSummary } from "./TaskLabelSummary";
 import { BoardStatusBadge } from "./BoardStatusBadge";
 import { LabelBadge } from "./LabelBadge";
 import { TaskIndexHeaderCell } from "./TaskIndexHeaderCell";
-import { TaskDueDateBadge, getTaskDueDateDisplay } from "./TaskDueDateBadge";
+import { TaskDueDateBadge } from "./TaskDueDateBadge";
+import { getTaskDueDateDisplay } from "../utils/taskDueDate";
+import { TaskAssigneeControl } from "./TaskAssigneeControl";
+import { TaskAssigneeFilterPopover } from "./TaskAssigneeFilterPopover";
+import { AppAvatar } from "./AppAvatar";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import { getIconActionButtonClassName } from "./iconActionButtonStyles";
 import { getInputLikeControlClassName, getNativeInputFieldClassName } from "./inputLikeControlStyles";
@@ -159,7 +161,6 @@ interface ListViewProps {
   onAddToQueue?: (cardId: number) => void | Promise<void>;
   onRemoveFromQueue?: (cardId: number) => void | Promise<void>;
   availableAssignees: TaskAssignee[];
-  suggestedAssignees?: TaskAssignee[];
   labels: Label[];
   onCreateTask?: () => void;
 }
@@ -180,7 +181,6 @@ export function ListView({
   onAddToQueue,
   onRemoveFromQueue,
   availableAssignees,
-  suggestedAssignees,
   labels,
   onCreateTask,
 }: ListViewProps) {
@@ -205,7 +205,9 @@ export function ListView({
   const filterQuickFilter = filters.quickFilter;
   const selectedPriorities = filters.selectedPriorities ?? [];
   const selectedTaskTypes = filters.selectedTaskTypes ?? [];
+  const selectedAssigneeUserIds = filters.selectedAssigneeUserIds ?? [];
   const selectedLabelKey = [...filters.selectedLabelIds].sort((left, right) => left - right).join(",");
+  const selectedAssigneeKey = [...selectedAssigneeUserIds].sort((left, right) => left - right).join(",");
   const selectedPriorityKey = [...selectedPriorities].sort().join(",");
   const selectedTaskTypeKey = [...selectedTaskTypes].sort().join(",");
   const stageFilter = isBacklogMode ? (filters as BacklogWorkspaceFilters).stageFilter : "all";
@@ -213,6 +215,7 @@ export function ListView({
     filterQuickFilter,
     filterSearchQuery,
     selectedLabelKey,
+    selectedAssigneeKey,
     selectedPriorityKey,
     selectedTaskTypeKey,
     stageFilter,
@@ -228,6 +231,7 @@ export function ListView({
     filterSearchQuery.length > 0 ||
     filterQuickFilter !== "all" ||
     filters.selectedLabelIds.length > 0 ||
+    selectedAssigneeUserIds.length > 0 ||
     selectedPriorities.length > 0 ||
     selectedTaskTypes.length > 0 ||
     (isBacklogMode && stageFilter !== "all");
@@ -284,6 +288,9 @@ export function ListView({
       q: filterSearchQuery,
       quickFilter: filterQuickFilter,
       labelIds: selectedLabelIdsForRequest,
+      assigneeUserIds: selectedAssigneeKey
+        ? selectedAssigneeKey.split(",").map((assigneeUserId) => Number(assigneeUserId))
+        : [],
       priorities: selectedPrioritiesForRequest,
       taskTypes: selectedTaskTypesForRequest,
       stageFilter: isBacklogMode ? stageFilter : undefined,
@@ -336,6 +343,7 @@ export function ListView({
     pageSize,
     refreshToken,
     selectedLabelKey,
+    selectedAssigneeKey,
     selectedPriorityKey,
     selectedTaskTypeKey,
     stageFilter,
@@ -393,6 +401,8 @@ export function ListView({
 
   const setQuickFilter = (quickFilter: TaskQuickFilter) => onFiltersChange({ ...filters, quickFilter });
   const setSelectedLabelIds = (selectedLabelIds: number[]) => onFiltersChange({ ...filters, selectedLabelIds });
+  const setSelectedAssigneeUserIds = (selectedAssigneeUserIds: number[]) =>
+    onFiltersChange({ ...filters, selectedAssigneeUserIds });
   const setSelectedPriorities = (nextSelectedPriorities: PriorityFilterValue[]) =>
     onFiltersChange({ ...filters, selectedPriorities: nextSelectedPriorities });
   const setSelectedTaskTypes = (nextSelectedTaskTypes: TaskTypeFilterValue[]) =>
@@ -445,6 +455,7 @@ export function ListView({
         searchQuery: "",
         quickFilter: "all",
         selectedLabelIds: [],
+        selectedAssigneeUserIds: [],
         selectedPriorities: [],
         selectedTaskTypes: [],
         stageFilter: "all",
@@ -457,6 +468,7 @@ export function ListView({
       searchQuery: "",
       quickFilter: "all",
       selectedLabelIds: [],
+      selectedAssigneeUserIds: [],
       selectedPriorities: [],
       selectedTaskTypes: [],
     });
@@ -529,6 +541,7 @@ export function ListView({
   const primaryActionButtonClassName = `group relative inline-flex items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r font-bold text-white shadow-lg transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} ${currentTheme.primary}`;
   const iconActionButtonClassName = getIconActionButtonClassName(currentTheme);
   const rowTextActionButtonClassName = `inline-flex h-8 items-center justify-center rounded-lg border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-0 ${currentTheme.focus} ${currentTheme.border} ${currentTheme.textSecondary} ${isDarkMode ? "bg-white/[0.03] hover:bg-white/[0.06]" : "bg-slate-50 hover:bg-white"} hover:${currentTheme.text}`;
+  const taskRowHoverClassName = isDarkMode ? "hover:bg-white/[0.035]" : "hover:bg-slate-100/70";
   const taskIndexHeaderTextClassName = currentTheme.textSecondary;
   const taskIndexHeaderActiveTextClassName = currentTheme.text;
   const taskIndexHeaderHoverClassName = `hover:${currentTheme.text}`;
@@ -572,7 +585,13 @@ export function ListView({
     },
     { id: "assigned" as const, label: "Assigned to me", tooltip: "Show only tasks assigned to you" },
     { id: "due" as const, label: "Due this week", tooltip: "Show tasks due within the next 7 days" },
+    { id: "overdue" as const, label: "Overdue", tooltip: "Show tasks with due dates before today" },
   ];
+  const assigneeFilterTooltipText = isBacklogMode
+    ? "Filter backlog tasks by one or more assigned board members."
+    : isHistoryMode
+      ? "Filter completed tasks by one or more assigned board members."
+      : "Filter active tasks by one or more assigned board members.";
 
   return (
     <div className={`${currentTheme.bgSecondary} h-full overflow-auto`}>
@@ -611,8 +630,8 @@ export function ListView({
           data-coachmark={filterCoachmark}
         >
           <div className="flex flex-col gap-4">
-            <div className="grid gap-4 xl:grid-cols-[minmax(18rem,1fr)_auto] xl:items-end">
-            <div className="flex min-w-0 flex-col gap-2 xl:min-w-[20rem]">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-end">
+            <div className="flex w-full max-w-[48rem] min-w-0 flex-col gap-2 xl:flex-none">
               <span className={toolbarLabelClassName}>Search tasks</span>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -819,6 +838,25 @@ export function ListView({
               </div>
 
               <div className="flex min-w-0 flex-col gap-2 xl:w-72">
+                <span className={toolbarLabelClassName}>Assignee</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <TaskAssigneeFilterPopover
+                        boardId={boardId}
+                        availableAssignees={availableAssignees}
+                        selectedAssigneeUserIds={selectedAssigneeUserIds}
+                        onSelectedAssigneeUserIdsChange={setSelectedAssigneeUserIds}
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={8}>
+                    {assigneeFilterTooltipText}
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+
+              <div className="flex min-w-0 flex-col gap-2 xl:w-72">
                 <span className={toolbarLabelClassName}>Labels</span>
                 <Popover.Root open={isLabelFilterOpen} onOpenChange={setIsLabelFilterOpen}>
                   <Tooltip>
@@ -905,39 +943,96 @@ export function ListView({
 
           <div className={`mt-4 min-h-11 border-t pt-4 ${currentTheme.border}`}>
             <div className="flex flex-wrap items-center gap-2">
-              {filters.selectedLabelIds.map((labelId) => {
-                const label = labels.find((item) => item.id === labelId);
-                if (!label) {
-                  return null;
-                }
+              {selectedAssigneeUserIds.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  {selectedAssigneeUserIds.map((assigneeUserId) => {
+                    const assignee = availableAssignees.find((item) => item.userId === assigneeUserId);
+                    if (!assignee) {
+                      return null;
+                    }
 
-                return (
-                  <LabelBadge
-                    key={labelId}
-                    label={label}
-                    className="h-7 gap-2 px-3 text-xs font-semibold"
-                  >
-                    <OverflowTooltip
-                      text={label.name}
-                      className="max-w-[10rem] truncate"
-                      tooltipClassName="max-w-none whitespace-nowrap"
-                    />
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={() => toggleSelectedLabelId(labelId)}
-                          className="inline-flex h-4 w-4 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/12 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55 dark:text-gray-900/80 dark:hover:bg-black/10 dark:hover:text-gray-900 dark:focus-visible:ring-black/45"
-                          aria-label={`Remove ${label.name}`}
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" sideOffset={8}>Remove {label.name}</TooltipContent>
-                    </Tooltip>
-                  </LabelBadge>
-                );
-              })}
+                    return (
+                      <span
+                        key={assigneeUserId}
+                        className={`inline-flex h-8 max-w-[14rem] items-center gap-2 rounded-full border px-2.5 text-xs font-semibold ${currentTheme.primaryBg} ${currentTheme.primaryText} ${currentTheme.primaryBorder}`}
+                      >
+                        <AppAvatar
+                          username={assignee.username || assignee.displayName}
+                          fullName={assignee.displayName}
+                          size={20}
+                          interactive={false}
+                          enableBlink={false}
+                          aria-hidden="true"
+                        />
+                        <OverflowTooltip
+                          text={assignee.displayName}
+                          className="max-w-[8rem] truncate"
+                          tooltipClassName="max-w-none whitespace-nowrap"
+                        />
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSelectedAssigneeUserIds(
+                                  selectedAssigneeUserIds.filter((value) => value !== assigneeUserId),
+                                )
+                              }
+                              className="inline-flex h-4 w-4 items-center justify-center rounded-full transition-colors hover:bg-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current"
+                              aria-label={`Remove ${assignee.displayName}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" sideOffset={8}>Remove {assignee.displayName}</TooltipContent>
+                        </Tooltip>
+                      </span>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              {selectedAssigneeUserIds.length > 0 && filters.selectedLabelIds.length > 0 ? (
+                <span className={`mx-1 hidden h-6 w-px sm:inline-flex ${isDarkMode ? "bg-white/12" : "bg-slate-300"}`} aria-hidden="true" />
+              ) : null}
+
+              {filters.selectedLabelIds.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  {filters.selectedLabelIds.map((labelId) => {
+                    const label = labels.find((item) => item.id === labelId);
+                    if (!label) {
+                      return null;
+                    }
+
+                    return (
+                      <LabelBadge
+                        key={labelId}
+                        label={label}
+                        className="h-7 gap-2 px-3 text-xs font-semibold"
+                      >
+                        <OverflowTooltip
+                          text={label.name}
+                          className="max-w-[10rem] truncate"
+                          tooltipClassName="max-w-none whitespace-nowrap"
+                        />
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={() => toggleSelectedLabelId(labelId)}
+                              className="inline-flex h-4 w-4 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/12 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55 dark:text-gray-900/80 dark:hover:bg-black/10 dark:hover:text-gray-900 dark:focus-visible:ring-black/45"
+                              aria-label={`Remove ${label.name}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" sideOffset={8}>Remove {label.name}</TooltipContent>
+                        </Tooltip>
+                      </LabelBadge>
+                    );
+                  })}
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -958,6 +1053,7 @@ export function ListView({
                 <TableRow className={`border-b-2 ${currentTheme.border} hover:bg-transparent`}>
                   <TaskIndexHeaderCell
                     label="Priority"
+                    align="center"
                     widthClassName="w-36"
                     dividerClassName={taskIndexDividerClassName}
                     sortDirection={sortState.key === "priority" ? sortState.direction : null}
@@ -978,6 +1074,7 @@ export function ListView({
                   />
                   <TaskIndexHeaderCell
                     label="Due Date"
+                    align="center"
                     widthClassName="w-40"
                     dividerClassName={taskIndexDividerClassName}
                     sortDirection={sortState.key === "dueDate" ? sortState.direction : null}
@@ -988,6 +1085,7 @@ export function ListView({
                   />
                   <TaskIndexHeaderCell
                     label={isBacklogMode ? "Queue" : "Status"}
+                    align="center"
                     widthClassName="w-36"
                     dividerClassName={taskIndexDividerClassName}
                     sortDirection={sortState.key === (isBacklogMode ? "readiness" : "status") ? sortState.direction : null}
@@ -1057,16 +1155,19 @@ export function ListView({
                         <TableRow
                           key={card.id}
                           aria-busy={isRowPending}
-                          className={`h-[3.75rem] border-b ${shouldDropBottomBorder ? "last:border-b-0" : ""} ${currentTheme.border} transition-colors hover:${currentTheme.bgSecondary} ${isRowPending ? "opacity-55" : ""}`}
+                          className={`h-[3.75rem] border-b ${shouldDropBottomBorder ? "last:border-b-0" : ""} ${currentTheme.border} transition-colors duration-150 ${taskRowHoverClassName} ${isRowPending ? "opacity-55" : ""}`}
                         >
                           <TableCell className={`px-4 align-middle ${taskIndexDividerClassName}`}>
                             {card.priority ? (
-                              <div className="flex items-center justify-start">
+                              <div className="flex items-center justify-center">
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <div className="cursor-help">
-                                      <PriorityBadge priority={card.priority} isDarkMode={isDarkMode} variant="table" />
-                                    </div>
+                                    <span
+                                      className="font-kanban-limit-message cursor-help text-xs font-semibold"
+                                      style={{ color: getPriorityColor(card.priority, isDarkMode) }}
+                                    >
+                                      {priorityIndicator?.label ?? card.priority}
+                                    </span>
                                   </TooltipTrigger>
                                   <TooltipContent side="right" sideOffset={8}>
                                     {priorityIndicator?.tooltip || card.priority}
@@ -1074,7 +1175,7 @@ export function ListView({
                                 </Tooltip>
                               </div>
                             ) : (
-                              <div className="text-left">
+                              <div className="text-center">
                                 <span className="sr-only">No priority</span>
                               </div>
                             )}
@@ -1085,7 +1186,7 @@ export function ListView({
                                 <div className={`flex flex-wrap items-center gap-3 text-xs ${currentTheme.textMuted}`}>
                                   <span className="inline-flex items-center gap-1.5">
                                     {taskTypeDisplay.icon}
-                                    <span>{taskTypeDisplay.label}</span>
+                                    <span className="font-due-date">{taskTypeDisplay.label}</span>
                                   </span>
                                 </div>
                               )}
@@ -1101,17 +1202,17 @@ export function ListView({
                           </TableCell>
                           <TableCell className={`px-4 align-middle ${taskIndexDividerClassName}`}>
                             {dueDateInfo ? (
-                              <div className="flex items-center justify-start">
+                              <div className="flex items-center justify-center">
                                 <TaskDueDateBadge dueDate={card.dueDate} />
                               </div>
                             ) : (
-                              <div className="text-left">
+                              <div className="text-center">
                                 <span className="sr-only">No due date</span>
                               </div>
                             )}
                           </TableCell>
                           <TableCell className={`px-4 align-middle ${taskIndexDividerClassName}`}>
-                            <div className="flex items-center justify-start">
+                            <div className="flex items-center justify-center">
                               {isBacklogMode ? getQueueBadge(Boolean(card.isQueued)) : <BoardStatusBadge statusKey={card.status} />}
                             </div>
                           </TableCell>
@@ -1130,12 +1231,12 @@ export function ListView({
                           </TableCell>
                           <TableCell className={`px-4 align-middle ${taskIndexDividerClassName}`}>
                             <div className={`flex items-center justify-center ${isRowPending ? "pointer-events-none" : ""}`}>
-                              <AssigneePopover
+                              <TaskAssigneeControl
                                 boardId={boardId}
-                                currentAssignee={card.assignee}
-                                onAssigneeChange={(newAssignee) => void runRowAction(card.id, () => onAssigneeChange(card.id, newAssignee))}
+                                taskId={card.id}
+                                assignee={card.assignee}
+                                onAssigneeChange={(taskId, newAssignee) => void runRowAction(taskId, () => onAssigneeChange(taskId, newAssignee))}
                                 availableAssignees={availableAssignees}
-                                suggestedAssignees={suggestedAssignees}
                               />
                             </div>
                           </TableCell>
@@ -1144,7 +1245,7 @@ export function ListView({
                               <div className="flex items-center justify-start">
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <div className={`inline-flex items-center gap-1.5 text-sm font-medium ${currentTheme.textMuted}`}>
+                                    <div className={`font-due-date inline-flex items-center gap-1.5 text-sm font-medium ${currentTheme.textMuted}`}>
                                       <Zap className="h-4 w-4" />
                                       <span>{card.storyPoints}</span>
                                     </div>

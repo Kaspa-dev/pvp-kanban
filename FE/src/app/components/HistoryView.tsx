@@ -22,7 +22,6 @@ interface HistoryViewProps {
   onEdit?: (cardId: number) => void;
   onMoveToBacklog?: (cardId: number) => void;
   availableAssignees: TaskAssignee[];
-  suggestedAssignees?: TaskAssignee[];
   labels: Label[];
 }
 
@@ -35,7 +34,6 @@ export function HistoryView({
   onEdit, 
   onMoveToBacklog,
   availableAssignees,
-  suggestedAssignees,
   labels
 }: HistoryViewProps) {
   const { theme, isDarkMode } = useTheme();
@@ -199,7 +197,6 @@ export function HistoryView({
                         onEdit={onEdit}
                         onMoveToBacklog={onMoveToBacklog}
                         availableAssignees={availableAssignees}
-                        suggestedAssignees={suggestedAssignees}
                         labels={labels}
                         storyPoints={card.storyPoints}
                         dueDate={card.dueDate}

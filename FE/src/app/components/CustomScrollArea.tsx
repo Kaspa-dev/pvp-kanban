@@ -18,9 +18,9 @@ export function CustomScrollArea({
   const { isDarkMode } = useTheme();
   const scrollbarPalette = useMemo(
     () => ({
-      track: isDarkMode ? "rgba(255, 255, 255, 0.06)" : "rgba(226, 232, 240, 0.78)",
-      thumb: isDarkMode ? "rgba(113, 113, 122, 0.88)" : "rgba(148, 163, 184, 0.88)",
-      thumbActive: isDarkMode ? "rgba(161, 161, 170, 0.96)" : "rgba(100, 116, 139, 0.92)",
+      track: isDarkMode ? "rgba(255, 255, 255, 0.055)" : "rgba(0, 0, 0, 0.045)",
+      thumb: isDarkMode ? "rgba(161, 161, 170, 0.62)" : "rgba(63, 63, 70, 0.34)",
+      thumbActive: isDarkMode ? "rgba(212, 212, 216, 0.72)" : "rgba(39, 39, 42, 0.52)",
     }),
     [isDarkMode],
   );
@@ -199,7 +199,7 @@ export function CustomScrollArea({
 
       {isScrollable && (
         <div
-          className="absolute bottom-2 right-1 top-2 w-2 rounded-full"
+          className="absolute bottom-2 right-1 top-2 w-1 rounded-full"
           style={{ backgroundColor: scrollbarPalette.track }}
           onMouseDown={handleTrackMouseDown}
         >

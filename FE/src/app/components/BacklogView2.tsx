@@ -21,7 +21,6 @@ interface BacklogViewProps {
   onRemoveFromQueue: (cardId: number) => void;
   onStartQueue: () => void;
   availableAssignees: TaskAssignee[];
-  suggestedAssignees?: TaskAssignee[];
   labels: Label[];
   onCreateTask: () => void;
   planningPokerSession: PlanningPokerSession | null;
@@ -50,7 +49,6 @@ export function BacklogView2({
   onRemoveFromQueue,
   onStartQueue,
   availableAssignees,
-  suggestedAssignees,
   labels,
   onCreateTask,
   planningPokerSession,
@@ -205,7 +203,6 @@ export function BacklogView2({
                         onDelete={onDelete}
                         onEdit={onEdit}
                         availableAssignees={availableAssignees}
-                        suggestedAssignees={suggestedAssignees}
                         labels={labels}
                         storyPoints={card.storyPoints}
                         dueDate={card.dueDate}
@@ -332,7 +329,6 @@ export function BacklogView2({
                         onDelete={onDelete}
                         onEdit={onEdit}
                         availableAssignees={availableAssignees}
-                        suggestedAssignees={suggestedAssignees}
                         labels={labels}
                         storyPoints={card.storyPoints}
                         dueDate={card.dueDate}

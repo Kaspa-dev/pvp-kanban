@@ -47,8 +47,8 @@ public class BoardsController(
     private const int MaxBoardLabelNameLength = 15;
     private const int MinBoardColumnLimit = 1;
     private const int MaxBoardColumnLimit = 20;
-    private const string BoardLabelNameCharacterMessage = "Label names can contain only letters and spaces.";
-    private static readonly Regex BoardLabelNamePattern = new(@"^\p{L}+(?: +\p{L}+)*$", RegexOptions.Compiled);
+    private const string BoardLabelNameCharacterMessage = "Label names can contain only letters, numbers, spaces, and hyphens.";
+    private static readonly Regex BoardLabelNamePattern = new(@"^[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*(?: +[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*)*$", RegexOptions.Compiled);
 
     private static readonly string[] StatusKeys =
     [
@@ -594,6 +594,15 @@ public class BoardsController(
         }
 
         Board board = accessContext!.Board;
+        string? occupancyValidationMessage = await GetBoardColumnLimitOccupancyValidationMessageAsync(
+            boardId,
+            normalizedColumnLimits,
+            cancellationToken);
+        if (occupancyValidationMessage is not null)
+        {
+            return BadRequest(new { message = occupancyValidationMessage });
+        }
+
         List<int> requestedMemberIds = request.MemberUserIds
             .Append(userId)
             .Distinct()
@@ -1070,14 +1079,17 @@ public class BoardsController(
             return BadRequest(new { message = "Due date must use the yyyy-MM-dd format." });
         }
 
+        bool isDueDateUnchanged =
+            dueDate.HasValue == task.DueDate.HasValue &&
+            (!dueDate.HasValue || dueDate.Value.Date == task.DueDate!.Value.Date);
         DateTime maxAllowedDueDate = DateTime.UtcNow.Date.AddMonths(6);
 
-        if (dueDate.HasValue && dueDate.Value.Date < DateTime.UtcNow.Date)
+        if (!isDueDateUnchanged && dueDate.HasValue && dueDate.Value.Date < DateTime.UtcNow.Date)
         {
             return BadRequest(new { message = "Due date cannot be before today." });
         }
 
-        if (dueDate.HasValue && dueDate.Value.Date > maxAllowedDueDate)
+        if (!isDueDateUnchanged && dueDate.HasValue && dueDate.Value.Date > maxAllowedDueDate)
         {
             return BadRequest(new { message = "Due date cannot be later than 6 months from today." });
         }
@@ -1547,6 +1559,74 @@ public class BoardsController(
             .ToList();
 
         return Ok(matches);
+    }
+
+    [HttpGet("{boardId:int}/assignees/suggestions")]
+    public async Task<ActionResult<IEnumerable<BoardMemberDto>>> GetBoardAssigneeSuggestions(
+        int boardId,
+        [FromQuery] int limit = 3,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        var (accessContext, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
+        if (failure is not null)
+        {
+            return failure;
+        }
+
+        int cappedLimit = Math.Clamp(limit, 1, 3);
+        Board board = accessContext!.Board;
+        Dictionary<int, BoardMembership> memberLookup = board.Memberships.ToDictionary(membership => membership.UserId);
+        List<BoardMemberDto> suggestions = [];
+        HashSet<int> seenUserIds = [];
+
+        void AddSuggestion(int suggestedUserId)
+        {
+            if (suggestions.Count >= cappedLimit || seenUserIds.Contains(suggestedUserId))
+            {
+                return;
+            }
+
+            if (!memberLookup.TryGetValue(suggestedUserId, out BoardMembership? membership))
+            {
+                return;
+            }
+
+            seenUserIds.Add(suggestedUserId);
+            suggestions.Add(ToBoardMemberDto(membership));
+        }
+
+        AddSuggestion(userId);
+
+        if (suggestions.Count < cappedLimit)
+        {
+            List<int> recentAssigneeUserIds = await _context.Tasks
+                .Where(task => task.BoardId == boardId && task.AssigneeId.HasValue)
+                .GroupBy(task => task.AssigneeId!.Value)
+                .Select(group => new
+                {
+                    UserId = group.Key,
+                    LastTaskId = group.Max(task => task.Id),
+                })
+                .OrderByDescending(item => item.LastTaskId)
+                .Select(item => item.UserId)
+                .ToListAsync(cancellationToken);
+
+            foreach (int recentAssigneeUserId in recentAssigneeUserIds)
+            {
+                AddSuggestion(recentAssigneeUserId);
+                if (suggestions.Count >= cappedLimit)
+                {
+                    break;
+                }
+            }
+        }
+
+        return Ok(suggestions);
     }
 
     [HttpPost("{boardId:int}/labels")]
@@ -2037,6 +2117,19 @@ public class BoardsController(
             query = query.Where(task => task.LabeledTasks.Any(labeledTask => request.LabelIds.Contains(labeledTask.LabelId)));
         }
 
+        if (request.AssigneeUserIds.Count > 0)
+        {
+            List<int> assigneeUserIds = request.AssigneeUserIds
+                .Where(assigneeUserId => assigneeUserId > 0)
+                .Distinct()
+                .ToList();
+
+            if (assigneeUserIds.Count > 0)
+            {
+                query = query.Where(task => task.AssigneeId.HasValue && assigneeUserIds.Contains(task.AssigneeId.Value));
+            }
+        }
+
         List<Priority> priorityFilters = new();
         bool includeNoPriority = false;
         foreach (string priorityFilter in request.Priorities.Select(value => value.Trim().ToLowerInvariant()).Distinct())
@@ -2118,6 +2211,14 @@ public class BoardsController(
                 task.DueDate.HasValue &&
                 task.DueDate.Value >= startOfWeek &&
                 task.DueDate.Value < endOfWeek);
+        }
+        else if (string.Equals(request.QuickFilter, "overdue", StringComparison.OrdinalIgnoreCase))
+        {
+            DateTime utcToday = DateTime.UtcNow.Date;
+
+            query = query.Where(task =>
+                task.DueDate.HasValue &&
+                task.DueDate.Value < utcToday);
         }
 
         if (isBacklogScope)
@@ -2484,6 +2585,44 @@ public class BoardsController(
 
         normalizedValue = value.Value;
         return true;
+    }
+
+    private async Task<string?> GetBoardColumnLimitOccupancyValidationMessageAsync(
+        int boardId,
+        IReadOnlyCollection<BoardColumnLimitDto> normalizedColumnLimits,
+        CancellationToken cancellationToken)
+    {
+        var currentCounts = await _context.Tasks
+            .Where(task =>
+                task.BoardId == boardId &&
+                EditableBoardColumnStatusKeys.Contains(task.Status.Title))
+            .GroupBy(task => task.Status.Title)
+            .Select(group => new
+            {
+                StatusKey = group.Key,
+                Count = group.Count(),
+            })
+            .ToDictionaryAsync(item => item.StatusKey, item => item.Count, StringComparer.OrdinalIgnoreCase, cancellationToken);
+
+        foreach (BoardColumnLimitDto limit in normalizedColumnLimits)
+        {
+            if (!limit.HardLimit.HasValue)
+            {
+                continue;
+            }
+
+            int currentCount = currentCounts.GetValueOrDefault(limit.StatusKey);
+            if (currentCount <= limit.HardLimit.Value)
+            {
+                continue;
+            }
+
+            string label = GetBoardStatusDisplayName(limit.StatusKey);
+            string taskWord = currentCount == 1 ? "task" : "tasks";
+            return $"{label} already has {currentCount} {taskWord}, so its hard limit cannot be lower than {currentCount}.";
+        }
+
+        return null;
     }
 
     private sealed record BoardAccessContext(Board Board, BoardMembership Membership);

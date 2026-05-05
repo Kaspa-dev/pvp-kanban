@@ -2,7 +2,7 @@ import { Loader2, Plus, Search } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
-import { searchBoardAssignees, TaskAssignee } from "../utils/cards";
+import { getBoardAssigneeSuggestions, searchBoardAssignees, TaskAssignee } from "../utils/cards";
 import { AppAvatar } from "./AppAvatar";
 import { UtilityIconButton } from "./UtilityIconButton";
 import { Popover, PopoverAnchor, PopoverContent } from "./ui/popover";
@@ -14,7 +14,6 @@ interface AssigneePopoverProps {
   currentAssignee: TaskAssignee;
   onAssigneeChange: (assignee: TaskAssignee | null) => void;
   availableAssignees: TaskAssignee[];
-  suggestedAssignees?: TaskAssignee[];
 }
 
 const SEARCH_DEBOUNCE_MS = 250;
@@ -26,7 +25,6 @@ export function AssigneePopover({
   currentAssignee,
   onAssigneeChange,
   availableAssignees,
-  suggestedAssignees = [],
 }: AssigneePopoverProps) {
   const { user } = useAuth();
   const { theme, isDarkMode } = useTheme();
@@ -42,6 +40,8 @@ export function AssigneePopover({
   const [results, setResults] = useState<TaskAssignee[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [backendSuggestedAssignees, setBackendSuggestedAssignees] = useState<TaskAssignee[]>([]);
   const [error, setError] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(0);
 
@@ -68,7 +68,7 @@ export function AssigneePopover({
   const selectableSuggestedAssignees = useMemo(() => {
     const seenUserIds = new Set<number>();
 
-    return suggestedAssignees.filter((assignee) => {
+    return backendSuggestedAssignees.filter((assignee) => {
       if (
         assignee.userId <= 0 ||
         assignee.userId === resolvedCurrentAssignee.userId ||
@@ -80,7 +80,7 @@ export function AssigneePopover({
       seenUserIds.add(assignee.userId);
       return true;
     });
-  }, [resolvedCurrentAssignee.userId, suggestedAssignees]);
+  }, [backendSuggestedAssignees, resolvedCurrentAssignee.userId]);
   const visibleAssignees = normalizedQuery ? results : selectableSuggestedAssignees;
   const isShowingSuggestions = !normalizedQuery && selectableSuggestedAssignees.length > 0;
 
@@ -89,6 +89,44 @@ export function AssigneePopover({
       inputRef.current?.focus();
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (
+      !isOpen ||
+      normalizedQuery ||
+      !Number.isFinite(boardId) ||
+      boardId <= 0
+    ) {
+      return;
+    }
+
+    let isActive = true;
+    setIsLoadingSuggestions(true);
+
+    void getBoardAssigneeSuggestions(boardId)
+      .then((suggestions) => {
+        if (!isActive) {
+          return;
+        }
+
+        setBackendSuggestedAssignees(suggestions);
+        setHighlightedIndex(suggestions.length > 0 ? 0 : -1);
+      })
+      .catch(() => {
+        if (isActive) {
+          setBackendSuggestedAssignees([]);
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsLoadingSuggestions(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [boardId, isOpen, normalizedQuery]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -341,10 +379,10 @@ export function AssigneePopover({
             <div className={`flex ${RESULTS_PANEL_HEIGHT_CLASS} items-center px-4 py-3 text-sm text-red-600`}>
               {error}
             </div>
-          ) : isLoading ? (
+          ) : isLoading || (isLoadingSuggestions && !normalizedQuery) ? (
             <div className={`flex ${RESULTS_PANEL_HEIGHT_CLASS} items-center justify-center gap-2 px-4 py-5 text-sm ${currentTheme.textMuted}`}>
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              <span>Searching members...</span>
+              <span>{normalizedQuery ? "Searching members..." : "Loading suggestions..."}</span>
             </div>
           ) : !normalizedQuery && visibleAssignees.length === 0 ? (
             <div className={`flex ${RESULTS_PANEL_HEIGHT_CLASS} items-center justify-center px-4 py-3 text-sm ${currentTheme.textMuted}`}>
@@ -356,11 +394,6 @@ export function AssigneePopover({
             </div>
           ) : (
             <div id={listboxId} role="listbox" aria-label={isShowingSuggestions ? "Suggested assignees" : "Assignee search results"} className={`${RESULTS_PANEL_HEIGHT_CLASS} py-2 ${pickerSurfaceClassName}`}>
-              {isShowingSuggestions ? (
-                <p className={`px-4 pb-1 pt-0.5 text-[11px] font-semibold uppercase tracking-[0.16em] ${currentTheme.textMuted}`}>
-                  Suggested
-                </p>
-              ) : null}
               {visibleAssignees.map((assignee, index) => {
                 const isSelected = !isUnassigned && resolvedCurrentAssignee.userId === assignee.userId;
                 const isHighlighted = index === highlightedIndex;

@@ -184,7 +184,7 @@ export interface Cards {
   backlog: Card[];
 }
 
-export type TaskQuickFilter = "all" | "assigned" | "due";
+export type TaskQuickFilter = "all" | "assigned" | "due" | "overdue";
 export type BacklogStageFilter = "all" | "waiting" | "queued";
 export type BoardTaskListScope = "active" | "backlog" | "history";
 export type BoardTaskSortKey = "priority" | "title" | "status" | "storyPoints" | "dueDate" | "assignee" | "readiness";
@@ -232,6 +232,7 @@ export interface GetBoardTaskPageInput {
   q?: string;
   quickFilter?: TaskQuickFilter;
   labelIds?: number[];
+  assigneeUserIds?: number[];
   priorities?: PriorityFilterValue[];
   taskTypes?: TaskTypeFilterValue[];
   stageFilter?: BacklogStageFilter;
@@ -388,6 +389,54 @@ export async function searchBoardAssignees(
   return results.map(normalizeAssigneeSearchResult);
 }
 
+const boardAssigneeSuggestionCache = new Map<number, Promise<TaskAssignee[]> | TaskAssignee[]>();
+
+export function invalidateBoardAssigneeSuggestions(boardId: number | string): void {
+  const numericBoardId = Number(boardId);
+  if (!Number.isFinite(numericBoardId) || numericBoardId <= 0) {
+    return;
+  }
+
+  boardAssigneeSuggestionCache.delete(numericBoardId);
+}
+
+export async function getBoardAssigneeSuggestions(
+  boardId: number | string,
+  limit = 3,
+): Promise<TaskAssignee[]> {
+  const numericBoardId = Number(boardId);
+  if (!Number.isFinite(numericBoardId) || numericBoardId <= 0) {
+    return [];
+  }
+
+  const cachedSuggestions = boardAssigneeSuggestionCache.get(numericBoardId);
+  if (Array.isArray(cachedSuggestions)) {
+    return cachedSuggestions;
+  }
+
+  if (cachedSuggestions) {
+    return cachedSuggestions;
+  }
+
+  const request = apiJson<ApiAssigneeSearchResult[]>(
+    `/api/boards/${numericBoardId}/assignees/suggestions?limit=${limit}`,
+    { method: "GET" },
+    "Unable to load suggested assignees right now.",
+  )
+    .then((results) => {
+      const suggestions = results.map(normalizeAssigneeSearchResult);
+      boardAssigneeSuggestionCache.set(numericBoardId, suggestions);
+      return suggestions;
+    })
+    .catch((error) => {
+      boardAssigneeSuggestionCache.delete(numericBoardId);
+      throw error;
+    });
+
+  boardAssigneeSuggestionCache.set(numericBoardId, request);
+  return request;
+}
+
 export async function getBoardTaskPage(
   boardId: number | string,
   input: GetBoardTaskPageInput,
@@ -425,6 +474,10 @@ export async function getBoardTaskPage(
 
   input.labelIds?.forEach((labelId) => {
     params.append("labelIds", String(labelId));
+  });
+
+  input.assigneeUserIds?.forEach((assigneeUserId) => {
+    params.append("assigneeUserIds", String(assigneeUserId));
   });
 
   input.priorities?.forEach((priority) => {

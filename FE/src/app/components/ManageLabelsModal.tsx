@@ -755,7 +755,7 @@ export function ManageLabelsModal({
                               </button>
                             </TooltipTrigger>
                             <TooltipContent side="top" sideOffset={8}>
-                              Label names can contain only letters and spaces, must stay unique across the draft list, and can be up to 15 characters.
+                              Label names can contain letters, numbers, spaces, and hyphens, must stay unique across the draft list, and can be up to 15 characters.
                             </TooltipContent>
                           </Tooltip>
                         </div>
@@ -776,7 +776,7 @@ export function ManageLabelsModal({
                         />
                         <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                           <p className={`text-xs ${displayRowError ? "text-red-500" : currentTheme.textMuted}`}>
-                            {displayRowError || "Use letters and spaces only. Names must stay unique across the full draft list."}
+                            {displayRowError || "Use letters, numbers, spaces, and hyphens. Names must stay unique across the full draft list."}
                           </p>
                           <span className={`text-xs ${currentTheme.textMuted}`}>
                             {trimmedNameLength}/{MAX_LABEL_NAME_LENGTH}

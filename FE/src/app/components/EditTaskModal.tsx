@@ -41,7 +41,6 @@ interface EditTaskModalProps {
   } | null;
   availableLabels: Label[];
   availableAssignees: TaskAssignee[];
-  suggestedAssignees?: TaskAssignee[];
 }
 
 function getInitialTaskState(task: EditTaskModalProps["task"]) {
@@ -66,7 +65,6 @@ export function EditTaskModal({
   task,
   availableLabels,
   availableAssignees,
-  suggestedAssignees,
 }: EditTaskModalProps) {
   const formIdPrefix = "edit-task";
   const initialState = getInitialTaskState(task);
@@ -79,7 +77,6 @@ export function EditTaskModal({
   const [customStoryPoints, setCustomStoryPoints] = useState(initialState.customStoryPoints);
   const [priority, setPriority] = useState<Priority | null | undefined>(initialState.priority);
   const [taskType, setTaskType] = useState<TaskType | null | undefined>(initialState.taskType);
-  const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasTriedSubmit, setHasTriedSubmit] = useState(false);
   const [touchedFields, setTouchedFields] = useState({
@@ -88,9 +85,10 @@ export function EditTaskModal({
     storyPoints: false,
     dueDate: false,
   });
+  const isDueDateChanged = dueDate !== initialState.dueDate;
   const titleError = getTaskTitleValidationError(title) ?? "";
   const descriptionError = getTaskDescriptionValidationError(description) ?? "";
-  const dueDateError = getTaskDueDateValidationError(dueDate) ?? "";
+  const dueDateError = isDueDateChanged ? getTaskDueDateValidationError(dueDate) ?? "" : "";
   const storyPointsError = getStoryPointsValidationError(customStoryPoints) ?? "";
   const canSubmit = !titleError && !descriptionError && !dueDateError && !storyPointsError;
   const displayTitleError = (hasTriedSubmit || touchedFields.title) ? titleError : "";
@@ -138,7 +136,6 @@ export function EditTaskModal({
 
     try {
       setIsSubmitting(true);
-      setSubmitError("");
       await onSave(task.id, {
         title: title.trim(),
         description: description.trim(),
@@ -151,8 +148,8 @@ export function EditTaskModal({
       });
 
       onClose();
-    } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Unable to save the task right now.");
+    } catch {
+      // Parent handlers show toast feedback; keep the modal open without a form-level error block.
     } finally {
       setIsSubmitting(false);
     }
@@ -206,12 +203,10 @@ export function EditTaskModal({
       descriptionError={displayDescriptionError}
       dueDateError={displayDueDateError}
       isSubmitting={isSubmitting}
-      submitError={submitError}
       availableLabels={availableLabels}
       selectedLabelIds={selectedLabelIds}
       onSelectedLabelIdsChange={setSelectedLabelIds}
       availableAssignees={availableAssignees}
-      suggestedAssignees={suggestedAssignees}
       selectedAssignee={selectedAssignee}
       onSelectedAssigneeChange={setSelectedAssignee}
       storyPoints={storyPoints}

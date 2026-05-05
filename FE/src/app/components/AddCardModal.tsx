@@ -28,7 +28,6 @@ interface AddCardModalProps {
   }) => Promise<void>;
   availableLabels: Label[];
   availableAssignees: TaskAssignee[];
-  suggestedAssignees?: TaskAssignee[];
 }
 
 export function AddCardModal({
@@ -38,14 +37,12 @@ export function AddCardModal({
   onAdd,
   availableLabels,
   availableAssignees,
-  suggestedAssignees,
 }: AddCardModalProps) {
   const formIdPrefix = "add-task";
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedLabelIds, setSelectedLabelIds] = useState<number[]>([]);
   const [selectedAssignee, setSelectedAssignee] = useState<TaskAssignee | null>(null);
-  const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [storyPoints, setStoryPoints] = useState<number | undefined>(undefined);
   const [customStoryPoints, setCustomStoryPoints] = useState("");
@@ -103,7 +100,6 @@ export function AddCardModal({
     setDescription("");
     setSelectedLabelIds([]);
     setSelectedAssignee(null);
-    setSubmitError("");
     setStoryPoints(undefined);
     setCustomStoryPoints("");
     setDueDate("");
@@ -135,7 +131,6 @@ export function AddCardModal({
 
     try {
       setIsSubmitting(true);
-      setSubmitError("");
       await onAdd({
         title: title.trim(),
         description: description.trim(),
@@ -150,8 +145,8 @@ export function AddCardModal({
 
       resetForm();
       onClose();
-    } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Unable to create the task right now.");
+    } catch {
+      // Parent handlers show toast feedback; keep the modal open without a form-level error block.
     } finally {
       setIsSubmitting(false);
     }
@@ -205,12 +200,10 @@ export function AddCardModal({
       descriptionError={displayDescriptionError}
       dueDateError={displayDueDateError}
       isSubmitting={isSubmitting}
-      submitError={submitError}
       availableLabels={availableLabels}
       selectedLabelIds={selectedLabelIds}
       onSelectedLabelIdsChange={setSelectedLabelIds}
       availableAssignees={availableAssignees}
-      suggestedAssignees={suggestedAssignees}
       selectedAssignee={selectedAssignee}
       onSelectedAssigneeChange={setSelectedAssignee}
       storyPoints={storyPoints}

@@ -38,6 +38,7 @@ import {
   createEmptyCards,
   deleteBoardTask,
   getBoardCards,
+  invalidateBoardAssigneeSuggestions,
   Priority,
   removeTaskFromQueue,
   startBoardQueue,
@@ -59,7 +60,6 @@ import {
   updateLabel,
 } from "../utils/labels";
 import {
-  applyPlanningPokerRecommendation,
   createPlanningPokerSession,
   deletePlanningPokerSession,
   getPlanningPokerSession,
@@ -207,7 +207,6 @@ export function Board() {
   const [planningPokerSession, setPlanningPokerSession] = useState<PlanningPokerSession | null>(null);
   const [isPlanningPokerLoading, setIsPlanningPokerLoading] = useState(false);
   const [isPlanningPokerCreating, setIsPlanningPokerCreating] = useState(false);
-  const [isPlanningPokerApplying, setIsPlanningPokerApplying] = useState(false);
   const [isPlanningPokerDeleting, setIsPlanningPokerDeleting] = useState(false);
   const [isDeletePlanningPokerDialogOpen, setIsDeletePlanningPokerDialogOpen] = useState(false);
   const [currentBoard, setCurrentBoard] = useState<BoardType | null>(null);
@@ -242,6 +241,7 @@ export function Board() {
 
   const loadPlanningPokerSession = useCallback(async (boardId: number): Promise<PlanningPokerSession | null> => {
     try {
+      setIsPlanningPokerLoading(true);
       return await getPlanningPokerSession(boardId);
     } catch (error) {
       if (isApiError(error) && error.status === 404) {
@@ -249,6 +249,8 @@ export function Board() {
       }
 
       throw error;
+    } finally {
+      setIsPlanningPokerLoading(false);
     }
   }, []);
 
@@ -373,35 +375,6 @@ export function Board() {
   const isBoardSettingsView = view === "boardSettings";
 
   const allCards = useMemo(() => flattenCards(cards), [cards]);
-  const suggestedAssignees = useMemo(() => {
-    const suggestions: TaskAssignee[] = [];
-    const seenUserIds = new Set<number>();
-
-    const addSuggestion = (assignee: TaskAssignee | null | undefined) => {
-      if (!assignee || assignee.userId <= 0 || seenUserIds.has(assignee.userId)) {
-        return;
-      }
-
-      seenUserIds.add(assignee.userId);
-      suggestions.push(assignee);
-    };
-
-    const currentUserId = user ? Number(user.id) : null;
-    if (currentUserId !== null && Number.isFinite(currentUserId)) {
-      addSuggestion(availableAssignees.find((assignee) => assignee.userId === currentUserId));
-    }
-
-    [...allCards]
-      .filter((card) => card.assigneeUserId !== null && card.assignee.userId > 0)
-      .sort((left, right) => right.id - left.id)
-      .forEach((card) => {
-        const canonicalAssignee =
-          availableAssignees.find((assignee) => assignee.userId === card.assignee.userId) ?? card.assignee;
-        addSuggestion(canonicalAssignee);
-      });
-
-    return suggestions.slice(0, 3);
-  }, [allCards, availableAssignees, user]);
 
   const setTaskInState = (task: Card) => {
     setCards((prevCards) => {
@@ -482,6 +455,7 @@ export function Board() {
       priority?: Priority | null;
       taskType?: TaskType | null;
     },
+    options: { refetchWorkspace?: boolean } = {},
   ) => {
     if (!Number.isFinite(numericBoardId)) {
       return;
@@ -514,8 +488,11 @@ export function Board() {
     });
 
     setTaskInState(updatedTask);
+    invalidateBoardAssigneeSuggestions(numericBoardId);
     await refreshProgress();
-    triggerWorkspaceRefetch("soft");
+    if (options.refetchWorkspace ?? true) {
+      triggerWorkspaceRefetch("soft");
+    }
   };
 
   const stagingCards = useMemo(
@@ -716,7 +693,8 @@ export function Board() {
 
   const handleCardDrop = async (cardId: number, _fromColumnId: string, toColumnId: string) => {
     try {
-      await saveTask(cardId, { status: toColumnId as TaskStatus });
+      await saveTask(cardId, { status: toColumnId as TaskStatus }, { refetchWorkspace: false });
+      triggerWorkspaceRefetch("soft");
       showSuccessToast("Task status updated.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to move the task right now.";
@@ -753,6 +731,7 @@ export function Board() {
       });
 
       setTaskInState(createdTask);
+      invalidateBoardAssigneeSuggestions(numericBoardId);
       await refreshProgress();
       triggerWorkspaceRefetch("soft");
       showSuccessToast("Task created.");
@@ -918,25 +897,6 @@ export function Board() {
     }
   };
 
-  const handleApplyPlanningPokerRecommendation = async (sessionTaskId: number) => {
-    if (!Number.isFinite(numericBoardId)) {
-      return;
-    }
-
-    try {
-      setIsPlanningPokerApplying(true);
-      const updatedTask = await applyPlanningPokerRecommendation(numericBoardId, sessionTaskId);
-      setTaskInState(updatedTask);
-      const session = await loadPlanningPokerSession(numericBoardId);
-      setPlanningPokerSession(session);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to apply the planning poker recommendation right now.";
-      showErrorToast(message);
-    } finally {
-      setIsPlanningPokerApplying(false);
-    }
-  };
-
   const handleDeletePlanningPokerSession = async () => {
     if (!Number.isFinite(numericBoardId)) {
       return;
@@ -968,6 +928,7 @@ export function Board() {
     }
 
     const updatedBoard = await updateBoard(numericBoardId, updates);
+    invalidateBoardAssigneeSuggestions(numericBoardId);
     setCurrentBoard(updatedBoard);
     triggerWorkspaceRefetch("soft");
   };
@@ -1201,7 +1162,7 @@ export function Board() {
                         <TooltipTrigger asChild>
                           <button
                             onClick={() => setView(value)}
-                            className={`relative inline-flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-semibold transition-all ${
+                            className={`font-ui-condensed relative inline-flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-1.5 text-[0.98rem] font-semibold tracking-[0.01em] transition-all ${
                               activeWorkspaceView === value && !isBoardSettingsView
                                 ? `bg-gradient-to-r ${currentTheme.primary} text-white shadow-sm`
                                 : `${currentTheme.textSecondary} hover:${currentTheme.primaryText} ${isDarkMode ? "hover:bg-white/[0.05]" : "hover:bg-black/[0.04]"}`
@@ -1312,10 +1273,10 @@ export function Board() {
 
                     <div className="flex-1 min-h-0">
                       <div className="grid h-full min-h-0 grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4" data-coachmark="board-columns-grid">
-                      <KanbanColumn boardId={numericBoardId} id="todo" title="To Do" count={workflowColumns.todo.length} softLimit={currentBoard.columnLimits.todo?.softLimit ?? null} hardLimit={currentBoard.columnLimits.todo?.hardLimit ?? null} cards={workflowColumns.todo} onCardDrop={handleCardDrop} onOpen={handleOpenTask} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} suggestedAssignees={suggestedAssignees} labels={labels} />
-                      <KanbanColumn boardId={numericBoardId} id="inProgress" title="In Progress" count={workflowColumns.inProgress.length} softLimit={currentBoard.columnLimits.inProgress?.softLimit ?? null} hardLimit={currentBoard.columnLimits.inProgress?.hardLimit ?? null} cards={workflowColumns.inProgress} onCardDrop={handleCardDrop} onOpen={handleOpenTask} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} suggestedAssignees={suggestedAssignees} labels={labels} />
-                      <KanbanColumn boardId={numericBoardId} id="inReview" title="In Review" count={workflowColumns.inReview.length} softLimit={currentBoard.columnLimits.inReview?.softLimit ?? null} hardLimit={currentBoard.columnLimits.inReview?.hardLimit ?? null} cards={workflowColumns.inReview} onCardDrop={handleCardDrop} onOpen={handleOpenTask} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} suggestedAssignees={suggestedAssignees} labels={labels} />
-                        <KanbanColumn boardId={numericBoardId} id="done" title="Done" count={workflowColumns.done.length} softLimit={currentBoard.columnLimits.done?.softLimit ?? null} hardLimit={currentBoard.columnLimits.done?.hardLimit ?? null} cards={workflowColumns.done} onCardDrop={handleCardDrop} onOpen={handleOpenTask} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} suggestedAssignees={suggestedAssignees} labels={labels} />
+                      <KanbanColumn boardId={numericBoardId} id="todo" title="To Do" count={workflowColumns.todo.length} softLimit={currentBoard.columnLimits.todo?.softLimit ?? null} hardLimit={currentBoard.columnLimits.todo?.hardLimit ?? null} cards={workflowColumns.todo} onCardDrop={handleCardDrop} onOpen={handleOpenTask} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                      <KanbanColumn boardId={numericBoardId} id="inProgress" title="In Progress" count={workflowColumns.inProgress.length} softLimit={currentBoard.columnLimits.inProgress?.softLimit ?? null} hardLimit={currentBoard.columnLimits.inProgress?.hardLimit ?? null} cards={workflowColumns.inProgress} onCardDrop={handleCardDrop} onOpen={handleOpenTask} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                      <KanbanColumn boardId={numericBoardId} id="inReview" title="In Review" count={workflowColumns.inReview.length} softLimit={currentBoard.columnLimits.inReview?.softLimit ?? null} hardLimit={currentBoard.columnLimits.inReview?.hardLimit ?? null} cards={workflowColumns.inReview} onCardDrop={handleCardDrop} onOpen={handleOpenTask} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                        <KanbanColumn boardId={numericBoardId} id="done" title="Done" count={workflowColumns.done.length} softLimit={currentBoard.columnLimits.done?.softLimit ?? null} hardLimit={currentBoard.columnLimits.done?.hardLimit ?? null} cards={workflowColumns.done} onCardDrop={handleCardDrop} onOpen={handleOpenTask} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
                       </div>
                     </div>
 
@@ -1370,7 +1331,6 @@ export function Board() {
                       onEdit={handleEditTask}
                       onMoveToBacklog={handleMoveToBacklog}
                       availableAssignees={availableAssignees}
-                      suggestedAssignees={suggestedAssignees}
                       labels={labels}
                     />
                   </div>
@@ -1391,7 +1351,6 @@ export function Board() {
                     onRemoveFromQueue={(cardId) => void handleRemoveFromQueue(cardId)}
                     onStartQueue={() => void handleStartQueue()}
                     availableAssignees={availableAssignees}
-                    suggestedAssignees={suggestedAssignees}
                     labels={labels}
                     onCreateTask={() => setIsModalOpen(true)}
                     planningPokerSession={planningPokerSession}
@@ -1421,7 +1380,6 @@ export function Board() {
                   onAddToQueue={handleAddToQueue}
                   onRemoveFromQueue={handleRemoveFromQueue}
                   availableAssignees={availableAssignees}
-                  suggestedAssignees={suggestedAssignees}
                   labels={labels}
                   onCreateTask={() => setIsModalOpen(true)}
                 />
@@ -1442,7 +1400,6 @@ export function Board() {
                   onEdit={handleEditTask}
                   onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)}
                   availableAssignees={availableAssignees}
-                  suggestedAssignees={suggestedAssignees}
                   labels={labels}
                 />
               )}
@@ -1462,7 +1419,6 @@ export function Board() {
               onAdd={handleAddCard}
               availableLabels={labels}
               availableAssignees={availableAssignees}
-              suggestedAssignees={suggestedAssignees}
             />
 
             <EditTaskModal
@@ -1474,7 +1430,6 @@ export function Board() {
               task={editingTask}
               availableLabels={labels}
               availableAssignees={availableAssignees}
-              suggestedAssignees={suggestedAssignees}
             />
 
             <ManageLabelsModal

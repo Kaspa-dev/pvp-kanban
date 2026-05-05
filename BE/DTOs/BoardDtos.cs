@@ -165,6 +165,8 @@ public class BoardTaskListQueryDto
     public string? Q { get; set; }
     public string QuickFilter { get; set; } = "all";
     public List<int> LabelIds { get; set; } = new();
+    [FromQuery(Name = "assigneeUserIds")]
+    public List<int> AssigneeUserIds { get; set; } = new();
     [FromQuery(Name = "priorities")]
     public List<string> Priorities { get; set; } = new();
     [FromQuery(Name = "taskTypes")]

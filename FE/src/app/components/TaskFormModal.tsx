@@ -28,12 +28,10 @@ interface TaskFormModalProps {
   descriptionError?: string;
   dueDateError?: string;
   isSubmitting?: boolean;
-  submitError: string;
   availableLabels: Label[];
   selectedLabelIds: number[];
   onSelectedLabelIdsChange: (labelIds: number[]) => void;
   availableAssignees: TaskAssignee[];
-  suggestedAssignees?: TaskAssignee[];
   selectedAssignee: TaskAssignee | null;
   onSelectedAssigneeChange: (assignee: TaskAssignee | null) => void;
   storyPoints?: number | null;
@@ -70,12 +68,10 @@ export function TaskFormModal({
   descriptionError = "",
   dueDateError = "",
   isSubmitting = false,
-  submitError,
   availableLabels,
   selectedLabelIds,
   onSelectedLabelIdsChange,
   availableAssignees,
-  suggestedAssignees,
   selectedAssignee,
   onSelectedAssigneeChange,
   storyPoints,
@@ -112,7 +108,7 @@ export function TaskFormModal({
       maxWidthClassName="max-w-4xl"
       height="min(68rem, calc(100dvh - 2rem))"
       viewportClassName="h-full min-h-0 pr-4"
-      contentClassName="grid items-start gap-5 px-1 py-1 md:grid-cols-2"
+      contentClassName="px-1 py-1"
       footer={(
         <>
           <Tooltip>
@@ -162,7 +158,6 @@ export function TaskFormModal({
         selectedLabelIds={selectedLabelIds}
         onSelectedLabelIdsChange={onSelectedLabelIdsChange}
         availableAssignees={availableAssignees}
-        suggestedAssignees={suggestedAssignees}
         selectedAssignee={selectedAssignee}
         onSelectedAssigneeChange={onSelectedAssigneeChange}
         storyPoints={storyPoints}
@@ -179,14 +174,7 @@ export function TaskFormModal({
         onPriorityChange={onPriorityChange}
         taskType={taskType}
         onTaskTypeChange={onTaskTypeChange}
-        layoutClassName="grid items-start gap-5 px-1 py-1 md:grid-cols-2"
       />
-
-      {submitError && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 md:col-span-2">
-          {submitError}
-        </div>
-      )}
     </FormModalFrame>
   );
 }

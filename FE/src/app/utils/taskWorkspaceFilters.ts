@@ -1,14 +1,15 @@
-import { endOfWeek, isWithinInterval, parseISO, startOfWeek } from "date-fns";
+import { endOfWeek, isBefore, isWithinInterval, parseISO, startOfDay, startOfWeek } from "date-fns";
 import { Card, PriorityFilterValue, TaskTypeFilterValue } from "./cards";
 import { Label } from "./labels";
 
-export type TaskQuickFilter = "all" | "assigned" | "due";
+export type TaskQuickFilter = "all" | "assigned" | "due" | "overdue";
 export type BacklogStageFilter = "all" | "waiting" | "queued";
 
 export interface TaskWorkspaceFilters {
   searchQuery: string;
   quickFilter: TaskQuickFilter;
   selectedLabelIds: number[];
+  selectedAssigneeUserIds: number[];
   selectedPriorities: PriorityFilterValue[];
   selectedTaskTypes: TaskTypeFilterValue[];
 }
@@ -21,6 +22,7 @@ export const DEFAULT_TASK_WORKSPACE_FILTERS: TaskWorkspaceFilters = {
   searchQuery: "",
   quickFilter: "all",
   selectedLabelIds: [],
+  selectedAssigneeUserIds: [],
   selectedPriorities: [],
   selectedTaskTypes: [],
 };
@@ -58,6 +60,13 @@ export function filterCardsForWorkspace<T extends Card>(
       }
     }
 
+    const selectedAssigneeUserIds = filters.selectedAssigneeUserIds ?? [];
+    if (selectedAssigneeUserIds.length > 0) {
+      if (!card.assigneeUserId || !selectedAssigneeUserIds.includes(card.assigneeUserId)) {
+        return false;
+      }
+    }
+
     if (filters.selectedPriorities.length > 0) {
       const priorityValue = card.priority ?? "none";
       if (!filters.selectedPriorities.includes(priorityValue)) {
@@ -88,6 +97,12 @@ export function filterCardsForWorkspace<T extends Card>(
       };
 
       if (!isWithinInterval(dueDate, weekInterval)) {
+        return false;
+      }
+    }
+
+    if (filters.quickFilter === "overdue") {
+      if (!card.dueDate || !isBefore(parseISO(card.dueDate), startOfDay(new Date()))) {
         return false;
       }
     }
