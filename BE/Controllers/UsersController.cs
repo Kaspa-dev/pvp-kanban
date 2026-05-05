@@ -41,15 +41,18 @@ public class UsersController : ControllerBase
     private readonly AppDbContext _context;
     private readonly AuthOptions _authOptions;
     private readonly IGamificationService _gamificationService;
+    private readonly IUserMilestoneService _userMilestoneService;
 
     public UsersController(
         AppDbContext context,
         IOptions<AuthOptions> authOptions,
-        IGamificationService gamificationService)
+        IGamificationService gamificationService,
+        IUserMilestoneService userMilestoneService)
     {
         _context = context;
         _authOptions = authOptions.Value;
         _gamificationService = gamificationService;
+        _userMilestoneService = userMilestoneService;
     }
 
     // GET api/users/search?q=query&limit=3
@@ -222,6 +225,19 @@ public class UsersController : ControllerBase
 
         UserGamificationSummaryDto summary = await _gamificationService.GetUserGamificationSummaryAsync(userId, cancellationToken);
         return Ok(summary);
+    }
+
+    // GET api/users/me/milestones
+    [HttpGet("me/milestones")]
+    public async Task<ActionResult<UserMilestonesResponseDto>> GetMyMilestones(CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        UserMilestonesResponseDto response = await _userMilestoneService.GetUserMilestonesAsync(userId, cancellationToken);
+        return Ok(response);
     }
 
     // GET api/users/me/preferences

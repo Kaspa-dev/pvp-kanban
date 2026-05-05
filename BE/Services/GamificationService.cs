@@ -4,11 +4,14 @@ using BE.DTOs;
 using Microsoft.EntityFrameworkCore;
 using PriorityLevel = BE.Models.Priority;
 using TaskEntity = BE.Models.Task;
+using UserMilestoneEventModel = BE.Models.UserMilestoneEvent;
 using XpEventModel = BE.Models.XpEvent;
 
 namespace BE.Services;
 
-public class GamificationService(AppDbContext context) : IGamificationService
+public class GamificationService(
+    AppDbContext context,
+    IUserMilestoneService userMilestoneService) : IGamificationService
 {
     private static readonly int[] LevelThresholds =
     [
@@ -56,7 +59,10 @@ public class GamificationService(AppDbContext context) : IGamificationService
         XpEventTypes.TaskCompletedPriorityCritical,
     ];
 
+    private const string TaskCompletedMilestoneEventType = "task-completed";
+
     private readonly AppDbContext _context = context;
+    private readonly IUserMilestoneService _userMilestoneService = userMilestoneService;
 
     public async Task<UserGamificationSummaryDto> GetUserGamificationSummaryAsync(int userId, CancellationToken cancellationToken)
     {
@@ -188,6 +194,9 @@ public class GamificationService(AppDbContext context) : IGamificationService
                 $"task-complete-priority-critical:{task.Id}:{assigneeUserId}:{cycle}",
                 completedAtUtc);
         }
+
+        _userMilestoneService.StageTaskCompletion(assigneeUserId, task.Id, cycle);
+        await _userMilestoneService.EnsureMilestonesUnlockedAsync(assigneeUserId, cancellationToken);
     }
 
     private async Task ReverseLatestCompletionCycleAsync(TaskEntity task, CancellationToken cancellationToken)
@@ -281,7 +290,7 @@ public class GamificationService(AppDbContext context) : IGamificationService
 
     private async Task<int> GetNextCompletionCycleAsync(int taskId, CancellationToken cancellationToken)
     {
-        List<string> awardKeys = await _context.XpEvents
+        List<string> persistedAwardKeys = await _context.XpEvents
             .Where(xpEvent =>
                 xpEvent.TaskId == taskId &&
                 xpEvent.XpAmount > 0 &&
@@ -289,12 +298,46 @@ public class GamificationService(AppDbContext context) : IGamificationService
             .Select(xpEvent => xpEvent.AwardKey)
             .ToListAsync(cancellationToken);
 
-        int currentMaxCycle = awardKeys
+        string milestoneEventKeyPrefix = BuildTaskCompletedMilestoneEventKeyPrefix(taskId);
+        List<string> persistedMilestoneEventKeys = await _context.UserMilestoneEvents
+            .Where(milestoneEvent =>
+                milestoneEvent.EventType == TaskCompletedMilestoneEventType &&
+                milestoneEvent.EventKey.StartsWith(milestoneEventKeyPrefix))
+            .Select(milestoneEvent => milestoneEvent.EventKey)
+            .ToListAsync(cancellationToken);
+
+        IEnumerable<string> trackedAwardKeys = _context.ChangeTracker
+            .Entries<XpEventModel>()
+            .Where(entry =>
+                entry.State != EntityState.Deleted &&
+                entry.Entity.TaskId == taskId &&
+                entry.Entity.XpAmount > 0 &&
+                CompletionEventTypes.Contains(entry.Entity.Type))
+            .Select(entry => entry.Entity.AwardKey);
+
+        IEnumerable<string> trackedMilestoneEventKeys = _context.ChangeTracker
+            .Entries<UserMilestoneEventModel>()
+            .Where(entry =>
+                entry.State != EntityState.Deleted &&
+                entry.Entity.EventType == TaskCompletedMilestoneEventType &&
+                entry.Entity.EventKey.StartsWith(milestoneEventKeyPrefix, StringComparison.Ordinal))
+            .Select(entry => entry.Entity.EventKey);
+
+        int currentMaxCycle = persistedAwardKeys
+            .Concat(persistedMilestoneEventKeys)
+            .Concat(trackedAwardKeys)
+            .Concat(trackedMilestoneEventKeys)
+            .Distinct(StringComparer.Ordinal)
             .Select(GetCompletionCycle)
             .DefaultIfEmpty(0)
             .Max();
 
         return currentMaxCycle + 1;
+    }
+
+    private static string BuildTaskCompletedMilestoneEventKeyPrefix(int taskId)
+    {
+        return $"{TaskCompletedMilestoneEventType}:{taskId}:";
     }
 
     private static int GetCompletionCycle(string awardKey)

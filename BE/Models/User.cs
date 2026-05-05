@@ -20,5 +20,6 @@ public class User
     public ICollection<Models.Task> AssignedTasks { get; set; } = new List<Models.Task>();
     public ICollection<Models.Task> CreatedTasks { get; set; } = new List<Models.Task>();
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
+    public ICollection<UserMilestone> Milestones { get; set; } = new List<UserMilestone>();
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }

@@ -22,12 +22,14 @@ public class BoardsController(
     AppDbContext context,
     IPlanningPokerSessionService planningPokerSessionService,
     IHubContext<PlanningPokerHub> planningPokerHubContext,
-    IGamificationService gamificationService) : ControllerBase
+    IGamificationService gamificationService,
+    IUserMilestoneService userMilestoneService) : ControllerBase
 {
     private readonly AppDbContext _context = context;
     private readonly IPlanningPokerSessionService _planningPokerSessionService = planningPokerSessionService;
     private readonly IHubContext<PlanningPokerHub> _planningPokerHubContext = planningPokerHubContext;
     private readonly IGamificationService _gamificationService = gamificationService;
+    private readonly IUserMilestoneService _userMilestoneService = userMilestoneService;
     private const int MaxBoardMembers = 20;
     private const int MaxBoardNameLength = 128;
     private const int MaxBoardDescriptionLength = 500;
@@ -276,8 +278,13 @@ public class BoardsController(
             });
         }
 
+        await using var createBoardTransaction = await _context.Database.BeginTransactionAsync(cancellationToken);
         _context.Boards.Add(board);
         await _context.SaveChangesAsync(cancellationToken);
+        _userMilestoneService.StageBoardCreated(userId, board.Id);
+        await _userMilestoneService.EnsureMilestonesUnlockedAsync(userId, cancellationToken);
+        await SaveChangesWithMilestoneRecoveryAsync(cancellationToken);
+        await createBoardTransaction.CommitAsync(cancellationToken);
 
         var createdBoard = await _context.Boards
             .Include(item => item.Memberships)
@@ -381,7 +388,12 @@ public class BoardsController(
 
         try
         {
+            await using var planningPokerTransaction = await _context.Database.BeginTransactionAsync(cancellationToken);
             PlanningPokerSessionDto session = await _planningPokerSessionService.CreateSessionAsync(boardId, userId, cancellationToken);
+            _userMilestoneService.StagePlanningPokerSessionCreated(userId, session.SessionId);
+            await _userMilestoneService.EnsureMilestonesUnlockedAsync(userId, cancellationToken);
+            await SaveChangesWithMilestoneRecoveryAsync(cancellationToken);
+            await planningPokerTransaction.CommitAsync(cancellationToken);
             return Ok(session);
         }
         catch (PlanningPokerNotFoundException)
@@ -627,6 +639,7 @@ public class BoardsController(
 
         var existingMemberships = board.Memberships.ToDictionary(membership => membership.UserId);
         var removedMemberIds = existingMemberships.Keys.Except(requestedMemberIds).ToList();
+        List<int> newlyAddedMemberIds = [];
 
         foreach (int removedUserId in removedMemberIds)
         {
@@ -662,10 +675,29 @@ public class BoardsController(
                 Role = memberId == userId ? BoardRole.Owner : BoardRole.Member,
                 Color = MemberColors[nextColorIndex % MemberColors.Length],
             });
+
+            if (memberId != userId)
+            {
+                newlyAddedMemberIds.Add(memberId);
+            }
+
             nextColorIndex += 1;
         }
 
-        await _context.SaveChangesAsync(cancellationToken);
+        foreach (int memberId in newlyAddedMemberIds)
+        {
+            _userMilestoneService.StageBoardMemberInvited(userId, board.Id, memberId);
+        }
+
+        if (newlyAddedMemberIds.Count > 0)
+        {
+            await _userMilestoneService.EnsureMilestonesUnlockedAsync(userId, cancellationToken);
+            await SaveChangesWithMilestoneRecoveryAsync(cancellationToken);
+        }
+        else
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
 
         var updatedBoard = await _context.Boards
             .Include(item => item.Memberships)
@@ -1082,7 +1114,7 @@ public class BoardsController(
         }
 
         await _gamificationService.ApplyTaskTransitionXpAsync(task, previousStatusKey, status.Title, cancellationToken);
-        await _context.SaveChangesAsync(cancellationToken);
+        await SaveChangesWithMilestoneRecoveryAsync(cancellationToken);
 
         var memberLookup = board.Memberships.ToDictionary(
             membership => membership.UserId,
@@ -1195,8 +1227,13 @@ public class BoardsController(
         };
         comment.Author = accessContext!.Membership.User;
 
+        await using var createCommentTransaction = await _context.Database.BeginTransactionAsync(cancellationToken);
         _context.Comments.Add(comment);
         await _context.SaveChangesAsync(cancellationToken);
+        _userMilestoneService.StageCommentCreated(userId, comment.Id);
+        await _userMilestoneService.EnsureMilestonesUnlockedAsync(userId, cancellationToken);
+        await SaveChangesWithMilestoneRecoveryAsync(cancellationToken);
+        await createCommentTransaction.CommitAsync(cancellationToken);
 
         Board board = accessContext.Board;
         Dictionary<int, BoardMemberDto> memberLookup = board.Memberships.ToDictionary(
@@ -2321,6 +2358,28 @@ public class BoardsController(
             Name = label.Title,
             Color = label.Color,
         };
+    }
+
+    private async System.Threading.Tasks.Task SaveChangesWithMilestoneRecoveryAsync(CancellationToken cancellationToken)
+    {
+        const int maxAttempts = 3;
+
+        for (int attempt = 0; attempt < maxAttempts; attempt += 1)
+        {
+            try
+            {
+                await _context.SaveChangesAsync(cancellationToken);
+                return;
+            }
+            catch (DbUpdateException exception) when (attempt < maxAttempts - 1)
+            {
+                bool recovered = await _userMilestoneService.TryRecoverFromDuplicateWriteAsync(exception, cancellationToken);
+                if (!recovered)
+                {
+                    throw;
+                }
+            }
+        }
     }
 
     private bool TryGetCurrentUserId(out int userId)

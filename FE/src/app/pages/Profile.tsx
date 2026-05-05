@@ -14,6 +14,7 @@ import {
   Zap,
 } from "lucide-react";
 import { BanBanLogo } from "../components/BanBanLogo";
+import { MilestoneSummaryCard } from "../components/profile/MilestoneSummaryCard";
 import { PreferencesSettingsSections } from "../components/PreferencesSettingsSections";
 import { useLocalStorageBoolean } from "../hooks/useLocalStorageBoolean";
 import { useAuth } from "../contexts/AuthContext";
@@ -30,6 +31,11 @@ import {
   GamificationSummary,
   getDefaultGamificationSummary,
 } from "../utils/gamification";
+import {
+  fetchCurrentUserMilestones,
+  getDefaultUserMilestonesResponse,
+  type UserMilestoneSummary,
+} from "../utils/milestones";
 import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
 
 type ProfileFormState = {
@@ -94,6 +100,9 @@ export function Profile() {
 
   const [gamificationSummary, setGamificationSummary] = useState<GamificationSummary>(() => getDefaultGamificationSummary());
   const [isLoadingProgress, setIsLoadingProgress] = useState(true);
+  const [milestoneSummary, setMilestoneSummary] = useState<UserMilestoneSummary>(() => getDefaultUserMilestonesResponse().summary);
+  const [isLoadingMilestones, setIsLoadingMilestones] = useState(true);
+  const [milestonesError, setMilestonesError] = useState("");
 
   const [profileForm, setProfileForm] = useState<ProfileFormState>(() => (
     user ? createProfileFormState(user) : { firstName: "", lastName: "", username: "", email: "" }
@@ -122,6 +131,45 @@ export function Profile() {
     }
 
     setProfileForm(createProfileFormState(user));
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    let isActive = true;
+
+    const loadMilestones = async () => {
+      setIsLoadingMilestones(true);
+      setMilestonesError("");
+
+      try {
+        const response = await fetchCurrentUserMilestones();
+        if (!isActive) {
+          return;
+        }
+
+        setMilestoneSummary(response.summary);
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+
+        setMilestoneSummary(getDefaultUserMilestonesResponse().summary);
+        setMilestonesError(error instanceof Error ? error.message : "Unable to load milestones right now.");
+      } finally {
+        if (isActive) {
+          setIsLoadingMilestones(false);
+        }
+      }
+    };
+
+    void loadMilestones();
+
+    return () => {
+      isActive = false;
+    };
   }, [user]);
 
   useEffect(() => {
@@ -520,21 +568,30 @@ export function Profile() {
             </form>
           </section>
 
-          <section className={sectionShellClassName}>
-            <div className="mb-6">
-              <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${currentTheme.textMuted}`}>Workspace comfort</p>
-              <h2 className={`mt-3 text-3xl font-semibold tracking-tight ${currentTheme.text}`}>Preferences</h2>
-              <p className={`mt-2 text-sm leading-6 ${currentTheme.textMuted}`}>
-                Tailor your workspace visuals and assistance settings.
-              </p>
-            </div>
-            <PreferencesSettingsSections
-              gamificationEnabled={gamificationEnabled}
-              onGamificationChange={setGamificationEnabled}
-              notificationsEnabled={notificationsEnabled}
-              onNotificationsChange={setNotificationsEnabled}
+          <div className="flex flex-col gap-6">
+            <MilestoneSummaryCard
+              summary={milestoneSummary}
+              isLoading={isLoadingMilestones}
+              errorMessage={milestonesError}
+              onViewAll={() => navigate("/app/profile/milestones")}
             />
-          </section>
+
+            <section className={sectionShellClassName}>
+              <div className="mb-6">
+                <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${currentTheme.textMuted}`}>Workspace comfort</p>
+                <h2 className={`mt-3 text-3xl font-semibold tracking-tight ${currentTheme.text}`}>Preferences</h2>
+                <p className={`mt-2 text-sm leading-6 ${currentTheme.textMuted}`}>
+                  Tailor your workspace visuals and assistance settings.
+                </p>
+              </div>
+              <PreferencesSettingsSections
+                gamificationEnabled={gamificationEnabled}
+                onGamificationChange={setGamificationEnabled}
+                notificationsEnabled={notificationsEnabled}
+                onNotificationsChange={setNotificationsEnabled}
+              />
+            </section>
+          </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
