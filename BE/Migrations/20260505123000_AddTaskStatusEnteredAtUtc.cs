@@ -1,4 +1,6 @@
 using System;
+using BE.Data;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -6,6 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace BE.Migrations;
 
 [Migration("20260505123000_AddTaskStatusEnteredAtUtc")]
+[DbContext(typeof(AppDbContext))]
 public partial class AddTaskStatusEnteredAtUtc : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)

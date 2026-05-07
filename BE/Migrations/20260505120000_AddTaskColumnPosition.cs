@@ -1,3 +1,5 @@
+using BE.Data;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -5,6 +7,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace BE.Migrations;
 
 [Migration("20260505120000_AddTaskColumnPosition")]
+[DbContext(typeof(AppDbContext))]
 public partial class AddTaskColumnPosition : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
