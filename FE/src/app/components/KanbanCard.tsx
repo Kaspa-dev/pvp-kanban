@@ -80,6 +80,9 @@ export function KanbanCard({
   const taskHoverShadowClassName = isDarkMode
     ? "group-hover:shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_20px_44px_rgba(0,0,0,0.46),0_0_34px_rgba(255,255,255,0.08)]"
     : "group-hover:shadow-[0_14px_28px_rgba(15,23,42,0.12),0_4px_12px_rgba(15,23,42,0.08)]";
+  const dropIndicatorGlowClassName = isDarkMode
+    ? "shadow-[0_0_12px_rgba(255,255,255,0.12)]"
+    : "shadow-[0_4px_10px_rgba(15,23,42,0.10)]";
 
   const [{ isDragging }, drag] = useDrag<DraggedKanbanCard, void, { isDragging: boolean }>({
     type: "CARD",
@@ -173,6 +176,15 @@ export function KanbanCard({
   const canMoveToBacklog = columnId !== "backlog" && columnId !== "queue" && Boolean(onMoveToBacklog);
   const revealActionsClassName = "flex max-w-0 shrink-0 translate-y-1 items-center gap-2 overflow-hidden opacity-0 transition-[max-width,opacity,transform] duration-200 ease-out group-hover:max-w-[9rem] group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:max-w-[9rem] group-focus-within:translate-y-0 group-focus-within:opacity-100";
   const isOpenable = Boolean(onOpen);
+  const isDropSlotVisible = Boolean(dropEdge && isDropOver && !isDragging);
+  const dropSlot = isDropSlotVisible ? (
+    <div
+      className="pointer-events-none flex h-3 items-center px-3 transition-[height,opacity,transform] duration-150 ease-out"
+      aria-hidden="true"
+    >
+      <span className={`h-px w-full rounded-full bg-gradient-to-r ${currentTheme.primary} ${dropIndicatorGlowClassName}`} />
+    </div>
+  ) : null;
 
   const handleOpen = () => {
     onOpen?.(id);
@@ -199,13 +211,7 @@ export function KanbanCard({
         cursor: isDragging ? "grabbing" : "default",
       }}
       >
-      {dropEdge && isDropOver && !isDragging ? (
-        <span
-          className={`pointer-events-none absolute left-3 right-3 z-30 h-1 rounded-full bg-gradient-to-r ${currentTheme.primary} shadow-[0_0_18px_rgba(99,102,241,0.36)]`}
-          style={dropEdge === "before" ? { top: 0 } : { bottom: 0 }}
-          aria-hidden="true"
-        />
-      ) : null}
+      {dropEdge === "before" ? dropSlot : null}
       <div
         className={`relative overflow-hidden rounded-lg border-2 ${currentTheme.border} ${taskSurfaceClassName} shadow-none transition-[box-shadow] duration-200 ${taskHoverShadowClassName} ${isOpenable ? "cursor-pointer" : ""}`}
         onClick={isOpenable ? handleOpen : undefined}
@@ -346,6 +352,7 @@ export function KanbanCard({
         </div>
         {priority ? <PriorityAccent priority={priority} isDarkMode={isDarkMode} /> : null}
       </div>
+      {dropEdge === "after" ? dropSlot : null}
     </div>
   );
 }

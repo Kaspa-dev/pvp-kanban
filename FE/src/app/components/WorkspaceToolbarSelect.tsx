@@ -51,7 +51,7 @@ export function WorkspaceToolbarSelect({
 
   const content = (
     <label className={`block ${widthClassName}`}>
-      <span className={`mb-2 block text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+      <span className={`font-ui-condensed mb-2 block text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
         {label}
       </span>
       <Select value={value} onValueChange={onValueChange}>

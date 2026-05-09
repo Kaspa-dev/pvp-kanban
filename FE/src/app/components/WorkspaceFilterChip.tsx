@@ -22,12 +22,6 @@ interface WorkspaceClearButtonProps {
   delayDuration?: number;
 }
 
-export function getWorkspaceFilterHoverClassName(isDarkMode: boolean) {
-  return isDarkMode
-    ? "hover:shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_0_18px_rgba(255,255,255,0.045)]"
-    : "hover:shadow-sm";
-}
-
 function enhanceShortcutNode(
   shortcut: ReactNode,
   keybindClassName: string,
@@ -71,7 +65,7 @@ export function WorkspaceFilterChip({
     <button
       type="button"
       onClick={onClick}
-      className={`group inline-flex h-11 items-center justify-center px-4 text-sm font-medium ${
+      className={`font-ui-condensed group inline-flex h-11 items-center justify-center px-4 text-sm font-medium tracking-[0.01em] ${
         isActive
           ? `${getInputLikeControlClassName(currentTheme, {
               selected: true,
@@ -124,7 +118,7 @@ export function WorkspaceClearButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`group inline-flex h-11 items-center justify-center gap-2 px-4 text-sm font-medium ${
+      className={`font-ui-condensed group inline-flex h-11 items-center justify-center gap-2 px-4 text-sm font-medium tracking-[0.01em] ${
         disabled
           ? `${currentTheme.textMuted} ${getInputLikeControlClassName(currentTheme, { surfaceClassName: controlSurfaceClassName, disabled: true })}`
           : `${currentTheme.textSecondary} ${getInputLikeControlClassName(currentTheme, { surfaceClassName: controlSurfaceClassName })}`

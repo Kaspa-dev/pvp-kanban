@@ -5,6 +5,7 @@ import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
 import { UserProfileChip } from "./UserProfileChip";
 import { BanBanLogo } from "./BanBanLogo";
 import { UtilityIconButton } from "./UtilityIconButton";
+import type { GamificationSummary } from "../utils/gamification";
 
 interface ToolbarProps {
   onOpenSettings: () => void;
@@ -16,6 +17,8 @@ interface ToolbarProps {
     username: string;
     fullName?: string;
     subtitle: string;
+    level?: number | null;
+    gamificationSummary?: GamificationSummary | null;
   };
 }
 
@@ -49,8 +52,9 @@ export function Toolbar({
               username={userProfile.username}
               fullName={userProfile.fullName}
               subtitle={userProfile.subtitle}
+              level={userProfile.level}
+              gamificationSummary={userProfile.gamificationSummary}
               onClick={onProfileClick}
-              tooltip="Open profile"
             />
           )}
 

@@ -35,7 +35,7 @@ export function getDefaultGamificationSummary(): GamificationSummary {
   return {
     lifetimeXp: 0,
     currentLevel: 1,
-    currentLevelName: "Beginner",
+    currentLevelName: "Slate 1",
     currentLevelXp: 0,
     xpForNextLevel: 20,
     xpRemainingForNextLevel: 20,

@@ -1,5 +1,8 @@
 import { Facehash, type Intensity3D, type Variant } from "facehash";
 import * as React from "react";
+import { useTheme } from "../contexts/ThemeContext";
+import { normalizeAvatarLevel } from "../utils/levelBadges";
+import { RailCornersLevelFrame } from "./RailCornersLevelFrame";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { cn } from "./ui/utils";
 
@@ -42,6 +45,7 @@ export type AppAvatarProps = Omit<React.HTMLAttributes<HTMLDivElement>, "childre
   tooltip?: string;
   tooltipDelay?: number;
   square?: boolean;
+  level?: number | null;
 };
 
 export function AppAvatar({
@@ -59,14 +63,20 @@ export function AppAvatar({
   tooltip,
   tooltipDelay,
   square = false,
+  level,
   style,
   ...props
 }: AppAvatarProps) {
+  const { isDarkMode } = useTheme();
   const safeUsername = username.trim() || "unknown";
   const safeFullName = fullName?.trim() || "";
   const resolvedColors = colors ?? APP_AVATAR_COLORS;
+  const normalizedLevel = square ? null : normalizeAvatarLevel(level);
+  const accessibleName = safeFullName || safeUsername;
+  const accessibleLabel = normalizedLevel ? `${accessibleName}, level ${normalizedLevel}` : accessibleName;
+  const showFullLevelMarker = size >= 40;
 
-  const avatarNode = (
+  const facehashNode = (
     <Facehash
       {...props}
       name={safeUsername}
@@ -83,8 +93,37 @@ export function AppAvatar({
         className,
       )}
       style={{ color: APP_AVATAR_FEATURE_COLOR, ...style }}
-      aria-label={safeFullName || safeUsername}
+      aria-label={accessibleLabel}
     />
+  );
+
+  const avatarNode = normalizedLevel ? (
+    <RailCornersLevelFrame
+      className={className}
+      style={style}
+      size={size}
+      level={normalizedLevel}
+      isDarkMode={isDarkMode}
+      levelMarkerVariant="orbit-dot"
+      showLevelMarker={showFullLevelMarker}
+    >
+      <Facehash
+        {...props}
+        name={safeUsername}
+        size={size}
+        colors={resolvedColors}
+        variant={variant}
+        intensity3d={intensity3d}
+        interactive={interactive}
+        showInitial={showInitial}
+        enableBlink={enableBlink}
+        className="relative z-[1] inline-flex shrink-0 overflow-hidden rounded-full shadow-sm"
+        style={{ color: APP_AVATAR_FEATURE_COLOR }}
+        aria-label={accessibleLabel}
+      />
+    </RailCornersLevelFrame>
+  ) : (
+    facehashNode
   );
 
   if (!showTooltip && !tooltip) {
@@ -95,7 +134,7 @@ export function AppAvatar({
     <Tooltip delayDuration={tooltipDelay}>
       <TooltipTrigger asChild>{avatarNode}</TooltipTrigger>
       <TooltipContent side="top" sideOffset={8}>
-        {tooltip ?? (safeFullName || safeUsername)}
+        {tooltip ?? accessibleLabel}
       </TooltipContent>
     </Tooltip>
   );

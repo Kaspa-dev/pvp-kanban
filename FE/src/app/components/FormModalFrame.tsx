@@ -103,7 +103,7 @@ export function FormModalFrame({
         <div className={`z-10 flex ${headerAlignmentClassName} justify-between gap-4 p-6 border-b-2 ${currentTheme.border} ${currentTheme.cardBg} rounded-t-3xl shrink-0`}>
           <div className="min-w-0 space-y-1">
             <div className="flex items-center gap-2">
-              <h2 className={`text-2xl font-bold ${currentTheme.text}`}>{title}</h2>
+              <h2 className={`font-ui-condensed text-2xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>{title}</h2>
               {titleAddon}
             </div>
             {description ? (

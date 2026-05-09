@@ -11,6 +11,8 @@ import { ProfileMilestones } from './pages/ProfileMilestones';
 import { MyTasks } from './pages/MyTasks';
 import { TaskDetailsPage } from './pages/TaskDetails';
 import { LevelBadges } from './pages/LevelBadges';
+import { LevelProgress } from './pages/LevelProgress';
+import { LevelLeaderboard } from './pages/LevelLeaderboard';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -48,6 +50,8 @@ function AppRoutes() {
         element={isAuthenticated ? <Navigate to="/app" replace /> : <ForgotPassword />}
       />
       <Route path="/levelbadges" element={<LevelBadges />} />
+      <Route path="/levelprogress" element={<LevelProgress />} />
+      <Route path="/levelleaderboard" element={<LevelLeaderboard />} />
 
       {/* Protected app routes */}
       <Route

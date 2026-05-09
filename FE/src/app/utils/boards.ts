@@ -23,6 +23,7 @@ interface ApiBoardMember {
   email: string;
   color: string;
   role: BoardRole;
+  currentLevel?: number | null;
 }
 
 interface ApiBoard {
@@ -66,6 +67,7 @@ export interface BoardMember {
   color: string;
   role: BoardRole;
   name: string;
+  currentLevel?: number | null;
 }
 
 export interface BoardColumnLimit {

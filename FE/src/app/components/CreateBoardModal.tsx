@@ -46,7 +46,7 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
     currentTheme,
     currentTheme.textSecondary,
   );
-  const sectionTitleClassName = `text-lg font-semibold ${currentTheme.text}`;
+  const sectionTitleClassName = `font-ui-condensed text-lg font-semibold tracking-[0.01em] ${currentTheme.text}`;
   const sectionDescriptionClassName = `text-sm ${currentTheme.textMuted}`;
   const helpIconButtonClassName = `inline-flex h-5 w-5 items-center justify-center rounded-full ${currentTheme.textMuted} transition-colors hover:${currentTheme.textSecondary} focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus}`;
   const sectionDividerClassName = isDarkMode
@@ -165,7 +165,7 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
       >
         <div className={`${currentTheme.cardBg} border-b-2 ${currentTheme.border} px-6 py-4 flex items-center justify-between rounded-t-2xl shrink-0`}>
           <div className="flex items-center gap-2">
-            <h2 className={`text-2xl font-bold ${currentTheme.text}`}>Create New Project</h2>
+            <h2 className={`font-ui-condensed text-2xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>Create New Project</h2>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button type="button" className={helpIconButtonClassName} aria-label="Create project modal help">
@@ -255,7 +255,7 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
                     <p className={`text-xs ${currentTheme.textMuted}`}>
                       Up to {MAX_BOARD_NAME_LENGTH} characters.
                     </p>
-                    <span className={`text-xs ${currentTheme.textMuted}`}>
+                    <span className={`font-due-date text-xs ${currentTheme.textMuted}`}>
                       {boardName.trim().length}/{MAX_BOARD_NAME_LENGTH}
                     </span>
                   </div>
@@ -293,7 +293,7 @@ export function CreateBoardModal({ isOpen, onClose, onBoardCreated }: CreateBoar
                     <p className={`text-xs ${currentTheme.textMuted}`}>
                       Up to {MAX_BOARD_DESCRIPTION_LENGTH} characters.
                     </p>
-                    <span className={`text-xs ${currentTheme.textMuted}`}>
+                    <span className={`font-due-date text-xs ${currentTheme.textMuted}`}>
                       {description.trim().length}/{MAX_BOARD_DESCRIPTION_LENGTH}
                     </span>
                   </div>

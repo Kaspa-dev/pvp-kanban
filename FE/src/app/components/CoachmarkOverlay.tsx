@@ -244,7 +244,7 @@ export function CoachmarkOverlay({
               <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.primaryText}`}>
                 Hint {stepIndex + 1} of {totalSteps}
               </p>
-              <h2 id="coachmark-title" className={`mt-2 text-xl font-bold ${currentTheme.text}`}>
+              <h2 id="coachmark-title" className={`font-ui-condensed mt-2 text-xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
                 {step.title}
               </h2>
             </div>

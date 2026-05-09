@@ -10,6 +10,7 @@ public class BoardMemberDto
     public string Email { get; set; } = string.Empty;
     public string Color { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
+    public int? CurrentLevel { get; set; }
 }
 
 public class BoardDto

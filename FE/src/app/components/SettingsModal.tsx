@@ -51,7 +51,7 @@ export function SettingsModal({ isOpen, onClose, onOpenProfile, onOpenMyTasks }:
         style={{ height: "min(90vh, 48rem)" }}
       >
         <div className={`flex items-center justify-between border-b-2 ${currentTheme.border} px-8 py-6 shrink-0`}>
-          <h2 className={`text-2xl font-bold ${currentTheme.text}`}>Settings</h2>
+          <h2 className={`font-ui-condensed text-2xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>Settings</h2>
           <button
             onClick={onClose}
             className={`${currentTheme.textMuted} hover:${currentTheme.textSecondary} transition-colors hover:${currentTheme.bgSecondary} rounded-full p-2`}
@@ -73,7 +73,7 @@ export function SettingsModal({ isOpen, onClose, onOpenProfile, onOpenMyTasks }:
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <User className={`w-5 h-5 ${currentTheme.primaryText}`} />
-                  <h3 className={`text-lg font-bold ${currentTheme.text}`}>Account</h3>
+                  <h3 className={`font-ui-condensed text-lg font-semibold tracking-[0.01em] ${currentTheme.text}`}>Account</h3>
                 </div>
                 <div className="space-y-3">
                   <button

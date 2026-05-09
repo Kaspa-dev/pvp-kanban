@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { useNavigate, useParams } from "react-router";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import { Archive, ArrowRight, ClipboardList, Clock, LayoutGrid, List as ListIcon, LoaderCircle, RotateCw } from "lucide-react";
+import { Archive, ClipboardList, Clock, LayoutGrid, List as ListIcon, LoaderCircle, RotateCw } from "lucide-react";
 import { KanbanColumn } from "../components/KanbanColumn";
 import { AddCardModal } from "../components/AddCardModal";
 import { EditTaskModal } from "../components/EditTaskModal";
@@ -84,6 +84,7 @@ const BOARD_VIEW_TABS: Array<{ value: BoardWorkspaceView; label: string; icon: t
   { value: "backlog", label: "Backlog", icon: ClipboardList },
   { value: "history", label: "History", icon: Clock },
 ];
+const TASK_INDEX_VIEWS: BoardWorkspaceView[] = ["list", "backlog", "history"];
 type BoardPageView = BoardWorkspaceView | "boardSettings";
 
 function getBoardWorkspaceTabTooltip(view: BoardWorkspaceView) {
@@ -464,7 +465,7 @@ export function Board() {
   const refreshCurrentView = (mode: "hard" | "soft" = "soft") => {
     pinRefreshIndicator();
 
-    if (view === "list" || view === "backlog") {
+    if (view !== "boardSettings" && TASK_INDEX_VIEWS.includes(view)) {
       setTaskIndexRefreshToken((current) => current + 1);
       return;
     }
@@ -591,7 +592,7 @@ export function Board() {
   const isCurrentViewDataRefreshing =
     isLoadingBoard ||
     isRefreshingWorkspace ||
-    ((view === "list" || view === "backlog") && isTaskIndexRefreshing);
+    (view !== "boardSettings" && TASK_INDEX_VIEWS.includes(view) && isTaskIndexRefreshing);
 
   const isCurrentViewRefreshing = isCurrentViewDataRefreshing || isRefreshIndicatorPinned;
 
@@ -761,8 +762,6 @@ export function Board() {
 
     const targetStatus = toColumnId as BoardColumnTaskStatus;
     const previousCards = cards;
-    const statusChanged = fromColumnId !== toColumnId;
-
     setCards((currentCards) => moveCardToColumnPosition(currentCards, cardId, targetStatus, targetIndex));
 
     try {
@@ -783,12 +782,11 @@ export function Board() {
       invalidateBoardAssigneeSuggestions(numericBoardId);
       await refreshProgress();
       triggerWorkspaceRefetch("soft");
-      if (statusChanged) {
-        showSuccessToast("Task status updated.");
-      }
     } catch (error) {
       setCards(previousCards);
-      const message = error instanceof Error ? error.message : "Unable to move the task right now.";
+      const message = error instanceof Error
+        ? error.message
+        : "Unable to save the task move. The board was restored.";
       showErrorToast(message);
     }
   };
@@ -1157,7 +1155,7 @@ export function Board() {
     return (
       <div className={`flex min-h-screen items-center justify-center px-6 ${currentTheme.bgSecondary}`}>
         <div className={`w-full max-w-xl rounded-3xl border ${currentTheme.border} ${currentTheme.cardBg} p-8 shadow-xl`}>
-          <h1 className={`text-2xl font-bold ${currentTheme.text}`}>
+          <h1 className={`font-ui-condensed text-2xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
             {loadError ? "Unable to load this board" : stateContent.title}
           </h1>
           <p className={`mt-3 text-sm ${currentTheme.textMuted}`}>
@@ -1218,7 +1216,9 @@ export function Board() {
             userProfile={{
               username: user.username,
               fullName: `${user.firstName} ${user.lastName}`.trim(),
-              subtitle: `Level ${gamificationSummary.currentLevel}`,
+              subtitle: `${user.firstName} ${user.lastName}`.trim(),
+              level: gamificationSummary.currentLevel,
+              gamificationSummary,
             }}
           />
         </div>
@@ -1240,7 +1240,7 @@ export function Board() {
               <div className={`shrink-0 border-b ${currentTheme.border} ${isDarkMode ? "bg-zinc-950/45" : "bg-white/72"} backdrop-blur-xl`}>
                 <div className={`${boardWorkspaceWidthClassName} flex items-center gap-2 pl-9 pr-6 py-2`}>
                   {!isBoardSettingsView && (
-                    <kbd className={`hidden rounded-md border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] ${currentTheme.border} ${currentTheme.textMuted} md:inline-flex`}>
+                    <kbd className={`font-due-date hidden rounded-md border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] ${currentTheme.border} ${currentTheme.textMuted} md:inline-flex`}>
                       Q
                     </kbd>
                   )}
@@ -1271,7 +1271,7 @@ export function Board() {
                     ))}
                   </div>
                   {!isBoardSettingsView && (
-                    <kbd className={`hidden rounded-md border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] ${currentTheme.border} ${currentTheme.textMuted} md:inline-flex`}>
+                    <kbd className={`font-due-date hidden rounded-md border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] ${currentTheme.border} ${currentTheme.textMuted} md:inline-flex`}>
                       E
                     </kbd>
                   )}
@@ -1281,7 +1281,7 @@ export function Board() {
                         <div className="text-[11px] font-medium md:hidden">
                           <span className={currentTheme.textMuted}>Q / E</span>
                         </div>
-                        <kbd className={`hidden rounded-md border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] ${currentTheme.border} ${currentTheme.textMuted} md:inline-flex`}>
+                        <kbd className={`font-due-date hidden rounded-md border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] ${currentTheme.border} ${currentTheme.textMuted} md:inline-flex`}>
                           R
                         </kbd>
                         <Tooltip>
@@ -1334,34 +1334,6 @@ export function Board() {
 
                     <div className={`shrink-0 border-t ${currentTheme.border}`} />
 
-                    {workflowCards.length === 0 && (
-                      <div className={`shrink-0 rounded-2xl border px-5 py-4 ${currentTheme.border} ${isDarkMode ? "bg-white/[0.03]" : "bg-white/70"}`}>
-                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                          <div className="min-w-0">
-                            <h2 className={`text-base font-semibold ${currentTheme.text}`}>No active workflow yet</h2>
-                            <p className={`mt-1 text-sm ${currentTheme.textMuted}`}>
-                              The board is ready. Move work out of Staging to start filling these columns.
-                            </p>
-                          </div>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                onClick={() => setView("staging")}
-                                data-coachmark="board-empty-state-cta"
-                                className={`inline-flex items-center gap-2 self-start rounded-lg bg-gradient-to-r px-4 py-2.5 text-sm font-semibold text-white transition-all hover:scale-[1.02] hover:shadow-lg md:self-auto ${currentTheme.primary}`}
-                              >
-                                Go to Staging
-                                <ArrowRight className="h-4 w-4" />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" sideOffset={8}>
-                              Open staging to prepare work for the board
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
-                      </div>
-                    )}
-
                     <div className="flex-1 min-h-0">
                       <div className="grid h-full min-h-0 grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4" data-coachmark="board-columns-grid">
                       <KanbanColumn boardId={numericBoardId} id="todo" title="To Do" count={workflowColumns.todo.length} softLimit={currentBoard.columnLimits.todo?.softLimit ?? null} hardLimit={currentBoard.columnLimits.todo?.hardLimit ?? null} cards={workflowColumns.todo} onCardDrop={handleCardDrop} onOpen={handleOpenTask} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
@@ -1378,35 +1350,6 @@ export function Board() {
 
               {view === "list" && (
                 <main className={`flex min-h-0 flex-1 flex-col overflow-hidden ${currentTheme.bgSecondary}`}>
-                  {workflowCards.length === 0 && (
-                    <div className="shrink-0 px-8 pt-4 lg:px-10 xl:px-12">
-                      <div className={`${boardWorkspaceWidthClassName} rounded-2xl border px-5 py-4 ${currentTheme.border} ${isDarkMode ? "bg-white/[0.03]" : "bg-white/70"}`}>
-                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                          <div className="min-w-0">
-                            <h2 className={`text-base font-semibold ${currentTheme.text}`}>No active workflow yet</h2>
-                            <p className={`mt-1 text-sm ${currentTheme.textMuted}`}>
-                              List view is ready. Move work out of Staging to populate the table.
-                            </p>
-                          </div>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                onClick={() => setView("staging")}
-                                data-coachmark="list-empty-state-cta"
-                                className={`inline-flex items-center gap-2 self-start rounded-lg bg-gradient-to-r px-4 py-2.5 text-sm font-semibold text-white transition-all hover:scale-[1.02] hover:shadow-lg md:self-auto ${currentTheme.primary}`}
-                              >
-                                Go to Staging
-                                <ArrowRight className="h-4 w-4" />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" sideOffset={8}>
-                              Open staging to prepare work for the board
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                   <div className="min-h-0 flex-1">
                     <ListView
                       mode="active"

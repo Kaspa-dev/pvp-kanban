@@ -12,6 +12,7 @@ interface BoardMemberListItemProps {
   username: string;
   email?: string;
   role?: BoardRole;
+  level?: number | null;
   surfaceClassName: string;
   action?: ReactNode;
   hoverBorderClassName?: string;
@@ -25,6 +26,7 @@ export function BoardMemberListItem({
   username,
   email,
   role,
+  level,
   surfaceClassName,
   action,
   hoverBorderClassName,
@@ -44,6 +46,7 @@ export function BoardMemberListItem({
           username={username}
           fullName={displayName}
           size={40}
+          level={level}
           className="shrink-0"
         />
         <div className="min-w-0">

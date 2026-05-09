@@ -327,6 +327,7 @@ export function TaskAssigneeFilterPopover({
                       username={assignee.username || assignee.displayName}
                       fullName={assignee.displayName}
                       size={34}
+                      level={assignee.currentLevel}
                       className="mt-0.5 shrink-0 shadow-sm"
                       interactive={false}
                       enableBlink={false}

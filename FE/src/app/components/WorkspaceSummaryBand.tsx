@@ -40,7 +40,7 @@ export function WorkspaceSummaryBand({
               <Icon className="h-5 w-5 text-white" />
             </div>
             <div className="min-w-0">
-              <h2 className={`text-xl font-bold ${currentTheme.text}`}>{title}</h2>
+              <h2 className={`font-ui-condensed text-xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>{title}</h2>
               <p className={`mt-1 max-w-2xl text-sm leading-relaxed ${currentTheme.textMuted}`}>
                 {description}
               </p>
@@ -53,10 +53,10 @@ export function WorkspaceSummaryBand({
                 key={stat.label}
                 className={`min-w-[9rem] rounded-2xl border px-4 py-3 ${currentTheme.border} ${isDarkMode ? "bg-black/20" : "bg-white/80"} backdrop-blur-sm`}
               >
-                <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+                <p className={`font-ui-condensed text-[11px] font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
                   {stat.label}
                 </p>
-                <p className={`mt-2 text-2xl font-bold leading-none ${currentTheme.text}`}>{stat.value}</p>
+                <p className={`font-due-date mt-2 text-2xl font-semibold leading-none ${currentTheme.text}`}>{stat.value}</p>
                 {stat.hint && (
                   <p className={`mt-2 text-xs ${currentTheme.textMuted}`}>{stat.hint}</p>
                 )}

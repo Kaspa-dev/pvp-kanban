@@ -192,6 +192,7 @@ export function ListView({
   const isHistoryMode = mode === "history";
   const [pendingRowIds, setPendingRowIds] = useState<number[]>([]);
   const [searchInput, setSearchInput] = useState(filters.searchQuery);
+  const [isSearchDebouncing, setIsSearchDebouncing] = useState(false);
   const [sortState, setSortState] = useState<SortState>({ key: null, direction: null });
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = TASKS_PER_PAGE;
@@ -245,9 +246,11 @@ export function ListView({
   useEffect(() => {
     const normalizedSearch = searchInput.trim();
     if (normalizedSearch === filterSearchQuery) {
+      setIsSearchDebouncing(false);
       return;
     }
 
+    setIsSearchDebouncing(true);
     const timeoutId = window.setTimeout(() => {
       onFiltersChange({
         ...filters,
@@ -259,6 +262,16 @@ export function ListView({
       window.clearTimeout(timeoutId);
     };
   }, [filterSearchQuery, filters, onFiltersChange, searchInput]);
+
+  useEffect(() => {
+    onRefreshingChange?.(isLoading || isSearchDebouncing);
+  }, [isLoading, isSearchDebouncing, onRefreshingChange]);
+
+  useEffect(() => {
+    return () => {
+      onRefreshingChange?.(false);
+    };
+  }, [onRefreshingChange]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -283,8 +296,6 @@ export function ListView({
 
     setIsLoading(true);
     setLoadError("");
-    onRefreshingChange?.(true);
-
     void getBoardTaskPage(boardId, {
       scope: isBacklogMode ? "backlog" : isHistoryMode ? "history" : "active",
       q: filterSearchQuery,
@@ -326,13 +337,11 @@ export function ListView({
         }
 
         setIsLoading(false);
-        onRefreshingChange?.(false);
       });
 
     return () => {
       isActive = false;
       controller.abort();
-      onRefreshingChange?.(false);
     };
   }, [
     boardId,
@@ -341,7 +350,6 @@ export function ListView({
     filterSearchQuery,
     isBacklogMode,
     isHistoryMode,
-    onRefreshingChange,
     pageSize,
     refreshToken,
     selectedLabelKey,
@@ -962,6 +970,7 @@ export function ListView({
                           username={assignee.username || assignee.displayName}
                           fullName={assignee.displayName}
                           size={20}
+                          level={assignee.currentLevel}
                           interactive={false}
                           enableBlink={false}
                           aria-hidden="true"

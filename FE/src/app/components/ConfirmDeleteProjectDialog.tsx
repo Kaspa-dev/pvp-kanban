@@ -45,7 +45,7 @@ export function ConfirmDeleteProjectDialog({
               <AlertTriangle className="w-6 h-6 text-red-500" />
             </div>
             <div className="flex-1">
-              <h2 className={`text-xl font-bold ${currentTheme.text} mb-1`}>
+              <h2 className={`font-ui-condensed text-xl font-semibold tracking-[0.01em] ${currentTheme.text} mb-1`}>
                 Delete Project
               </h2>
               <p className={`text-sm ${currentTheme.textSecondary}`}>

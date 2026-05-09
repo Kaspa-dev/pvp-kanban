@@ -63,7 +63,7 @@ export function HistoryView({
       <div className={`${workspaceWidthClassName} px-8 py-6 lg:px-10 xl:px-12`}>
         <div className="mb-6" data-coachmark="history-header">
           <div className="mb-2 flex items-center gap-2">
-            <h1 className={`text-3xl font-bold ${currentTheme.text}`}>History</h1>
+            <h1 className={`font-ui-condensed text-[2rem] font-semibold tracking-[0.01em] ${currentTheme.text}`}>History</h1>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button type="button" className={helpIconButtonClassName} aria-label="History overview help">
@@ -89,8 +89,8 @@ export function HistoryView({
                     <CheckCircle2 className="w-6 h-6 text-white" strokeWidth={2.5} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-2xl font-bold ${currentTheme.text} leading-none mb-1`}>{completedCards.length}</p>
-                    <p className={`text-xs font-medium ${currentTheme.textMuted} uppercase tracking-wider`}>Total Completed</p>
+                    <p className={`font-due-date text-2xl font-semibold ${currentTheme.text} leading-none mb-1`}>{completedCards.length}</p>
+                    <p className={`font-ui-condensed text-xs font-medium ${currentTheme.textMuted} uppercase tracking-wider`}>Total Completed</p>
                   </div>
                 </div>
               </div>
@@ -109,8 +109,8 @@ export function HistoryView({
                     <TrendingUp className="w-6 h-6 text-white" strokeWidth={2.5} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-2xl font-bold ${currentTheme.text} leading-none mb-1`}>{totalStoryPoints}</p>
-                    <p className={`text-xs font-medium ${currentTheme.textMuted} uppercase tracking-wider`}>Story Points</p>
+                    <p className={`font-due-date text-2xl font-semibold ${currentTheme.text} leading-none mb-1`}>{totalStoryPoints}</p>
+                    <p className={`font-ui-condensed text-xs font-medium ${currentTheme.textMuted} uppercase tracking-wider`}>Story Points</p>
                   </div>
                 </div>
               </div>
@@ -129,8 +129,8 @@ export function HistoryView({
                     <TrendingUp className="w-6 h-6 text-white" strokeWidth={2.5} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-2xl font-bold ${currentTheme.text} leading-none mb-1`}>{totalXP}</p>
-                    <p className={`text-xs font-medium ${currentTheme.textMuted} uppercase tracking-wider`}>Base XP Estimate</p>
+                    <p className={`font-due-date text-2xl font-semibold ${currentTheme.text} leading-none mb-1`}>{totalXP}</p>
+                    <p className={`font-ui-condensed text-xs font-medium ${currentTheme.textMuted} uppercase tracking-wider`}>Base XP Estimate</p>
                   </div>
                 </div>
               </div>
@@ -144,7 +144,7 @@ export function HistoryView({
         {/* Completed Tasks */}
         <div className={`${currentTheme.cardBg} rounded-2xl border-2 ${currentTheme.border} shadow-sm p-6`} data-coachmark="history-list">
           <div className="mb-4 flex items-center gap-2">
-            <h2 className={`text-xl font-bold ${currentTheme.text}`}>Completed Tasks</h2>
+            <h2 className={`font-ui-condensed text-xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>Completed Tasks</h2>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button type="button" className={helpIconButtonClassName} aria-label="Completed tasks help">
@@ -172,6 +172,7 @@ export function HistoryView({
                       username={assigneeCards[0].assignee.username || assigneeCards[0].assignee.name}
                       fullName={assigneeCards[0].assignee.displayName || assigneeCards[0].assignee.name}
                       size={28}
+                      level={assigneeCards[0].assignee.currentLevel}
                       className="shadow-sm"
                       interactive={false}
                       enableBlink={false}

@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme, getThemeColors } from '../contexts/ThemeContext';
 import { BanBanLogo } from '../components/BanBanLogo';
 import { Mail, Lock, User, AtSign, BadgeAlert, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { NAME_MAX_LENGTH, USERNAME_MAX_LENGTH, USERNAME_MIN_LENGTH } from '../utils/auth';
 
 export function Register() {
   const navigate = useNavigate();
@@ -40,18 +41,28 @@ export function Register() {
       confirmPassword?: string;
     } = {};
 
-    if (!username.trim()) {
+    const trimmedUsername = username.trim();
+    const trimmedFirstName = firstName.trim();
+    const trimmedLastName = lastName.trim();
+
+    if (!trimmedUsername) {
       newErrors.username = 'Username is required';
-    } else if (username.trim().length < 3) {
-      newErrors.username = 'Username must be at least 3 characters';
+    } else if (trimmedUsername.length < USERNAME_MIN_LENGTH) {
+      newErrors.username = `Username must be at least ${USERNAME_MIN_LENGTH} characters`;
+    } else if (trimmedUsername.length > USERNAME_MAX_LENGTH) {
+      newErrors.username = `Username can be up to ${USERNAME_MAX_LENGTH} characters`;
     }
 
-    if (!firstName.trim()) {
+    if (!trimmedFirstName) {
       newErrors.firstName = 'First name is required';
+    } else if (trimmedFirstName.length > NAME_MAX_LENGTH) {
+      newErrors.firstName = `First name can be up to ${NAME_MAX_LENGTH} characters`;
     }
 
-    if (!lastName.trim()) {
+    if (!trimmedLastName) {
       newErrors.lastName = 'Last name is required';
+    } else if (trimmedLastName.length > NAME_MAX_LENGTH) {
+      newErrors.lastName = `Last name can be up to ${NAME_MAX_LENGTH} characters`;
     }
 
     if (!email.trim()) {
@@ -136,6 +147,7 @@ export function Register() {
                   id="username"
                   type="text"
                   value={username}
+                  maxLength={USERNAME_MAX_LENGTH}
                   onChange={(e) => setUsername(e.target.value)}
                   className={`w-full pl-11 pr-4 py-3 border-2 ${
                     errors.username ? 'border-red-300' : t.border
@@ -159,6 +171,7 @@ export function Register() {
                     id="firstName"
                     type="text"
                     value={firstName}
+                    maxLength={NAME_MAX_LENGTH}
                     onChange={(e) => setFirstName(e.target.value)}
                     className={`w-full pl-11 pr-4 py-3 border-2 ${
                       errors.firstName ? 'border-red-300' : t.border
@@ -181,6 +194,7 @@ export function Register() {
                     id="lastName"
                     type="text"
                     value={lastName}
+                    maxLength={NAME_MAX_LENGTH}
                     onChange={(e) => setLastName(e.target.value)}
                     className={`w-full pl-11 pr-4 py-3 border-2 ${
                       errors.lastName ? 'border-red-300' : t.border

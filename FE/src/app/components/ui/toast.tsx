@@ -76,7 +76,7 @@ export function Toaster() {
           </div>
 
           <div className="min-w-0 pr-8 pt-0.5">
-            <RadixToast.Title className={cn("font-toast-title text-[13px] font-extrabold tracking-[-0.01em]", currentTheme.text)}>
+            <RadixToast.Title className={cn("font-toast-title text-[13px] font-extrabold tracking-normal", currentTheme.text)}>
               {toast.message}
             </RadixToast.Title>
           </div>

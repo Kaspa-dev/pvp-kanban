@@ -3,6 +3,7 @@ using BE.DTOs;
 using BE.Models;
 using BE.Options;
 using BE.Services;
+using BE.Validation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -182,14 +183,22 @@ public class AuthController(
             return "Email is required.";
         }
 
-        if (string.IsNullOrWhiteSpace(username))
+        string? usernameValidation = UserIdentityValidation.ValidateUsername(username);
+        if (usernameValidation is not null)
         {
-            return "Username is required.";
+            return usernameValidation;
         }
 
-        if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName))
+        string? firstNameValidation = UserIdentityValidation.ValidateFirstName(firstName);
+        if (firstNameValidation is not null)
         {
-            return "First name and last name are required.";
+            return firstNameValidation;
+        }
+
+        string? lastNameValidation = UserIdentityValidation.ValidateLastName(lastName);
+        if (lastNameValidation is not null)
+        {
+            return lastNameValidation;
         }
 
         if (password.Length < 8)

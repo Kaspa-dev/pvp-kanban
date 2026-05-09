@@ -23,8 +23,11 @@ import {
   changeCurrentUserPassword,
   deleteCurrentUserAccount,
   DeleteCurrentUserBlockedResponse,
+  NAME_MAX_LENGTH,
   isApiError,
   updateCurrentUserProfile,
+  USERNAME_MAX_LENGTH,
+  USERNAME_MIN_LENGTH,
 } from "../utils/auth";
 import {
   fetchCurrentUserGamificationSummary,
@@ -259,6 +262,26 @@ export function Profile() {
       return;
     }
 
+    if (trimmedProfile.firstName.length > NAME_MAX_LENGTH) {
+      setProfileError(`First name can be up to ${NAME_MAX_LENGTH} characters.`);
+      return;
+    }
+
+    if (trimmedProfile.lastName.length > NAME_MAX_LENGTH) {
+      setProfileError(`Last name can be up to ${NAME_MAX_LENGTH} characters.`);
+      return;
+    }
+
+    if (trimmedProfile.username.length < USERNAME_MIN_LENGTH) {
+      setProfileError(`Username must be at least ${USERNAME_MIN_LENGTH} characters.`);
+      return;
+    }
+
+    if (trimmedProfile.username.length > USERNAME_MAX_LENGTH) {
+      setProfileError(`Username can be up to ${USERNAME_MAX_LENGTH} characters.`);
+      return;
+    }
+
     setIsSavingProfile(true);
 
     try {
@@ -370,10 +393,10 @@ export function Profile() {
                   Premium account hub
                 </span>
                 <div>
-                  <p className={`text-sm font-semibold uppercase tracking-[0.22em] ${currentTheme.textMuted}`}>
+                  <p className={`font-ui-condensed text-sm font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
                     Account Center
                   </p>
-                  <h1 className={`mt-3 text-4xl font-semibold tracking-tight ${currentTheme.text}`}>{profileDisplayName || user.displayName}</h1>
+                  <h1 className={`font-ui-condensed mt-3 text-4xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>{profileDisplayName || user.displayName}</h1>
                   <p className={`mt-2 text-sm ${currentTheme.textSecondary}`}>
                     @{profileForm.username} | {profileForm.email}
                   </p>
@@ -383,17 +406,17 @@ export function Profile() {
                 </p>
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div className={`rounded-[1.5rem] border p-4 ${currentTheme.border} ${currentTheme.bgSecondary}`}>
-                    <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Identity</p>
+                    <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Identity</p>
                     <p className={`mt-3 text-sm font-medium ${currentTheme.text}`}>Visible everywhere</p>
                     <p className={`mt-1 text-sm leading-6 ${currentTheme.textSecondary}`}>Boards, mentions, and shared spaces refresh from this profile instantly.</p>
                   </div>
                   <div className={`rounded-[1.5rem] border p-4 ${currentTheme.border} ${currentTheme.bgSecondary}`}>
-                    <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Experience</p>
-                    <p className={`mt-3 text-sm font-medium ${currentTheme.text}`}>{gamificationSummary.tasksCompleted} tasks closed</p>
+                    <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Experience</p>
+                    <p className={`mt-3 text-sm font-medium ${currentTheme.text}`}><span className="font-due-date">{gamificationSummary.tasksCompleted}</span> tasks closed</p>
                     <p className={`mt-1 text-sm leading-6 ${currentTheme.textSecondary}`}>Your progress stays close while you manage the rest of your account.</p>
                   </div>
                   <div className={`rounded-[1.5rem] border p-4 ${currentTheme.border} ${currentTheme.bgSecondary}`}>
-                    <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Security</p>
+                    <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Security</p>
                     <p className={`mt-3 text-sm font-medium ${currentTheme.text}`}>One trusted place</p>
                     <p className={`mt-1 text-sm leading-6 ${currentTheme.textSecondary}`}>Password changes and deletion controls stay separate and clearly explained.</p>
                   </div>
@@ -406,7 +429,7 @@ export function Profile() {
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Award className={`h-5 w-5 ${currentTheme.primaryText}`} />
-                  <span className={`text-lg font-semibold ${currentTheme.text}`}>Level {userLevel}</span>
+                  <span className={`font-ui-condensed text-lg font-semibold tracking-[0.01em] ${currentTheme.text}`}>Level <span className="font-due-date">{userLevel}</span></span>
                 </div>
                 <span className={`rounded-full px-3 py-1 text-xs font-semibold ${currentTheme.primaryBg} ${currentTheme.primaryText}`}>
                   {rankTitle}
@@ -415,13 +438,13 @@ export function Profile() {
 
               <div className={`mb-3 flex items-center gap-2 ${currentTheme.textSecondary}`}>
                 <Zap className="h-4 w-4" />
-                <span className="text-sm font-medium">{gamificationSummary.lifetimeXp} XP earned</span>
+                <span className="text-sm font-medium"><span className="font-due-date">{gamificationSummary.lifetimeXp}</span> XP earned</span>
                 {isLoadingProgress && <span className={`text-xs ${currentTheme.textMuted}`}>Refreshing...</span>}
               </div>
 
               <div className="mb-2 flex items-center justify-between text-xs">
-                <span className={currentTheme.textSecondary}>Progress to Level {userLevel + 1}</span>
-                <span className={`font-semibold ${currentTheme.text}`}>{progressPercent}%</span>
+                <span className={currentTheme.textSecondary}>Progress to Level <span className="font-due-date">{userLevel + 1}</span></span>
+                <span className={`font-due-date font-semibold ${currentTheme.text}`}>{progressPercent}%</span>
               </div>
 
               <div className={`h-2.5 w-full overflow-hidden rounded-full ${currentTheme.isDark ? "bg-gray-700/80" : "bg-slate-200"}`}>
@@ -432,26 +455,26 @@ export function Profile() {
               </div>
 
               <div className={`mt-2 flex items-center justify-between text-xs ${currentTheme.textMuted}`}>
-                <span>{xpInLevel} / {xpNeeded} XP</span>
-                <span>{xpRemaining} to go</span>
+                <span><span className="font-due-date">{xpInLevel}</span> / <span className="font-due-date">{xpNeeded}</span> XP</span>
+                <span><span className="font-due-date">{xpRemaining}</span> to go</span>
               </div>
 
               <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
                 <div className={`rounded-[1.25rem] border p-3 ${currentTheme.border} ${currentTheme.bg}`}>
                   <p className={`text-xs font-medium ${currentTheme.textMuted}`}>Tasks</p>
-                  <p className={`mt-1 text-xl font-semibold ${currentTheme.text}`}>{gamificationSummary.tasksCompleted}</p>
+                  <p className={`font-due-date mt-1 text-xl font-semibold ${currentTheme.text}`}>{gamificationSummary.tasksCompleted}</p>
                 </div>
                 <div className={`rounded-[1.25rem] border p-3 ${currentTheme.border} ${currentTheme.bg}`}>
                   <p className={`text-xs font-medium ${currentTheme.textMuted}`}>Lifetime XP</p>
-                  <p className={`mt-1 text-xl font-semibold ${currentTheme.text}`}>{gamificationSummary.lifetimeXp}</p>
+                  <p className={`font-due-date mt-1 text-xl font-semibold ${currentTheme.text}`}>{gamificationSummary.lifetimeXp}</p>
                 </div>
                 <div className={`rounded-[1.25rem] border p-3 ${currentTheme.border} ${currentTheme.bg}`}>
                   <p className={`text-xs font-medium ${currentTheme.textMuted}`}>This Week</p>
-                  <p className={`mt-1 text-xl font-semibold ${currentTheme.text}`}>{gamificationSummary.weeklyXp}</p>
+                  <p className={`font-due-date mt-1 text-xl font-semibold ${currentTheme.text}`}>{gamificationSummary.weeklyXp}</p>
                 </div>
                 <div className={`rounded-[1.25rem] border p-3 ${currentTheme.border} ${currentTheme.bg}`}>
                   <p className={`text-xs font-medium ${currentTheme.textMuted}`}>This Month</p>
-                  <p className={`mt-1 text-xl font-semibold ${currentTheme.text}`}>{gamificationSummary.monthlyXp}</p>
+                  <p className={`font-due-date mt-1 text-xl font-semibold ${currentTheme.text}`}>{gamificationSummary.monthlyXp}</p>
                 </div>
               </div>
             </div>
@@ -462,8 +485,8 @@ export function Profile() {
           <section className={sectionShellClassName}>
             <div className="mb-6 flex items-center justify-between gap-4">
               <div>
-                <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${currentTheme.textMuted}`}>Public identity</p>
-                <h2 className={`mt-3 text-3xl font-semibold tracking-tight ${currentTheme.text}`}>Profile Details</h2>
+                <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Public identity</p>
+                <h2 className={`font-ui-condensed mt-3 text-3xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>Profile Details</h2>
                 <p className={`mt-2 text-sm leading-6 ${currentTheme.textMuted}`}>
                   Update the information teammates see across boards and activity.
                 </p>
@@ -482,6 +505,7 @@ export function Profile() {
                     <input
                       type="text"
                       value={profileForm.firstName}
+                      maxLength={NAME_MAX_LENGTH}
                       onChange={(event) => setProfileForm((current) => ({ ...current, firstName: event.target.value }))}
                       className={iconInputClassName}
                       placeholder="Enter your first name"
@@ -496,6 +520,7 @@ export function Profile() {
                     <input
                       type="text"
                       value={profileForm.lastName}
+                      maxLength={NAME_MAX_LENGTH}
                       onChange={(event) => setProfileForm((current) => ({ ...current, lastName: event.target.value }))}
                       className={iconInputClassName}
                       placeholder="Enter your last name"
@@ -512,13 +537,14 @@ export function Profile() {
                     <input
                       type="text"
                       value={profileForm.username}
+                      maxLength={USERNAME_MAX_LENGTH}
                       onChange={(event) => setProfileForm((current) => ({ ...current, username: event.target.value }))}
                       className={iconInputClassName}
                       placeholder="Choose a username"
                     />
                   </div>
                   <p className={`mt-2 text-xs ${currentTheme.textMuted}`}>
-                    This is how teammates can search for and mention you.
+                    This is how teammates can search for and mention you. Use {USERNAME_MIN_LENGTH}-{USERNAME_MAX_LENGTH} characters.
                   </p>
                 </label>
 
@@ -578,8 +604,8 @@ export function Profile() {
 
             <section className={sectionShellClassName}>
               <div className="mb-6">
-                <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${currentTheme.textMuted}`}>Workspace comfort</p>
-                <h2 className={`mt-3 text-3xl font-semibold tracking-tight ${currentTheme.text}`}>Preferences</h2>
+                <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Workspace comfort</p>
+                <h2 className={`font-ui-condensed mt-3 text-3xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>Preferences</h2>
                 <p className={`mt-2 text-sm leading-6 ${currentTheme.textMuted}`}>
                   Tailor your workspace visuals and assistance settings.
                 </p>
@@ -601,8 +627,8 @@ export function Profile() {
                 <KeyRound className="h-5 w-5" />
               </div>
               <div>
-                <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${currentTheme.textMuted}`}>Access protection</p>
-                <h2 className={`mt-3 text-3xl font-semibold tracking-tight ${currentTheme.text}`}>Security</h2>
+                <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Access protection</p>
+                <h2 className={`font-ui-condensed mt-3 text-3xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>Security</h2>
                 <p className={`mt-2 text-sm leading-6 ${currentTheme.textMuted}`}>
                   Change your password with your current credentials.
                 </p>
@@ -675,8 +701,8 @@ export function Profile() {
                 <Trash2 className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-red-700">Destructive action</p>
-                <h2 className="mt-3 text-3xl font-semibold tracking-tight text-red-950">Danger Zone</h2>
+                <p className="font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] text-red-700">Destructive action</p>
+                <h2 className="font-ui-condensed mt-3 text-3xl font-semibold tracking-[0.01em] text-red-950">Danger Zone</h2>
                 <p className="mt-2 text-sm leading-6 text-red-800">
                   Permanently remove your account when it is safe to do so. This action cannot be undone.
                 </p>
@@ -710,9 +736,9 @@ export function Profile() {
                     <div>
                       <p className="font-semibold">{deleteBlocked.message}</p>
                       <ul className="mt-2 list-disc space-y-1 pl-5">
-                        <li>Owned boards: {deleteBlocked.ownedBoardsCount}</li>
-                        <li>Owned teams: {deleteBlocked.ownedTeamsCount}</li>
-                        <li>Reported tasks: {deleteBlocked.reportedTasksCount}</li>
+                        <li>Owned boards: <span className="font-due-date">{deleteBlocked.ownedBoardsCount}</span></li>
+                        <li>Owned teams: <span className="font-due-date">{deleteBlocked.ownedTeamsCount}</span></li>
+                        <li>Reported tasks: <span className="font-due-date">{deleteBlocked.reportedTasksCount}</span></li>
                       </ul>
                     </div>
                   </div>

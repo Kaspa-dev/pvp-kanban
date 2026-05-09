@@ -56,7 +56,7 @@ export function ManageLabelsModal({
   );
   const addLabelButtonClassName = `group/add-label relative inline-flex items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r px-4 py-2.5 font-bold text-white shadow-lg transition-[transform,box-shadow] duration-200 hover:scale-[1.02] hover:shadow-2xl active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 disabled:hover:shadow-lg ${currentTheme.focus} ${currentTheme.primary}`;
   const labelPreviewChipClassName = "h-6 max-w-[11rem] rounded-md px-2 text-xs font-medium leading-none";
-  const sectionTitleClassName = `text-lg font-semibold ${currentTheme.text}`;
+  const sectionTitleClassName = `font-ui-condensed text-lg font-semibold tracking-[0.01em] ${currentTheme.text}`;
   const sectionDescriptionClassName = `text-sm ${currentTheme.textMuted}`;
   const subtleUtilityButtonClassName = `w-auto gap-1.5 px-2.5 text-xs font-semibold shadow-none border-transparent bg-transparent ${currentTheme.textSecondary}`;
   const sectionDividerClassName = isDarkMode
@@ -532,7 +532,7 @@ export function ManageLabelsModal({
           <div className="flex flex-wrap items-center justify-between gap-3 pt-4">
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex flex-wrap items-center gap-2">
-                <div className="font-status-condensed flex flex-wrap items-center gap-4 text-[0.9rem] font-bold uppercase tracking-[0.08em] leading-none">
+                <div className="font-system-signal flex flex-wrap items-center gap-4 text-[0.9rem] font-bold uppercase tracking-[0.08em] leading-none">
                   <span className={modifiedStatClassName}>M {modifiedCount}</span>
                   <span className={addedStatClassName}>A {addedCount}</span>
                   <span className={deletedStatClassName}>D {deletedCount}</span>
@@ -778,7 +778,7 @@ export function ManageLabelsModal({
                           <p className={`text-xs ${displayRowError ? "text-red-500" : currentTheme.textMuted}`}>
                             {displayRowError || "Use letters, numbers, spaces, and hyphens. Names must stay unique across the full draft list."}
                           </p>
-                          <span className={`text-xs ${currentTheme.textMuted}`}>
+                          <span className={`font-due-date text-xs ${currentTheme.textMuted}`}>
                             {trimmedNameLength}/{MAX_LABEL_NAME_LENGTH}
                           </span>
                         </div>

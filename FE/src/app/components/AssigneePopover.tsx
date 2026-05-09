@@ -282,6 +282,7 @@ export function AssigneePopover({
                       username={resolvedCurrentAssignee.username || resolvedCurrentAssignee.name}
                       fullName={resolvedCurrentAssignee.displayName || resolvedCurrentAssignee.name}
                       size={32}
+                      level={resolvedCurrentAssignee.currentLevel}
                       className="pointer-events-none shadow-sm"
                       interactive={false}
                       enableBlink={false}
@@ -418,6 +419,7 @@ export function AssigneePopover({
                           username={assignee.username || assignee.displayName}
                           fullName={assignee.displayName}
                           size={36}
+                          level={assignee.currentLevel}
                           className="mt-0.5 shrink-0 shadow-sm"
                           interactive={false}
                           enableBlink={false}

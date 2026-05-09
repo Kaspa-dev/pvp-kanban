@@ -21,7 +21,7 @@ export function ForgotPassword() {
           <div className={`w-16 h-16 bg-gradient-to-r ${t.primary} rounded-full flex items-center justify-center mx-auto mb-6`}>
             <ShieldAlert className="w-8 h-8 text-white" />
           </div>
-          <h2 className={`text-2xl font-bold ${t.text} mb-4 text-center`}>Not available yet</h2>
+          <h2 className={`font-ui-condensed text-2xl font-semibold tracking-[0.01em] ${t.text} mb-4 text-center`}>Not available yet</h2>
           <p className={`${t.textSecondary} text-sm mb-3 text-center`}>
             Password reset is outside this authentication phase, so this flow is intentionally disabled for now.
           </p>

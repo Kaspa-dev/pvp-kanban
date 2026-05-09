@@ -13,7 +13,9 @@ public class GamificationService(
     AppDbContext context,
     IUserMilestoneService userMilestoneService) : IGamificationService
 {
-    private static readonly int[] LevelThresholds =
+    private const int MaxLevel = 150;
+
+    private static readonly int[] InitialLevelThresholds =
     [
         0,
         20,
@@ -32,23 +34,23 @@ public class GamificationService(
         5740,
     ];
 
-    private static readonly string[] LevelNames =
+    private static readonly string[] LevelBandNames =
     [
-        "Beginner",
-        "Trainee",
-        "Contributor",
-        "Organizer",
-        "Flow Runner",
-        "Task Slayer",
-        "Flow Master",
-        "Board Wizard",
-        "Agile Champion",
-        "Jira Master",
-        "Kanban Legend",
-        "Productivity Guru",
-        "Velocity King",
-        "Epic Closer",
-        "Kanban Champion",
+        "Slate",
+        "Ember",
+        "Cinder",
+        "Amber",
+        "Lime",
+        "Jade",
+        "Tide",
+        "Sky",
+        "Azure",
+        "Indigo",
+        "Violet",
+        "Orchid",
+        "Fuchsia",
+        "Rose",
+        "Solar",
     ];
 
     private static readonly string[] CompletionEventTypes =
@@ -118,6 +120,39 @@ public class GamificationService(
             Level = summary.CurrentLevel,
             TasksCompleted = summary.TasksCompleted,
         };
+    }
+
+    public async Task<Dictionary<int, int>> GetUserLevelsAsync(
+        IEnumerable<int> userIds,
+        CancellationToken cancellationToken)
+    {
+        List<int> distinctUserIds = userIds
+            .Where(userId => userId > 0)
+            .Distinct()
+            .ToList();
+
+        if (distinctUserIds.Count == 0)
+        {
+            return new Dictionary<int, int>();
+        }
+
+        var userXpTotals = await _context.XpEvents
+            .Where(xpEvent => distinctUserIds.Contains(xpEvent.UserId))
+            .GroupBy(xpEvent => xpEvent.UserId)
+            .Select(group => new
+            {
+                UserId = group.Key,
+                LifetimeXp = group.Sum(xpEvent => xpEvent.XpAmount),
+            })
+            .ToListAsync(cancellationToken);
+
+        Dictionary<int, int> levels = distinctUserIds.ToDictionary(userId => userId, _ => 1);
+        foreach (var userXp in userXpTotals)
+        {
+            levels[userXp.UserId] = GetProgressMetrics(userXp.LifetimeXp).Level;
+        }
+
+        return levels;
     }
 
     public async Task ApplyTaskTransitionXpAsync(
@@ -372,32 +407,75 @@ public class GamificationService(
 
     private static ProgressMetrics GetProgressMetrics(int lifetimeXp)
     {
+        int normalizedLifetimeXp = Math.Max(lifetimeXp, 0);
         int level = 1;
-        for (int index = LevelThresholds.Length - 1; index >= 0; index -= 1)
+        for (int candidateLevel = MaxLevel; candidateLevel >= 1; candidateLevel -= 1)
         {
-            if (lifetimeXp >= LevelThresholds[index])
+            if (normalizedLifetimeXp >= GetLevelThreshold(candidateLevel))
             {
-                level = index + 1;
+                level = candidateLevel;
                 break;
             }
         }
 
-        int currentThreshold = LevelThresholds[level - 1];
-        int nextThreshold = level < LevelThresholds.Length
-            ? LevelThresholds[level]
-            : currentThreshold + 1000;
+        int currentThreshold = GetLevelThreshold(level);
+        int nextThreshold = level < MaxLevel
+            ? GetLevelThreshold(level + 1)
+            : currentThreshold + GetXpRequiredForLevel(level);
         int xpForNextLevel = Math.Max(nextThreshold - currentThreshold, 1);
-        int currentLevelXp = Math.Clamp(lifetimeXp - currentThreshold, 0, xpForNextLevel);
+        int currentLevelXp = Math.Clamp(normalizedLifetimeXp - currentThreshold, 0, xpForNextLevel);
         int xpRemainingForNextLevel = Math.Max(xpForNextLevel - currentLevelXp, 0);
         int progressPercent = Math.Clamp((int)Math.Round((double)currentLevelXp / xpForNextLevel * 100), 0, 100);
 
         return new ProgressMetrics(
             Level: level,
-            LevelName: LevelNames[level - 1],
+            LevelName: GetLevelName(level),
             CurrentLevelXp: currentLevelXp,
             XpForNextLevel: xpForNextLevel,
             XpRemainingForNextLevel: xpRemainingForNextLevel,
             ProgressPercent: progressPercent);
+    }
+
+    private static int GetLevelThreshold(int level)
+    {
+        if (level <= 1)
+        {
+            return 0;
+        }
+
+        if (level <= InitialLevelThresholds.Length)
+        {
+            return InitialLevelThresholds[level - 1];
+        }
+
+        int threshold = InitialLevelThresholds[^1];
+        for (int previousLevel = InitialLevelThresholds.Length; previousLevel < level; previousLevel += 1)
+        {
+            threshold += GetXpRequiredForLevel(previousLevel);
+        }
+
+        return threshold;
+    }
+
+    private static int GetXpRequiredForLevel(int level)
+    {
+        int normalizedLevel = Math.Clamp(level, 1, MaxLevel);
+        if (normalizedLevel < InitialLevelThresholds.Length)
+        {
+            return InitialLevelThresholds[normalizedLevel] - InitialLevelThresholds[normalizedLevel - 1];
+        }
+
+        int bandIndex = (normalizedLevel - 1) / 10;
+        int levelsBeyondInitialScale = normalizedLevel - InitialLevelThresholds.Length;
+        return 1180 + (levelsBeyondInitialScale * 85) + (bandIndex * 120);
+    }
+
+    private static string GetLevelName(int level)
+    {
+        int normalizedLevel = Math.Clamp(level, 1, MaxLevel);
+        int bandIndex = Math.Clamp((normalizedLevel - 1) / 10, 0, LevelBandNames.Length - 1);
+        int bandLevel = ((normalizedLevel - 1) % 10) + 1;
+        return $"{LevelBandNames[bandIndex]} {bandLevel}";
     }
 
     private sealed record ProgressMetrics(

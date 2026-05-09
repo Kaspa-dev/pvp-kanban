@@ -217,10 +217,10 @@ export function MyTasks() {
                     <ClipboardList className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+                    <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
                       Personal workspace
                     </p>
-                    <h1 className={`text-3xl font-semibold tracking-tight ${currentTheme.text}`}>My Tasks</h1>
+                    <h1 className={`font-ui-condensed text-3xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>My Tasks</h1>
                   </div>
                 </div>
                 <p className={`mt-4 max-w-3xl text-sm leading-6 ${currentTheme.textMuted}`}>
@@ -243,15 +243,15 @@ export function MyTasks() {
             <div className={`mt-5 flex flex-wrap items-center gap-3 border-t pt-5 ${currentTheme.border}`}>
               <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${currentTheme.border} ${currentTheme.bgSecondary} ${currentTheme.textSecondary}`}>
                 <ClipboardList className="h-3.5 w-3.5" />
-                {summary.total} {summary.total === 1 ? "task" : "tasks"} in view
+                <span><span className="font-due-date">{summary.total}</span> {summary.total === 1 ? "task" : "tasks"} in view</span>
               </span>
               <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${currentTheme.border} ${currentTheme.bgSecondary} ${currentTheme.textSecondary}`}>
                 <Clock3 className="h-3.5 w-3.5" />
-                {summary.dueSoon} due within 7 days
+                <span><span className="font-due-date">{summary.dueSoon}</span> due within <span className="font-due-date">7</span> days</span>
               </span>
               <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${currentTheme.border} ${currentTheme.bgSecondary} ${currentTheme.textSecondary}`}>
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                {summary.completed} completed
+                <span><span className="font-due-date">{summary.completed}</span> completed</span>
               </span>
             </div>
           </section>
@@ -275,7 +275,7 @@ export function MyTasks() {
                       aria-selected={isActiveTab}
                       onClick={() => setScope(option.value)}
                       title={option.tooltip}
-                      className={`inline-flex items-center justify-center border-b-2 px-1 py-3 text-sm font-semibold transition-colors ${
+                      className={`font-ui-condensed inline-flex items-center justify-center border-b-2 px-1 py-3 text-sm font-semibold tracking-[0.01em] transition-colors ${
                         isActiveTab
                           ? `${currentTheme.primaryText} ${currentTheme.primaryBorder}`
                           : `border-transparent ${currentTheme.textMuted} hover:${currentTheme.textSecondary}`
@@ -311,12 +311,12 @@ export function MyTasks() {
                 <Table aria-label="Loading your assigned tasks">
                   <TableHeader>
                     <TableRow className={`hover:bg-transparent ${tableDividerClassName}`}>
-                      <TableHead className={`px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Task</TableHead>
-                      <TableHead className={`px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Board</TableHead>
-                      <TableHead className={`px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Status</TableHead>
-                      <TableHead className={`px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Priority</TableHead>
-                      <TableHead className={`px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Due date</TableHead>
-                      <TableHead className={`px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Points</TableHead>
+                      <TableHead className={`font-ui-condensed px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Task</TableHead>
+                      <TableHead className={`font-ui-condensed px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Board</TableHead>
+                      <TableHead className={`font-ui-condensed px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Status</TableHead>
+                      <TableHead className={`font-ui-condensed px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Priority</TableHead>
+                      <TableHead className={`font-ui-condensed px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Due date</TableHead>
+                      <TableHead className={`font-ui-condensed px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Points</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -327,7 +327,7 @@ export function MyTasks() {
             ) : tasks.length === 0 ? (
               <div className="px-6 py-16 text-center">
                 <ClipboardList className={`mx-auto h-12 w-12 ${currentTheme.textMuted}`} />
-                <h2 className={`mt-4 text-xl font-semibold ${currentTheme.text}`}>{emptyStateTitle}</h2>
+                <h2 className={`font-ui-condensed mt-4 text-xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>{emptyStateTitle}</h2>
                 <p className={`mx-auto mt-2 max-w-2xl text-sm leading-6 ${currentTheme.textMuted}`}>
                   {emptyStateDescription}
                 </p>
@@ -337,12 +337,12 @@ export function MyTasks() {
                 <Table aria-label="Tasks assigned to you">
                   <TableHeader>
                     <TableRow className={`hover:bg-transparent ${tableDividerClassName}`}>
-                      <TableHead className={`px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Task</TableHead>
-                      <TableHead className={`px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Board</TableHead>
-                      <TableHead className={`px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Status</TableHead>
-                      <TableHead className={`px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Priority</TableHead>
-                      <TableHead className={`px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Due date</TableHead>
-                      <TableHead className={`px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Points</TableHead>
+                      <TableHead className={`font-ui-condensed px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Task</TableHead>
+                      <TableHead className={`font-ui-condensed px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Board</TableHead>
+                      <TableHead className={`font-ui-condensed px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Status</TableHead>
+                      <TableHead className={`font-ui-condensed px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Priority</TableHead>
+                      <TableHead className={`font-ui-condensed px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Due date</TableHead>
+                      <TableHead className={`font-ui-condensed px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Points</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -388,10 +388,10 @@ export function MyTasks() {
                             <span className={`text-sm ${currentTheme.textMuted}`}>None</span>
                           )}
                         </TableCell>
-                        <TableCell className={`px-4 py-4 align-top text-sm ${currentTheme.textSecondary}`}>
+                        <TableCell className={`font-due-date px-4 py-4 align-top text-sm ${currentTheme.textSecondary}`}>
                           {formatDueDate(task.dueDate)}
                         </TableCell>
-                        <TableCell className={`px-4 py-4 align-top text-sm ${currentTheme.textSecondary}`}>
+                        <TableCell className={`font-due-date px-4 py-4 align-top text-sm ${currentTheme.textSecondary}`}>
                           {task.storyPoints ?? "Not set"}
                         </TableCell>
                       </TableRow>

@@ -57,6 +57,11 @@ import { WorkspacePaginationFooter } from "../components/WorkspacePaginationFoot
 import { UtilityIconButton } from "../components/UtilityIconButton";
 import { getNativeInputFieldClassName } from "../components/inputLikeControlStyles";
 import { showErrorToast, showSuccessToast } from "../utils/toast";
+import {
+  fetchCurrentUserGamificationSummary,
+  GamificationSummary,
+  getDefaultGamificationSummary,
+} from "../utils/gamification";
 
 function isEditableKeyboardTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
@@ -261,6 +266,7 @@ export function Projects() {
   const [isBoardInfoModalOpen, setIsBoardInfoModalOpen] = useState(false);
   const [boardForInfo, setBoardForInfo] = useState<Board | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [gamificationSummary, setGamificationSummary] = useState<GamificationSummary>(() => getDefaultGamificationSummary());
 
   useEffect(() => {
     setSearchInput(queryState.q);
@@ -291,7 +297,7 @@ export function Projects() {
   useEffect(() => {
     let isActive = true;
 
-    const loadBoards = async () => {
+    const loadProjectsPageData = async () => {
       if (!user) {
         return;
       }
@@ -300,19 +306,23 @@ export function Projects() {
         setIsLoadingBoards(true);
         setLoadError("");
 
-        const response = await getUserBoardsPage({
-          q: queryState.q,
-          membership: queryState.membership,
-          sort: queryState.sort,
-          pageSize: queryState.pageSize,
-          page: queryState.page,
-        });
+        const [response, summary] = await Promise.all([
+          getUserBoardsPage({
+            q: queryState.q,
+            membership: queryState.membership,
+            sort: queryState.sort,
+            pageSize: queryState.pageSize,
+            page: queryState.page,
+          }),
+          fetchCurrentUserGamificationSummary(),
+        ]);
 
         if (!isActive) {
           return;
         }
 
         setBoardList(response);
+        setGamificationSummary(summary);
         setHasLoadedBoardsOnce(true);
 
         if (response.page !== queryState.page) {
@@ -339,7 +349,7 @@ export function Projects() {
       }
     };
 
-    void loadBoards();
+    void loadProjectsPageData();
 
     return () => {
       isActive = false;
@@ -633,7 +643,9 @@ export function Projects() {
         userProfile={{
           username: user.username,
           fullName: `${user.firstName} ${user.lastName}`.trim(),
-          subtitle: user.email,
+          subtitle: `${user.firstName} ${user.lastName}`.trim(),
+          level: gamificationSummary.currentLevel,
+          gamificationSummary,
         }}
       />
 
@@ -654,7 +666,7 @@ export function Projects() {
           <div className="relative z-10 flex items-center justify-between flex-wrap gap-6">
             <div className="flex-1 min-w-[280px]">
               <div className="mb-3">
-                <h2 className={`text-4xl font-bold ${currentTheme.text}`}>Welcome back, {user.firstName}!</h2>
+                <h2 className={`font-display-accent text-4xl font-bold ${currentTheme.text}`}>Welcome back, {user.firstName}!</h2>
               </div>
               <p className={`text-lg ${currentTheme.textSecondary}`}>
                 Manage your boards and bring your projects to life
@@ -702,7 +714,7 @@ export function Projects() {
                       {renderInitialBoardsLoad ? (
                         <Skeleton className="mb-1 h-7 w-14 rounded-md" />
                       ) : (
-                        <p className={`text-2xl font-bold ${currentTheme.text}`}>{indicator.value}</p>
+                        <p className={`font-due-date text-2xl font-semibold ${currentTheme.text}`}>{indicator.value}</p>
                       )}
                       <p className={`text-xs ${currentTheme.textMuted}`}>{indicator.label}</p>
                     </div>
@@ -774,7 +786,7 @@ export function Projects() {
                 />
 
                 <div className="flex min-w-0 flex-col gap-2 xl:flex-1">
-                  <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+                  <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
                     Quick filters
                   </p>
                   <div className="flex flex-wrap items-center gap-2 xl:min-h-11">
@@ -976,7 +988,7 @@ export function Projects() {
                             <OverflowTooltip
                               as="h3"
                               text={board.name}
-                              className={`mb-2 text-xl font-bold ${currentTheme.text} truncate`}
+                              className={`font-ui-condensed mb-2 text-xl font-semibold tracking-[0.01em] ${currentTheme.text} truncate`}
                               align="start"
                               delayDuration={PROJECTS_TOOLTIP_DELAY}
                             />

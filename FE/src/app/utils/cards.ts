@@ -117,6 +117,7 @@ interface ApiAssignee {
   email: string;
   color: string;
   role: BoardRole;
+  currentLevel?: number | null;
 }
 
 interface ApiAssigneeSearchResult {
@@ -126,6 +127,7 @@ interface ApiAssigneeSearchResult {
   email: string;
   color: string;
   role: BoardRole;
+  currentLevel?: number | null;
 }
 
 export type TaskAssignee = BoardMember;
@@ -271,6 +273,7 @@ function normalizeAssignee(assignee: ApiAssignee | null): TaskAssignee {
     color: assignee.color,
     role: assignee.role,
     name: assignee.displayName,
+    currentLevel: assignee.currentLevel ?? null,
   };
 }
 
@@ -283,6 +286,7 @@ function normalizeAssigneeSearchResult(assignee: ApiAssigneeSearchResult): TaskA
     color: assignee.color,
     role: assignee.role,
     name: assignee.displayName,
+    currentLevel: assignee.currentLevel ?? null,
   };
 }
 

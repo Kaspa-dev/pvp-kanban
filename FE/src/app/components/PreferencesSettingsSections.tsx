@@ -35,7 +35,7 @@ export function PreferencesSettingsSections({
       <div>
         <div className="mb-3 flex items-center gap-2">
           <Palette className={`h-5 w-5 ${currentTheme.primaryText}`} />
-          <h3 className={`text-lg font-bold ${currentTheme.text}`}>Appearance</h3>
+          <h3 className={`font-ui-condensed text-lg font-semibold tracking-[0.01em] ${currentTheme.text}`}>Appearance</h3>
         </div>
 
         <div className="mb-4">
@@ -118,7 +118,7 @@ export function PreferencesSettingsSections({
       <div>
         <div className="mb-3 flex items-center gap-2">
           <Zap className={`h-5 w-5 ${currentTheme.primaryText}`} />
-          <h3 className={`text-lg font-bold ${currentTheme.text}`}>Gamification</h3>
+          <h3 className={`font-ui-condensed text-lg font-semibold tracking-[0.01em] ${currentTheme.text}`}>Gamification</h3>
         </div>
         <button
           onClick={() => onGamificationChange(!gamificationEnabled)}
@@ -150,7 +150,7 @@ export function PreferencesSettingsSections({
       <div>
         <div className="mb-3 flex items-center gap-2">
           <Bell className={`h-5 w-5 ${currentTheme.primaryText}`} />
-          <h3 className={`text-lg font-bold ${currentTheme.text}`}>Notifications</h3>
+          <h3 className={`font-ui-condensed text-lg font-semibold tracking-[0.01em] ${currentTheme.text}`}>Notifications</h3>
         </div>
         <button
           onClick={() => onNotificationsChange(!notificationsEnabled)}
@@ -182,7 +182,7 @@ export function PreferencesSettingsSections({
       <div>
         <div className="mb-3 flex items-center gap-2">
           <Sparkles className={`h-5 w-5 ${currentTheme.primaryText}`} />
-          <h3 className={`text-lg font-bold ${currentTheme.text}`}>Coachmarks</h3>
+          <h3 className={`font-ui-condensed text-lg font-semibold tracking-[0.01em] ${currentTheme.text}`}>Coachmarks</h3>
         </div>
         <button
           onClick={() => handleCoachmarkToggle(!preferences.coachmarksEnabled)}

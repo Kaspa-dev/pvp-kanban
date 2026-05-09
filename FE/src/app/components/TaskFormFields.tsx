@@ -309,7 +309,7 @@ export function TaskFormFields({
                   <button
                     type="button"
                     onClick={() => onStoryPointsPresetClick(points)}
-                    className={`rounded-xl px-3.5 py-2 text-sm font-medium ${
+                    className={`font-due-date rounded-xl px-3.5 py-2 text-sm font-medium ${
                       isSelected
                         ? `border border-transparent bg-gradient-to-r ${currentTheme.primary} ${selectedChipTextClassName} shadow-md ${chipTransitionClassName}`
                         : neutralChipClassName

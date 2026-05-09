@@ -410,7 +410,7 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
                     <div className="min-w-0 space-y-1">
                       <div className="flex items-center gap-2">
                         <Fingerprint className={`h-4 w-4 ${currentTheme.primaryText}`} />
-                        <h2 className={`text-lg font-semibold ${currentTheme.text}`}>Board Identity</h2>
+                        <h2 className={`font-ui-condensed text-lg font-semibold tracking-[0.01em] ${currentTheme.text}`}>Board Identity</h2>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className={helpIconButtonClassName} aria-label="General settings help">
@@ -469,7 +469,7 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
                           ) : (
                             <div />
                           )}
-                          <span className={`text-xs ${currentTheme.textMuted}`}>
+                          <span className={`font-due-date text-xs ${currentTheme.textMuted}`}>
                             {name.trim().length}/{MAX_BOARD_NAME_LENGTH}
                           </span>
                         </div>
@@ -503,7 +503,7 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
                           })}`}
                         />
                         <div className="mt-2 flex items-center justify-end gap-2">
-                          <span className={`text-xs ${currentTheme.textMuted}`}>
+                          <span className={`font-due-date text-xs ${currentTheme.textMuted}`}>
                             {description.trim().length}/{MAX_BOARD_DESCRIPTION_LENGTH}
                           </span>
                         </div>
@@ -513,7 +513,7 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
                     <div className="space-y-6">
                       <div className="space-y-3">
                         <div className="flex items-center gap-2">
-                          <h3 className={`text-sm font-semibold ${currentTheme.textSecondary}`}>Icon</h3>
+                          <h3 className={`font-ui-condensed text-sm font-semibold tracking-[0.01em] ${currentTheme.textSecondary}`}>Icon</h3>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <button type="button" className={helpIconButtonClassName} aria-label="Board icon help">
@@ -559,7 +559,7 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
 
                       <div className="space-y-3">
                         <div className="flex items-center gap-2">
-                          <h3 className={`text-sm font-semibold ${currentTheme.textSecondary}`}>Color</h3>
+                          <h3 className={`font-ui-condensed text-sm font-semibold tracking-[0.01em] ${currentTheme.textSecondary}`}>Color</h3>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <button type="button" className={helpIconButtonClassName} aria-label="Board color help">
@@ -607,7 +607,7 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
                     <div className="min-w-0 space-y-1">
                       <div className="flex items-center gap-2">
                         <Columns3 className={`h-4 w-4 ${currentTheme.primaryText}`} />
-                        <h2 className={`text-lg font-semibold ${currentTheme.text}`}>Board Columns</h2>
+                        <h2 className={`font-ui-condensed text-lg font-semibold tracking-[0.01em] ${currentTheme.text}`}>Board Columns</h2>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className={helpIconButtonClassName} aria-label="Column task limits help">
@@ -629,11 +629,11 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
                   <div className="mb-4 hidden md:grid md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_minmax(0,1fr)] md:gap-4">
                     <div />
                     <div className="space-y-0.5">
-                      <h3 className={`text-sm font-semibold ${currentTheme.textSecondary}`}>Soft limit</h3>
+                      <h3 className={`font-ui-condensed text-sm font-semibold tracking-[0.01em] ${currentTheme.textSecondary}`}>Soft limit</h3>
                       <p className={`text-xs ${currentTheme.textMuted}`}>Warning threshold. Leave blank to disable.</p>
                     </div>
                     <div className="space-y-0.5">
-                      <h3 className={`text-sm font-semibold ${currentTheme.textSecondary}`}>Hard limit</h3>
+                      <h3 className={`font-ui-condensed text-sm font-semibold tracking-[0.01em] ${currentTheme.textSecondary}`}>Hard limit</h3>
                       <p className={`text-xs ${currentTheme.textMuted}`}>Blocks more tasks. Up to 20, and cannot be lower than the soft limit.</p>
                     </div>
                   </div>
@@ -719,7 +719,7 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
                     <div className="min-w-0 space-y-1">
                       <div className="flex items-center gap-2">
                         <Users className={`h-4 w-4 ${currentTheme.primaryText}`} />
-                        <h2 className={`text-lg font-semibold ${currentTheme.text}`}>Manage Team Access</h2>
+                        <h2 className={`font-ui-condensed text-lg font-semibold tracking-[0.01em] ${currentTheme.text}`}>Manage Team Access</h2>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className={helpIconButtonClassName} aria-label="Manage team access help">
@@ -768,6 +768,7 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
                               displayName={member.name}
                               username={member.username}
                               role={member.role}
+                              level={member.currentLevel}
                               surfaceClassName=""
                               variant="flat"
                               showRoleIcon={false}

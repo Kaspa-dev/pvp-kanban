@@ -70,7 +70,7 @@ export function Login() {
             <BanBanLogo size="xl" />
           </Link>
 
-          <h2 className={`text-3xl font-bold ${t.text} mb-4`}>
+          <h2 className={`font-ui-condensed text-3xl font-bold tracking-[0.01em] ${t.text} mb-4`}>
             Gamified task management
             <br />
             for Agile teams
@@ -86,7 +86,7 @@ export function Login() {
                 <LayoutGrid className="w-5 h-5 text-white" strokeWidth={2} />
               </div>
               <div>
-                <p className={`font-semibold ${t.text}`}>Flow-first planning</p>
+                <p className={`font-ui-condensed font-semibold tracking-[0.01em] ${t.text}`}>Flow-first planning</p>
                 <p className={`text-sm ${t.textMuted}`}>Pull work from staging into a clear delivery flow</p>
               </div>
             </div>
@@ -96,7 +96,7 @@ export function Login() {
                 <TrendingUp className="w-5 h-5 text-white" strokeWidth={2} />
               </div>
               <div>
-                <p className={`font-semibold ${t.text}`}>XP & leveling system</p>
+                <p className={`font-ui-condensed font-semibold tracking-[0.01em] ${t.text}`}>XP & leveling system</p>
                 <p className={`text-sm ${t.textMuted}`}>Earn XP and unlock achievement ranks</p>
               </div>
             </div>
@@ -106,7 +106,7 @@ export function Login() {
                 <Zap className="w-5 h-5 text-white" strokeWidth={2} />
               </div>
               <div>
-                <p className={`font-semibold ${t.text}`}>Simple Kanban board</p>
+                <p className={`font-ui-condensed font-semibold tracking-[0.01em] ${t.text}`}>Simple Kanban board</p>
                 <p className={`text-sm ${t.textMuted}`}>Drag-and-drop task management</p>
               </div>
             </div>
@@ -142,7 +142,7 @@ export function Login() {
           </div>
 
           <div className="mb-6">
-            <h2 className={`text-2xl font-bold ${t.text} mb-2`}>Welcome back</h2>
+            <h2 className={`font-ui-condensed text-2xl font-semibold tracking-[0.01em] ${t.text} mb-2`}>Welcome back</h2>
             <p className={`${t.textSecondary}`}>Log in to your account to continue.</p>
           </div>
 

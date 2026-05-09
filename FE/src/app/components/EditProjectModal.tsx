@@ -88,7 +88,7 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
     currentTheme,
     currentTheme.text,
   );
-  const sectionTitleClassName = `text-lg font-semibold ${currentTheme.text}`;
+  const sectionTitleClassName = `font-ui-condensed text-lg font-semibold tracking-[0.01em] ${currentTheme.text}`;
   const sectionDescriptionClassName = `text-sm ${currentTheme.textMuted}`;
   const helpIconButtonClassName = `inline-flex h-5 w-5 items-center justify-center rounded-full ${currentTheme.textMuted} transition-colors hover:${currentTheme.textSecondary} focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus}`;
   const sectionDividerClassName = isDarkMode
@@ -260,7 +260,7 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
       >
         <div className={`z-10 flex items-center justify-between p-6 border-b-2 ${currentTheme.border} ${currentTheme.cardBg} rounded-t-3xl shrink-0`}>
           <div className="flex items-center gap-2">
-            <h2 className={`text-2xl font-bold ${currentTheme.text}`}>Edit Project</h2>
+            <h2 className={`font-ui-condensed text-2xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>Edit Project</h2>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button type="button" className={helpIconButtonClassName} aria-label="Edit project modal help">
@@ -356,7 +356,7 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
                       <p className={`text-xs ${currentTheme.textMuted}`}>
                         Up to {MAX_BOARD_NAME_LENGTH} characters.
                       </p>
-                      <span className={`text-xs ${currentTheme.textMuted}`}>
+                      <span className={`font-due-date text-xs ${currentTheme.textMuted}`}>
                         {name.trim().length}/{MAX_BOARD_NAME_LENGTH}
                       </span>
                     </div>
@@ -394,7 +394,7 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
                       <p className={`text-xs ${currentTheme.textMuted}`}>
                         Up to {MAX_BOARD_DESCRIPTION_LENGTH} characters.
                       </p>
-                      <span className={`text-xs ${currentTheme.textMuted}`}>
+                      <span className={`font-due-date text-xs ${currentTheme.textMuted}`}>
                         {description.trim().length}/{MAX_BOARD_DESCRIPTION_LENGTH}
                       </span>
                     </div>
@@ -468,6 +468,7 @@ export function EditProjectModal({ isOpen, onClose, board, onBoardUpdated }: Edi
                             displayName={member.name}
                             username={member.username}
                             role={member.role}
+                            level={member.currentLevel}
                             surfaceClassName={modalSecondarySurfaceClassName}
                             hoverBorderClassName={`transition-all hover:${currentTheme.primaryBorder}`}
                             action={!isOwner ? (

@@ -156,10 +156,14 @@ public class BoardsController(
             .AsSplitQuery()
             .ToListAsync(cancellationToken);
 
+        Dictionary<int, int> memberLevels = await _gamificationService.GetUserLevelsAsync(
+            boards.SelectMany(board => board.Memberships).Select(membership => membership.UserId),
+            cancellationToken);
+
         return Ok(new PagedBoardListResponseDto
         {
             Items = boards
-                .Select(board => ToBoardListItemDto(board, userId))
+                .Select(board => ToBoardListItemDto(board, userId, memberLevels))
                 .ToList(),
             Page = page,
             PageSize = pageSize,
@@ -293,7 +297,9 @@ public class BoardsController(
             .Include(item => item.ColumnLimits)
             .SingleAsync(item => item.Id == board.Id, cancellationToken);
 
-        return CreatedAtAction(nameof(GetBoard), new { boardId = board.Id }, ToBoardDto(createdBoard, userId));
+        IReadOnlyDictionary<int, int> createdBoardLevels = await GetBoardMemberLevelsAsync(createdBoard, cancellationToken);
+
+        return CreatedAtAction(nameof(GetBoard), new { boardId = board.Id }, ToBoardDto(createdBoard, userId, createdBoardLevels));
     }
 
     [HttpGet("{boardId:int}")]
@@ -310,7 +316,9 @@ public class BoardsController(
             return failure;
         }
 
-        return Ok(ToBoardDto(context!.Board, userId));
+        IReadOnlyDictionary<int, int> memberLevels = await GetBoardMemberLevelsAsync(context!.Board, cancellationToken);
+
+        return Ok(ToBoardDto(context.Board, userId, memberLevels));
     }
 
     [HttpPost("{boardId:int}/favorite")]
@@ -715,7 +723,9 @@ public class BoardsController(
             .Include(item => item.ColumnLimits)
             .SingleAsync(item => item.Id == board.Id, cancellationToken);
 
-        return Ok(ToBoardDto(updatedBoard, userId));
+        IReadOnlyDictionary<int, int> updatedBoardLevels = await GetBoardMemberLevelsAsync(updatedBoard, cancellationToken);
+
+        return Ok(ToBoardDto(updatedBoard, userId, updatedBoardLevels));
     }
 
     [HttpDelete("{boardId:int}")]
@@ -753,9 +763,7 @@ public class BoardsController(
         }
 
         Board board = accessContext!.Board;
-        Dictionary<int, BoardMemberDto> memberLookup = board.Memberships.ToDictionary(
-            membership => membership.UserId,
-            ToBoardMemberDto);
+        Dictionary<int, BoardMemberDto> memberLookup = await GetBoardMemberLookupAsync(board, cancellationToken);
 
         var tasks = await _context.Tasks
             .Where(task => task.BoardId == boardId)
@@ -784,9 +792,7 @@ public class BoardsController(
         }
 
         Board board = accessContext!.Board;
-        Dictionary<int, BoardMemberDto> memberLookup = board.Memberships.ToDictionary(
-            membership => membership.UserId,
-            ToBoardMemberDto);
+        Dictionary<int, BoardMemberDto> memberLookup = await GetBoardMemberLookupAsync(board, cancellationToken);
 
         TaskEntity? task = await _context.Tasks
             .Where(item => item.Id == taskId && item.BoardId == boardId)
@@ -823,9 +829,7 @@ public class BoardsController(
         }
 
         Board board = accessContext!.Board;
-        Dictionary<int, BoardMemberDto> memberLookup = board.Memberships.ToDictionary(
-            membership => membership.UserId,
-            ToBoardMemberDto);
+        Dictionary<int, BoardMemberDto> memberLookup = await GetBoardMemberLookupAsync(board, cancellationToken);
 
         IQueryable<TaskEntity> tasksQuery = _context.Tasks
             .Where(task => task.BoardId == boardId)
@@ -985,9 +989,7 @@ public class BoardsController(
             .Include(item => item.LabeledTasks)
             .SingleAsync(cancellationToken);
 
-        var memberLookup = board.Memberships.ToDictionary(
-            membership => membership.UserId,
-            ToBoardMemberDto);
+        var memberLookup = await GetBoardMemberLookupAsync(board, cancellationToken);
 
         return CreatedAtAction(nameof(GetTasks), new { boardId }, ToTaskDto(createdTask, memberLookup));
     }
@@ -1133,9 +1135,7 @@ public class BoardsController(
         await _gamificationService.ApplyTaskTransitionXpAsync(task, previousStatusKey, status.Title, cancellationToken);
         await SaveChangesWithMilestoneRecoveryAsync(cancellationToken);
 
-        var memberLookup = board.Memberships.ToDictionary(
-            membership => membership.UserId,
-            ToBoardMemberDto);
+        var memberLookup = await GetBoardMemberLookupAsync(board, cancellationToken);
 
         return Ok(ToTaskDto(task, memberLookup));
     }
@@ -1203,9 +1203,7 @@ public class BoardsController(
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        var memberLookup = board.Memberships.ToDictionary(
-            membership => membership.UserId,
-            ToBoardMemberDto);
+        var memberLookup = await GetBoardMemberLookupAsync(board, cancellationToken);
 
         return Ok(ToTaskDto(task, memberLookup));
     }
@@ -1261,9 +1259,7 @@ public class BoardsController(
         }
 
         Board board = accessContext!.Board;
-        Dictionary<int, BoardMemberDto> memberLookup = board.Memberships.ToDictionary(
-            membership => membership.UserId,
-            ToBoardMemberDto);
+        Dictionary<int, BoardMemberDto> memberLookup = await GetBoardMemberLookupAsync(board, cancellationToken);
 
         var comments = await _context.Comments
             .Where(item => item.TaskId == taskId && item.Task.BoardId == boardId)
@@ -1323,9 +1319,7 @@ public class BoardsController(
         await createCommentTransaction.CommitAsync(cancellationToken);
 
         Board board = accessContext.Board;
-        Dictionary<int, BoardMemberDto> memberLookup = board.Memberships.ToDictionary(
-            membership => membership.UserId,
-            ToBoardMemberDto);
+        Dictionary<int, BoardMemberDto> memberLookup = await GetBoardMemberLookupAsync(board, cancellationToken);
 
         return CreatedAtAction(
             nameof(GetTaskComments),
@@ -1378,9 +1372,7 @@ public class BoardsController(
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        Dictionary<int, BoardMemberDto> memberLookup = board.Memberships.ToDictionary(
-            membership => membership.UserId,
-            ToBoardMemberDto);
+        Dictionary<int, BoardMemberDto> memberLookup = await GetBoardMemberLookupAsync(board, cancellationToken);
 
         return Ok(ToTaskCommentDto(comment, memberLookup, userId));
     }
@@ -1455,9 +1447,7 @@ public class BoardsController(
         task.IsQueued = true;
         await _context.SaveChangesAsync(cancellationToken);
 
-        var memberLookup = board.Memberships.ToDictionary(
-            membership => membership.UserId,
-            ToBoardMemberDto);
+        var memberLookup = await GetBoardMemberLookupAsync(board, cancellationToken);
 
         return Ok(ToTaskDto(task, memberLookup));
     }
@@ -1492,9 +1482,7 @@ public class BoardsController(
         task.IsQueued = false;
         await _context.SaveChangesAsync(cancellationToken);
 
-        var memberLookup = board.Memberships.ToDictionary(
-            membership => membership.UserId,
-            ToBoardMemberDto);
+        var memberLookup = await GetBoardMemberLookupAsync(board, cancellationToken);
 
         return Ok(ToTaskDto(task, memberLookup));
     }
@@ -1599,9 +1587,7 @@ public class BoardsController(
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        var memberLookup = board.Memberships.ToDictionary(
-            membership => membership.UserId,
-            ToBoardMemberDto);
+        var memberLookup = await GetBoardMemberLookupAsync(board, cancellationToken);
 
         return Ok(startableTasks.Select(task => ToTaskDto(task, memberLookup)));
     }
@@ -1654,8 +1640,9 @@ public class BoardsController(
 
         int cappedLimit = Math.Clamp(limit, 1, 3);
         string normalizedQuery = query.ToLowerInvariant();
+        IReadOnlyDictionary<int, int> memberLevels = await GetBoardMemberLevelsAsync(accessContext!.Board, cancellationToken);
 
-        var matches = accessContext!.Board.Memberships
+        var matches = accessContext.Board.Memberships
             .Select(membership => new
             {
                 Membership = membership,
@@ -1666,7 +1653,7 @@ public class BoardsController(
             .ThenBy(item => item.Membership.User.FirstName)
             .ThenBy(item => item.Membership.User.LastName)
             .Take(cappedLimit)
-            .Select(item => ToBoardMemberDto(item.Membership))
+            .Select(item => ToBoardMemberDto(item.Membership, memberLevels))
             .ToList();
 
         return Ok(matches);
@@ -1691,6 +1678,7 @@ public class BoardsController(
 
         int cappedLimit = Math.Clamp(limit, 1, 3);
         Board board = accessContext!.Board;
+        IReadOnlyDictionary<int, int> memberLevels = await GetBoardMemberLevelsAsync(board, cancellationToken);
         Dictionary<int, BoardMembership> memberLookup = board.Memberships.ToDictionary(membership => membership.UserId);
         List<BoardMemberDto> suggestions = [];
         HashSet<int> seenUserIds = [];
@@ -1708,7 +1696,7 @@ public class BoardsController(
             }
 
             seenUserIds.Add(suggestedUserId);
-            suggestions.Add(ToBoardMemberDto(membership));
+            suggestions.Add(ToBoardMemberDto(membership, memberLevels));
         }
 
         AddSuggestion(userId);
@@ -2181,7 +2169,30 @@ public class BoardsController(
         return false;
     }
 
-    private static BoardDto ToBoardDto(Board board, int currentUserId)
+    private async Task<IReadOnlyDictionary<int, int>> GetBoardMemberLevelsAsync(
+        Board board,
+        CancellationToken cancellationToken)
+    {
+        return await _gamificationService.GetUserLevelsAsync(
+            board.Memberships.Select(membership => membership.UserId),
+            cancellationToken);
+    }
+
+    private async Task<Dictionary<int, BoardMemberDto>> GetBoardMemberLookupAsync(
+        Board board,
+        CancellationToken cancellationToken)
+    {
+        IReadOnlyDictionary<int, int> memberLevels = await GetBoardMemberLevelsAsync(board, cancellationToken);
+
+        return board.Memberships.ToDictionary(
+            membership => membership.UserId,
+            membership => ToBoardMemberDto(membership, memberLevels));
+    }
+
+    private static BoardDto ToBoardDto(
+        Board board,
+        int currentUserId,
+        IReadOnlyDictionary<int, int>? memberLevels = null)
     {
         return new BoardDto
         {
@@ -2222,7 +2233,7 @@ public class BoardsController(
                 .OrderBy(membership => membership.Role == BoardRole.Owner ? 0 : 1)
                 .ThenBy(membership => membership.User.FirstName)
                 .ThenBy(membership => membership.User.LastName)
-                .Select(ToBoardMemberDto)
+                .Select(membership => ToBoardMemberDto(membership, memberLevels))
                 .ToList(),
         };
     }
@@ -2481,7 +2492,10 @@ public class BoardsController(
         };
     }
 
-    private static BoardListItemDto ToBoardListItemDto(Board board, int currentUserId)
+    private static BoardListItemDto ToBoardListItemDto(
+        Board board,
+        int currentUserId,
+        IReadOnlyDictionary<int, int>? memberLevels = null)
     {
         return new BoardListItemDto
         {
@@ -2498,12 +2512,14 @@ public class BoardsController(
                 .OrderBy(membership => membership.Role == BoardRole.Owner ? 0 : 1)
                 .ThenBy(membership => membership.User.FirstName)
                 .ThenBy(membership => membership.User.LastName)
-                .Select(ToBoardMemberDto)
+                .Select(membership => ToBoardMemberDto(membership, memberLevels))
                 .ToList(),
         };
     }
 
-    private static BoardMemberDto ToBoardMemberDto(BoardMembership membership)
+    private static BoardMemberDto ToBoardMemberDto(
+        BoardMembership membership,
+        IReadOnlyDictionary<int, int>? memberLevels = null)
     {
         return new BoardMemberDto
         {
@@ -2513,6 +2529,9 @@ public class BoardsController(
             Email = membership.User.Email,
             Color = membership.Color,
             Role = membership.Role.ToString().ToLowerInvariant(),
+            CurrentLevel = memberLevels is not null && memberLevels.TryGetValue(membership.UserId, out int currentLevel)
+                ? currentLevel
+                : null,
         };
     }
 

@@ -105,7 +105,7 @@ export function Sidebar({
                   <OverflowTooltip
                     as="h2"
                     text={boardName ?? "Untitled Board"}
-                    className={`min-w-0 flex-1 truncate text-sm font-semibold ${currentTheme.text}`}
+                    className={`font-ui-condensed min-w-0 flex-1 truncate text-sm font-semibold tracking-[0.01em] ${currentTheme.text}`}
                   />
                 </div>
               )}
@@ -130,7 +130,7 @@ export function Sidebar({
                       <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_15%,rgba(255,255,255,0.24)_50%,transparent_85%)] opacity-0 transition-opacity duration-300 group-hover/create-task:opacity-100" />
                       <span className="relative z-10 inline-flex items-center gap-2 leading-none">
                         <Plus className="h-4.5 w-4.5 will-change-transform transition-transform duration-200 group-hover/create-task:rotate-90 group-hover/create-task:scale-110" />
-                        {!isCollapsed && <span className="leading-none">Create Task</span>}
+                        {!isCollapsed && <span className="font-ui-condensed leading-none tracking-[0.01em]">Create Task</span>}
                       </span>
                     </button>
                   </TooltipTrigger>
@@ -151,10 +151,10 @@ export function Sidebar({
                       <span className={`relative z-10 inline-flex min-w-0 items-center gap-2 ${isCollapsed ? "" : "w-full justify-between"}`}>
                         <span className="inline-flex min-w-0 items-center gap-2 leading-none">
                           <Tag className="h-4.5 w-4.5 shrink-0 will-change-transform transition-transform duration-200 group-hover/board-labels:rotate-6 group-hover/board-labels:scale-110" />
-                          {!isCollapsed && <span className="truncate leading-none">Labels</span>}
+                          {!isCollapsed && <span className="font-ui-condensed truncate leading-none tracking-[0.01em]">Labels</span>}
                         </span>
                         {!isCollapsed && (
-                          <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/82">
+                          <span className="font-due-date shrink-0 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/82">
                             {labelCount}/{MAX_BOARD_LABELS}
                           </span>
                         )}
@@ -186,7 +186,7 @@ export function Sidebar({
                     aria-current={isBoardSettingsActive ? "page" : undefined}
                   >
                     <Settings2 className="h-4.5 w-4.5 shrink-0" />
-                    {!isCollapsed ? <span className="truncate leading-none">Board Settings</span> : null}
+                    {!isCollapsed ? <span className="font-ui-condensed truncate leading-none tracking-[0.01em]">Board Settings</span> : null}
                   </UtilityIconButton>
                 </TooltipTrigger>
                 <TooltipContent side="right" sideOffset={10}>

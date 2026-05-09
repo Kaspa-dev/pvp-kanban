@@ -290,6 +290,7 @@ export function TaskAssigneePicker({
                   username={selectedAssigneeOption.username || selectedAssigneeOption.displayName}
                   fullName={selectedAssigneeOption.displayName}
                   size={32}
+                  level={selectedAssigneeOption.currentLevel}
                   className="shrink-0 shadow-sm"
                   interactive={false}
                   enableBlink={false}
@@ -439,6 +440,7 @@ export function TaskAssigneePicker({
                           username={assignee.username || assignee.displayName}
                           fullName={assignee.displayName}
                           size={36}
+                          level={assignee.currentLevel}
                           className="mt-0.5 shrink-0 shadow-sm"
                           interactive={false}
                           enableBlink={false}

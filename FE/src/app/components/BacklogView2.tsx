@@ -151,7 +151,7 @@ export function BacklogView2({
             data-coachmark="staging-list"
           >
             <div className={`min-w-0 border-b pb-5 pr-0 ${regionDividerClassName} lg:pr-8`}>
-              <h2 className={`text-lg font-bold ${currentTheme.text}`}>Staging Tasks</h2>
+              <h2 className={`font-ui-condensed text-lg font-semibold tracking-[0.01em] ${currentTheme.text}`}>Staging Tasks</h2>
               <p className={`mt-1 text-sm ${currentTheme.textMuted}`}>
                 Keep upcoming work grounded here until each task is ready to be staged forward.
               </p>
@@ -239,7 +239,7 @@ export function BacklogView2({
             <div className={`min-w-0 border-b pb-5 ${regionDividerClassName}`}>
               <div className="flex flex-wrap items-start justify-between gap-4 lg:pl-8">
                 <div className="min-w-0">
-                  <h2 className={`text-lg font-bold ${currentTheme.text}`}>Queue Batch</h2>
+                  <h2 className={`font-ui-condensed text-lg font-semibold tracking-[0.01em] ${currentTheme.text}`}>Queue Batch</h2>
                   <p className={`mt-1 text-sm ${currentTheme.textMuted}`}>
                     Stage ready tasks here, then launch the whole batch forward together.
                   </p>

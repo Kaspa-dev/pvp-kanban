@@ -3,6 +3,7 @@ using BE.DTOs;
 using BE.Models;
 using BE.Options;
 using BE.Services;
+using BE.Validation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -207,8 +208,14 @@ public class UsersController : ControllerBase
             .ThenBy(task => task.Title)
             .ToListAsync(cancellationToken);
 
+        Dictionary<int, int> userLevels = await _gamificationService.GetUserLevelsAsync(
+            taskEntities
+                .SelectMany(task => task.Board.Memberships)
+                .Select(membership => membership.UserId),
+            cancellationToken);
+
         List<MyTaskItemDto> tasks = taskEntities
-            .Select(ToMyTaskItemDto)
+            .Select(task => ToMyTaskItemDto(task, userLevels))
             .ToList();
 
         return Ok(tasks);
@@ -430,14 +437,22 @@ public class UsersController : ControllerBase
             return "Email is required.";
         }
 
-        if (string.IsNullOrWhiteSpace(username))
+        string? usernameValidation = UserIdentityValidation.ValidateUsername(username);
+        if (usernameValidation is not null)
         {
-            return "Username is required.";
+            return usernameValidation;
         }
 
-        if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName))
+        string? firstNameValidation = UserIdentityValidation.ValidateFirstName(firstName);
+        if (firstNameValidation is not null)
         {
-            return "First name and last name are required.";
+            return firstNameValidation;
+        }
+
+        string? lastNameValidation = UserIdentityValidation.ValidateLastName(lastName);
+        if (lastNameValidation is not null)
+        {
+            return lastNameValidation;
         }
 
         return null;
@@ -463,7 +478,9 @@ public class UsersController : ControllerBase
         };
     }
 
-    private static BoardMemberDto ToBoardMemberDto(BoardMembership membership)
+    private static BoardMemberDto ToBoardMemberDto(
+        BoardMembership membership,
+        IReadOnlyDictionary<int, int>? userLevels = null)
     {
         return new BoardMemberDto
         {
@@ -473,10 +490,15 @@ public class UsersController : ControllerBase
             Email = membership.User.Email,
             Color = membership.Color,
             Role = membership.Role.ToString().ToLowerInvariant(),
+            CurrentLevel = userLevels is not null && userLevels.TryGetValue(membership.UserId, out int currentLevel)
+                ? currentLevel
+                : null,
         };
     }
 
-    private static MyTaskItemDto ToMyTaskItemDto(TaskEntity task)
+    private static MyTaskItemDto ToMyTaskItemDto(
+        TaskEntity task,
+        IReadOnlyDictionary<int, int>? userLevels = null)
     {
         BoardMembership? assigneeMembership = task.AssigneeId.HasValue
             ? task.Board.Memberships.FirstOrDefault(membership => membership.UserId == task.AssigneeId.Value)
@@ -495,7 +517,7 @@ public class UsersController : ControllerBase
                 .OrderBy(labelId => labelId)
                 .ToList(),
             AssigneeUserId = task.AssigneeId,
-            Assignee = assigneeMembership is null ? null : ToBoardMemberDto(assigneeMembership),
+            Assignee = assigneeMembership is null ? null : ToBoardMemberDto(assigneeMembership, userLevels),
             ReporterUserId = task.ReporterId,
             StoryPoints = task.StoryPoints,
             DueDate = task.DueDate?.ToString("yyyy-MM-dd"),

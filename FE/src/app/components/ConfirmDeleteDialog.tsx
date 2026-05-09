@@ -69,7 +69,7 @@ export function ConfirmDeleteDialog({
     >
       <div className="space-y-5">
         <div className="space-y-3">
-          <p className={`text-lg font-semibold ${currentTheme.text}`}>
+          <p className={`font-ui-condensed text-lg font-semibold tracking-[0.01em] ${currentTheme.text}`}>
             You&apos;re about to permanently delete this task.
           </p>
           <p className={`text-sm leading-6 ${currentTheme.textSecondary}`}>
@@ -80,7 +80,7 @@ export function ConfirmDeleteDialog({
         <div>
           <p
             title={safeTaskTitle}
-            className={`max-w-[32rem] break-words text-2xl font-bold leading-tight tracking-[-0.02em] sm:text-[1.75rem] ${currentTheme.text}`}
+            className={`font-ui-condensed max-w-[32rem] break-words text-2xl font-semibold leading-tight tracking-[0.01em] sm:text-[1.75rem] ${currentTheme.text}`}
           >
             {safeTaskTitle}
           </p>

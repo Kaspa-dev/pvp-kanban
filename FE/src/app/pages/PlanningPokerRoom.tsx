@@ -637,7 +637,7 @@ export function PlanningPokerRoom() {
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
-                <h1 className={`text-3xl font-semibold tracking-tight ${currentTheme.text}`}>
+                <h1 className={`font-ui-condensed text-3xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
                   Planning poker
                 </h1>
                 {normalizedJoinToken ? (
@@ -653,7 +653,7 @@ export function PlanningPokerRoom() {
                 </span>
                 {session ? (
                   <span className={currentTheme.textMuted}>
-                    {votedCount}/{session.participants.length} voted
+                    <span className="font-due-date">{votedCount}/{session.participants.length}</span> voted
                   </span>
                 ) : null}
                 {shouldShowReconnectControl ? (

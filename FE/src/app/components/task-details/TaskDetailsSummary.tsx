@@ -62,7 +62,7 @@ function DetailRow({
 }) {
   return (
     <div className="py-4">
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] opacity-70">
+      <div className="font-ui-condensed flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] opacity-70">
         <Icon className="h-4 w-4" />
         <span>{label}</span>
       </div>
@@ -94,16 +94,16 @@ export function TaskDetailsSummary({ board, boardId, task, labels }: TaskDetails
         <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start">
           <BoardLogo iconKey={board.logoIconKey} colorKey={board.logoColorKey} size="md" />
           <div className="min-w-0 flex-1">
-            <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+            <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
               Task details
             </p>
-            <h1 className={`mt-1 break-words text-3xl font-semibold tracking-tight ${currentTheme.text}`}>
+            <h1 className={`font-ui-condensed mt-1 break-words text-3xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
               {task.title}
             </h1>
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <BoardStatusBadge statusKey={task.status} />
               <span className={`rounded-full border px-3 py-1 text-xs font-medium ${currentTheme.border} ${currentTheme.textMuted}`}>
-                Task ID #{task.id}
+                Task ID <span className="font-due-date">#{task.id}</span>
               </span>
             </div>
           </div>

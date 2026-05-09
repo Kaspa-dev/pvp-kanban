@@ -166,7 +166,7 @@ export function KanbanColumn({
       onCardDrop(item.id, item.columnId, id, 0);
     },
     collect: (monitor) => ({
-      isOver: monitor.isOver({ shallow: true }),
+      isOver: monitor.isOver(),
       canDrop: monitor.canDrop(),
       draggedColumnId: monitor.getItem()?.columnId ?? null,
     }),
@@ -203,13 +203,13 @@ export function KanbanColumn({
       <div
         ref={drop}
         className={`${columnSurfaceClassName} rounded-2xl border-2 transition-all flex min-h-[34rem] flex-col shadow-sm lg:h-full lg:min-h-0 ${
-          isOver && canDrop ? `${currentTheme.primaryBorder} ring-4 ${currentTheme.ring} scale-[1.01]` : limitBorderClassName
+          isDropPreviewActive ? `${currentTheme.primaryBorder} ring-4 ${currentTheme.ring} scale-[1.01]` : limitBorderClassName
         } ${isBlockedDropFeedbackVisible ? "kanban-column-limit-pulse" : ""}`}
       >
         {/* Column Header */}
         <div className={`rounded-t-2xl border-b-2 py-4 ${headerBorderClassName} ${columnHeaderSurfaceClassName}`}>
           <div className="flex w-full flex-col items-center gap-2 text-center">
-            <h2 className={`font-kanban-column-title w-full min-w-0 truncate px-5 pb-0.5 text-[1.08rem] font-bold leading-[1.35] tracking-[-0.015em] ${currentTheme.text}`}>
+            <h2 className={`font-kanban-column-title w-full min-w-0 truncate px-5 pb-0.5 text-[1.08rem] font-bold leading-[1.35] tracking-normal ${currentTheme.text}`}>
               {title}
             </h2>
             <div
@@ -246,7 +246,7 @@ export function KanbanColumn({
               </div>
             </div>
             <p
-              className={`font-kanban-limit-message min-h-[12px] w-[90%] max-w-72 overflow-hidden text-ellipsis whitespace-nowrap px-2 text-[9px] font-semibold leading-[1.25] tracking-[-0.04em] ${currentTheme.primaryText} ${
+              className={`font-kanban-limit-message min-h-[12px] w-[90%] max-w-72 overflow-hidden text-ellipsis whitespace-nowrap px-2 text-[9px] font-semibold leading-[1.25] tracking-[0.08em] ${currentTheme.primaryText} ${
                 columnLimitStatusMessage ? "" : "invisible"
               }`}
               title={columnLimitStatusMessage ?? undefined}

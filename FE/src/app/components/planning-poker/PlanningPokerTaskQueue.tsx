@@ -146,7 +146,7 @@ export function PlanningPokerTaskQueue({
               </div>
               <h2
                 id="planning-poker-active-task"
-                className={`text-2xl font-semibold tracking-tight ${currentTheme.text}`}
+                className={`font-ui-condensed text-2xl font-semibold tracking-[0.01em] ${currentTheme.text}`}
               >
                 {activeTask.title}
               </h2>

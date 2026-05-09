@@ -19,10 +19,12 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
     private const int MaxGuestDisplayNameLength = 80;
 
     private readonly AppDbContext _context;
+    private readonly IGamificationService _gamificationService;
 
-    public PlanningPokerSessionService(AppDbContext context)
+    public PlanningPokerSessionService(AppDbContext context, IGamificationService gamificationService)
     {
         _context = context;
+        _gamificationService = gamificationService;
     }
 
     public async System.Threading.Tasks.Task<PlanningPokerSessionDto> CreateSessionAsync(int boardId, int hostUserId, CancellationToken cancellationToken)
@@ -610,9 +612,12 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
             .Include(item => item.LabeledTasks)
             .SingleAsync(cancellationToken);
 
+        Dictionary<int, int> memberLevels = await _gamificationService.GetUserLevelsAsync(
+            board.Memberships.Select(membership => membership.UserId),
+            cancellationToken);
         Dictionary<int, BoardMemberDto> memberLookup = board.Memberships.ToDictionary(
             membership => membership.UserId,
-            ToBoardMemberDto);
+            membership => ToBoardMemberDto(membership, memberLevels));
 
         return ToTaskDto(task, memberLookup);
     }
@@ -791,7 +796,9 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
         };
     }
 
-    private static BoardMemberDto ToBoardMemberDto(BoardMembership membership)
+    private static BoardMemberDto ToBoardMemberDto(
+        BoardMembership membership,
+        IReadOnlyDictionary<int, int>? memberLevels = null)
     {
         return new BoardMemberDto
         {
@@ -801,6 +808,9 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
             Email = membership.User.Email,
             Color = membership.Color,
             Role = membership.Role.ToString().ToLowerInvariant(),
+            CurrentLevel = memberLevels is not null && memberLevels.TryGetValue(membership.UserId, out int currentLevel)
+                ? currentLevel
+                : null,
         };
     }
 

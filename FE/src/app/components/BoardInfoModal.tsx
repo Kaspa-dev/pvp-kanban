@@ -239,6 +239,7 @@ export function BoardInfoModal({ isOpen, onClose, board }: BoardInfoModalProps) 
                 username={member.username}
                 email={member.email}
                 role={member.role}
+                level={member.currentLevel}
                 surfaceClassName={modalSecondarySurfaceClassName}
                 hoverBorderClassName={`transition-all hover:${currentTheme.primaryBorder}`}
               />
