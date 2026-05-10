@@ -6,6 +6,7 @@ import type { PlanningPokerParticipant } from "../../utils/planningPoker";
 import { AppAvatar } from "../AppAvatar";
 import { Button } from "../ui/button";
 import { cn } from "../ui/utils";
+import { getPanelEyebrowClassName } from "../typographyStyles";
 
 interface PlanningPokerVoteDeckProps {
   cardValues: number[];
@@ -36,6 +37,7 @@ export function PlanningPokerVoteDeck({
 }: PlanningPokerVoteDeckProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const panelEyebrowClassName = getPanelEyebrowClassName(currentTheme.textMuted);
   const voteDeckId = useId();
   const voteDeckHeadingId = `${voteDeckId}-heading`;
   const voteDeckHintId = `${voteDeckId}-hint`;
@@ -213,7 +215,7 @@ export function PlanningPokerVoteDeck({
       </div>
 
       <div className={cn("space-y-2 border-t pt-3", currentTheme.border)}>
-        <p className={cn("text-xs font-semibold uppercase tracking-[0.18em]", currentTheme.textMuted)}>
+        <p className={panelEyebrowClassName}>
           Members
         </p>
         <ul className="flex flex-wrap gap-2" aria-label="Planning poker members">

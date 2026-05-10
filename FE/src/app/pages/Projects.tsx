@@ -56,6 +56,7 @@ import {
 import { WorkspacePaginationFooter } from "../components/WorkspacePaginationFooter";
 import { UtilityIconButton } from "../components/UtilityIconButton";
 import { getNativeInputFieldClassName } from "../components/inputLikeControlStyles";
+import { getToolbarLabelClassName } from "../components/typographyStyles";
 import { showErrorToast, showSuccessToast } from "../utils/toast";
 import {
   fetchCurrentUserGamificationSummary,
@@ -241,6 +242,7 @@ export function Projects() {
   const projectsSearchInputClassName = getNativeInputFieldClassName(currentTheme, {
     surfaceClassName: workspaceSurface.controlSurfaceClassName,
   });
+  const toolbarLabelClassName = getToolbarLabelClassName(currentTheme.textMuted);
   const boardCardActionButtonClassName = "opacity-0 transition-all duration-200 z-10 group-hover:opacity-100";
   const boardCardSurfaceClassName = getNeutralElevatedCardSurfaceClassName(isDarkMode);
   const boardCardHoverClassName = getNeutralElevatedCardHoverClassName(currentTheme, isDarkMode);
@@ -739,7 +741,7 @@ export function Projects() {
             <div className="flex flex-col gap-5">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-end">
                 <div className="flex min-w-0 flex-col gap-2 xl:flex-[1.35]">
-                  <span className={`mb-2 block text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Search</span>
+                  <span className={`block ${toolbarLabelClassName}`}>Search</span>
                   <Tooltip delayDuration={PROJECTS_TOOLTIP_DELAY}>
                     <TooltipTrigger asChild>
                       <div className="relative min-w-0 flex-1">
@@ -786,7 +788,7 @@ export function Projects() {
                 />
 
                 <div className="flex min-w-0 flex-col gap-2 xl:flex-1">
-                  <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+                  <p className={toolbarLabelClassName}>
                     Quick filters
                   </p>
                   <div className="flex flex-wrap items-center gap-2 xl:min-h-11">

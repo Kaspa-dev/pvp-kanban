@@ -11,6 +11,7 @@ import {
   type LevelLeaderboardBoard,
 } from "../utils/levelLeaderboard";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
+import { getPanelEyebrowClassName } from "../components/typographyStyles";
 
 const SAMPLE_BOARDS: LevelLeaderboardBoard[] = [
   {
@@ -89,6 +90,8 @@ function getCurrentUserRank(board: LevelLeaderboardBoard, period: LeaderboardPer
 export function LevelLeaderboard() {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const mutedEyebrowClassName = getPanelEyebrowClassName(currentTheme.textMuted);
+  const primaryEyebrowClassName = getPanelEyebrowClassName(currentTheme.primaryText);
   const [period, setPeriod] = useState<LeaderboardPeriod>("week");
   const expandedScrollerRef = useRef<HTMLDivElement>(null);
   const collapsedScrollerRef = useRef<HTMLDivElement>(null);
@@ -115,7 +118,13 @@ export function LevelLeaderboard() {
     event: PointerEvent<HTMLDivElement>,
     scrollerRef: RefObject<HTMLDivElement>,
   ) => {
-    if (event.button !== 0 || !scrollerRef.current) {
+    const target = event.target instanceof Element ? event.target : null;
+
+    if (
+      event.button !== 0 ||
+      !scrollerRef.current ||
+      target?.closest("button, a, input, select, textarea, [role='button'], [role='tab']")
+    ) {
       return;
     }
 
@@ -172,7 +181,7 @@ export function LevelLeaderboard() {
             minWidth: `${14 + LEVEL_LEADERBOARD_VARIANTS.length * (columnWidth + 0.75)}rem`,
           }}
         >
-          <div className={`font-ui-condensed hidden rounded-2xl px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] lg:block ${currentTheme.textMuted}`}>
+          <div className={`hidden rounded-2xl px-4 py-3 lg:block ${mutedEyebrowClassName}`}>
             Board sample
           </div>
 
@@ -189,17 +198,17 @@ export function LevelLeaderboard() {
           {SAMPLE_BOARDS.map((board) => (
             <div key={`${density}-row-${board.id}`} className="contents">
               <div className={`rounded-2xl border px-4 py-4 ${currentTheme.border} ${sectionSurfaceClassName}`}>
-                <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.primaryText}`}>
+                <p className={primaryEyebrowClassName}>
                   {board.name}
                 </p>
                 <p className={`mt-2 text-sm leading-5 ${currentTheme.textSecondary}`}>{board.description}</p>
                 <div className="mt-4 grid grid-cols-2 gap-2">
                   <div className={`rounded-xl border px-3 py-2 ${currentTheme.border} ${isDarkMode ? "bg-white/[0.03]" : "bg-white/70"}`}>
-                    <p className={`font-ui-condensed text-[10px] uppercase tracking-[0.16em] ${currentTheme.textMuted}`}>Top XP</p>
+                    <p className={mutedEyebrowClassName}>Top XP</p>
                     <p className={`font-due-date mt-1 text-sm font-semibold ${currentTheme.text}`}>{formatNumber(getBoardTopXp(board, period))}</p>
                   </div>
                   <div className={`rounded-xl border px-3 py-2 ${currentTheme.border} ${isDarkMode ? "bg-white/[0.03]" : "bg-white/70"}`}>
-                    <p className={`font-ui-condensed text-[10px] uppercase tracking-[0.16em] ${currentTheme.textMuted}`}>You</p>
+                    <p className={mutedEyebrowClassName}>You</p>
                     <p className={`font-due-date mt-1 text-sm font-semibold ${currentTheme.text}`}>#{getCurrentUserRank(board, period)}</p>
                   </div>
                 </div>
@@ -236,7 +245,7 @@ export function LevelLeaderboard() {
             <div>
               <Link
                 to="/levelprogress"
-                className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.primaryText} hover:underline`}
+                className={`${primaryEyebrowClassName} hover:underline`}
               >
                 XP card lab
               </Link>
@@ -244,7 +253,7 @@ export function LevelLeaderboard() {
                 Sidebar level leaderboard
               </h1>
               <p className={`mt-3 max-w-3xl text-sm leading-6 sm:text-base ${currentTheme.textSecondary}`}>
-                Ten fresh leaderboard directions for a per-board XP widget. Rows stress-test different board samples; columns compare the actual visual concepts side by side.
+                Fresh leaderboard directions for a per-board XP widget. Rows stress-test different board samples; columns compare the actual visual concepts side by side.
               </p>
             </div>
 
@@ -262,12 +271,12 @@ export function LevelLeaderboard() {
         <section className={`rounded-[2rem] border p-5 backdrop-blur-xl ${panelClassName}`}>
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.primaryText}`}>Time window</p>
+              <p className={primaryEyebrowClassName}>Time window</p>
               <h2 className={`font-ui-condensed mt-2 text-2xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
                 Rank by selected-window XP
               </h2>
               <p className={`mt-2 max-w-2xl text-sm leading-6 ${currentTheme.textSecondary}`}>
-                Switch the period once and all ten directions update together. Default remains week.
+                Switch the period once and every direction updates together. Default remains week.
               </p>
             </div>
             <div className={`grid w-full gap-1 rounded-2xl border p-1 sm:w-auto sm:grid-cols-4 ${currentTheme.border} ${sectionSurfaceClassName}`}>
@@ -293,9 +302,9 @@ export function LevelLeaderboard() {
         <section className={`rounded-[2rem] border p-4 backdrop-blur-xl sm:p-5 ${panelClassName}`}>
           <div className="flex flex-col gap-2 border-b pb-4 sm:flex-row sm:items-end sm:justify-between" style={{ borderColor: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.08)" }}>
             <div>
-              <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.primaryText}`}>Variant grid</p>
+              <p className={primaryEyebrowClassName}>Variant grid</p>
               <h2 className={`font-ui-condensed mt-2 text-2xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
-                Ten expanded sidebar directions
+                Expanded sidebar directions
               </h2>
             </div>
             <p className={`max-w-xl text-sm leading-6 ${currentTheme.textSecondary}`}>
@@ -308,9 +317,9 @@ export function LevelLeaderboard() {
         <section className={`rounded-[2rem] border p-4 backdrop-blur-xl sm:p-5 ${panelClassName}`}>
           <div className="flex flex-col gap-2 border-b pb-4 sm:flex-row sm:items-end sm:justify-between" style={{ borderColor: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.08)" }}>
             <div>
-              <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.primaryText}`}>Rail grid</p>
+              <p className={primaryEyebrowClassName}>Rail grid</p>
               <h2 className={`font-ui-condensed mt-2 text-2xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
-                Ten collapsed sidebar variants
+                Collapsed sidebar variants
               </h2>
             </div>
             <p className={`max-w-xl text-sm leading-6 ${currentTheme.textSecondary}`}>

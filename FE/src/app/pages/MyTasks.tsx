@@ -13,6 +13,7 @@ import { BoardLogo } from "../components/BoardLogo";
 import { PriorityBadge } from "../components/PriorityBadge";
 import { SettingsModal } from "../components/SettingsModal";
 import { Toolbar } from "../components/Toolbar";
+import { getPanelEyebrowClassName } from "../components/typographyStyles";
 import { Skeleton } from "../components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { useAuth } from "../contexts/AuthContext";
@@ -102,8 +103,10 @@ export function MyTasks() {
   const { user, logout } = useAuth();
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const panelEyebrowClassName = getPanelEyebrowClassName(currentTheme.textMuted);
   const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
   const tableDividerClassName = isDarkMode ? "border-white/12" : "border-slate-200";
+  const tableHeadClassName = `font-ui-condensed px-4 py-3 text-xs font-semibold uppercase tracking-[0.01em] ${currentTheme.textMuted}`;
 
   const [scope, setScope] = useState<MyTasksScope>("active");
   const [tasks, setTasks] = useState<MyTask[]>([]);
@@ -217,7 +220,7 @@ export function MyTasks() {
                     <ClipboardList className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+                    <p className={panelEyebrowClassName}>
                       Personal workspace
                     </p>
                     <h1 className={`font-ui-condensed text-3xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>My Tasks</h1>
@@ -311,12 +314,12 @@ export function MyTasks() {
                 <Table aria-label="Loading your assigned tasks">
                   <TableHeader>
                     <TableRow className={`hover:bg-transparent ${tableDividerClassName}`}>
-                      <TableHead className={`font-ui-condensed px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Task</TableHead>
-                      <TableHead className={`font-ui-condensed px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Board</TableHead>
-                      <TableHead className={`font-ui-condensed px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Status</TableHead>
-                      <TableHead className={`font-ui-condensed px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Priority</TableHead>
-                      <TableHead className={`font-ui-condensed px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Due date</TableHead>
-                      <TableHead className={`font-ui-condensed px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Points</TableHead>
+                      <TableHead className={tableHeadClassName}>Task</TableHead>
+                      <TableHead className={tableHeadClassName}>Board</TableHead>
+                      <TableHead className={tableHeadClassName}>Status</TableHead>
+                      <TableHead className={tableHeadClassName}>Priority</TableHead>
+                      <TableHead className={tableHeadClassName}>Due date</TableHead>
+                      <TableHead className={tableHeadClassName}>Points</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -337,12 +340,12 @@ export function MyTasks() {
                 <Table aria-label="Tasks assigned to you">
                   <TableHeader>
                     <TableRow className={`hover:bg-transparent ${tableDividerClassName}`}>
-                      <TableHead className={`font-ui-condensed px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Task</TableHead>
-                      <TableHead className={`font-ui-condensed px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Board</TableHead>
-                      <TableHead className={`font-ui-condensed px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Status</TableHead>
-                      <TableHead className={`font-ui-condensed px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Priority</TableHead>
-                      <TableHead className={`font-ui-condensed px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Due date</TableHead>
-                      <TableHead className={`font-ui-condensed px-4 py-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>Points</TableHead>
+                      <TableHead className={tableHeadClassName}>Task</TableHead>
+                      <TableHead className={tableHeadClassName}>Board</TableHead>
+                      <TableHead className={tableHeadClassName}>Status</TableHead>
+                      <TableHead className={tableHeadClassName}>Priority</TableHead>
+                      <TableHead className={tableHeadClassName}>Due date</TableHead>
+                      <TableHead className={tableHeadClassName}>Points</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

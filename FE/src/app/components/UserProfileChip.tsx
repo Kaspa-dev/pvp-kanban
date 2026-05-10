@@ -81,7 +81,7 @@ export function UserProfileChip({
   const trigger = (
     <button
       aria-label="Open account progress menu"
-      className={`group flex cursor-pointer items-center gap-2.5 rounded-2xl px-3 py-2 transition-colors duration-200 focus:outline-none focus-visible:ring-2 ${currentTheme.focus} ${currentTheme.accentIconButtonHover}`}
+      className={`group flex cursor-pointer items-center gap-4 rounded-2xl px-3 py-2 transition-colors duration-200 focus:outline-none focus-visible:ring-2 ${currentTheme.focus} ${currentTheme.accentIconButtonHover}`}
       type="button"
     >
       <AppAvatar
@@ -104,7 +104,7 @@ export function UserProfileChip({
 
   if (!onClick) {
     return (
-      <div className="flex items-center gap-2.5 rounded-lg px-3 py-2">
+      <div className="flex items-center gap-4 rounded-lg px-3 py-2">
         <AppAvatar
           username={username}
           fullName={fullName}
@@ -131,14 +131,15 @@ export function UserProfileChip({
         align="end"
         side="bottom"
         sideOffset={12}
-        className="w-[min(22rem,calc(100vw-2rem))] p-0"
+        className="w-[min(22rem,calc(100vw-2rem))] rounded-3xl bg-white/96 p-0 shadow-[0_24px_80px_-42px_rgba(15,23,42,0.7)] backdrop-blur-sm dark:border dark:border-zinc-800 dark:bg-zinc-950/96 dark:shadow-[0_24px_72px_-38px_rgba(0,0,0,0.95)]"
       >
         <LevelProgressCard
           username={username}
           fullName={fullName ?? username}
           level={displayedLevel}
           summary={summary}
-          variant="console-strip"
+          variant="orbit-ribbon-console"
+          dataVariant="checkpoint-path"
           isLoading={isLoadingSummary}
           hasError={summaryError}
           onViewProfile={() => {

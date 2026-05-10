@@ -1,7 +1,6 @@
-import { ArrowUpRight, Crown, Terminal, Trophy } from "lucide-react";
+import { ArrowUpRight, Crown, Flame, Sparkles, Trophy, Zap } from "lucide-react";
 import { useMemo } from "react";
 import { AppAvatar } from "./AppAvatar";
-import { BoardLogo } from "./BoardLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import {
@@ -12,6 +11,7 @@ import {
   type LevelLeaderboardBoard,
   type LevelLeaderboardVariant,
 } from "../utils/levelLeaderboard";
+import { getPanelEyebrowClassName } from "./typographyStyles";
 
 interface LevelLeaderboardPreviewProps {
   board: LevelLeaderboardBoard;
@@ -51,10 +51,10 @@ function getRankTone(rank: number, isDarkMode: boolean) {
   }
 
   if (rank === 2) {
-    return isDarkMode ? "border-sky-200/30 bg-sky-200/12 text-sky-100" : "border-sky-200 bg-sky-50 text-sky-800";
+    return isDarkMode ? "border-zinc-200/35 bg-zinc-200/14 text-zinc-100" : "border-slate-300 bg-slate-100 text-slate-700";
   }
 
-  return isDarkMode ? "border-emerald-200/30 bg-emerald-200/12 text-emerald-100" : "border-emerald-200 bg-emerald-50 text-emerald-800";
+  return isDarkMode ? "border-orange-300/32 bg-orange-300/13 text-orange-100" : "border-orange-300 bg-orange-50 text-orange-800";
 }
 
 function getProgressWidth(member: RankedMember, period: LeaderboardPeriod, maxXp: number) {
@@ -68,6 +68,24 @@ function RankBadge({ rank, isDarkMode }: { rank: number; isDarkMode: boolean }) 
       {rank === 1 ? <Trophy className="h-3.5 w-3.5" aria-hidden="true" /> : rank}
     </span>
   );
+}
+
+function CrownStackRankIcon({
+  rank,
+  className,
+}: {
+  rank: number;
+  className: string;
+}) {
+  if (rank === 1) {
+    return <Flame className={`shrink-0 ${className}`} aria-hidden="true" />;
+  }
+
+  if (rank === 2) {
+    return <Zap className={`shrink-0 ${className}`} aria-hidden="true" />;
+  }
+
+  return <Sparkles className={`shrink-0 ${className}`} aria-hidden="true" />;
 }
 
 function MemberAvatar({ member, size }: { member: RankedMember; size: number }) {
@@ -100,7 +118,7 @@ function CurrentUserStrip({
   return (
     <div className={`mt-3 rounded-2xl border border-dashed p-2.5 ${currentTheme.border} ${quietSurfaceClassName}`}>
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className={`font-ui-condensed text-[11px] font-semibold uppercase tracking-[0.16em] ${currentTheme.textMuted}`}>Your place</span>
+        <span className={getPanelEyebrowClassName(currentTheme.textMuted)}>Your place</span>
         <span className={`font-due-date text-xs font-semibold ${currentTheme.primaryText}`}>#{currentUser.rank}</span>
       </div>
       <div className="flex items-center gap-2">
@@ -129,16 +147,24 @@ function PeriodSwitcher({
   isDarkMode: boolean;
 }) {
   return (
-    <div className={`mt-3 grid grid-cols-4 gap-1 rounded-2xl border p-1 ${currentTheme.border} ${quietSurfaceClassName}`}>
+    <div
+      className={`mt-3 inline-flex w-full items-center gap-1 rounded-xl p-1 ${quietSurfaceClassName}`}
+      role="group"
+      aria-label="Leaderboard time window"
+    >
       {LEADERBOARD_PERIODS.map((periodOption) => (
         <button
           key={periodOption}
           type="button"
-          onClick={() => onPeriodChange(periodOption)}
-          className={`font-ui-condensed rounded-xl px-2 py-1.5 text-xs font-semibold tracking-[0.01em] transition-all focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} ${
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            onPeriodChange(periodOption);
+          }}
+          className={`font-ui-condensed relative inline-flex flex-1 items-center justify-center whitespace-nowrap rounded-lg px-2 py-1.5 text-xs font-semibold tracking-[0.01em] transition-all focus:outline-none ${
             periodOption === period
               ? `bg-gradient-to-r ${currentTheme.primary} text-white shadow-sm`
-              : `${currentTheme.textMuted} ${isDarkMode ? "hover:bg-white/[0.06]" : "hover:bg-slate-900/[0.045]"}`
+              : `${currentTheme.textSecondary} hover:${currentTheme.primaryText} ${isDarkMode ? "hover:bg-white/[0.05]" : "hover:bg-black/[0.04]"}`
           }`}
           aria-pressed={periodOption === period}
         >
@@ -149,22 +175,31 @@ function PeriodSwitcher({
   );
 }
 
-function BoardHeader({
-  board,
+function ExpandedContentFrame({
+  period,
+  onPeriodChange,
   currentTheme,
-  label,
+  quietSurfaceClassName,
+  isDarkMode,
+  children,
 }: {
-  board: LevelLeaderboardBoard;
+  period: LeaderboardPeriod;
+  onPeriodChange: (period: LeaderboardPeriod) => void;
   currentTheme: ReturnType<typeof getThemeColors>;
-  label: string;
+  quietSurfaceClassName: string;
+  isDarkMode: boolean;
+  children: React.ReactNode;
 }) {
   return (
-    <div className="relative z-10 flex items-start gap-3">
-      <BoardLogo iconKey={board.logoIconKey} colorKey={board.logoColorKey} size="sm" />
-      <div className="min-w-0 flex-1">
-        <p className={`font-ui-condensed text-[11px] font-semibold uppercase tracking-[0.18em] ${currentTheme.primaryText}`}>{label}</p>
-        <h2 className={`font-ui-condensed mt-1 truncate text-lg font-semibold tracking-[0.01em] ${currentTheme.text}`}>{board.name}</h2>
-      </div>
+    <div className="relative z-10">
+      <PeriodSwitcher
+        period={period}
+        onPeriodChange={onPeriodChange}
+        currentTheme={currentTheme}
+        quietSurfaceClassName={quietSurfaceClassName}
+        isDarkMode={isDarkMode}
+      />
+      <div className="mt-4">{children}</div>
     </div>
   );
 }
@@ -204,15 +239,6 @@ function CollapsedPreview({
       ) : null}
 
       <div className="relative z-10 flex h-full flex-col items-center gap-3">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className={variant === "orbit-stack" ? "rounded-full ring-4 ring-white/10" : ""}>
-              <BoardLogo iconKey={board.logoIconKey} colorKey={board.logoColorKey} size="xs" />
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="right" sideOffset={10}>{board.name} - {getVariantLabel(variant)}</TooltipContent>
-        </Tooltip>
-
         <Tooltip>
           <TooltipTrigger asChild>
             <div className={`font-due-date flex h-8 w-8 items-center justify-center rounded-full border text-[11px] font-semibold uppercase ${currentTheme.border} ${quietSurfaceClassName} ${currentTheme.text}`}>
@@ -262,6 +288,7 @@ export function LevelLeaderboardPreview({
 }: LevelLeaderboardPreviewProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const panelEyebrowClassName = getPanelEyebrowClassName(currentTheme.textMuted);
   const rankedMembers = useMemo(() => getRankedMembers(board, period), [board, period]);
   const topThree = rankedMembers.slice(0, 3);
   const currentUser = rankedMembers.find((member) => member.userId === board.currentUserId);
@@ -269,9 +296,9 @@ export function LevelLeaderboardPreview({
   const maxXp = Math.max(...rankedMembers.map((member) => member.xpByPeriod[period]));
   const leader = topThree[0];
   const panelSurfaceClassName = isDarkMode
-    ? "border-zinc-800/90 bg-zinc-950/78 shadow-[0_28px_80px_-52px_rgba(0,0,0,0.92)]"
-    : "border-slate-200 bg-white/88 shadow-[0_28px_80px_-52px_rgba(15,23,42,0.42)]";
-  const quietSurfaceClassName = isDarkMode ? "bg-white/[0.035]" : "bg-slate-50/82";
+    ? "border-zinc-800/95 bg-zinc-950/92 shadow-[0_28px_80px_-52px_rgba(0,0,0,0.92)]"
+    : "border-slate-200 bg-white/96 shadow-[0_28px_80px_-52px_rgba(15,23,42,0.42)]";
+  const quietSurfaceClassName = isDarkMode ? "bg-white/[0.055]" : "bg-slate-50/94";
   const shellClassName = `relative flex min-h-[25.5rem] w-72 flex-col overflow-hidden rounded-[1.75rem] border p-3.5 backdrop-blur-xl ${panelSurfaceClassName}`;
   const subtleGlow = <div className={`pointer-events-none absolute -right-12 -top-14 h-32 w-32 rounded-full bg-gradient-to-br ${currentTheme.primarySoft} blur-3xl`} />;
   const lowerGlow = <div className={`pointer-events-none absolute -bottom-16 left-4 h-28 w-28 rounded-full bg-gradient-to-tr ${currentTheme.primarySoftStrong} blur-3xl`} />;
@@ -296,9 +323,8 @@ export function LevelLeaderboardPreview({
     return (
       <aside className={shellClassName} aria-label={`${board.name} podium rail leaderboard preview`}>
         {subtleGlow}
-        <div className="relative z-10">
-          <BoardHeader board={board} currentTheme={currentTheme} label="Podium rail" />
-          <div className="mt-4 grid grid-cols-3 items-end gap-2">
+        <ExpandedContentFrame period={period} onPeriodChange={onPeriodChange} currentTheme={currentTheme} quietSurfaceClassName={quietSurfaceClassName} isDarkMode={isDarkMode}>
+          <div className="grid grid-cols-3 items-end gap-2">
             {[topThree[1], topThree[0], topThree[2]].map((member, index) => {
               if (!member) return null;
               const heightClassName = index === 1 ? "h-32" : index === 0 ? "h-24" : "h-20";
@@ -314,7 +340,7 @@ export function LevelLeaderboardPreview({
             })}
           </div>
           <CurrentUserStrip currentUser={currentUser} period={period} currentTheme={currentTheme} quietSurfaceClassName={quietSurfaceClassName} />
-        </div>
+        </ExpandedContentFrame>
       </aside>
     );
   }
@@ -324,13 +350,12 @@ export function LevelLeaderboardPreview({
       <aside className={shellClassName} aria-label={`${board.name} orbit stack leaderboard preview`}>
         {subtleGlow}
         {lowerGlow}
-        <div className="relative z-10">
-          <BoardHeader board={board} currentTheme={currentTheme} label="Orbit stack" />
-          <div className="relative mx-auto mt-5 h-44 w-44 rounded-full border border-dashed border-current/20">
+        <ExpandedContentFrame period={period} onPeriodChange={onPeriodChange} currentTheme={currentTheme} quietSurfaceClassName={quietSurfaceClassName} isDarkMode={isDarkMode}>
+          <div className="relative mx-auto h-44 w-44 rounded-full border border-dashed border-current/20">
             <div className={`absolute inset-10 grid place-items-center rounded-full border ${currentTheme.border} ${quietSurfaceClassName}`}>
               <div className="text-center">
                 <p className={`font-due-date text-xl font-semibold ${currentTheme.text}`}>{formatNumber(totalXp)}</p>
-                <p className={`font-ui-condensed text-[10px] uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>team xp</p>
+                <p className={panelEyebrowClassName}>team xp</p>
               </div>
             </div>
             {topThree.map((member, index) => {
@@ -344,7 +369,7 @@ export function LevelLeaderboardPreview({
             })}
           </div>
           <CurrentUserStrip currentUser={currentUser} period={period} currentTheme={currentTheme} quietSurfaceClassName={quietSurfaceClassName} />
-        </div>
+        </ExpandedContentFrame>
       </aside>
     );
   }
@@ -352,10 +377,9 @@ export function LevelLeaderboardPreview({
   if (variant === "xp-ticker") {
     return (
       <aside className={shellClassName} aria-label={`${board.name} xp ticker leaderboard preview`}>
-        <div className="relative z-10">
-          <BoardHeader board={board} currentTheme={currentTheme} label="XP ticker" />
-          <div className={`font-due-date mt-4 rounded-2xl border p-3 ${currentTheme.border} ${quietSurfaceClassName}`}>
-            <div className="mb-3 flex items-center justify-between text-[11px] uppercase tracking-[0.14em]">
+        <ExpandedContentFrame period={period} onPeriodChange={onPeriodChange} currentTheme={currentTheme} quietSurfaceClassName={quietSurfaceClassName} isDarkMode={isDarkMode}>
+          <div className={`font-due-date rounded-2xl border p-3 ${currentTheme.border} ${quietSurfaceClassName}`}>
+            <div className="mb-3 flex items-center justify-between text-[11px] uppercase tracking-[0.01em]">
               <span className={currentTheme.textMuted}>Rank</span>
               <span className={currentTheme.textMuted}>XP / LVL</span>
             </div>
@@ -370,7 +394,7 @@ export function LevelLeaderboardPreview({
             </div>
           </div>
           <CurrentUserStrip currentUser={currentUser} period={period} currentTheme={currentTheme} quietSurfaceClassName={quietSurfaceClassName} />
-        </div>
+        </ExpandedContentFrame>
       </aside>
     );
   }
@@ -379,9 +403,8 @@ export function LevelLeaderboardPreview({
     return (
       <aside className={shellClassName} aria-label={`${board.name} signal strips leaderboard preview`}>
         {subtleGlow}
-        <div className="relative z-10">
-          <BoardHeader board={board} currentTheme={currentTheme} label="Signal strips" />
-          <div className="mt-4 space-y-3">
+        <ExpandedContentFrame period={period} onPeriodChange={onPeriodChange} currentTheme={currentTheme} quietSurfaceClassName={quietSurfaceClassName} isDarkMode={isDarkMode}>
+          <div className="space-y-3">
             {topThree.map((member) => (
               <div key={member.userId} className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
@@ -398,7 +421,7 @@ export function LevelLeaderboardPreview({
             ))}
           </div>
           <CurrentUserStrip currentUser={currentUser} period={period} currentTheme={currentTheme} quietSurfaceClassName={quietSurfaceClassName} />
-        </div>
+        </ExpandedContentFrame>
       </aside>
     );
   }
@@ -407,10 +430,9 @@ export function LevelLeaderboardPreview({
     return (
       <aside className={shellClassName} aria-label={`${board.name} crown deck leaderboard preview`}>
         {subtleGlow}
-        <div className="relative z-10">
-          <BoardHeader board={board} currentTheme={currentTheme} label="Crown deck" />
+        <ExpandedContentFrame period={period} onPeriodChange={onPeriodChange} currentTheme={currentTheme} quietSurfaceClassName={quietSurfaceClassName} isDarkMode={isDarkMode}>
           {leader ? (
-            <div className={`mt-4 rounded-[1.5rem] border p-4 ${getRankTone(1, isDarkMode)}`}>
+            <div className={`rounded-[1.5rem] border p-4 ${getRankTone(1, isDarkMode)}`}>
               <div className="flex items-center justify-between gap-3">
                 <MemberAvatar member={leader} size={50} />
                 <Crown className="h-7 w-7" aria-hidden="true" />
@@ -421,15 +443,80 @@ export function LevelLeaderboardPreview({
           ) : null}
           <div className="mt-3 grid grid-cols-2 gap-2">
             {topThree.slice(1).map((member) => (
-              <div key={member.userId} className={`rounded-2xl border p-2 ${currentTheme.border} ${quietSurfaceClassName}`}>
+              <div key={member.userId} className={`rounded-2xl border p-2 ${getRankTone(member.rank, isDarkMode)}`}>
                 <RankBadge rank={member.rank} isDarkMode={isDarkMode} />
-                <p className={`mt-2 truncate text-xs font-semibold ${currentTheme.text}`}>{member.displayName}</p>
-                <p className={`font-due-date text-xs ${currentTheme.textMuted}`}>{formatNumber(member.xpByPeriod[period])}</p>
+                <p className="mt-2 truncate text-xs font-semibold">{member.displayName}</p>
+                <p className="font-due-date text-xs opacity-80">{formatNumber(member.xpByPeriod[period])}</p>
               </div>
             ))}
           </div>
           <CurrentUserStrip currentUser={currentUser} period={period} currentTheme={currentTheme} quietSurfaceClassName={quietSurfaceClassName} />
-        </div>
+        </ExpandedContentFrame>
+      </aside>
+    );
+  }
+
+  if (variant === "crown-stack") {
+    const crownStackAvatarSize = 46;
+    const crownStackRankStyles: Record<number, { iconSizeClassName: string; paddingClassName: string; nameClassName: string; xpClassName: string; heightClassName: string }> = {
+      1: {
+        iconSizeClassName: "h-6 w-6",
+        paddingClassName: "p-3.5",
+        nameClassName: "text-base",
+        xpClassName: "text-xl",
+        heightClassName: "min-h-[7.7rem]",
+      },
+      2: {
+        iconSizeClassName: "h-5 w-5",
+        paddingClassName: "p-3",
+        nameClassName: "text-sm",
+        xpClassName: "text-lg",
+        heightClassName: "min-h-[6.9rem]",
+      },
+      3: {
+        iconSizeClassName: "h-4 w-4",
+        paddingClassName: "p-3",
+        nameClassName: "text-xs",
+        xpClassName: "text-base",
+        heightClassName: "min-h-[6.3rem]",
+      },
+    };
+
+    return (
+      <aside className={shellClassName} aria-label={`${board.name} crown stack leaderboard preview`}>
+        {subtleGlow}
+        <ExpandedContentFrame period={period} onPeriodChange={onPeriodChange} currentTheme={currentTheme} quietSurfaceClassName={quietSurfaceClassName} isDarkMode={isDarkMode}>
+          <div className="space-y-2.5">
+            {topThree.map((member) => {
+              const rankStyle = crownStackRankStyles[member.rank] ?? crownStackRankStyles[3];
+
+              return (
+                <div
+                  key={member.userId}
+                  className={`rounded-[1.35rem] border ${rankStyle.heightClassName} ${rankStyle.paddingClassName} ${getRankTone(member.rank, isDarkMode)}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-5">
+                      <MemberAvatar member={member} size={crownStackAvatarSize} />
+                      <div className="min-w-0">
+                        <p className={`truncate font-semibold ${rankStyle.nameClassName}`}>{member.username}</p>
+                        <p className="mt-0.5 truncate text-xs opacity-75">{member.displayName}</p>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <CrownStackRankIcon rank={member.rank} className={rankStyle.iconSizeClassName} />
+                      <span className="font-due-date text-[10px] font-semibold opacity-75">#{member.rank}</span>
+                    </div>
+                  </div>
+                  <p className={`font-due-date mt-2 font-semibold ${rankStyle.xpClassName}`}>
+                    {formatNumber(member.xpByPeriod[period])} XP
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+          <CurrentUserStrip currentUser={currentUser} period={period} currentTheme={currentTheme} quietSurfaceClassName={quietSurfaceClassName} />
+        </ExpandedContentFrame>
       </aside>
     );
   }
@@ -438,12 +525,11 @@ export function LevelLeaderboardPreview({
     return (
       <aside className={`${shellClassName} font-system-signal`} aria-label={`${board.name} pulse terminal leaderboard preview`}>
         <div className="absolute inset-0 opacity-[0.08]" style={{ backgroundImage: "linear-gradient(currentColor 1px, transparent 1px), linear-gradient(90deg, currentColor 1px, transparent 1px)", backgroundSize: "16px 16px" }} />
-        <div className="relative z-10">
+        <ExpandedContentFrame period={period} onPeriodChange={onPeriodChange} currentTheme={currentTheme} quietSurfaceClassName={quietSurfaceClassName} isDarkMode={isDarkMode}>
           <div className={`flex items-center justify-between border-b pb-3 text-[10px] uppercase tracking-[0.18em] ${currentTheme.border} ${currentTheme.textMuted}`}>
-            <span>leaderboard.exe</span>
-            <Terminal className={`h-4 w-4 ${currentTheme.primaryText}`} aria-hidden="true" />
+            <span>xp_stream</span>
+            <span className={currentTheme.primaryText}>{LEADERBOARD_PERIOD_LABELS[period].toLowerCase()}</span>
           </div>
-          <p className={`mt-3 text-xs ${currentTheme.primaryText}`}>board::{board.name.toLowerCase().replace(/\s+/g, "-")}</p>
           <div className="mt-4 space-y-2">
             {topThree.map((member) => (
               <div key={member.userId} className={`rounded-xl border px-3 py-2 ${currentTheme.border} ${quietSurfaceClassName}`}>
@@ -455,7 +541,7 @@ export function LevelLeaderboardPreview({
             ))}
           </div>
           <CurrentUserStrip currentUser={currentUser} period={period} currentTheme={currentTheme} quietSurfaceClassName={quietSurfaceClassName} />
-        </div>
+        </ExpandedContentFrame>
       </aside>
     );
   }
@@ -465,9 +551,8 @@ export function LevelLeaderboardPreview({
       <aside className={shellClassName} aria-label={`${board.name} glass ladder leaderboard preview`}>
         {subtleGlow}
         {lowerGlow}
-        <div className="relative z-10">
-          <BoardHeader board={board} currentTheme={currentTheme} label="Glass ladder" />
-          <div className="mt-4 space-y-2">
+        <ExpandedContentFrame period={period} onPeriodChange={onPeriodChange} currentTheme={currentTheme} quietSurfaceClassName={quietSurfaceClassName} isDarkMode={isDarkMode}>
+          <div className="space-y-2">
             {topThree.map((member) => (
               <div key={member.userId} className={`flex items-center gap-3 rounded-[1.35rem] border p-3 backdrop-blur-xl ${currentTheme.border} ${isDarkMode ? "bg-white/[0.045]" : "bg-white/68"}`}>
                 <MemberAvatar member={member} size={38} />
@@ -480,7 +565,7 @@ export function LevelLeaderboardPreview({
             ))}
           </div>
           <CurrentUserStrip currentUser={currentUser} period={period} currentTheme={currentTheme} quietSurfaceClassName={quietSurfaceClassName} />
-        </div>
+        </ExpandedContentFrame>
       </aside>
     );
   }
@@ -489,9 +574,8 @@ export function LevelLeaderboardPreview({
     return (
       <aside className={shellClassName} aria-label={`${board.name} neon bracket leaderboard preview`}>
         <div className={`absolute bottom-8 left-6 top-24 w-px bg-gradient-to-b ${currentTheme.primary}`} />
-        <div className="relative z-10">
-          <BoardHeader board={board} currentTheme={currentTheme} label="Neon bracket" />
-          <div className="mt-4 space-y-3">
+        <ExpandedContentFrame period={period} onPeriodChange={onPeriodChange} currentTheme={currentTheme} quietSurfaceClassName={quietSurfaceClassName} isDarkMode={isDarkMode}>
+          <div className="space-y-3">
             {topThree.map((member) => (
               <div key={member.userId} className="relative pl-8">
                 <span className={`absolute left-0 top-1/2 h-px w-6 bg-gradient-to-r ${currentTheme.primary}`} />
@@ -505,7 +589,7 @@ export function LevelLeaderboardPreview({
             ))}
           </div>
           <CurrentUserStrip currentUser={currentUser} period={period} currentTheme={currentTheme} quietSurfaceClassName={quietSurfaceClassName} />
-        </div>
+        </ExpandedContentFrame>
       </aside>
     );
   }
@@ -513,10 +597,8 @@ export function LevelLeaderboardPreview({
   if (variant === "ledger-chips") {
     return (
       <aside className={shellClassName} aria-label={`${board.name} ledger chips leaderboard preview`}>
-        <div className="relative z-10">
-          <BoardHeader board={board} currentTheme={currentTheme} label="Ledger chips" />
-          <PeriodSwitcher period={period} onPeriodChange={onPeriodChange} currentTheme={currentTheme} quietSurfaceClassName={quietSurfaceClassName} isDarkMode={isDarkMode} />
-          <div className="mt-3 grid grid-cols-2 gap-2">
+        <ExpandedContentFrame period={period} onPeriodChange={onPeriodChange} currentTheme={currentTheme} quietSurfaceClassName={quietSurfaceClassName} isDarkMode={isDarkMode}>
+          <div className="grid grid-cols-2 gap-2">
             {topThree.map((member) => (
               <div key={member.userId} className={`rounded-2xl border p-2 ${currentTheme.border} ${quietSurfaceClassName}`}>
                 <p className={`font-due-date text-[11px] font-semibold ${currentTheme.primaryText}`}>#{member.rank}</p>
@@ -526,11 +608,11 @@ export function LevelLeaderboardPreview({
             ))}
           </div>
           <div className={`mt-3 rounded-2xl border p-3 ${currentTheme.border} ${quietSurfaceClassName}`}>
-            <p className={`font-ui-condensed text-[11px] uppercase tracking-[0.16em] ${currentTheme.textMuted}`}>Total ledger</p>
+            <p className={panelEyebrowClassName}>Total ledger</p>
             <p className={`font-due-date mt-1 text-xl font-semibold ${currentTheme.text}`}>{formatNumber(totalXp)} XP</p>
           </div>
           <CurrentUserStrip currentUser={currentUser} period={period} currentTheme={currentTheme} quietSurfaceClassName={quietSurfaceClassName} />
-        </div>
+        </ExpandedContentFrame>
       </aside>
     );
   }
@@ -538,9 +620,8 @@ export function LevelLeaderboardPreview({
   return (
     <aside className={shellClassName} aria-label={`${board.name} constellation map leaderboard preview`}>
       {subtleGlow}
-      <div className="relative z-10">
-        <BoardHeader board={board} currentTheme={currentTheme} label="Constellation map" />
-        <div className="relative mx-auto mt-5 h-44 w-48">
+      <ExpandedContentFrame period={period} onPeriodChange={onPeriodChange} currentTheme={currentTheme} quietSurfaceClassName={quietSurfaceClassName} isDarkMode={isDarkMode}>
+        <div className="relative mx-auto h-44 w-48">
           <svg className={`absolute inset-0 h-full w-full ${currentTheme.primaryText}`} viewBox="0 0 192 176" aria-hidden="true">
             <path d="M96 26 L44 118 L148 126 Z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="5 7" opacity="0.42" />
           </svg>
@@ -558,7 +639,7 @@ export function LevelLeaderboardPreview({
           </div>
         </div>
         <CurrentUserStrip currentUser={currentUser} period={period} currentTheme={currentTheme} quietSurfaceClassName={quietSurfaceClassName} />
-      </div>
+      </ExpandedContentFrame>
     </aside>
   );
 }

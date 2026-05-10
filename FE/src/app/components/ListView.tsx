@@ -58,6 +58,7 @@ import { getInputLikeControlClassName, getNativeInputFieldClassName } from "./in
 import { WorkspaceClearButton, WorkspaceFilterChip } from "./WorkspaceFilterChip";
 import { WorkspacePaginationFooter } from "./WorkspacePaginationFooter";
 import { getWorkspaceControlSurfaceClassName } from "../utils/workspaceSurfaceStyles";
+import { getToolbarLabelClassName } from "./typographyStyles";
 
 type SortState = {
   key: BoardTaskSortKey | null;
@@ -539,7 +540,7 @@ export function ListView({
     }
   };
 
-  const toolbarLabelClassName = `text-[11px] font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`;
+  const toolbarLabelClassName = getToolbarLabelClassName(currentTheme.textMuted);
   const listSearchInputClassName = getNativeInputFieldClassName(currentTheme, {
     surfaceClassName: getWorkspaceControlSurfaceClassName(),
   });

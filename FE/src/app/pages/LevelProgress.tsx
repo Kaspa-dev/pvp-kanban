@@ -6,6 +6,7 @@ import {
   LEVEL_PROGRESS_CARD_VARIANTS,
   LEVEL_PROGRESS_DATA_VARIANTS,
 } from "../components/LevelProgressCard";
+import { getPanelEyebrowClassName } from "../components/typographyStyles";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import type { GamificationSummary } from "../utils/gamification";
 import { getLevelTier } from "../utils/levelBadges";
@@ -112,6 +113,8 @@ const PROGRESS_SAMPLES: ProgressSample[] = [
 export function LevelProgress() {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const mutedEyebrowClassName = getPanelEyebrowClassName(currentTheme.textMuted);
+  const primaryEyebrowClassName = getPanelEyebrowClassName(currentTheme.primaryText);
   const gridScrollerRef = useRef<HTMLDivElement | null>(null);
   const dataGridScrollerRef = useRef<HTMLDivElement | null>(null);
   const dragStateRef = useRef({
@@ -214,7 +217,7 @@ export function LevelProgress() {
             <div>
               <Link
                 to="/levelbadges"
-                className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.primaryText} hover:underline`}
+                className={`${primaryEyebrowClassName} hover:underline`}
               >
                 Level badge lab
               </Link>
@@ -239,9 +242,9 @@ export function LevelProgress() {
         <section className={`rounded-[2rem] border p-5 backdrop-blur-xl ${panelClassName}`}>
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.primaryText}`}>Production preview</p>
+              <p className={primaryEyebrowClassName}>Production preview</p>
               <h2 className={`font-ui-condensed mt-2 text-2xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
-                Console Strip is currently wired into the navbar popover
+                Orbit Ribbon Console with Checkpoint Path is wired into the navbar popover
               </h2>
               <p className={`mt-2 max-w-2xl text-sm leading-6 ${currentTheme.textSecondary}`}>
                 The real profile chip uses this same reusable card component, with live summary data when available and lazy loading as a fallback.
@@ -253,7 +256,8 @@ export function LevelProgress() {
                 fullName={productionSample.fullName}
                 level={productionSample.level}
                 summary={productionSample.summary}
-                variant="console-strip"
+                variant="orbit-ribbon-console"
+                dataVariant="checkpoint-path"
                 onViewProfile={() => undefined}
               />
             </div>
@@ -263,7 +267,7 @@ export function LevelProgress() {
         <section className={`rounded-[2rem] border p-4 backdrop-blur-xl sm:p-5 ${panelClassName}`}>
           <div className="flex flex-col gap-2 border-b pb-4 sm:flex-row sm:items-end sm:justify-between" style={{ borderColor: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.08)" }}>
             <div>
-              <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.primaryText}`}>Variant grid</p>
+              <p className={primaryEyebrowClassName}>Variant grid</p>
               <h2 className={`font-ui-condensed mt-2 text-2xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
                 {LEVEL_PROGRESS_CARD_VARIANTS.length} compact XP card directions
               </h2>
@@ -289,7 +293,7 @@ export function LevelProgress() {
                 minWidth: `${14 + LEVEL_PROGRESS_CARD_VARIANTS.length * 21.75}rem`,
               }}
             >
-              <div className={`font-ui-condensed hidden rounded-2xl px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] lg:block ${currentTheme.textMuted}`}>
+              <div className={`hidden rounded-2xl px-4 py-3 lg:block ${mutedEyebrowClassName}`}>
                 State
               </div>
               {LEVEL_PROGRESS_CARD_VARIANTS.map((variant) => (
@@ -305,7 +309,7 @@ export function LevelProgress() {
               {PROGRESS_SAMPLES.map((sample) => (
                 <div key={sample.key} className="contents">
                   <div className={`rounded-2xl border px-4 py-4 ${currentTheme.border} ${isDarkMode ? "bg-white/[0.025]" : "bg-slate-50/70"}`}>
-                    <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+                    <p className={mutedEyebrowClassName}>
                       {sample.summary ? sample.summary.currentLevelName : sample.isLoading ? "Pending" : "Error"}
                     </p>
                     <p className={`font-ui-condensed mt-1 text-xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
@@ -344,7 +348,7 @@ export function LevelProgress() {
         <section className={`rounded-[2rem] border p-4 backdrop-blur-xl sm:p-5 ${panelClassName}`}>
           <div className="flex flex-col gap-2 border-b pb-4 sm:flex-row sm:items-end sm:justify-between" style={{ borderColor: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.08)" }}>
             <div>
-              <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.primaryText}`}>Data preview grid</p>
+              <p className={primaryEyebrowClassName}>Data preview grid</p>
               <h2 className={`font-ui-condensed mt-2 text-2xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
                 Orbit Ribbon Console data options
               </h2>
@@ -370,7 +374,7 @@ export function LevelProgress() {
                 minWidth: `${14 + LEVEL_PROGRESS_DATA_VARIANTS.length * 21.75}rem`,
               }}
             >
-              <div className={`font-ui-condensed hidden rounded-2xl px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] lg:block ${currentTheme.textMuted}`}>
+              <div className={`hidden rounded-2xl px-4 py-3 lg:block ${mutedEyebrowClassName}`}>
                 State
               </div>
               {LEVEL_PROGRESS_DATA_VARIANTS.map((variant) => (
@@ -386,7 +390,7 @@ export function LevelProgress() {
               {PROGRESS_SAMPLES.map((sample) => (
                 <div key={`data-${sample.key}`} className="contents">
                   <div className={`rounded-2xl border px-4 py-4 ${currentTheme.border} ${isDarkMode ? "bg-white/[0.025]" : "bg-slate-50/70"}`}>
-                    <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+                    <p className={mutedEyebrowClassName}>
                       {sample.summary ? sample.summary.currentLevelName : sample.isLoading ? "Pending" : "Error"}
                     </p>
                     <p className={`font-ui-condensed mt-1 text-xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>

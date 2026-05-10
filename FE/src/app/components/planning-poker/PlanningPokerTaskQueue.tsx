@@ -5,6 +5,7 @@ import { Button } from "../ui/button";
 import { cn } from "../ui/utils";
 import { useTheme, getThemeColors } from "../../contexts/ThemeContext";
 import type { PlanningPokerSessionTask } from "../../utils/planningPoker";
+import { getPanelEyebrowClassName } from "../typographyStyles";
 
 interface PlanningPokerTaskQueueProps {
   activeTask: PlanningPokerSessionTask | null;
@@ -52,6 +53,7 @@ export function PlanningPokerTaskQueue({
 }: PlanningPokerTaskQueueProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const panelEyebrowClassName = getPanelEyebrowClassName(currentTheme.textMuted);
   const [customRecommendation, setCustomRecommendation] = useState("");
   const parsedCustomRecommendation = Number(customRecommendation);
   const canSubmitCustomRecommendation =
@@ -91,7 +93,7 @@ export function PlanningPokerTaskQueue({
             <div className="min-w-0 space-y-2">
               <div className="flex flex-wrap items-center gap-2">
                 <p
-                  className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}
+                  className={panelEyebrowClassName}
                 >
                   Current task
                 </p>

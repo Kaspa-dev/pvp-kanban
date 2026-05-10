@@ -40,6 +40,7 @@ import {
   type UserMilestoneSummary,
 } from "../utils/milestones";
 import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
+import { getPanelEyebrowClassName } from "../components/typographyStyles";
 
 type ProfileFormState = {
   firstName: string;
@@ -97,6 +98,7 @@ export function Profile() {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
+  const panelEyebrowClassName = getPanelEyebrowClassName(currentTheme.textMuted);
 
   const [gamificationEnabled, setGamificationEnabled] = useLocalStorageBoolean("settings.gamification", true);
   const [notificationsEnabled, setNotificationsEnabled] = useLocalStorageBoolean("settings.notifications", true);
@@ -393,7 +395,7 @@ export function Profile() {
                   Premium account hub
                 </span>
                 <div>
-                  <p className={`font-ui-condensed text-sm font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+                  <p className={panelEyebrowClassName}>
                     Account Center
                   </p>
                   <h1 className={`font-ui-condensed mt-3 text-4xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>{profileDisplayName || user.displayName}</h1>
@@ -406,17 +408,17 @@ export function Profile() {
                 </p>
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div className={`rounded-[1.5rem] border p-4 ${currentTheme.border} ${currentTheme.bgSecondary}`}>
-                    <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Identity</p>
+                    <p className={panelEyebrowClassName}>Identity</p>
                     <p className={`mt-3 text-sm font-medium ${currentTheme.text}`}>Visible everywhere</p>
                     <p className={`mt-1 text-sm leading-6 ${currentTheme.textSecondary}`}>Boards, mentions, and shared spaces refresh from this profile instantly.</p>
                   </div>
                   <div className={`rounded-[1.5rem] border p-4 ${currentTheme.border} ${currentTheme.bgSecondary}`}>
-                    <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Experience</p>
+                    <p className={panelEyebrowClassName}>Experience</p>
                     <p className={`mt-3 text-sm font-medium ${currentTheme.text}`}><span className="font-due-date">{gamificationSummary.tasksCompleted}</span> tasks closed</p>
                     <p className={`mt-1 text-sm leading-6 ${currentTheme.textSecondary}`}>Your progress stays close while you manage the rest of your account.</p>
                   </div>
                   <div className={`rounded-[1.5rem] border p-4 ${currentTheme.border} ${currentTheme.bgSecondary}`}>
-                    <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Security</p>
+                    <p className={panelEyebrowClassName}>Security</p>
                     <p className={`mt-3 text-sm font-medium ${currentTheme.text}`}>One trusted place</p>
                     <p className={`mt-1 text-sm leading-6 ${currentTheme.textSecondary}`}>Password changes and deletion controls stay separate and clearly explained.</p>
                   </div>
@@ -485,7 +487,7 @@ export function Profile() {
           <section className={sectionShellClassName}>
             <div className="mb-6 flex items-center justify-between gap-4">
               <div>
-                <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Public identity</p>
+                <p className={panelEyebrowClassName}>Public identity</p>
                 <h2 className={`font-ui-condensed mt-3 text-3xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>Profile Details</h2>
                 <p className={`mt-2 text-sm leading-6 ${currentTheme.textMuted}`}>
                   Update the information teammates see across boards and activity.
@@ -604,7 +606,7 @@ export function Profile() {
 
             <section className={sectionShellClassName}>
               <div className="mb-6">
-                <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Workspace comfort</p>
+                <p className={panelEyebrowClassName}>Workspace comfort</p>
                 <h2 className={`font-ui-condensed mt-3 text-3xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>Preferences</h2>
                 <p className={`mt-2 text-sm leading-6 ${currentTheme.textMuted}`}>
                   Tailor your workspace visuals and assistance settings.
@@ -627,7 +629,7 @@ export function Profile() {
                 <KeyRound className="h-5 w-5" />
               </div>
               <div>
-                <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Access protection</p>
+                <p className={panelEyebrowClassName}>Access protection</p>
                 <h2 className={`font-ui-condensed mt-3 text-3xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>Security</h2>
                 <p className={`mt-2 text-sm leading-6 ${currentTheme.textMuted}`}>
                   Change your password with your current credentials.
@@ -701,7 +703,7 @@ export function Profile() {
                 <Trash2 className="h-5 w-5" />
               </div>
               <div>
-                <p className="font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] text-red-700">Destructive action</p>
+                <p className={getPanelEyebrowClassName("text-red-700")}>Destructive action</p>
                 <h2 className="font-ui-condensed mt-3 text-3xl font-semibold tracking-[0.01em] text-red-950">Danger Zone</h2>
                 <p className="mt-2 text-sm leading-6 text-red-800">
                   Permanently remove your account when it is safe to do so. This action cannot be undone.

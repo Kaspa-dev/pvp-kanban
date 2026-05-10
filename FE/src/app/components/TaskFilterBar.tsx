@@ -5,6 +5,7 @@ import { Label } from "../utils/labels";
 import { BacklogStageFilter, TaskQuickFilter } from "../utils/taskWorkspaceFilters";
 import { CustomScrollArea } from "./CustomScrollArea";
 import { LabelBadge } from "./LabelBadge";
+import { getToolbarLabelClassName } from "./typographyStyles";
 
 interface TaskFilterBarProps {
   searchQuery: string;
@@ -45,6 +46,7 @@ export function TaskFilterBar({
 }: TaskFilterBarProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const toolbarLabelClassName = getToolbarLabelClassName(currentTheme.textMuted);
 
   const toggleLabel = (labelId: number) => {
     if (selectedLabelIds.includes(labelId)) {
@@ -60,7 +62,7 @@ export function TaskFilterBar({
       <div className="flex flex-col gap-5">
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
           <div className="space-y-2">
-            <label className={`block text-[11px] font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+            <label className={`block ${toolbarLabelClassName}`}>
               Search Tasks
             </label>
             <div className="relative">
@@ -77,7 +79,7 @@ export function TaskFilterBar({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <span className={`block text-[11px] font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+              <span className={`block ${toolbarLabelClassName}`}>
                 Quick Filter
               </span>
               <div className={`flex flex-wrap gap-2 rounded-xl border p-1.5 ${currentTheme.border} ${currentTheme.bgSecondary}`}>
@@ -103,7 +105,7 @@ export function TaskFilterBar({
             </div>
 
             <div className="space-y-2">
-              <span className={`block text-[11px] font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+              <span className={`block ${toolbarLabelClassName}`}>
                 Labels
               </span>
               <Popover.Root>
@@ -128,7 +130,7 @@ export function TaskFilterBar({
                     className={`z-50 w-72 rounded-2xl border p-3 shadow-2xl ${currentTheme.cardBg} ${currentTheme.border}`}
                   >
                     <div className="mb-3 px-1">
-                      <h4 className={`text-xs font-bold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+                      <h4 className={toolbarLabelClassName}>
                         Filter By Labels
                       </h4>
                     </div>
@@ -175,7 +177,7 @@ export function TaskFilterBar({
 
         {onStageFilterChange && stageFilter && (
           <div className="space-y-2">
-            <span className={`block text-[11px] font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+            <span className={`block ${toolbarLabelClassName}`}>
               Queue State
             </span>
             <div className={`flex flex-wrap gap-2 rounded-xl border p-1.5 ${currentTheme.border} ${currentTheme.bgSecondary}`}>
@@ -203,7 +205,7 @@ export function TaskFilterBar({
 
         {selectedLabelIds.length > 0 && (
           <div className="space-y-2">
-            <span className={`block text-[11px] font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+            <span className={`block ${toolbarLabelClassName}`}>
               Active Labels
             </span>
             <div className="flex flex-wrap gap-2">
@@ -241,7 +243,7 @@ export function TaskFilterBar({
               onSelectedLabelIdsChange([]);
               onStageFilterChange?.("all");
             }}
-            className={`text-xs font-semibold uppercase tracking-[0.14em] ${currentTheme.textMuted} hover:${currentTheme.primaryText}`}
+            className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.01em] ${currentTheme.textMuted} hover:${currentTheme.primaryText}`}
           >
             Reset Filters
           </button>

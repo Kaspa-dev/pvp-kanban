@@ -1,8 +1,10 @@
 import { ArrowRight, LoaderCircle } from "lucide-react";
 import { AppAvatar } from "./AppAvatar";
+import { LevelNumberBadge } from "./LevelNumberBadge";
 import { getThemeColors, useTheme, type Theme } from "../contexts/ThemeContext";
 import type { GamificationSummary } from "../utils/gamification";
 import { getLevelTier } from "../utils/levelBadges";
+import { getPanelEyebrowClassName } from "./typographyStyles";
 
 export const LEVEL_PROGRESS_CARD_VARIANTS = [
   {
@@ -201,13 +203,14 @@ export function LevelProgressCard({
   level,
   summary,
   variant = "console-strip",
-  dataVariant = "xp-balance",
+  dataVariant = "checkpoint-path",
   isLoading = false,
   hasError = false,
   onViewProfile,
 }: LevelProgressCardProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const panelEyebrowClassName = getPanelEyebrowClassName(currentTheme.textMuted);
   const displayName = fullName.trim() || username;
   const currentLevel = summary?.currentLevel ?? level;
   const tier = getLevelTier(currentLevel ?? 1);
@@ -224,8 +227,8 @@ export function LevelProgressCard({
   const progressAccent = getProgressAccentPalette(theme, isDarkMode);
   const accentGradient = `linear-gradient(90deg, ${progressAccent.color}, ${progressAccent.colorStrong})`;
   const accentSoftGradient = `linear-gradient(135deg, ${progressAccent.glow}, transparent 64%)`;
-  const cardSurfaceClassName = isDarkMode ? "bg-zinc-950/80" : "bg-white/90";
-  const quietSurfaceClassName = isDarkMode ? "bg-zinc-900/72" : "bg-slate-50/88";
+  const cardSurfaceClassName = isDarkMode ? "bg-zinc-950/96" : "bg-white/96";
+  const quietSurfaceClassName = isDarkMode ? "bg-zinc-900/92" : "bg-slate-50/96";
   const railClassName = isDarkMode ? "bg-zinc-800" : "bg-slate-200";
 
   const rootShapeClassName =
@@ -256,7 +259,7 @@ export function LevelProgressCard({
 
     if (mode === "dial") {
       return (
-        <div className="relative flex items-center gap-5">
+        <div className="relative flex items-center gap-6">
           <div className="relative grid size-[4.25rem] place-items-center rounded-full" style={{ background: accentSoftGradient }}>
             <div
               className="absolute inset-1 rounded-full"
@@ -275,7 +278,7 @@ export function LevelProgressCard({
     }
 
     return (
-      <div className="relative flex items-start gap-5">
+      <div className="relative flex items-start gap-6">
         <AppAvatar
           username={username}
           fullName={fullName}
@@ -350,7 +353,7 @@ export function LevelProgressCard({
           {!isReadout && renderMiniGauge("medium")}
           <div className="min-w-0">
             <div className="flex items-center justify-between gap-3">
-              <p className={`truncate text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>{label}</p>
+              <p className={`truncate ${panelEyebrowClassName}`}>{label}</p>
               <span className={`font-due-date text-xs font-semibold ${currentTheme.text}`}>LVL {currentLevel ?? "-"}</span>
             </div>
             <p className={`font-due-date mt-1 truncate text-lg font-semibold ${currentTheme.text}`}>{xpText}</p>
@@ -383,7 +386,7 @@ export function LevelProgressCard({
         <>
           <div className="flex items-end justify-between gap-3">
             <div className="min-w-0">
-              <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>XP Meter</p>
+              <p className={panelEyebrowClassName}>XP Meter</p>
               <p className={`font-due-date mt-1 truncate text-lg font-semibold ${currentTheme.text}`}>{xpText}</p>
             </div>
             <span className={`font-due-date text-2xl font-semibold ${currentTheme.text}`}>{roundedProgressPercent}%</span>
@@ -396,7 +399,7 @@ export function LevelProgressCard({
         <>
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Next checkpoint</p>
+              <p className={panelEyebrowClassName}>Next checkpoint</p>
               <p className={`font-ui-condensed mt-1 text-2xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
                 {nextLevel ? `Level ${nextLevel}` : "Level cap"}
               </p>
@@ -423,7 +426,7 @@ export function LevelProgressCard({
       ),
       "level-title": (
         <>
-          <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Current title</p>
+          <p className={panelEyebrowClassName}>Current title</p>
           <div className="mt-1 flex items-end justify-between gap-3">
             <p className={`font-ui-condensed truncate text-2xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
               {summary.currentLevelName}
@@ -438,11 +441,11 @@ export function LevelProgressCard({
         <>
           <div className="grid grid-cols-2 gap-2">
             <div className={smallMetricClassName}>
-              <p className={`text-[0.65rem] font-semibold uppercase tracking-[0.16em] ${currentTheme.textMuted}`}>Lifetime</p>
+              <p className={panelEyebrowClassName}>Lifetime</p>
               <p className={`font-due-date mt-1 text-base font-semibold ${currentTheme.text}`}>{formatNumber(summary.lifetimeXp)} XP</p>
             </div>
             <div className={smallMetricClassName}>
-              <p className={`text-[0.65rem] font-semibold uppercase tracking-[0.16em] ${currentTheme.textMuted}`}>This level</p>
+              <p className={panelEyebrowClassName}>This level</p>
               <p className={`font-due-date mt-1 text-base font-semibold ${currentTheme.text}`}>{formatNumber(summary.currentLevelXp)} XP</p>
             </div>
           </div>
@@ -452,14 +455,14 @@ export function LevelProgressCard({
       ),
       "momentum-strip": (
         <>
-          <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Momentum</p>
+          <p className={panelEyebrowClassName}>Momentum</p>
           <div className="mt-2 grid grid-cols-2 gap-2">
             <div className={smallMetricClassName}>
-              <p className={`text-[0.65rem] font-semibold uppercase tracking-[0.16em] ${currentTheme.textMuted}`}>Week</p>
+              <p className={panelEyebrowClassName}>Week</p>
               <p className={`font-due-date mt-1 text-base font-semibold ${currentTheme.text}`}>+{formatNumber(summary.weeklyXp)} XP</p>
             </div>
             <div className={smallMetricClassName}>
-              <p className={`text-[0.65rem] font-semibold uppercase tracking-[0.16em] ${currentTheme.textMuted}`}>Month</p>
+              <p className={panelEyebrowClassName}>Month</p>
               <p className={`font-due-date mt-1 text-base font-semibold ${currentTheme.text}`}>+{formatNumber(summary.monthlyXp)} XP</p>
             </div>
           </div>
@@ -471,7 +474,7 @@ export function LevelProgressCard({
         <>
           <div className="flex items-end justify-between gap-3">
             <div>
-              <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Completed work</p>
+              <p className={panelEyebrowClassName}>Completed work</p>
               <p className={`font-due-date mt-1 text-3xl font-semibold leading-none ${currentTheme.text}`}>{formatNumber(summary.tasksCompleted)}</p>
             </div>
             <p className={`max-w-[9rem] text-right text-xs leading-5 ${currentTheme.textMuted}`}>tasks converted into {formatNumber(summary.lifetimeXp)} lifetime XP</p>
@@ -483,19 +486,19 @@ export function LevelProgressCard({
       "checkpoint-path": (
         <>
           <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-            <span className={`font-due-date rounded-full px-3 py-1.5 text-sm font-semibold ${quietSurfaceClassName} ${currentTheme.text}`}>L{summary.currentLevel}</span>
+            <LevelNumberBadge level={summary.currentLevel} size="sm" />
             <div className={`h-1.5 overflow-hidden rounded-full ${railClassName}`}>
               <div className="h-full rounded-full" style={{ width: `${progressPercent}%`, background: accentGradient }} />
             </div>
-            <span className={`font-due-date rounded-full px-3 py-1.5 text-sm font-semibold ${quietSurfaceClassName} ${currentTheme.text}`}>
-              {nextLevel ? `L${nextLevel}` : "CAP"}
-            </span>
+            {nextLevel ? (
+              <LevelNumberBadge level={nextLevel} size="sm" />
+            ) : (
+              <span className={`font-due-date rounded-full px-3 py-1.5 text-xs font-semibold ${quietSurfaceClassName} ${currentTheme.text}`}>
+                CAP
+              </span>
+            )}
           </div>
-          <div className="mt-3 flex items-center justify-between gap-3 text-xs">
-            <span className={`font-due-date ${currentTheme.textSecondary}`}>{xpText}</span>
-            <span className={currentTheme.textMuted}>{roundedProgressPercent}%</span>
-          </div>
-          <p className={`mt-2 text-xs ${currentTheme.textMuted}`}>{remainingXpText}</p>
+          <p className={`mt-3 text-xs ${currentTheme.textMuted}`}>{remainingXpText}</p>
         </>
       ),
       "compact-receipt": (
@@ -507,7 +510,7 @@ export function LevelProgressCard({
             ["LEFT", remainingXpText],
           ].map(([label, value]) => (
             <div key={label} className={`flex items-center justify-between gap-3 border-b pb-1.5 text-xs ${currentTheme.border}`}>
-              <span className={`font-ui-condensed font-semibold uppercase tracking-[0.12em] ${currentTheme.textMuted}`}>{label}</span>
+              <span className={panelEyebrowClassName}>{label}</span>
               <span className={`font-due-date truncate text-right font-semibold ${currentTheme.text}`}>{value}</span>
             </div>
           ))}
@@ -515,7 +518,7 @@ export function LevelProgressCard({
       ),
       "cap-status": (
         <>
-          <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Status</p>
+          <p className={panelEyebrowClassName}>Status</p>
           <p className={`font-ui-condensed mt-1 text-2xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
             {nextLevel ? `${formatNumber(summary.xpRemainingForNextLevel)} XP to Level ${nextLevel}` : "Max level reached"}
           </p>
@@ -529,11 +532,6 @@ export function LevelProgressCard({
 
     return (
       <div className={`relative overflow-hidden rounded-2xl border ${currentTheme.border} ${quietSurfaceClassName}`}>
-        <div
-          className="absolute inset-x-5 top-4 h-px opacity-70"
-          style={{ background: `linear-gradient(90deg, transparent, ${progressAccent.colorStrong}, transparent)` }}
-        />
-        <div className="relative h-2.5" style={{ background: accentGradient, width: `${progressPercent}%` }} />
         <div className="relative p-3.5">{contentByVariant[dataVariant]}</div>
       </div>
     );
@@ -568,7 +566,7 @@ export function LevelProgressCard({
           <div className="p-4">
             <div className="flex items-end justify-between gap-3">
               <div>
-                <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>XP Meter</p>
+                <p className={panelEyebrowClassName}>XP Meter</p>
                 <p className={`font-due-date mt-1 text-lg font-semibold ${currentTheme.text}`}>{xpText}</p>
               </div>
               <span className={`font-due-date text-2xl font-semibold ${currentTheme.text}`}>{roundedProgressPercent}%</span>
@@ -583,7 +581,7 @@ export function LevelProgressCard({
       return (
         <div className={`relative rounded-2xl border p-4 ${currentTheme.border} ${quietSurfaceClassName}`}>
           <div className="flex items-center justify-between gap-3">
-            <span className={`text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>Rail load</span>
+            <span className={panelEyebrowClassName}>Rail load</span>
             <span className={`font-due-date text-xs font-semibold ${currentTheme.text}`}>{roundedProgressPercent}%</span>
           </div>
           <div className={`mt-3 grid h-5 grid-cols-[auto_1fr_auto] items-center gap-2 rounded-full px-2 ${railClassName}`}>
@@ -605,7 +603,7 @@ export function LevelProgressCard({
       return (
         <div className="relative">
           <div className="flex items-center justify-between gap-3">
-            <span className={`text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>XP Progress</span>
+            <span className={panelEyebrowClassName}>XP Progress</span>
             <span className={`font-due-date text-xs font-semibold ${currentTheme.text}`}>{roundedProgressPercent}%</span>
           </div>
           <div className={`mt-3 h-2 overflow-hidden rounded-full ${railClassName}`}>
@@ -622,7 +620,7 @@ export function LevelProgressCard({
     return (
       <div className={`relative rounded-2xl border p-4 ${currentTheme.border} ${quietSurfaceClassName}`}>
         <div className="flex items-center justify-between gap-3">
-          <span className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>XP Progress</span>
+          <span className={panelEyebrowClassName}>XP Progress</span>
           <span className={`font-due-date text-xs font-semibold ${currentTheme.text}`}>{roundedProgressPercent}%</span>
         </div>
         <div className={`mt-3 h-2.5 overflow-hidden rounded-full ${railClassName}`}>

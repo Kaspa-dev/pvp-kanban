@@ -150,7 +150,7 @@ export function Landing() {
 
       <section className={`py-20 px-6 bg-gradient-to-r ${t.primary}`}>
         <div className="max-w-4xl mx-auto text-center">
-          <h3 className="font-display-accent text-4xl font-bold text-white mb-6">
+          <h3 className="font-ui-condensed text-4xl font-bold tracking-[0.01em] text-white mb-6">
             Ready to boost your productivity?
           </h3>
           <p className="text-xl text-white/90 mb-8">
@@ -169,7 +169,7 @@ export function Landing() {
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
-              <h4 className={`font-display-accent text-xl font-bold bg-gradient-to-r ${t.primary} bg-clip-text text-transparent mb-4`}>
+              <h4 className={`font-ui-condensed text-xl font-bold tracking-[0.01em] bg-gradient-to-r ${t.primary} bg-clip-text text-transparent mb-4`}>
                 BanBan
               </h4>
               <p className={`${t.textSecondary} text-sm`}>

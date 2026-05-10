@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
 import { getInputLikeControlClassName } from "./inputLikeControlStyles";
+import { getToolbarLabelClassName } from "./typographyStyles";
 
 interface WorkspaceToolbarSelectOption {
   value: string;
@@ -48,10 +49,11 @@ export function WorkspaceToolbarSelect({
     openState: true,
     surfaceClassName: workspaceSurface.controlSurfaceClassName,
   });
+  const toolbarLabelClassName = getToolbarLabelClassName(currentTheme.textMuted);
 
   const content = (
     <label className={`block ${widthClassName}`}>
-      <span className={`font-ui-condensed mb-2 block text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+      <span className={`mb-2 block ${toolbarLabelClassName}`}>
         {label}
       </span>
       <Select value={value} onValueChange={onValueChange}>

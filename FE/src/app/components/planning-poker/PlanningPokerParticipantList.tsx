@@ -71,7 +71,7 @@ export function PlanningPokerParticipantList({
           <Badge
             variant="outline"
             className={cn(
-              "px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]",
+              "font-system-signal px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em]",
               currentTheme.border,
               currentTheme.textSecondary,
               isDarkMode ? "bg-slate-950/70" : "bg-white/85",

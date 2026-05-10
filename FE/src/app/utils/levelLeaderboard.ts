@@ -54,6 +54,11 @@ export const LEVEL_LEADERBOARD_VARIANTS = [
     description: "Winner-forward cards with premium stacked depth.",
   },
   {
+    key: "crown-stack",
+    label: "Crown Stack",
+    description: "A vertical medal stack where each rank steps down in scale.",
+  },
+  {
     key: "pulse-terminal",
     label: "Pulse Terminal",
     description: "A system-console treatment for operational score state.",

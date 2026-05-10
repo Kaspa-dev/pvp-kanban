@@ -9,6 +9,7 @@ import { NorthStarLevelFrame } from "../components/NorthStarLevelFrame";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import { LEVEL_MARKER_VARIANTS } from "../utils/levelBadges";
 import { AppAvatar } from "../components/AppAvatar";
+import { getPanelEyebrowClassName } from "../components/typographyStyles";
 
 const SAMPLE_LEVELS = [5, 25, 50, 85, 120, 150];
 const SAMPLE_USERS = [
@@ -35,6 +36,8 @@ export function LevelBadges() {
     : "bg-[radial-gradient(circle_at_top_left,rgba(248,250,252,1),#eef2f7_44%,#e2e8f0_100%)]";
   const panelClassName = `${isDarkMode ? "border-zinc-800 bg-zinc-950/72" : "border-slate-200 bg-white/82"} shadow-[0_24px_90px_-56px_rgba(15,23,42,0.55)]`;
   const mutedTextClassName = currentTheme.textMuted;
+  const mutedEyebrowClassName = getPanelEyebrowClassName(mutedTextClassName);
+  const primaryEyebrowClassName = getPanelEyebrowClassName(currentTheme.primaryText);
   const sectionSurfaceClassName = isDarkMode ? "bg-zinc-900/42" : "bg-white/72";
 
   function renderRingSection() {
@@ -42,7 +45,7 @@ export function LevelBadges() {
       <section className={`rounded-[2rem] border p-4 backdrop-blur-xl sm:p-5 ${panelClassName}`}>
         <div className="flex flex-col gap-2 border-b pb-4 sm:flex-row sm:items-end sm:justify-between" style={{ borderColor: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.08)" }}>
           <div>
-            <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.primaryText}`}>Ring selection grid</p>
+            <p className={primaryEyebrowClassName}>Ring selection grid</p>
             <h2 className={`font-ui-condensed mt-2 text-2xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
               Ten ring geometries, same level marker
             </h2>
@@ -57,7 +60,7 @@ export function LevelBadges() {
             className="grid min-w-[132rem] gap-3"
             style={{ gridTemplateColumns: `minmax(8rem, 0.58fr) repeat(${LEVEL_BADGE_VARIANTS.length}, minmax(11.5rem, 1fr))` }}
           >
-          <div className={`font-ui-condensed hidden rounded-2xl px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] lg:block ${mutedTextClassName}`}>
+          <div className={`hidden rounded-2xl px-4 py-3 lg:block ${mutedEyebrowClassName}`}>
             Color band
           </div>
           {LEVEL_BADGE_VARIANTS.map((variant) => (
@@ -80,7 +83,7 @@ export function LevelBadges() {
             return (
               <div key={`band-${level}`} className="contents">
                 <div className={`rounded-2xl border px-4 py-4 ${currentTheme.border} ${isDarkMode ? "bg-white/[0.025]" : "bg-slate-50/70"}`}>
-                  <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${mutedTextClassName}`}>
+                  <p className={mutedEyebrowClassName}>
                     {tier.name}
                   </p>
                   <p className={`font-due-date mt-1 text-2xl font-semibold ${currentTheme.text}`}>
@@ -123,7 +126,7 @@ export function LevelBadges() {
       <section className={`rounded-[2rem] border p-4 backdrop-blur-xl sm:p-5 ${panelClassName}`}>
         <div className="flex flex-col gap-2 border-b pb-4 sm:flex-row sm:items-end sm:justify-between" style={{ borderColor: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.08)" }}>
           <div>
-            <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.primaryText}`}>Level marker grid</p>
+            <p className={primaryEyebrowClassName}>Level marker grid</p>
             <h2 className={`font-ui-condensed mt-2 text-2xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
               Rail Corners, ten level displays
             </h2>
@@ -138,7 +141,7 @@ export function LevelBadges() {
             className="grid min-w-[112rem] gap-3"
             style={{ gridTemplateColumns: `minmax(8rem, 0.58fr) repeat(${LEVEL_MARKER_VARIANTS.length}, minmax(10.5rem, 1fr))` }}
           >
-            <div className={`font-ui-condensed hidden rounded-2xl px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] lg:block ${mutedTextClassName}`}>
+            <div className={`hidden rounded-2xl px-4 py-3 lg:block ${mutedEyebrowClassName}`}>
               Sample
             </div>
             {LEVEL_MARKER_VARIANTS.map((markerVariant) => (
@@ -159,7 +162,7 @@ export function LevelBadges() {
               return (
                 <div key={`marker-row-${level}`} className="contents">
                   <div className={`rounded-2xl border px-4 py-4 ${currentTheme.border} ${isDarkMode ? "bg-white/[0.025]" : "bg-slate-50/70"}`}>
-                    <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${mutedTextClassName}`}>
+                    <p className={mutedEyebrowClassName}>
                       {tier.name}
                     </p>
                     <p className={`mt-1 text-2xl font-semibold ${currentTheme.text}`}>
@@ -209,7 +212,7 @@ export function LevelBadges() {
       <section className={`rounded-[2rem] border p-4 backdrop-blur-xl sm:p-5 ${panelClassName}`}>
         <div className="flex flex-col gap-2 border-b pb-4 sm:flex-row sm:items-end sm:justify-between" style={{ borderColor: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.08)" }}>
           <div>
-            <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.primaryText}`}>Level marker grid</p>
+            <p className={primaryEyebrowClassName}>Level marker grid</p>
             <h2 className={`font-ui-condensed mt-2 text-2xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
               North Star, ten level displays
             </h2>
@@ -224,7 +227,7 @@ export function LevelBadges() {
             className="grid min-w-[112rem] gap-3"
             style={{ gridTemplateColumns: `minmax(8rem, 0.58fr) repeat(${LEVEL_MARKER_VARIANTS.length}, minmax(10.5rem, 1fr))` }}
           >
-            <div className={`font-ui-condensed hidden rounded-2xl px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] lg:block ${mutedTextClassName}`}>
+            <div className={`hidden rounded-2xl px-4 py-3 lg:block ${mutedEyebrowClassName}`}>
               Sample
             </div>
             {LEVEL_MARKER_VARIANTS.map((markerVariant) => (
@@ -245,7 +248,7 @@ export function LevelBadges() {
               return (
                 <div key={`north-star-marker-row-${level}`} className="contents">
                   <div className={`rounded-2xl border px-4 py-4 ${currentTheme.border} ${isDarkMode ? "bg-white/[0.025]" : "bg-slate-50/70"}`}>
-                    <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${mutedTextClassName}`}>
+                    <p className={mutedEyebrowClassName}>
                       {tier.name}
                     </p>
                     <p className={`mt-1 text-2xl font-semibold ${currentTheme.text}`}>
@@ -296,7 +299,7 @@ export function LevelBadges() {
         <header className={`rounded-[2rem] border p-6 backdrop-blur-xl sm:p-8 ${panelClassName}`}>
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
-              <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.primaryText}`}>
+              <p className={primaryEyebrowClassName}>
                 Level badge lab
               </p>
               <h1 className={`font-ui-condensed mt-3 text-3xl font-bold tracking-[0.01em] sm:text-5xl ${currentTheme.text}`}>

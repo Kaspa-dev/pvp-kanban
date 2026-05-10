@@ -24,6 +24,7 @@ import {
 } from "../ui/card";
 import { Input } from "../ui/input";
 import { cn } from "../ui/utils";
+import { getPanelEyebrowClassName } from "../typographyStyles";
 
 interface PlanningPokerHostPanelProps {
   isHost: boolean;
@@ -59,6 +60,7 @@ export function PlanningPokerHostPanel({
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
+  const panelEyebrowClassName = getPanelEyebrowClassName(currentTheme.textMuted);
   const canReveal = isHost && !isRevealed && votedCount > 0 && !isRevealing;
   const readinessLabel =
     participantCount === 0 ? "No one joined yet" : `${votedCount} of ${participantCount} participants voted`;
@@ -74,7 +76,7 @@ export function PlanningPokerHostPanel({
     isDarkMode ? "bg-white/[0.03]" : "bg-black/[0.03]",
   );
   const stateBadgeClassName = cn(
-    "px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]",
+    "font-system-signal px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em]",
     currentTheme.border,
     currentTheme.textSecondary,
     isDarkMode ? "bg-slate-950/70" : "bg-white/85",
@@ -101,7 +103,7 @@ export function PlanningPokerHostPanel({
             <Badge
               variant="outline"
               className={cn(
-                "px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]",
+                "font-system-signal px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em]",
                 currentTheme.primaryBorder,
                 currentTheme.primaryText,
                 `bg-gradient-to-r ${currentTheme.primarySoftStrong}`,
@@ -125,7 +127,7 @@ export function PlanningPokerHostPanel({
             <div className="space-y-1">
               <p
                 id="planning-poker-room-readiness"
-                className={`text-xs font-semibold uppercase tracking-[0.2em] ${currentTheme.textMuted}`}
+                className={panelEyebrowClassName}
               >
                 Readiness
               </p>
@@ -153,7 +155,7 @@ export function PlanningPokerHostPanel({
                 isDarkMode ? "bg-slate-950/55" : "bg-white/80",
               )}
             >
-              <div className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+              <div className={`${panelEyebrowClassName} flex items-center gap-2`}>
                 <RadioTower className="h-3.5 w-3.5" aria-hidden="true" />
                 Participation
               </div>
@@ -168,7 +170,7 @@ export function PlanningPokerHostPanel({
                 isDarkMode ? "bg-slate-950/55" : "bg-white/80",
               )}
             >
-              <div className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+              <div className={`${panelEyebrowClassName} flex items-center gap-2`}>
                 {isRevealed ? (
                   <Eye className="h-3.5 w-3.5" aria-hidden="true" />
                 ) : (
@@ -188,7 +190,7 @@ export function PlanningPokerHostPanel({
           <div className="space-y-1">
             <p
               id="planning-poker-share-link"
-              className={`text-xs font-semibold uppercase tracking-[0.2em] ${currentTheme.textMuted}`}
+              className={panelEyebrowClassName}
             >
               Shared link
             </p>
@@ -245,7 +247,7 @@ export function PlanningPokerHostPanel({
           <div className="space-y-1">
             <p
               id="planning-poker-reveal-action"
-              className={`text-xs font-semibold uppercase tracking-[0.2em] ${currentTheme.textMuted}`}
+              className={panelEyebrowClassName}
             >
               Reveal votes
             </p>
@@ -288,7 +290,7 @@ export function PlanningPokerHostPanel({
           <div className="space-y-1">
             <p
               id="planning-poker-delete-action"
-              className={`text-xs font-semibold uppercase tracking-[0.2em] ${currentTheme.textMuted}`}
+              className={panelEyebrowClassName}
             >
               Delete session
             </p>

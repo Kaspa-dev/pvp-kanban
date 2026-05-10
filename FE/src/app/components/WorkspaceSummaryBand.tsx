@@ -1,5 +1,6 @@
 import { LucideIcon } from "lucide-react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
+import { getPanelEyebrowClassName } from "./typographyStyles";
 
 interface WorkspaceSummaryStat {
   label: string;
@@ -24,6 +25,7 @@ export function WorkspaceSummaryBand({
 }: WorkspaceSummaryBandProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const panelEyebrowClassName = getPanelEyebrowClassName(currentTheme.textMuted);
 
   return (
     <section
@@ -53,7 +55,7 @@ export function WorkspaceSummaryBand({
                 key={stat.label}
                 className={`min-w-[9rem] rounded-2xl border px-4 py-3 ${currentTheme.border} ${isDarkMode ? "bg-black/20" : "bg-white/80"} backdrop-blur-sm`}
               >
-                <p className={`font-ui-condensed text-[11px] font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+                <p className={panelEyebrowClassName}>
                   {stat.label}
                 </p>
                 <p className={`font-due-date mt-2 text-2xl font-semibold leading-none ${currentTheme.text}`}>{stat.value}</p>

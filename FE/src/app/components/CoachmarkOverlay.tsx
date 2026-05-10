@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef } from "react";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import { UtilityIconButton } from "./UtilityIconButton";
+import { getPanelEyebrowClassName } from "./typographyStyles";
 import { useIsMobile } from "./ui/use-mobile";
 
 interface CoachmarkOverlayStep {
@@ -85,6 +86,7 @@ export function CoachmarkOverlay({
 }: CoachmarkOverlayProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const panelEyebrowClassName = getPanelEyebrowClassName(currentTheme.primaryText);
   const isMobile = useIsMobile();
   const cardRef = useRef<HTMLDivElement | null>(null);
 
@@ -241,7 +243,7 @@ export function CoachmarkOverlay({
         >
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.primaryText}`}>
+              <p className={panelEyebrowClassName}>
                 Hint {stepIndex + 1} of {totalSteps}
               </p>
               <h2 id="coachmark-title" className={`font-ui-condensed mt-2 text-xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>

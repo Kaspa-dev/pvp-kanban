@@ -17,6 +17,7 @@ import { Label } from "../../utils/labels";
 import { BoardLogo } from "../BoardLogo";
 import { BoardStatusBadge } from "../BoardStatusBadge";
 import { PriorityBadge } from "../PriorityBadge";
+import { getPanelEyebrowClassName } from "../typographyStyles";
 
 interface TaskDetailsSummaryProps {
   board: Board;
@@ -62,7 +63,7 @@ function DetailRow({
 }) {
   return (
     <div className="py-4">
-      <div className="font-ui-condensed flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] opacity-70">
+      <div className={`${getPanelEyebrowClassName("opacity-70")} flex items-center gap-2`}>
         <Icon className="h-4 w-4" />
         <span>{label}</span>
       </div>
@@ -76,6 +77,7 @@ function DetailRow({
 export function TaskDetailsSummary({ board, boardId, task, labels }: TaskDetailsSummaryProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const panelEyebrowClassName = getPanelEyebrowClassName(currentTheme.textMuted);
   const assignee = task.assigneeUserId ? task.assignee : UNASSIGNED_ASSIGNEE;
   const taskLabels = labels.filter((label) => task.labelIds.includes(label.id));
   const dividerClassName = isDarkMode ? "border-white/10" : "border-slate-200/80";
@@ -94,7 +96,7 @@ export function TaskDetailsSummary({ board, boardId, task, labels }: TaskDetails
         <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start">
           <BoardLogo iconKey={board.logoIconKey} colorKey={board.logoColorKey} size="md" />
           <div className="min-w-0 flex-1">
-            <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>
+            <p className={panelEyebrowClassName}>
               Task details
             </p>
             <h1 className={`font-ui-condensed mt-1 break-words text-3xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
