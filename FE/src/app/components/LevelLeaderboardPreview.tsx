@@ -1,4 +1,4 @@
-import { ArrowUpRight, Crown, Flame, Sparkles, Trophy, Zap } from "lucide-react";
+import { Crown, Flame, Sparkles, Trophy, Zap } from "lucide-react";
 import { useMemo } from "react";
 import { AppAvatar } from "./AppAvatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -19,6 +19,7 @@ interface LevelLeaderboardPreviewProps {
   onPeriodChange: (period: LeaderboardPeriod) => void;
   variant: LevelLeaderboardVariant;
   density: "expanded" | "collapsed";
+  previewState?: "ready" | "loading" | "error";
 }
 
 function formatNumber(value: number) {
@@ -55,6 +56,18 @@ function getRankTone(rank: number, isDarkMode: boolean) {
   }
 
   return isDarkMode ? "border-orange-300/32 bg-orange-300/13 text-orange-100" : "border-orange-300 bg-orange-50 text-orange-800";
+}
+
+function getSolidRankTone(rank: number, isDarkMode: boolean) {
+  if (rank === 1) {
+    return isDarkMode ? "border-amber-300/35 bg-amber-300/12 text-amber-50" : "border-amber-300/70 bg-amber-50/78 text-stone-800";
+  }
+
+  if (rank === 2) {
+    return isDarkMode ? "border-zinc-200/35 bg-zinc-200/12 text-zinc-100" : "border-slate-300/80 bg-slate-100/78 text-slate-700";
+  }
+
+  return isDarkMode ? "border-orange-300/34 bg-orange-300/12 text-orange-50" : "border-orange-300/80 bg-orange-50/78 text-stone-800";
 }
 
 function getProgressWidth(member: RankedMember, period: LeaderboardPeriod, maxXp: number) {
@@ -116,20 +129,110 @@ function CurrentUserStrip({
   if (!currentUser || currentUser.rank <= 3) return null;
 
   return (
-    <div className={`mt-3 rounded-2xl border border-dashed p-2.5 ${currentTheme.border} ${quietSurfaceClassName}`}>
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <span className={getPanelEyebrowClassName(currentTheme.textMuted)}>Your place</span>
-        <span className={`font-due-date text-xs font-semibold ${currentTheme.primaryText}`}>#{currentUser.rank}</span>
-      </div>
-      <div className="flex items-center gap-2">
-        <MemberAvatar member={currentUser} size={30} />
-        <div className="min-w-0 flex-1">
-          <p className={`truncate text-sm font-semibold ${currentTheme.text}`}>{currentUser.displayName}</p>
-          <p className={`font-due-date text-[11px] ${currentTheme.textMuted}`}>{formatNumber(currentUser.xpByPeriod[period])} XP</p>
+    <div className={`mt-3 rounded-[1.35rem] border p-3 ${currentTheme.border} ${quietSurfaceClassName}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-5">
+          <MemberAvatar member={currentUser} size={46} />
+          <div className="min-w-0">
+            <p className={`font-ui-condensed truncate text-lg font-semibold tracking-[0.01em] ${currentTheme.text}`}>YOU</p>
+          </div>
         </div>
-        <ArrowUpRight className={`h-4 w-4 ${currentTheme.primaryText}`} aria-hidden="true" />
+        <div className="flex shrink-0 items-center gap-1.5">
+          <span className={`font-due-date text-[10px] font-semibold ${currentTheme.primaryText}`}>#{currentUser.rank}</span>
+        </div>
       </div>
+      <p className={`font-due-date mt-2 text-base font-semibold ${currentTheme.text}`}>
+        {formatNumber(currentUser.xpByPeriod[period])} XP
+      </p>
     </div>
+  );
+}
+
+function LeaderboardStatePreview({
+  density,
+  previewState,
+  period,
+  onPeriodChange,
+  currentTheme,
+  isDarkMode,
+  panelSurfaceClassName,
+  quietSurfaceClassName,
+  variant,
+}: {
+  density: "expanded" | "collapsed";
+  previewState: "loading" | "error";
+  period: LeaderboardPeriod;
+  onPeriodChange: (period: LeaderboardPeriod) => void;
+  currentTheme: ReturnType<typeof getThemeColors>;
+  isDarkMode: boolean;
+  panelSurfaceClassName: string;
+  quietSurfaceClassName: string;
+  variant: LevelLeaderboardVariant;
+}) {
+  const isCollapsed = density === "collapsed";
+  const isLoading = previewState === "loading";
+  const isCrownStack = variant === "crown-stack";
+  const shellClassName = isCollapsed
+    ? `relative flex w-[4.25rem] flex-col items-center overflow-hidden rounded-[1.45rem] border px-2 py-3 backdrop-blur-xl ${panelSurfaceClassName}`
+    : `relative flex min-h-[25.5rem] w-72 flex-col overflow-hidden rounded-[1.75rem] border p-3.5 backdrop-blur-xl ${panelSurfaceClassName}`;
+  const statusSurfaceClassName = quietSurfaceClassName;
+  const skeletonClassName = isDarkMode
+    ? "animate-pulse bg-white/[0.075]"
+    : "animate-pulse bg-slate-200/70";
+  const collapsedSkeletonClassName = `rounded-lg border ${currentTheme.border} ${skeletonClassName}`;
+
+  if (isCollapsed) {
+    return (
+      <aside className={shellClassName} aria-label={`${getVariantLabel(variant)} ${previewState} collapsed leaderboard preview`}>
+        <div className={`pointer-events-none absolute -top-8 h-20 w-20 rounded-full bg-gradient-to-br ${currentTheme.primarySoft} blur-2xl`} />
+        {isCrownStack ? <div className={`pointer-events-none absolute -bottom-8 h-20 w-20 rounded-full bg-gradient-to-tr ${currentTheme.primarySoftStrong} blur-2xl`} /> : null}
+        <div className="relative z-10 flex flex-col items-center gap-3">
+          <span className={`font-ui-condensed text-[11px] font-semibold tracking-[0.01em] ${currentTheme.primaryText}`}>
+            {LEADERBOARD_PERIOD_LABELS[period]}
+          </span>
+          {isLoading ? (
+            <div className="flex flex-col items-center gap-2" aria-hidden="true">
+              {[0, 1, 2].map((item) => (
+                <div key={item} className={`${collapsedSkeletonClassName} h-[5.5rem] w-12`} />
+              ))}
+            </div>
+          ) : (
+            <div className={`flex h-[5.5rem] w-12 flex-col items-center justify-center rounded-lg border px-1.5 py-2 text-center ${currentTheme.border} ${statusSurfaceClassName}`}>
+              <span className={`font-due-date text-[10px] font-semibold ${isDarkMode ? "text-red-400" : "text-red-500"}`}>N/A</span>
+            </div>
+          )}
+        </div>
+      </aside>
+    );
+  }
+
+  return (
+    <aside className={shellClassName} aria-label={`${getVariantLabel(variant)} ${previewState} leaderboard preview`}>
+      <div className={`pointer-events-none absolute -right-12 -top-14 h-32 w-32 rounded-full bg-gradient-to-br ${currentTheme.primarySoft} blur-3xl`} />
+      <div className={`pointer-events-none absolute -bottom-16 left-4 h-28 w-28 rounded-full bg-gradient-to-tr ${currentTheme.primarySoftStrong} blur-3xl`} />
+      <ExpandedContentFrame period={period} onPeriodChange={onPeriodChange} currentTheme={currentTheme} quietSurfaceClassName={quietSurfaceClassName} isDarkMode={isDarkMode}>
+        {isLoading ? (
+          <div className="space-y-2.5" aria-label="Leaderboard loading">
+            {[0, 1, 2].map((item) => (
+              <div
+                key={item}
+                className={`flex h-[5.75rem] rounded-[1.35rem] border p-3 ${currentTheme.border} ${skeletonClassName}`}
+              >
+                <span className={`h-10 w-10 rounded-full ${isDarkMode ? "bg-white/10" : "bg-white/80"}`} />
+                <span className={`ml-4 mt-1 h-3 w-28 rounded-full ${isDarkMode ? "bg-white/10" : "bg-white/80"}`} />
+                <span className={`ml-auto h-4 w-10 rounded-full ${isDarkMode ? "bg-white/10" : "bg-white/80"}`} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className={`rounded-2xl border p-4 ${currentTheme.border} ${statusSurfaceClassName}`}>
+            <p className={`text-sm ${isDarkMode ? "text-red-400" : "text-red-500"}`}>
+              Leaderboard unavailable right now.
+            </p>
+          </div>
+        )}
+      </ExpandedContentFrame>
+    </aside>
   );
 }
 
@@ -148,7 +251,11 @@ function PeriodSwitcher({
 }) {
   return (
     <div
-      className={`mt-3 inline-flex w-full items-center gap-1 rounded-xl p-1 ${quietSurfaceClassName}`}
+      className={`mt-3 inline-flex w-full items-center gap-1 rounded-xl border p-1 ${currentTheme.border} ${quietSurfaceClassName} ${
+        isDarkMode
+          ? "shadow-[0_14px_30px_-24px_rgba(0,0,0,0.9)]"
+          : "shadow-[0_14px_30px_-26px_rgba(15,23,42,0.45)]"
+      }`}
       role="group"
       aria-label="Leaderboard time window"
     >
@@ -212,7 +319,6 @@ function CollapsedPreview({
   currentUser,
   currentTheme,
   isDarkMode,
-  quietSurfaceClassName,
   panelSurfaceClassName,
 }: {
   board: LevelLeaderboardBoard;
@@ -222,58 +328,87 @@ function CollapsedPreview({
   currentUser: RankedMember | undefined;
   currentTheme: ReturnType<typeof getThemeColors>;
   isDarkMode: boolean;
-  quietSurfaceClassName: string;
   panelSurfaceClassName: string;
 }) {
-  const leader = topThree[0];
+  const isCrownStack = variant === "crown-stack";
+  const collapsedCurrentUser = isCrownStack && currentUser && currentUser.rank > 3 ? currentUser : undefined;
+  const crownStackCollapsedCardBaseClassName = "flex h-[5.5rem] w-12 flex-col items-center justify-center rounded-lg border px-1.5 py-2.5 backdrop-blur-xl";
+  const crownStackCurrentUserHighlightClassName = isDarkMode
+    ? "ring-2 ring-inset ring-white/35 shadow-[0_0_24px_-14px_rgba(255,255,255,0.85),0_0_34px_-24px_rgba(255,255,255,0.65)]"
+    : "ring-2 ring-inset ring-slate-900/22 shadow-[0_0_0_1px_rgba(15,23,42,0.12),0_0_24px_-12px_rgba(15,23,42,0.45)]";
+  const collapsedShellClassName = isCrownStack
+    ? `relative flex w-[4.25rem] flex-col items-center overflow-hidden rounded-[1.45rem] border px-2 py-3 backdrop-blur-xl ${panelSurfaceClassName}`
+    : `relative flex min-h-[25.5rem] w-[4.25rem] flex-col items-center overflow-hidden rounded-[1.45rem] border px-2 py-3 backdrop-blur-xl ${panelSurfaceClassName}`;
 
   return (
     <aside
-      className={`relative flex min-h-[20rem] w-[4.25rem] flex-col items-center overflow-hidden rounded-[1.45rem] border px-2 py-3 backdrop-blur-xl ${panelSurfaceClassName}`}
+      className={collapsedShellClassName}
       aria-label={`${board.name} ${getVariantLabel(variant)} collapsed leaderboard preview`}
     >
       <div className={`pointer-events-none absolute -top-8 h-20 w-20 rounded-full bg-gradient-to-br ${currentTheme.primarySoft} blur-2xl`} />
+      {isCrownStack ? <div className={`pointer-events-none absolute -bottom-8 h-20 w-20 rounded-full bg-gradient-to-tr ${currentTheme.primarySoftStrong} blur-2xl`} /> : null}
       {variant === "neon-bracket" ? <div className={`absolute bottom-4 top-14 w-px bg-gradient-to-b ${currentTheme.primary}`} /> : null}
       {variant === "pulse-terminal" ? (
         <div className={`font-system-signal absolute top-2 text-[8px] font-semibold uppercase tracking-[0.16em] ${currentTheme.primaryText}`}>XP</div>
       ) : null}
 
-      <div className="relative z-10 flex h-full flex-col items-center gap-3">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className={`font-due-date flex h-8 w-8 items-center justify-center rounded-full border text-[11px] font-semibold uppercase ${currentTheme.border} ${quietSurfaceClassName} ${currentTheme.text}`}>
-              {period.slice(0, 1)}
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="right" sideOffset={10}>Showing {LEADERBOARD_PERIOD_LABELS[period].toLowerCase()} XP</TooltipContent>
-        </Tooltip>
+      <div className={`relative z-10 flex flex-col items-center gap-3 ${isCrownStack ? "" : "h-full min-h-0"}`}>
+        {isCrownStack ? (
+          <span className={`font-ui-condensed text-[11px] font-semibold tracking-[0.01em] ${currentTheme.primaryText}`}>
+            {LEADERBOARD_PERIOD_LABELS[period]}
+          </span>
+        ) : null}
+        <div className={`flex flex-col items-center ${isCrownStack ? "gap-2" : variant === "ledger-chips" ? "gap-2.5" : variant === "crown-deck" ? "-space-y-1" : "gap-1.5"}`} aria-label={isCrownStack ? "Leaderboard members" : "Top three members"}>
+          {topThree.map((member) => {
+            const isCurrentUser = member.userId === board.currentUserId;
 
-        <div className={`flex flex-col items-center ${variant === "ledger-chips" ? "gap-2.5" : variant === "crown-deck" ? "-space-y-1" : "gap-1.5"}`} aria-label="Top three members">
-          {topThree.map((member) => (
-            <Tooltip key={member.userId}>
+            return (
+              <Tooltip key={member.userId}>
+                <TooltipTrigger asChild>
+                  <div
+                    className={
+                      isCrownStack
+                        ? `${crownStackCollapsedCardBaseClassName} ${getSolidRankTone(member.rank, isDarkMode)} ${isCurrentUser ? crownStackCurrentUserHighlightClassName : ""}`
+                        : `relative ${variant === "constellation-map" ? "after:absolute after:left-1/2 after:top-full after:h-2 after:w-px after:-translate-x-1/2 after:bg-current after:opacity-30 last:after:hidden" : ""}`
+                    }
+                  >
+                    {isCrownStack ? (
+                      <>
+                        {isCurrentUser ? (
+                          <span className="font-ui-condensed mb-1 text-[11px] font-semibold tracking-[0.01em]">YOU</span>
+                        ) : null}
+                        <MemberAvatar member={member} size={34} />
+                        <span className="font-due-date mt-1.5 text-[10px] font-semibold">#{member.rank}</span>
+                      </>
+                    ) : (
+                      <>
+                        <MemberAvatar member={member} size={variant === "crown-deck" && member.rank === 1 ? 38 : 34} />
+                        <span className={`font-due-date absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border text-[9px] font-semibold ${getRankTone(member.rank, isDarkMode)}`}>{member.rank}</span>
+                      </>
+                    )}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={10}>
+                  #{member.rank} {member.displayName}: {formatNumber(member.xpByPeriod[period])} XP
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+          {collapsedCurrentUser ? (
+            <Tooltip>
               <TooltipTrigger asChild>
-                <div className={`relative ${variant === "constellation-map" ? "after:absolute after:left-1/2 after:top-full after:h-2 after:w-px after:-translate-x-1/2 after:bg-current after:opacity-30 last:after:hidden" : ""}`}>
-                  <MemberAvatar member={member} size={variant === "crown-deck" && member.rank === 1 ? 38 : 34} />
-                  <span className={`font-due-date absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border text-[9px] font-semibold ${getRankTone(member.rank, isDarkMode)}`}>{member.rank}</span>
+                <div className={`${crownStackCollapsedCardBaseClassName} ${crownStackCurrentUserHighlightClassName} ${currentTheme.border} ${isDarkMode ? "bg-white/[0.045]" : "bg-white/68"}`}>
+                  <span className={`font-ui-condensed mb-1 text-[11px] font-semibold tracking-[0.01em] ${currentTheme.text}`}>YOU</span>
+                  <MemberAvatar member={collapsedCurrentUser} size={34} />
+                  <span className={`font-due-date mt-1.5 text-[10px] font-semibold ${currentTheme.primaryText}`}>#{collapsedCurrentUser.rank}</span>
                 </div>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={10}>
-                #{member.rank} {member.displayName}: {formatNumber(member.xpByPeriod[period])} XP
+                Your place: #{collapsedCurrentUser.rank}. {formatNumber(collapsedCurrentUser.xpByPeriod[period])} XP
               </TooltipContent>
             </Tooltip>
-          ))}
+          ) : null}
         </div>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className={`font-due-date mt-auto rounded-full border px-2 py-1 text-[10px] font-semibold ${currentTheme.border} ${quietSurfaceClassName} ${currentTheme.text}`}>
-              {leader ? formatNumber(leader.xpByPeriod[period]) : "0"}
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="right" sideOffset={10}>
-            Top member XP. Your rank: {currentUser ? `#${currentUser.rank}` : "not ranked"}.
-          </TooltipContent>
-        </Tooltip>
       </div>
     </aside>
   );
@@ -285,6 +420,7 @@ export function LevelLeaderboardPreview({
   onPeriodChange,
   variant,
   density,
+  previewState = "ready",
 }: LevelLeaderboardPreviewProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
@@ -303,6 +439,22 @@ export function LevelLeaderboardPreview({
   const subtleGlow = <div className={`pointer-events-none absolute -right-12 -top-14 h-32 w-32 rounded-full bg-gradient-to-br ${currentTheme.primarySoft} blur-3xl`} />;
   const lowerGlow = <div className={`pointer-events-none absolute -bottom-16 left-4 h-28 w-28 rounded-full bg-gradient-to-tr ${currentTheme.primarySoftStrong} blur-3xl`} />;
 
+  if (previewState !== "ready") {
+    return (
+      <LeaderboardStatePreview
+        density={density}
+        previewState={previewState}
+        period={period}
+        onPeriodChange={onPeriodChange}
+        currentTheme={currentTheme}
+        isDarkMode={isDarkMode}
+        panelSurfaceClassName={panelSurfaceClassName}
+        quietSurfaceClassName={quietSurfaceClassName}
+        variant={variant}
+      />
+    );
+  }
+
   if (density === "collapsed") {
     return (
       <CollapsedPreview
@@ -313,7 +465,6 @@ export function LevelLeaderboardPreview({
         currentUser={currentUser}
         currentTheme={currentTheme}
         isDarkMode={isDarkMode}
-        quietSurfaceClassName={quietSurfaceClassName}
         panelSurfaceClassName={panelSurfaceClassName}
       />
     );
@@ -458,64 +609,90 @@ export function LevelLeaderboardPreview({
 
   if (variant === "crown-stack") {
     const crownStackAvatarSize = 46;
-    const crownStackRankStyles: Record<number, { iconSizeClassName: string; paddingClassName: string; nameClassName: string; xpClassName: string; heightClassName: string }> = {
+    const crownStackSurfaceClassName = isDarkMode ? "bg-white/[0.045]" : "bg-white/68";
+    const crownStackShellClassName = `relative flex w-72 flex-col overflow-hidden rounded-[1.75rem] border p-3.5 backdrop-blur-xl ${panelSurfaceClassName}`;
+    const crownStackPlaceCardClassName = "flex h-[6.75rem] flex-col justify-between rounded-[1.35rem] border px-3 py-3 backdrop-blur-xl";
+    const crownStackCurrentUserHighlightClassName = isDarkMode
+      ? "ring-2 ring-inset ring-white/35 shadow-[0_0_28px_-14px_rgba(255,255,255,0.78),0_16px_40px_-30px_rgba(0,0,0,0.9)]"
+      : "ring-2 ring-inset ring-slate-900/22 shadow-[0_0_0_1px_rgba(15,23,42,0.12),0_0_32px_-14px_rgba(15,23,42,0.48),0_14px_30px_-24px_rgba(15,23,42,0.42)]";
+    const crownStackRankStyles: Record<number, { iconSizeClassName: string; nameClassName: string; xpClassName: string }> = {
       1: {
         iconSizeClassName: "h-6 w-6",
-        paddingClassName: "p-3.5",
         nameClassName: "text-base",
         xpClassName: "text-xl",
-        heightClassName: "min-h-[7.7rem]",
       },
       2: {
         iconSizeClassName: "h-5 w-5",
-        paddingClassName: "p-3",
         nameClassName: "text-sm",
         xpClassName: "text-lg",
-        heightClassName: "min-h-[6.9rem]",
       },
       3: {
         iconSizeClassName: "h-4 w-4",
-        paddingClassName: "p-3",
         nameClassName: "text-xs",
         xpClassName: "text-base",
-        heightClassName: "min-h-[6.3rem]",
       },
     };
+    const crownStackCurrentUser = currentUser && currentUser.rank > 3 ? currentUser : undefined;
 
     return (
-      <aside className={shellClassName} aria-label={`${board.name} crown stack leaderboard preview`}>
+      <aside className={crownStackShellClassName} aria-label={`${board.name} crown stack leaderboard preview`}>
         {subtleGlow}
-        <ExpandedContentFrame period={period} onPeriodChange={onPeriodChange} currentTheme={currentTheme} quietSurfaceClassName={quietSurfaceClassName} isDarkMode={isDarkMode}>
+        {lowerGlow}
+        <ExpandedContentFrame period={period} onPeriodChange={onPeriodChange} currentTheme={currentTheme} quietSurfaceClassName={crownStackSurfaceClassName} isDarkMode={isDarkMode}>
           <div className="space-y-2.5">
             {topThree.map((member) => {
               const rankStyle = crownStackRankStyles[member.rank] ?? crownStackRankStyles[3];
+              const isCurrentUser = member.userId === board.currentUserId;
 
               return (
                 <div
                   key={member.userId}
-                  className={`rounded-[1.35rem] border ${rankStyle.heightClassName} ${rankStyle.paddingClassName} ${getRankTone(member.rank, isDarkMode)}`}
+                  className={`${crownStackPlaceCardClassName} ${getSolidRankTone(member.rank, isDarkMode)} ${
+                    isCurrentUser ? crownStackCurrentUserHighlightClassName : ""
+                  }`}
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-h-0 items-start justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-5">
                       <MemberAvatar member={member} size={crownStackAvatarSize} />
                       <div className="min-w-0">
-                        <p className={`truncate font-semibold ${rankStyle.nameClassName}`}>{member.username}</p>
-                        <p className="mt-0.5 truncate text-xs opacity-75">{member.displayName}</p>
+                        {isCurrentUser ? (
+                          <p className="font-ui-condensed truncate text-xl font-semibold tracking-[0.01em]">YOU</p>
+                        ) : (
+                          <>
+                            <p className={`truncate font-semibold ${rankStyle.nameClassName}`}>{member.username}</p>
+                            <p className="mt-0.5 truncate text-xs opacity-75">{member.displayName}</p>
+                          </>
+                        )}
                       </div>
                     </div>
-                    <div className="flex shrink-0 flex-col items-end gap-1">
+                    <div className="flex shrink-0 items-center gap-1.5">
                       <CrownStackRankIcon rank={member.rank} className={rankStyle.iconSizeClassName} />
                       <span className="font-due-date text-[10px] font-semibold opacity-75">#{member.rank}</span>
                     </div>
                   </div>
-                  <p className={`font-due-date mt-2 font-semibold ${rankStyle.xpClassName}`}>
+                  <p className={`font-due-date font-semibold ${rankStyle.xpClassName}`}>
                     {formatNumber(member.xpByPeriod[period])} XP
                   </p>
                 </div>
               );
             })}
           </div>
-          <CurrentUserStrip currentUser={currentUser} period={period} currentTheme={currentTheme} quietSurfaceClassName={quietSurfaceClassName} />
+          {crownStackCurrentUser ? (
+            <div className={`${crownStackPlaceCardClassName} ${crownStackCurrentUserHighlightClassName} mt-3 ${currentTheme.border} ${crownStackSurfaceClassName}`}>
+              <div className="flex min-h-0 items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-5">
+                  <MemberAvatar member={crownStackCurrentUser} size={crownStackAvatarSize} />
+                  <div className="min-w-0">
+                    <p className={`font-ui-condensed truncate text-xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>YOU</p>
+                  </div>
+                </div>
+                <span className={`font-due-date shrink-0 text-[10px] font-semibold ${currentTheme.primaryText}`}>#{crownStackCurrentUser.rank}</span>
+              </div>
+              <p className={`font-due-date text-base font-semibold ${currentTheme.text}`}>
+                {formatNumber(crownStackCurrentUser.xpByPeriod[period])} XP
+              </p>
+            </div>
+          ) : null}
         </ExpandedContentFrame>
       </aside>
     );

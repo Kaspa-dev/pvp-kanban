@@ -3,10 +3,10 @@ export const LEADERBOARD_PERIODS = ["day", "week", "month", "year"] as const;
 export type LeaderboardPeriod = (typeof LEADERBOARD_PERIODS)[number];
 
 export const LEADERBOARD_PERIOD_LABELS: Record<LeaderboardPeriod, string> = {
-  day: "Day",
-  week: "Week",
-  month: "Month",
-  year: "Year",
+  day: "24h",
+  week: "7d",
+  month: "30d",
+  year: "365d",
 };
 
 export type LevelLeaderboardMember = {

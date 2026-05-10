@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import type { PointerEvent, RefObject } from "react";
 import { Link } from "react-router";
-import { BarChart3, CalendarRange, PanelsTopLeft } from "lucide-react";
+import { BarChart3, CalendarRange, LoaderCircle, PanelsTopLeft } from "lucide-react";
 import { LevelLeaderboardPreview } from "../components/LevelLeaderboardPreview";
 import {
   LEADERBOARD_PERIOD_LABELS,
@@ -58,6 +58,28 @@ const SAMPLE_BOARDS: LevelLeaderboardBoard[] = [
       { userId: 304, username: "cobalt-reed", displayName: "Cobalt Reed", level: 57, xpByPeriod: { day: 40, week: 330, month: 1900, year: 16840 } },
       { userId: 305, username: "ember-wolf", displayName: "Ember Wolf", level: 44, xpByPeriod: { day: 25, week: 280, month: 1440, year: 12020 } },
     ],
+  },
+];
+
+type LeaderboardGridRow =
+  | { kind: "board"; board: LevelLeaderboardBoard }
+  | { kind: "state"; id: "loading" | "error"; title: string; description: string; board: LevelLeaderboardBoard };
+
+const LEADERBOARD_GRID_ROWS: LeaderboardGridRow[] = [
+  ...SAMPLE_BOARDS.map((board) => ({ kind: "board" as const, board })),
+  {
+    kind: "state",
+    id: "loading",
+    title: "Loading state",
+    description: "Preview the widget before the board XP rankings resolve.",
+    board: SAMPLE_BOARDS[0],
+  },
+  {
+    kind: "state",
+    id: "error",
+    title: "Error state",
+    description: "Preview the fallback when leaderboard data cannot be loaded.",
+    board: SAMPLE_BOARDS[1],
   },
 ];
 
@@ -195,41 +217,68 @@ export function LevelLeaderboard() {
             </div>
           ))}
 
-          {SAMPLE_BOARDS.map((board) => (
-            <div key={`${density}-row-${board.id}`} className="contents">
-              <div className={`rounded-2xl border px-4 py-4 ${currentTheme.border} ${sectionSurfaceClassName}`}>
-                <p className={primaryEyebrowClassName}>
-                  {board.name}
-                </p>
-                <p className={`mt-2 text-sm leading-5 ${currentTheme.textSecondary}`}>{board.description}</p>
-                <div className="mt-4 grid grid-cols-2 gap-2">
-                  <div className={`rounded-xl border px-3 py-2 ${currentTheme.border} ${isDarkMode ? "bg-white/[0.03]" : "bg-white/70"}`}>
-                    <p className={mutedEyebrowClassName}>Top XP</p>
-                    <p className={`font-due-date mt-1 text-sm font-semibold ${currentTheme.text}`}>{formatNumber(getBoardTopXp(board, period))}</p>
-                  </div>
-                  <div className={`rounded-xl border px-3 py-2 ${currentTheme.border} ${isDarkMode ? "bg-white/[0.03]" : "bg-white/70"}`}>
-                    <p className={mutedEyebrowClassName}>You</p>
-                    <p className={`font-due-date mt-1 text-sm font-semibold ${currentTheme.text}`}>#{getCurrentUserRank(board, period)}</p>
-                  </div>
-                </div>
-              </div>
+          {LEADERBOARD_GRID_ROWS.map((row) => {
+            const board = row.board;
+            const rowKey = row.kind === "board" ? `board-${board.id}` : `state-${row.id}`;
+            const previewState = row.kind === "state" ? row.id : "ready";
+            const isStateRow = row.kind === "state";
 
-              {LEVEL_LEADERBOARD_VARIANTS.map((variant) => (
-                <div
-                  key={`${density}-${board.id}-${variant.key}`}
-                  className={`flex ${isExpandedGrid ? "items-start" : "items-stretch"} justify-center`}
-                >
-                  <LevelLeaderboardPreview
-                    board={board}
-                    period={period}
-                    onPeriodChange={setPeriod}
-                    variant={variant.key}
-                    density={density}
-                  />
+            return (
+              <div key={`${density}-row-${rowKey}`} className="contents">
+                <div className={`rounded-2xl border px-4 py-4 ${currentTheme.border} ${sectionSurfaceClassName}`}>
+                  {isStateRow ? (
+                    <>
+                      <div className="flex items-center gap-2">
+                        {row.id === "loading" ? (
+                          <LoaderCircle className={`h-4 w-4 animate-spin ${currentTheme.primaryText}`} aria-hidden="true" />
+                        ) : (
+                          <span className={`font-due-date text-xs font-semibold ${isDarkMode ? "text-red-400" : "text-red-500"}`}>N/A</span>
+                        )}
+                        <p className={primaryEyebrowClassName}>{row.title}</p>
+                      </div>
+                      <p className={`mt-2 text-sm leading-5 ${currentTheme.textSecondary}`}>{row.description}</p>
+                      <div className={`font-due-date mt-4 rounded-xl border px-3 py-2 text-xs font-semibold ${currentTheme.border} ${isDarkMode ? "bg-white/[0.03]" : "bg-white/70"} ${currentTheme.textMuted}`}>
+                        Uses {board.name} sample data shape
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className={primaryEyebrowClassName}>
+                        {board.name}
+                      </p>
+                      <p className={`mt-2 text-sm leading-5 ${currentTheme.textSecondary}`}>{board.description}</p>
+                      <div className="mt-4 grid grid-cols-2 gap-2">
+                        <div className={`rounded-xl border px-3 py-2 ${currentTheme.border} ${isDarkMode ? "bg-white/[0.03]" : "bg-white/70"}`}>
+                          <p className={mutedEyebrowClassName}>Top XP</p>
+                          <p className={`font-due-date mt-1 text-sm font-semibold ${currentTheme.text}`}>{formatNumber(getBoardTopXp(board, period))}</p>
+                        </div>
+                        <div className={`rounded-xl border px-3 py-2 ${currentTheme.border} ${isDarkMode ? "bg-white/[0.03]" : "bg-white/70"}`}>
+                          <p className={mutedEyebrowClassName}>You</p>
+                          <p className={`font-due-date mt-1 text-sm font-semibold ${currentTheme.text}`}>#{getCurrentUserRank(board, period)}</p>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
-              ))}
-            </div>
-          ))}
+
+                {LEVEL_LEADERBOARD_VARIANTS.map((variant) => (
+                  <div
+                    key={`${density}-${rowKey}-${variant.key}`}
+                    className={`flex ${isExpandedGrid ? "items-start" : "items-stretch"} justify-center`}
+                  >
+                    <LevelLeaderboardPreview
+                      board={board}
+                      period={period}
+                      onPeriodChange={setPeriod}
+                      variant={variant.key}
+                      density={density}
+                      previewState={previewState}
+                    />
+                  </div>
+                ))}
+              </div>
+            );
+          })}
         </div>
       </div>
     );
