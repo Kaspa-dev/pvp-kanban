@@ -232,7 +232,7 @@ export function LevelLeaderboard() {
                         {row.id === "loading" ? (
                           <LoaderCircle className={`h-4 w-4 animate-spin ${currentTheme.primaryText}`} aria-hidden="true" />
                         ) : (
-                          <span className={`font-due-date text-xs font-semibold ${isDarkMode ? "text-red-400" : "text-red-500"}`}>N/A</span>
+                          <span className={`font-due-date text-xs font-semibold ${currentTheme.textMuted}`}>N/A</span>
                         )}
                         <p className={primaryEyebrowClassName}>{row.title}</p>
                       </div>
@@ -264,7 +264,7 @@ export function LevelLeaderboard() {
                 {LEVEL_LEADERBOARD_VARIANTS.map((variant) => (
                   <div
                     key={`${density}-${rowKey}-${variant.key}`}
-                    className={`flex ${isExpandedGrid ? "items-start" : "items-stretch"} justify-center`}
+                    className="flex items-start justify-center"
                   >
                     <LevelLeaderboardPreview
                       board={board}
@@ -334,7 +334,7 @@ export function LevelLeaderboard() {
                   key={periodOption}
                   type="button"
                   onClick={() => setPeriod(periodOption)}
-                  className={`font-ui-condensed rounded-xl px-4 py-2 text-sm font-semibold tracking-[0.01em] transition-all focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} ${
+                  className={`font-due-date rounded-xl px-4 py-2 text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} ${
                     periodOption === period
                       ? `bg-gradient-to-r ${currentTheme.primary} text-white shadow-sm`
                       : `${currentTheme.textMuted} ${isDarkMode ? "hover:bg-white/[0.06]" : "hover:bg-slate-900/[0.045]"}`
