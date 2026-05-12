@@ -34,6 +34,9 @@ export function UserProfileChip({
 
   const summary = gamificationSummary ?? loadedSummary;
   const displayedLevel = summary?.currentLevel ?? level ?? null;
+  const profilePopoverSurfaceClassName = isDarkMode
+    ? "border-zinc-800/95 bg-zinc-950/92 shadow-[0_28px_80px_-52px_rgba(0,0,0,0.92)]"
+    : "border-slate-200 bg-white/96 shadow-[0_28px_80px_-52px_rgba(15,23,42,0.42)]";
 
   useEffect(() => () => {
     isMountedRef.current = false;
@@ -131,22 +134,27 @@ export function UserProfileChip({
         align="end"
         side="bottom"
         sideOffset={12}
-        className="w-[min(22rem,calc(100vw-2rem))] rounded-3xl bg-white/96 p-0 shadow-[0_24px_80px_-42px_rgba(15,23,42,0.7)] backdrop-blur-sm dark:border dark:border-zinc-800 dark:bg-zinc-950/96 dark:shadow-[0_24px_72px_-38px_rgba(0,0,0,0.95)]"
+        className={`relative w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-[1.75rem] border p-3.5 backdrop-blur-xl ${profilePopoverSurfaceClassName}`}
       >
-        <LevelProgressCard
-          username={username}
-          fullName={fullName ?? username}
-          level={displayedLevel}
-          summary={summary}
-          variant="orbit-ribbon-console"
-          dataVariant="checkpoint-path"
-          isLoading={isLoadingSummary}
-          hasError={summaryError}
-          onViewProfile={() => {
-            setIsOpen(false);
-            onClick();
-          }}
-        />
+        <div className={`pointer-events-none absolute -right-12 -top-14 h-32 w-32 rounded-full bg-gradient-to-br ${currentTheme.primarySoft} blur-3xl`} />
+        <div className={`pointer-events-none absolute -bottom-16 left-4 h-28 w-28 rounded-full bg-gradient-to-tr ${currentTheme.primarySoftStrong} blur-3xl`} />
+        <div className="relative z-10">
+          <LevelProgressCard
+            username={username}
+            fullName={fullName ?? username}
+            level={displayedLevel}
+            summary={summary}
+            variant="orbit-ribbon-console"
+            dataVariant="checkpoint-path"
+            isLoading={isLoadingSummary}
+            hasError={summaryError}
+            showAmbientGrid={false}
+            onViewProfile={() => {
+              setIsOpen(false);
+              onClick();
+            }}
+          />
+        </div>
       </PopoverContent>
     </Popover>
   );

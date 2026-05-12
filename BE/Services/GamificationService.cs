@@ -2,9 +2,12 @@ using System.Text.Json;
 using BE.Data;
 using BE.DTOs;
 using Microsoft.EntityFrameworkCore;
+using BoardEntity = BE.Models.Board;
+using BoardRoleModel = BE.Models.BoardRole;
 using PriorityLevel = BE.Models.Priority;
 using TaskEntity = BE.Models.Task;
 using UserMilestoneEventModel = BE.Models.UserMilestoneEvent;
+using UserEntity = BE.Models.User;
 using XpEventModel = BE.Models.XpEvent;
 
 namespace BE.Services;
@@ -119,6 +122,82 @@ public class GamificationService(
             Xp = summary.LifetimeXp,
             Level = summary.CurrentLevel,
             TasksCompleted = summary.TasksCompleted,
+        };
+    }
+
+    public async Task<BoardLevelLeaderboardDto> GetBoardLevelLeaderboardAsync(
+        BoardEntity board,
+        int currentUserId,
+        CancellationToken cancellationToken)
+    {
+        DateTime utcNow = DateTime.UtcNow;
+        DateTime startOfDayUtc = utcNow.AddHours(-24);
+        DateTime startOfWeekUtc = GetStartOfUtcWeek(utcNow);
+        DateTime startOfMonthUtc = new(utcNow.Year, utcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        DateTime startOfYearUtc = new(utcNow.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        List<int> memberIds = board.Memberships
+            .Select(membership => membership.UserId)
+            .Distinct()
+            .ToList();
+
+        var xpRows = await _context.XpEvents
+            .Where(xpEvent => xpEvent.BoardId == board.Id && memberIds.Contains(xpEvent.UserId))
+            .GroupBy(xpEvent => xpEvent.UserId)
+            .Select(group => new
+            {
+                UserId = group.Key,
+                LifetimeXp = group.Sum(xpEvent => xpEvent.XpAmount),
+                DayXp = group
+                    .Where(xpEvent => xpEvent.CreatedAtUtc >= startOfDayUtc)
+                    .Sum(xpEvent => xpEvent.XpAmount),
+                WeekXp = group
+                    .Where(xpEvent => xpEvent.CreatedAtUtc >= startOfWeekUtc)
+                    .Sum(xpEvent => xpEvent.XpAmount),
+                MonthXp = group
+                    .Where(xpEvent => xpEvent.CreatedAtUtc >= startOfMonthUtc)
+                    .Sum(xpEvent => xpEvent.XpAmount),
+                YearXp = group
+                    .Where(xpEvent => xpEvent.CreatedAtUtc >= startOfYearUtc)
+                    .Sum(xpEvent => xpEvent.XpAmount),
+            })
+            .ToListAsync(cancellationToken);
+
+        var xpByUserId = xpRows.ToDictionary(row => row.UserId);
+
+        return new BoardLevelLeaderboardDto
+        {
+            Id = board.Id,
+            Name = board.Title,
+            Description = board.Description,
+            LogoIconKey = board.LogoIconKey,
+            LogoColorKey = board.LogoColorKey,
+            CurrentUserId = currentUserId,
+            Members = board.Memberships
+                .OrderBy(membership => membership.Role == BoardRoleModel.Owner ? 0 : 1)
+                .ThenBy(membership => membership.User.FirstName)
+                .ThenBy(membership => membership.User.LastName)
+                .Select(membership =>
+                {
+                    bool hasXp = xpByUserId.TryGetValue(membership.UserId, out var row);
+                    int lifetimeXp = hasXp ? row!.LifetimeXp : 0;
+
+                    return new BoardLevelLeaderboardMemberDto
+                    {
+                        UserId = membership.UserId,
+                        Username = membership.User.Username,
+                        DisplayName = GetDisplayName(membership.User),
+                        Level = GetProgressMetrics(lifetimeXp).Level,
+                        XpByPeriod = new BoardLevelLeaderboardPeriodsDto
+                        {
+                            Day = hasXp ? row!.DayXp : 0,
+                            Week = hasXp ? row!.WeekXp : 0,
+                            Month = hasXp ? row!.MonthXp : 0,
+                            Year = hasXp ? row!.YearXp : 0,
+                        },
+                    };
+                })
+                .ToList(),
         };
     }
 
@@ -396,6 +475,12 @@ public class GamificationService(
     private static bool IsDoneStatus(string statusKey)
     {
         return string.Equals(statusKey, "done", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GetDisplayName(UserEntity user)
+    {
+        string displayName = $"{user.FirstName} {user.LastName}".Trim();
+        return string.IsNullOrWhiteSpace(displayName) ? user.Username : displayName;
     }
 
     private static DateTime GetStartOfUtcWeek(DateTime utcNow)

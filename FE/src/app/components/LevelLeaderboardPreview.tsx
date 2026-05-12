@@ -46,6 +46,10 @@ function getVariantLabel(variant: LevelLeaderboardVariant) {
   return LEVEL_LEADERBOARD_VARIANTS.find((item) => item.key === variant)?.label ?? variant;
 }
 
+function isCrownStackVariant(variant: LevelLeaderboardVariant) {
+  return variant === "crown-stack" || variant === "crown-stack-gen-2";
+}
+
 function getRankTone(rank: number, isDarkMode: boolean) {
   if (rank === 1) {
     return isDarkMode ? "border-amber-300/35 bg-amber-300/14 text-amber-100" : "border-amber-300/75 bg-amber-50 text-amber-800";
@@ -74,6 +78,86 @@ function getSolidRankTone(rank: number, isDarkMode: boolean) {
   return isDarkMode
     ? "border-orange-200/56 bg-[linear-gradient(135deg,rgba(254,215,170,0.42)_0%,rgba(249,115,22,0.30)_38%,rgba(154,52,18,0.30)_72%,rgba(63,63,70,0.36)_100%)] text-orange-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.38),inset_0_-18px_34px_-28px_rgba(0,0,0,0.44),0_18px_42px_-36px_rgba(251,146,60,0.56)]"
     : "border-orange-500/58 bg-[linear-gradient(135deg,rgba(255,247,237,0.96)_0%,rgba(251,146,60,0.46)_34%,rgba(180,83,9,0.30)_70%,rgba(120,53,15,0.16)_100%)] text-stone-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-18px_34px_-28px_rgba(154,52,18,0.38),0_18px_40px_-34px_rgba(154,52,18,0.50)]";
+}
+
+function getCrownStackGen2RankTone(rank: number, isDarkMode: boolean) {
+  if (rank === 1) {
+    return isDarkMode
+      ? "border-yellow-100/70 bg-[linear-gradient(135deg,rgba(145,111,38,0.98)_0%,rgba(116,88,35,0.99)_42%,rgba(46,39,25,0.99)_100%)] text-yellow-50 shadow-[inset_0_1px_0_rgba(255,246,205,0.56),inset_0_-22px_34px_-24px_rgba(0,0,0,0.66),0_18px_42px_-34px_rgba(234,179,8,0.46)]"
+      : "border-yellow-600/54 bg-[linear-gradient(135deg,rgba(255,247,199,0.99)_0%,rgba(238,207,112,0.94)_42%,rgba(203,161,61,0.74)_100%)] text-stone-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.88),inset_0_-18px_32px_-24px_rgba(120,101,63,0.42),0_18px_38px_-34px_rgba(161,128,45,0.46)]";
+  }
+
+  if (rank === 2) {
+    return isDarkMode
+      ? "border-zinc-100/62 bg-[linear-gradient(135deg,rgba(82,82,91,0.96)_0%,rgba(63,63,70,0.98)_44%,rgba(39,39,42,0.99)_100%)] text-zinc-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.46),inset_0_-22px_34px_-24px_rgba(0,0,0,0.68),0_18px_42px_-34px_rgba(244,244,245,0.30)]"
+      : "border-slate-400/68 bg-[linear-gradient(135deg,rgba(255,255,255,0.99)_0%,rgba(226,232,240,0.94)_42%,rgba(177,188,202,0.72)_100%)] text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),inset_0_-18px_32px_-24px_rgba(71,85,105,0.34),0_18px_38px_-34px_rgba(71,85,105,0.40)]";
+  }
+
+  return isDarkMode
+    ? "border-amber-100/60 bg-[linear-gradient(135deg,rgba(139,88,47,0.98)_0%,rgba(111,73,44,0.99)_44%,rgba(48,35,28,0.99)_100%)] text-amber-50 shadow-[inset_0_1px_0_rgba(255,237,213,0.42),inset_0_-22px_34px_-24px_rgba(0,0,0,0.66),0_18px_42px_-34px_rgba(217,137,70,0.40)]"
+    : "border-amber-700/50 bg-[linear-gradient(135deg,rgba(255,241,224,0.99)_0%,rgba(232,179,128,0.92)_42%,rgba(194,121,67,0.72)_100%)] text-stone-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.86),inset_0_-18px_32px_-24px_rgba(111,78,55,0.38),0_18px_38px_-34px_rgba(139,88,47,0.44)]";
+}
+
+function getCrownStackRankTone(variant: LevelLeaderboardVariant, rank: number, isDarkMode: boolean) {
+  return variant === "crown-stack-gen-2"
+    ? getCrownStackGen2RankTone(rank, isDarkMode)
+    : getSolidRankTone(rank, isDarkMode);
+}
+
+function getCrownStackCurrentUserSurfaceTone(
+  variant: LevelLeaderboardVariant,
+  isDarkMode: boolean,
+  currentTheme: ReturnType<typeof getThemeColors>,
+) {
+  if (variant !== "crown-stack-gen-2") {
+    return `${currentTheme.border} ${isDarkMode ? "bg-white/[0.045]" : "bg-white/68"}`;
+  }
+
+  return isDarkMode
+    ? "border-zinc-100/42 bg-[linear-gradient(135deg,rgba(39,39,42,0.98)_0%,rgba(28,25,31,0.99)_54%,rgba(17,17,19,0.99)_100%)] text-zinc-50"
+    : "border-slate-300/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.99)_0%,rgba(245,247,251,0.96)_48%,rgba(226,232,240,0.86)_100%)] text-slate-900";
+}
+
+function getCrownStackCurrentUserHighlightTone(
+  variant: LevelLeaderboardVariant,
+  isDarkMode: boolean,
+  placement: "top-rank" | "standalone",
+) {
+  if (variant !== "crown-stack-gen-2") {
+    if (placement === "top-rank") {
+      return isDarkMode
+        ? "shadow-[inset_0_1px_0_rgba(255,255,255,0.62),0_0_42px_-22px_rgba(255,255,255,0.95),0_18px_46px_-34px_rgba(250,250,250,0.58)]"
+        : "shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_0_38px_-20px_rgba(255,255,255,0.98),0_18px_42px_-32px_rgba(15,23,42,0.46)]";
+    }
+
+    return isDarkMode
+      ? "ring-2 ring-inset ring-white/35 shadow-[0_0_28px_-14px_rgba(255,255,255,0.78),0_16px_40px_-30px_rgba(0,0,0,0.9)]"
+      : "ring-2 ring-inset ring-slate-900/22 shadow-[0_0_0_1px_rgba(15,23,42,0.12),0_0_32px_-14px_rgba(15,23,42,0.48),0_14px_30px_-24px_rgba(15,23,42,0.42)]";
+  }
+
+  if (placement === "top-rank") {
+    return isDarkMode
+      ? "ring-2 ring-inset ring-white/26 shadow-[inset_0_1px_0_rgba(255,255,255,0.42),0_14px_34px_-30px_rgba(0,0,0,0.86)]"
+      : "ring-2 ring-inset ring-slate-900/18 shadow-[inset_0_1px_0_rgba(255,255,255,0.76),0_14px_30px_-26px_rgba(15,23,42,0.30)]";
+  }
+
+  return isDarkMode
+    ? "ring-2 ring-inset ring-white/24 shadow-[0_14px_32px_-28px_rgba(0,0,0,0.9)]"
+    : "ring-2 ring-inset ring-slate-900/16 shadow-[0_12px_28px_-24px_rgba(15,23,42,0.30)]";
+}
+
+function getCrownStackYouLabelClassName(
+  variant: LevelLeaderboardVariant,
+  currentTheme: ReturnType<typeof getThemeColors>,
+  placement: "top-rank" | "standalone",
+) {
+  if (variant === "crown-stack-gen-2") {
+    return "font-ui-condensed truncate text-sm font-semibold tracking-[0.01em] opacity-90";
+  }
+
+  return placement === "top-rank"
+    ? "font-ui-condensed truncate text-xl font-semibold tracking-[0.01em]"
+    : `font-ui-condensed truncate text-xl font-semibold tracking-[0.01em] ${currentTheme.text}`;
 }
 
 function CrownStackMetalSheen({ rank }: { rank: number }) {
@@ -202,7 +286,7 @@ function LeaderboardStatePreview({
 }) {
   const isCollapsed = density === "collapsed";
   const isLoading = previewState === "loading";
-  const isCrownStack = variant === "crown-stack";
+  const isCrownStack = isCrownStackVariant(variant);
   const shellClassName = isCollapsed
     ? `relative flex w-[4.25rem] flex-col items-center overflow-hidden rounded-[1.45rem] border px-2 py-3 backdrop-blur-xl ${panelSurfaceClassName}`
     : `relative flex min-h-[25.5rem] w-72 flex-col overflow-hidden rounded-[1.75rem] border p-3.5 backdrop-blur-xl ${panelSurfaceClassName}`;
@@ -360,17 +444,14 @@ function CollapsedPreview({
   isDarkMode: boolean;
   panelSurfaceClassName: string;
 }) {
-  const isCrownStack = variant === "crown-stack";
+  const isCrownStack = isCrownStackVariant(variant);
   const collapsedCurrentUser = isCrownStack && currentUser && currentUser.rank > 3 ? currentUser : undefined;
   const crownStackCollapsedCardBaseClassName = "relative flex w-12 flex-col items-center justify-center overflow-hidden rounded-lg border px-1.5 backdrop-blur-xl";
   const crownStackCollapsedCompactCardClassName = "h-[4.35rem] pb-1.5 pt-2.5";
   const crownStackCollapsedUserCardClassName = "h-[5.5rem] py-2.5";
-  const crownStackCurrentUserHighlightClassName = isDarkMode
-    ? "ring-2 ring-inset ring-white/35 shadow-[0_0_24px_-14px_rgba(255,255,255,0.85),0_0_34px_-24px_rgba(255,255,255,0.65)]"
-    : "ring-2 ring-inset ring-slate-900/22 shadow-[0_0_0_1px_rgba(15,23,42,0.12),0_0_24px_-12px_rgba(15,23,42,0.45)]";
-  const crownStackTopCurrentUserHighlightClassName = isDarkMode
-    ? "shadow-[inset_0_1px_0_rgba(255,255,255,0.64),inset_0_0_24px_-12px_rgba(255,255,255,0.62),0_0_26px_-10px_rgba(255,255,255,0.88),0_18px_36px_-28px_rgba(250,250,250,0.62)]"
-    : "shadow-[inset_0_1px_0_rgba(255,255,255,0.98),inset_0_0_22px_-12px_rgba(255,255,255,0.92),0_0_22px_-10px_rgba(15,23,42,0.42),0_16px_32px_-26px_rgba(15,23,42,0.46)]";
+  const crownStackCurrentUserHighlightClassName = getCrownStackCurrentUserHighlightTone(variant, isDarkMode, "standalone");
+  const crownStackCurrentUserSurfaceClassName = getCrownStackCurrentUserSurfaceTone(variant, isDarkMode, currentTheme);
+  const crownStackTopCurrentUserHighlightClassName = getCrownStackCurrentUserHighlightTone(variant, isDarkMode, "top-rank");
   const collapsedShellClassName = isCrownStack
     ? `relative flex w-[4.25rem] flex-col items-center overflow-visible rounded-[1.45rem] border px-2 py-3 backdrop-blur-xl ${panelSurfaceClassName}`
     : `relative flex min-h-[25.5rem] w-[4.25rem] flex-col items-center overflow-hidden rounded-[1.45rem] border px-2 py-3 backdrop-blur-xl ${panelSurfaceClassName}`;
@@ -403,14 +484,14 @@ function CollapsedPreview({
                   <div
                     className={
                       isCrownStack
-                        ? `${crownStackCollapsedCardBaseClassName} ${isCurrentUser ? crownStackCollapsedUserCardClassName : crownStackCollapsedCompactCardClassName} ${getSolidRankTone(member.rank, isDarkMode)} ${isCurrentUser ? crownStackTopCurrentUserHighlightClassName : ""}`
+                        ? `${crownStackCollapsedCardBaseClassName} ${isCurrentUser ? crownStackCollapsedUserCardClassName : crownStackCollapsedCompactCardClassName} ${getCrownStackRankTone(variant, member.rank, isDarkMode)} ${isCurrentUser ? crownStackTopCurrentUserHighlightClassName : ""}`
                         : `relative ${variant === "constellation-map" ? "after:absolute after:left-1/2 after:top-full after:h-2 after:w-px after:-translate-x-1/2 after:bg-current after:opacity-30 last:after:hidden" : ""}`
                     }
                   >
                     {isCrownStack ? (
                       <>
                         <CrownStackMetalSheen rank={member.rank} />
-                        {isCurrentUser ? <CrownStackActiveShine rank={member.rank} /> : null}
+                        {isCurrentUser && variant !== "crown-stack-gen-2" ? <CrownStackActiveShine rank={member.rank} /> : null}
                         <div className="relative z-10 flex flex-col items-center">
                           {isCurrentUser ? (
                             <span className="font-ui-condensed mb-1 text-[11px] font-semibold tracking-[0.01em]">YOU</span>
@@ -436,10 +517,10 @@ function CollapsedPreview({
           {collapsedCurrentUser ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className={`${crownStackCollapsedCardBaseClassName} ${crownStackCollapsedUserCardClassName} ${crownStackCurrentUserHighlightClassName} ${currentTheme.border} ${isDarkMode ? "bg-white/[0.045]" : "bg-white/68"}`}>
-                  <span className={`font-ui-condensed mb-1 text-[11px] font-semibold tracking-[0.01em] ${currentTheme.text}`}>YOU</span>
+                <div className={`${crownStackCollapsedCardBaseClassName} ${crownStackCollapsedUserCardClassName} ${crownStackCurrentUserHighlightClassName} ${crownStackCurrentUserSurfaceClassName}`}>
+                  <span className="font-ui-condensed mb-1 text-[11px] font-semibold tracking-[0.01em]">YOU</span>
                   <MemberAvatar member={collapsedCurrentUser} size={34} />
-                  <span className={`font-due-date mt-1.5 text-[10px] font-semibold ${currentTheme.primaryText}`}>#{collapsedCurrentUser.rank}</span>
+                  <span className={`font-due-date mt-1.5 text-[10px] font-semibold ${variant === "crown-stack-gen-2" ? "" : currentTheme.primaryText}`}>#{collapsedCurrentUser.rank}</span>
                 </div>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={10}>
@@ -646,17 +727,16 @@ export function LevelLeaderboardPreview({
     );
   }
 
-  if (variant === "crown-stack") {
+  if (isCrownStackVariant(variant)) {
     const crownStackAvatarSize = 46;
     const crownStackSurfaceClassName = isDarkMode ? "bg-white/[0.045]" : "bg-white/68";
     const crownStackShellClassName = `relative flex w-72 flex-col overflow-hidden rounded-[1.75rem] border p-3.5 backdrop-blur-xl ${panelSurfaceClassName}`;
     const crownStackPlaceCardClassName = "relative flex h-[6.75rem] flex-col justify-between overflow-hidden rounded-[1.35rem] border px-3 py-3 backdrop-blur-xl";
-    const crownStackCurrentUserHighlightClassName = isDarkMode
-      ? "ring-2 ring-inset ring-white/35 shadow-[0_0_28px_-14px_rgba(255,255,255,0.78),0_16px_40px_-30px_rgba(0,0,0,0.9)]"
-      : "ring-2 ring-inset ring-slate-900/22 shadow-[0_0_0_1px_rgba(15,23,42,0.12),0_0_32px_-14px_rgba(15,23,42,0.48),0_14px_30px_-24px_rgba(15,23,42,0.42)]";
-    const crownStackTopCurrentUserHighlightClassName = isDarkMode
-      ? "shadow-[inset_0_1px_0_rgba(255,255,255,0.62),0_0_42px_-22px_rgba(255,255,255,0.95),0_18px_46px_-34px_rgba(250,250,250,0.58)]"
-      : "shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_0_38px_-20px_rgba(255,255,255,0.98),0_18px_42px_-32px_rgba(15,23,42,0.46)]";
+    const crownStackCurrentUserHighlightClassName = getCrownStackCurrentUserHighlightTone(variant, isDarkMode, "standalone");
+    const crownStackCurrentUserSurfaceClassName = getCrownStackCurrentUserSurfaceTone(variant, isDarkMode, currentTheme);
+    const crownStackTopCurrentUserHighlightClassName = getCrownStackCurrentUserHighlightTone(variant, isDarkMode, "top-rank");
+    const crownStackTopYouLabelClassName = getCrownStackYouLabelClassName(variant, currentTheme, "top-rank");
+    const crownStackStandaloneYouLabelClassName = getCrownStackYouLabelClassName(variant, currentTheme, "standalone");
     const crownStackRankStyles: Record<number, { iconSizeClassName: string; nameClassName: string; xpClassName: string }> = {
       1: {
         iconSizeClassName: "h-6 w-6",
@@ -689,18 +769,18 @@ export function LevelLeaderboardPreview({
               return (
                 <div
                   key={member.userId}
-                  className={`${crownStackPlaceCardClassName} ${getSolidRankTone(member.rank, isDarkMode)} ${
+                  className={`${crownStackPlaceCardClassName} ${getCrownStackRankTone(variant, member.rank, isDarkMode)} ${
                     isCurrentUser ? crownStackTopCurrentUserHighlightClassName : ""
                   }`}
                 >
                   <CrownStackMetalSheen rank={member.rank} />
-                  {isCurrentUser ? <CrownStackActiveShine rank={member.rank} /> : null}
+                  {isCurrentUser && variant !== "crown-stack-gen-2" ? <CrownStackActiveShine rank={member.rank} /> : null}
                   <div className="relative z-10 flex min-h-0 items-start justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-5">
                       <MemberAvatar member={member} size={crownStackAvatarSize} />
                       <div className="min-w-0">
                         {isCurrentUser ? (
-                          <p className="font-ui-condensed truncate text-xl font-semibold tracking-[0.01em]">YOU</p>
+                          <p className={crownStackTopYouLabelClassName}>YOU</p>
                         ) : (
                           <>
                             <p className={`truncate font-semibold ${rankStyle.nameClassName}`}>{member.username}</p>
@@ -722,12 +802,12 @@ export function LevelLeaderboardPreview({
             })}
           </div>
           {crownStackCurrentUser ? (
-            <div className={`${crownStackPlaceCardClassName} ${crownStackCurrentUserHighlightClassName} mt-3 ${currentTheme.border} ${crownStackSurfaceClassName}`}>
+            <div className={`${crownStackPlaceCardClassName} ${crownStackCurrentUserHighlightClassName} ${crownStackCurrentUserSurfaceClassName} mt-3`}>
               <div className="flex min-h-0 items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-5">
                   <MemberAvatar member={crownStackCurrentUser} size={crownStackAvatarSize} />
                   <div className="min-w-0">
-                    <p className={`font-ui-condensed truncate text-xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>YOU</p>
+                    <p className={crownStackStandaloneYouLabelClassName}>YOU</p>
                   </div>
                 </div>
                 <span className={`font-due-date shrink-0 text-[10px] font-semibold ${currentTheme.primaryText}`}>#{crownStackCurrentUser.rank}</span>

@@ -171,6 +171,7 @@ interface LevelProgressCardProps {
   isLoading?: boolean;
   hasError?: boolean;
   onViewProfile?: () => void;
+  showAmbientGrid?: boolean;
 }
 
 function formatNumber(value: number) {
@@ -207,6 +208,7 @@ export function LevelProgressCard({
   isLoading = false,
   hasError = false,
   onViewProfile,
+  showAmbientGrid = true,
 }: LevelProgressCardProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
@@ -886,13 +888,15 @@ export function LevelProgressCard({
       return (
         <>
           <div className="absolute -right-8 top-0 h-28 w-28 rounded-full blur-3xl" style={{ backgroundColor: progressAccent.glow }} />
-          <div
-            className="absolute inset-0 opacity-[0.05]"
-            style={{
-              backgroundImage: `linear-gradient(${progressAccent.color} 1px, transparent 1px), linear-gradient(90deg, ${progressAccent.color} 1px, transparent 1px)`,
-              backgroundSize: "22px 22px",
-            }}
-          />
+          {showAmbientGrid ? (
+            <div
+              className="absolute inset-0 opacity-[0.05]"
+              style={{
+                backgroundImage: `linear-gradient(${progressAccent.color} 1px, transparent 1px), linear-gradient(90deg, ${progressAccent.color} 1px, transparent 1px)`,
+                backgroundSize: "22px 22px",
+              }}
+            />
+          ) : null}
           <div className="relative">
             {renderHeader("row", { showLevelChip: false })}
             <div className="mt-5">{renderGaugeCoreMeter("ribbon")}</div>

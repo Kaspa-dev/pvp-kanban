@@ -28,6 +28,10 @@ import {
   GamificationSummary,
   getDefaultGamificationSummary,
 } from "../utils/gamification";
+import {
+  fetchBoardLevelLeaderboard,
+  type LevelLeaderboardBoard,
+} from "../utils/levelLeaderboard";
 import { isApiError } from "../utils/auth";
 import { getBoard, Board as BoardType, BoardColumnLimit, isBoardOwner, updateBoard } from "../utils/boards";
 import {
@@ -86,6 +90,9 @@ const BOARD_VIEW_TABS: Array<{ value: BoardWorkspaceView; label: string; icon: t
 ];
 const TASK_INDEX_VIEWS: BoardWorkspaceView[] = ["list", "backlog", "history"];
 type BoardPageView = BoardWorkspaceView | "boardSettings";
+type BoardLevelLeaderboardLoadResult =
+  | { status: "ready"; leaderboard: LevelLeaderboardBoard }
+  | { status: "error" };
 
 function getBoardWorkspaceTabTooltip(view: BoardWorkspaceView) {
   switch (view) {
@@ -281,6 +288,8 @@ export function Board() {
   const refreshIndicatorMinUntilRef = useRef<number>(0);
 
   const [gamificationSummary, setGamificationSummary] = useState<GamificationSummary>(() => getDefaultGamificationSummary());
+  const [levelLeaderboard, setLevelLeaderboard] = useState<LevelLeaderboardBoard | null>(null);
+  const [levelLeaderboardState, setLevelLeaderboardState] = useState<"loading" | "ready" | "error">("loading");
 
   const {
     preferences,
@@ -308,6 +317,17 @@ export function Board() {
     }
   }, []);
 
+  const loadBoardLevelLeaderboard = useCallback(async (boardId: number): Promise<BoardLevelLeaderboardLoadResult> => {
+    try {
+      return {
+        status: "ready",
+        leaderboard: await fetchBoardLevelLeaderboard(boardId),
+      };
+    } catch {
+      return { status: "error" };
+    }
+  }, []);
+
   useEffect(() => {
     return () => {
       if (refreshIndicatorTimeoutRef.current !== null) {
@@ -331,6 +351,8 @@ export function Board() {
         setCurrentBoard(null);
         setLabels([]);
         setCards(createEmptyCards());
+        setLevelLeaderboard(null);
+        setLevelLeaderboardState("error");
         setBoardAccessState("notFound");
         setLoadError("");
       setIsLoadingBoard(false);
@@ -345,6 +367,8 @@ export function Board() {
           setCurrentBoard(null);
           setLabels([]);
           setCards(createEmptyCards());
+          setLevelLeaderboard(null);
+          setLevelLeaderboardState("loading");
         }
         setBoardAccessState("available");
         setLoadError("");
@@ -360,6 +384,8 @@ export function Board() {
           setCurrentBoard(null);
           setLabels([]);
           setCards(createEmptyCards());
+          setLevelLeaderboard(null);
+          setLevelLeaderboardState("error");
           return;
         }
 
@@ -369,14 +395,17 @@ export function Board() {
           setCurrentBoard(null);
           setLabels([]);
           setCards(createEmptyCards());
+          setLevelLeaderboard(null);
+          setLevelLeaderboardState("error");
           return;
         }
 
-        const [boardLabels, boardCards, summary, session] = await Promise.all([
+        const [boardLabels, boardCards, summary, session, leaderboardResult] = await Promise.all([
           getBoardLabels(numericBoardId),
           getBoardCards(numericBoardId),
           fetchCurrentUserGamificationSummary(),
           loadPlanningPokerSession(numericBoardId),
+          loadBoardLevelLeaderboard(numericBoardId),
         ]);
 
         if (!isActive) {
@@ -390,6 +419,13 @@ export function Board() {
         setCards(boardCards);
         setPlanningPokerSession(session);
         setGamificationSummary(summary);
+        if (leaderboardResult.status === "ready") {
+          setLevelLeaderboard(leaderboardResult.leaderboard);
+          setLevelLeaderboardState("ready");
+        } else {
+          setLevelLeaderboard(null);
+          setLevelLeaderboardState("error");
+        }
       } catch (error) {
         if (!isActive) {
           return;
@@ -401,6 +437,8 @@ export function Board() {
         setCurrentBoard(null);
         setLabels([]);
         setCards(createEmptyCards());
+        setLevelLeaderboard(null);
+        setLevelLeaderboardState("error");
       } finally {
         if (isActive) {
           setIsLoadingBoard(false);
@@ -414,7 +452,7 @@ export function Board() {
     return () => {
       isActive = false;
     };
-  }, [loadPlanningPokerSession, numericBoardId, user, workspaceReloadState]);
+  }, [loadBoardLevelLeaderboard, loadPlanningPokerSession, numericBoardId, user, workspaceReloadState]);
 
   const availableAssignees: TaskAssignee[] = useMemo(
     () =>
@@ -488,8 +526,20 @@ export function Board() {
     }
 
     try {
-      const summary = await fetchCurrentUserGamificationSummary();
+      const [summary, leaderboardResult] = await Promise.all([
+        fetchCurrentUserGamificationSummary(),
+        Number.isFinite(numericBoardId)
+          ? loadBoardLevelLeaderboard(numericBoardId)
+          : Promise.resolve<BoardLevelLeaderboardLoadResult>({ status: "error" }),
+      ]);
       setGamificationSummary(summary);
+      if (leaderboardResult.status === "ready") {
+        setLevelLeaderboard(leaderboardResult.leaderboard);
+        setLevelLeaderboardState("ready");
+      } else {
+        setLevelLeaderboard(null);
+        setLevelLeaderboardState("error");
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to refresh your progress.";
       showErrorToast(message);
@@ -1234,6 +1284,8 @@ export function Board() {
               boardName={currentBoard.name}
               boardLogoIconKey={currentBoard.logoIconKey}
               boardLogoColorKey={currentBoard.logoColorKey}
+              levelLeaderboard={levelLeaderboard}
+              levelLeaderboardState={levelLeaderboardState}
             />
 
             <SidebarInset className="relative flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden bg-transparent">

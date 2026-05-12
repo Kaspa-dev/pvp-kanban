@@ -1,8 +1,15 @@
+import { useState } from "react";
 import { Plus, Settings2, Tag } from "lucide-react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { BoardLogo } from "./BoardLogo";
+import { LevelLeaderboardPreview } from "./LevelLeaderboardPreview";
 import { OverflowTooltip } from "./OverflowTooltip";
 import { BoardLogoColorKey, BoardLogoIconKey } from "../utils/boardIdentity";
+import {
+  LEADERBOARD_PERIODS,
+  type LeaderboardPeriod,
+  type LevelLeaderboardBoard,
+} from "../utils/levelLeaderboard";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
 import { MAX_BOARD_LABELS } from "../utils/labels";
@@ -29,6 +36,8 @@ interface SidebarProps {
   boardName?: string;
   boardLogoIconKey?: BoardLogoIconKey;
   boardLogoColorKey?: BoardLogoColorKey;
+  levelLeaderboard?: LevelLeaderboardBoard | null;
+  levelLeaderboardState?: "loading" | "ready" | "error";
   className?: string;
 }
 
@@ -42,6 +51,8 @@ export function Sidebar({
   boardName,
   boardLogoIconKey,
   boardLogoColorKey,
+  levelLeaderboard,
+  levelLeaderboardState = "loading",
   className = "",
 }: SidebarProps) {
   const { theme, isDarkMode } = useTheme();
@@ -49,6 +60,17 @@ export function Sidebar({
   const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
   const { state, isMobile, setOpenMobile } = useSidebar();
   const isCollapsed = !isMobile && state === "collapsed";
+  const [leaderboardPeriod, setLeaderboardPeriod] = useState<LeaderboardPeriod>("week");
+  const leaderboardPreviewState = levelLeaderboard ? levelLeaderboardState : levelLeaderboardState === "loading" ? "loading" : "error";
+  const leaderboardBoard = levelLeaderboard ?? {
+    id: 0,
+    name: boardName ?? "Board",
+    description: "",
+    logoIconKey: boardLogoIconKey ?? "folder",
+    logoColorKey: boardLogoColorKey ?? "slate",
+    currentUserId: 0,
+    members: [],
+  };
   const sidebarToggleButtonClassName = `${getIconActionButtonClassName(currentTheme, {
     size: "sm",
     emphasis: "elevated",
@@ -112,10 +134,8 @@ export function Sidebar({
             </div>
           </SidebarHeader>
 
-          <SidebarContent className={`gap-0 overflow-hidden ${isCollapsed ? "px-1.5 py-2.5" : "px-2.5 py-3"}`}>
-            <SidebarGroup
-              className={`p-0 ${isCollapsed ? "items-center" : ""}`}
-            >
+          <SidebarContent className={`flex min-h-0 flex-col gap-0 overflow-x-hidden overflow-y-auto ${isCollapsed ? "px-1.5 py-2.5" : "px-2.5 py-3"}`}>
+            <SidebarGroup className={`min-h-0 p-0 ${isCollapsed ? "items-center" : ""}`}>
               <SidebarGroupContent className={`w-full ${isCollapsed ? "flex flex-col items-center gap-2" : "space-y-2"}`}>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -167,6 +187,19 @@ export function Sidebar({
                 </Tooltip>
               </SidebarGroupContent>
             </SidebarGroup>
+            <div
+              className={`mt-auto flex min-h-0 justify-center pt-4 ${isCollapsed ? "" : "w-full [&>aside]:min-h-0 [&>aside]:w-full"}`}
+              aria-label="Board level leaderboard"
+            >
+              <LevelLeaderboardPreview
+                board={leaderboardBoard}
+                period={LEADERBOARD_PERIODS.includes(leaderboardPeriod) ? leaderboardPeriod : "week"}
+                onPeriodChange={setLeaderboardPeriod}
+                variant="crown-stack-gen-2"
+                density={isCollapsed ? "collapsed" : "expanded"}
+                previewState={leaderboardPreviewState}
+              />
+            </div>
           </SidebarContent>
 
           {showBoardSettings && onOpenBoardSettings ? (

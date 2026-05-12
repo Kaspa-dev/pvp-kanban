@@ -321,6 +321,28 @@ public class BoardsController(
         return Ok(ToBoardDto(context.Board, userId, memberLevels));
     }
 
+    [HttpGet("{boardId:int}/level-leaderboard")]
+    public async Task<ActionResult<BoardLevelLeaderboardDto>> GetBoardLevelLeaderboard(int boardId, CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        var (context, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
+        if (failure is not null)
+        {
+            return failure;
+        }
+
+        BoardLevelLeaderboardDto leaderboard = await _gamificationService.GetBoardLevelLeaderboardAsync(
+            context!.Board,
+            userId,
+            cancellationToken);
+
+        return Ok(leaderboard);
+    }
+
     [HttpPost("{boardId:int}/favorite")]
     public async Task<ActionResult<BoardFavoriteStateDto>> FavoriteBoard(int boardId, CancellationToken cancellationToken)
     {

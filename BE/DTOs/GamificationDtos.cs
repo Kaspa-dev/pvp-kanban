@@ -14,3 +14,31 @@ public class UserGamificationSummaryDto
     public int TasksCompleted { get; set; }
     public int Prestige { get; set; }
 }
+
+public class BoardLevelLeaderboardDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string LogoIconKey { get; set; } = string.Empty;
+    public string LogoColorKey { get; set; } = string.Empty;
+    public int CurrentUserId { get; set; }
+    public List<BoardLevelLeaderboardMemberDto> Members { get; set; } = new();
+}
+
+public class BoardLevelLeaderboardMemberDto
+{
+    public int UserId { get; set; }
+    public string Username { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public int Level { get; set; }
+    public BoardLevelLeaderboardPeriodsDto XpByPeriod { get; set; } = new();
+}
+
+public class BoardLevelLeaderboardPeriodsDto
+{
+    public int Day { get; set; }
+    public int Week { get; set; }
+    public int Month { get; set; }
+    public int Year { get; set; }
+}

@@ -1,3 +1,5 @@
+import { apiJson } from "./auth";
+
 export const LEADERBOARD_PERIODS = ["day", "week", "month", "year"] as const;
 
 export type LeaderboardPeriod = (typeof LEADERBOARD_PERIODS)[number];
@@ -59,6 +61,11 @@ export const LEVEL_LEADERBOARD_VARIANTS = [
     description: "A vertical medal stack where each rank steps down in scale.",
   },
   {
+    key: "crown-stack-gen-2",
+    label: "Crown Stack Gen 2",
+    description: "A duplicate crown-stack lane for second-pass experiments.",
+  },
+  {
     key: "pulse-terminal",
     label: "Pulse Terminal",
     description: "A system-console treatment for operational score state.",
@@ -86,3 +93,11 @@ export const LEVEL_LEADERBOARD_VARIANTS = [
 ] as const;
 
 export type LevelLeaderboardVariant = (typeof LEVEL_LEADERBOARD_VARIANTS)[number]["key"];
+
+export async function fetchBoardLevelLeaderboard(boardId: number | string): Promise<LevelLeaderboardBoard> {
+  return apiJson<LevelLeaderboardBoard>(
+    `/api/boards/${Number(boardId)}/level-leaderboard`,
+    { method: "GET" },
+    "Unable to load the board leaderboard right now.",
+  );
+}
