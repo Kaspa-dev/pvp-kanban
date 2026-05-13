@@ -58,11 +58,6 @@ import { UtilityIconButton } from "../components/UtilityIconButton";
 import { getNativeInputFieldClassName } from "../components/inputLikeControlStyles";
 import { getToolbarLabelClassName } from "../components/typographyStyles";
 import { showErrorToast, showSuccessToast } from "../utils/toast";
-import {
-  fetchCurrentUserGamificationSummary,
-  GamificationSummary,
-  getDefaultGamificationSummary,
-} from "../utils/gamification";
 
 function isEditableKeyboardTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
@@ -268,7 +263,6 @@ export function Projects() {
   const [isBoardInfoModalOpen, setIsBoardInfoModalOpen] = useState(false);
   const [boardForInfo, setBoardForInfo] = useState<Board | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [gamificationSummary, setGamificationSummary] = useState<GamificationSummary>(() => getDefaultGamificationSummary());
 
   useEffect(() => {
     setSearchInput(queryState.q);
@@ -308,23 +302,19 @@ export function Projects() {
         setIsLoadingBoards(true);
         setLoadError("");
 
-        const [response, summary] = await Promise.all([
-          getUserBoardsPage({
-            q: queryState.q,
-            membership: queryState.membership,
-            sort: queryState.sort,
-            pageSize: queryState.pageSize,
-            page: queryState.page,
-          }),
-          fetchCurrentUserGamificationSummary(),
-        ]);
+        const response = await getUserBoardsPage({
+          q: queryState.q,
+          membership: queryState.membership,
+          sort: queryState.sort,
+          pageSize: queryState.pageSize,
+          page: queryState.page,
+        });
 
         if (!isActive) {
           return;
         }
 
         setBoardList(response);
-        setGamificationSummary(summary);
         setHasLoadedBoardsOnce(true);
 
         if (response.page !== queryState.page) {
@@ -646,8 +636,6 @@ export function Projects() {
           username: user.username,
           fullName: `${user.firstName} ${user.lastName}`.trim(),
           subtitle: `${user.firstName} ${user.lastName}`.trim(),
-          level: gamificationSummary.currentLevel,
-          gamificationSummary,
         }}
       />
 

@@ -91,7 +91,7 @@ export function LevelXpGain() {
                 XP Gain Motion Lab
               </h1>
               <p className={`mt-3 max-w-3xl text-sm leading-6 sm:text-base ${currentTheme.textSecondary}`}>
-                Prototype directions for the moment a user earns XP. Rows stress-test different reward cases; columns compare notification surfaces, motion systems, and attention levels side by side.
+                Prototype directions for the moment a user earns XP. Rows stress-test reward cases; columns compare real product placements like navbar, profile popover, toasts, board cards, sidebars, task details, and list rows.
               </p>
             </div>
 
@@ -120,7 +120,7 @@ export function LevelXpGain() {
               <Sparkles className={`h-5 w-5 ${currentTheme.primaryText}`} aria-hidden="true" />
               <p className={`font-ui-condensed mt-3 text-sm font-semibold tracking-[0.01em] ${currentTheme.text}`}>Reward surfaces</p>
               <p className={`mt-2 text-sm leading-6 ${currentTheme.textSecondary}`}>
-                Corner cards, navbar events, task flares, sidebar tickers, and spotlight moments all share the same mock XP data.
+                Every preview is anchored to an existing app surface, so the lab compares usable placement options instead of imaginary widgets.
               </p>
             </div>
             <div className={`rounded-2xl border p-4 ${currentTheme.border} ${sectionSurfaceClassName}`}>
@@ -149,7 +149,7 @@ export function LevelXpGain() {
               </h2>
             </div>
             <p className={`max-w-xl text-sm leading-6 ${currentTheme.textSecondary}`}>
-              Every cell is self-contained. This page compares visual language and animation weight only; it does not wire into production XP events yet.
+              Every cell is self-contained. This page compares visual language, placement, and animation weight only; it does not wire into production XP events yet.
             </p>
           </div>
 
@@ -180,6 +180,16 @@ export function LevelXpGain() {
                 >
                   <p className={`font-ui-condensed text-sm font-semibold tracking-[0.01em] ${currentTheme.text}`}>{variant.label}</p>
                   <p className={`mt-1 text-xs leading-5 ${currentTheme.textMuted}`}>{variant.description}</p>
+                  <div className={`mt-3 space-y-1 border-t pt-3 ${currentTheme.border}`}>
+                    <p className={`text-[11px] leading-4 ${currentTheme.textSecondary}`}>
+                      <span className={`font-ui-condensed font-semibold uppercase tracking-[0.08em] ${currentTheme.textMuted}`}>Placement</span>{" "}
+                      {variant.placement}
+                    </p>
+                    <p className={`text-[11px] leading-4 ${currentTheme.textSecondary}`}>
+                      <span className={`font-ui-condensed font-semibold uppercase tracking-[0.08em] ${currentTheme.textMuted}`}>Reuses</span>{" "}
+                      {variant.reuses}
+                    </p>
+                  </div>
                 </div>
               ))}
 

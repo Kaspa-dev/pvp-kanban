@@ -413,12 +413,13 @@ public class GamificationService(
             .ToListAsync(cancellationToken);
 
         string milestoneEventKeyPrefix = BuildTaskCompletedMilestoneEventKeyPrefix(taskId);
-        List<string> persistedMilestoneEventKeys = await _context.UserMilestoneEvents
-            .Where(milestoneEvent =>
-                milestoneEvent.EventType == TaskCompletedMilestoneEventType &&
-                milestoneEvent.EventKey.StartsWith(milestoneEventKeyPrefix))
+        List<string> persistedTaskCompletedMilestoneEventKeys = await _context.UserMilestoneEvents
+            .Where(milestoneEvent => milestoneEvent.EventType == TaskCompletedMilestoneEventType)
             .Select(milestoneEvent => milestoneEvent.EventKey)
             .ToListAsync(cancellationToken);
+        List<string> persistedMilestoneEventKeys = persistedTaskCompletedMilestoneEventKeys
+            .Where(eventKey => eventKey.StartsWith(milestoneEventKeyPrefix, StringComparison.Ordinal))
+            .ToList();
 
         IEnumerable<string> trackedAwardKeys = _context.ChangeTracker
             .Entries<XpEventModel>()

@@ -1,11 +1,13 @@
 import { HelpCircle, LogOut, Settings } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
 import { UserProfileChip } from "./UserProfileChip";
 import { BanBanLogo } from "./BanBanLogo";
 import { UtilityIconButton } from "./UtilityIconButton";
-import type { GamificationSummary } from "../utils/gamification";
+
+const XP_PULSE_EASE = [0.16, 1, 0.3, 1] as const;
 
 interface ToolbarProps {
   onOpenSettings: () => void;
@@ -13,13 +15,70 @@ interface ToolbarProps {
   onProfileClick?: () => void;
   onReplayCurrentHints?: () => void;
   helpCoachmarkId?: string;
+  xpPulseAmount?: number;
+  xpPulseKey?: number;
   userProfile?: {
     username: string;
     fullName?: string;
     subtitle: string;
-    level?: number | null;
-    gamificationSummary?: GamificationSummary | null;
   };
+}
+
+function NavbarXpPulse({
+  amount,
+  pulseKey,
+}: {
+  amount?: number;
+  pulseKey?: number;
+}) {
+  const { theme, isDarkMode } = useTheme();
+  const currentTheme = getThemeColors(theme, isDarkMode);
+  const shouldReduceMotion = useReducedMotion();
+
+  if (!amount || amount <= 0) {
+    return null;
+  }
+
+  return (
+    <motion.span
+      key={`${pulseKey ?? 0}-${amount}`}
+      role="status"
+      aria-live="polite"
+      className={`font-due-date pointer-events-none absolute right-[calc(100%+0.65rem)] top-1/2 z-30 whitespace-nowrap text-sm font-semibold leading-none ${currentTheme.primaryText}`}
+      initial={{ opacity: 0, x: shouldReduceMotion ? 0 : 8, y: "-50%", scale: shouldReduceMotion ? 1 : 0.96 }}
+      animate={{ opacity: [0, 1, 1, 0], x: shouldReduceMotion ? 0 : [8, -2, -7, -14], y: "-50%", scale: shouldReduceMotion ? 1 : [0.96, 1.02, 1, 0.98] }}
+      transition={{ duration: shouldReduceMotion ? 1.15 : 1.85, times: [0, 0.2, 0.68, 1], ease: XP_PULSE_EASE }}
+    >
+      +{new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(amount)} XP
+    </motion.span>
+  );
+}
+
+function NavbarProfilePulseRing({
+  amount,
+  pulseKey,
+}: {
+  amount?: number;
+  pulseKey?: number;
+}) {
+  const { theme, isDarkMode } = useTheme();
+  const currentTheme = getThemeColors(theme, isDarkMode);
+  const shouldReduceMotion = useReducedMotion();
+
+  if (!amount || amount <= 0) {
+    return null;
+  }
+
+  return (
+    <motion.span
+      key={`profile-ring-${pulseKey ?? 0}-${amount}`}
+      aria-hidden="true"
+      className={`pointer-events-none absolute left-3 top-1/2 z-20 h-11 w-11 rounded-full border ${currentTheme.primaryBorder}`}
+      initial={{ opacity: 0, scale: shouldReduceMotion ? 1 : 0.86, y: "-50%" }}
+      animate={{ opacity: [0, 0.72, 0.34, 0], scale: shouldReduceMotion ? [1, 1, 1, 1] : [0.86, 1.08, 1.24, 1.36], y: "-50%" }}
+      transition={{ duration: shouldReduceMotion ? 1.15 : 1.75, times: [0, 0.18, 0.58, 1], ease: XP_PULSE_EASE }}
+    />
+  );
 }
 
 export function Toolbar({
@@ -28,6 +87,8 @@ export function Toolbar({
   onProfileClick,
   onReplayCurrentHints,
   helpCoachmarkId,
+  xpPulseAmount,
+  xpPulseKey,
   userProfile,
 }: ToolbarProps) {
   const { theme, isDarkMode } = useTheme();
@@ -48,14 +109,16 @@ export function Toolbar({
 
         <div className="flex items-center justify-end gap-2">
           {userProfile && onProfileClick && (
-            <UserProfileChip
-              username={userProfile.username}
-              fullName={userProfile.fullName}
-              subtitle={userProfile.subtitle}
-              level={userProfile.level}
-              gamificationSummary={userProfile.gamificationSummary}
-              onClick={onProfileClick}
-            />
+            <div className="relative flex items-center">
+              <NavbarXpPulse amount={xpPulseAmount} pulseKey={xpPulseKey} />
+              <NavbarProfilePulseRing amount={xpPulseAmount} pulseKey={xpPulseKey} />
+              <UserProfileChip
+                username={userProfile.username}
+                fullName={userProfile.fullName}
+                subtitle={userProfile.subtitle}
+                onClick={onProfileClick}
+              />
+            </div>
           )}
 
           <Tooltip>

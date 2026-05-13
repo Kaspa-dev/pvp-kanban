@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
-import { fetchCurrentUserGamificationSummary } from "../utils/gamification";
-import type { GamificationSummary } from "../utils/gamification";
+import { useGamificationSummary } from "../contexts/GamificationSummaryContext";
 import { AppAvatar } from "./AppAvatar";
 import { LevelProgressCard } from "./LevelProgressCard";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
@@ -10,8 +9,6 @@ interface UserProfileChipProps {
   username: string;
   fullName?: string;
   subtitle: string;
-  level?: number | null;
-  gamificationSummary?: GamificationSummary | null;
   onClick?: () => void;
 }
 
@@ -19,58 +16,29 @@ export function UserProfileChip({
   username,
   fullName,
   subtitle,
-  level,
-  gamificationSummary,
   onClick,
 }: UserProfileChipProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const {
+    summary,
+    isLoading: isLoadingSummary,
+    hasError: summaryError,
+    refreshSummary,
+  } = useGamificationSummary();
   const [isOpen, setIsOpen] = useState(false);
-  const [loadedSummary, setLoadedSummary] = useState<GamificationSummary | null>(null);
-  const [hasRequestedSummary, setHasRequestedSummary] = useState(false);
-  const [isLoadingSummary, setIsLoadingSummary] = useState(false);
-  const [summaryError, setSummaryError] = useState(false);
-  const isMountedRef = useRef(true);
 
-  const summary = gamificationSummary ?? loadedSummary;
-  const displayedLevel = summary?.currentLevel ?? level ?? null;
+  const displayedLevel = summary?.currentLevel ?? null;
   const profilePopoverSurfaceClassName = isDarkMode
     ? "border-zinc-800/95 bg-zinc-950/92 shadow-[0_28px_80px_-52px_rgba(0,0,0,0.92)]"
     : "border-slate-200 bg-white/96 shadow-[0_28px_80px_-52px_rgba(15,23,42,0.42)]";
 
-  useEffect(() => () => {
-    isMountedRef.current = false;
-  }, []);
-
   const loadSummaryIfNeeded = () => {
-    if (gamificationSummary || loadedSummary || hasRequestedSummary || isLoadingSummary) {
+    if (summary || isLoadingSummary) {
       return;
     }
 
-    setHasRequestedSummary(true);
-    setIsLoadingSummary(true);
-    setSummaryError(false);
-
-    void fetchCurrentUserGamificationSummary()
-      .then((nextSummary) => {
-        if (!isMountedRef.current) {
-          return;
-        }
-
-        setLoadedSummary(nextSummary);
-      })
-      .catch(() => {
-        if (!isMountedRef.current) {
-          return;
-        }
-
-        setSummaryError(true);
-      })
-      .finally(() => {
-        if (isMountedRef.current) {
-          setIsLoadingSummary(false);
-        }
-      });
+    void refreshSummary();
   };
 
   const handleOpenChange = (nextIsOpen: boolean) => {
@@ -146,8 +114,8 @@ export function UserProfileChip({
             summary={summary}
             variant="orbit-ribbon-console"
             dataVariant="checkpoint-path"
-            isLoading={isLoadingSummary}
-            hasError={summaryError}
+            isLoading={isLoadingSummary && !summary}
+            hasError={summaryError && !summary}
             showAmbientGrid={false}
             onViewProfile={() => {
               setIsOpen(false);

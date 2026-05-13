@@ -18,6 +18,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { UserPreferencesProvider } from './contexts/UserPreferencesContext';
+import { GamificationSummaryProvider } from './contexts/GamificationSummaryContext';
 import { AuthStatusScreen } from './components/AuthStatusScreen';
 import { Toaster } from './components/ui/toast';
 
@@ -117,10 +118,12 @@ export default function App() {
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
-          <UserPreferencesProvider>
-            <AppRoutes />
-            <Toaster />
-          </UserPreferencesProvider>
+          <GamificationSummaryProvider>
+            <UserPreferencesProvider>
+              <AppRoutes />
+              <Toaster />
+            </UserPreferencesProvider>
+          </GamificationSummaryProvider>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

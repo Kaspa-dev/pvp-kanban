@@ -26,10 +26,18 @@ function formatNumber(value: number) {
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value);
 }
 
+function isSameUserId(left: number | string | null | undefined, right: number | string | null | undefined) {
+  return Number(left) === Number(right);
+}
+
+function getMemberPeriodXp(member: LevelLeaderboardBoard["members"][number], period: LeaderboardPeriod) {
+  return member.xpByPeriod[period] ?? 0;
+}
+
 function getRankedMembers(board: LevelLeaderboardBoard, period: LeaderboardPeriod) {
   return [...board.members]
     .sort((left, right) => {
-      const xpDifference = right.xpByPeriod[period] - left.xpByPeriod[period];
+      const xpDifference = getMemberPeriodXp(right, period) - getMemberPeriodXp(left, period);
       if (xpDifference !== 0) return xpDifference;
 
       const levelDifference = right.level - left.level;
@@ -187,7 +195,7 @@ function CrownStackActiveShine({ rank }: { rank: number }) {
 
 function getProgressWidth(member: RankedMember, period: LeaderboardPeriod, maxXp: number) {
   if (maxXp <= 0) return "0%";
-  return `${Math.max(12, Math.round((member.xpByPeriod[period] / maxXp) * 100))}%`;
+  return `${Math.max(12, Math.round((getMemberPeriodXp(member, period) / maxXp) * 100))}%`;
 }
 
 function RankBadge({ rank, isDarkMode }: { rank: number; isDarkMode: boolean }) {
@@ -257,7 +265,7 @@ function CurrentUserStrip({
         </div>
       </div>
       <p className={`font-due-date mt-2 text-base font-semibold ${currentTheme.text}`}>
-        {formatNumber(currentUser.xpByPeriod[period])} XP
+        {formatNumber(getMemberPeriodXp(currentUser, period))} XP
       </p>
     </div>
   );
@@ -453,7 +461,7 @@ function CollapsedPreview({
   const crownStackCurrentUserSurfaceClassName = getCrownStackCurrentUserSurfaceTone(variant, isDarkMode, currentTheme);
   const crownStackTopCurrentUserHighlightClassName = getCrownStackCurrentUserHighlightTone(variant, isDarkMode, "top-rank");
   const collapsedShellClassName = isCrownStack
-    ? `relative flex w-[4.25rem] flex-col items-center overflow-visible rounded-[1.45rem] border px-2 py-3 backdrop-blur-xl ${panelSurfaceClassName}`
+    ? `relative flex w-[4.25rem] flex-col items-center overflow-hidden rounded-[1.45rem] border px-2 py-3 backdrop-blur-xl ${panelSurfaceClassName}`
     : `relative flex min-h-[25.5rem] w-[4.25rem] flex-col items-center overflow-hidden rounded-[1.45rem] border px-2 py-3 backdrop-blur-xl ${panelSurfaceClassName}`;
 
   return (
@@ -476,7 +484,7 @@ function CollapsedPreview({
         ) : null}
         <div className={`flex flex-col items-center ${isCrownStack ? "gap-2" : variant === "ledger-chips" ? "gap-2.5" : variant === "crown-deck" ? "-space-y-1" : "gap-1.5"}`} aria-label={isCrownStack ? "Leaderboard members" : "Top three members"}>
           {topThree.map((member) => {
-            const isCurrentUser = member.userId === board.currentUserId;
+            const isCurrentUser = isSameUserId(member.userId, board.currentUserId);
 
             return (
               <Tooltip key={member.userId}>
@@ -509,7 +517,7 @@ function CollapsedPreview({
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="right" sideOffset={10}>
-                  #{member.rank} {member.displayName}: {formatNumber(member.xpByPeriod[period])} XP
+                  #{member.rank} {member.displayName}: {formatNumber(getMemberPeriodXp(member, period))} XP
                 </TooltipContent>
               </Tooltip>
             );
@@ -524,7 +532,7 @@ function CollapsedPreview({
                 </div>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={10}>
-                Your place: #{collapsedCurrentUser.rank}. {formatNumber(collapsedCurrentUser.xpByPeriod[period])} XP
+                Your place: #{collapsedCurrentUser.rank}. {formatNumber(getMemberPeriodXp(collapsedCurrentUser, period))} XP
               </TooltipContent>
             </Tooltip>
           ) : null}
@@ -547,9 +555,9 @@ export function LevelLeaderboardPreview({
   const panelEyebrowClassName = getPanelEyebrowClassName(currentTheme.textMuted);
   const rankedMembers = useMemo(() => getRankedMembers(board, period), [board, period]);
   const topThree = rankedMembers.slice(0, 3);
-  const currentUser = rankedMembers.find((member) => member.userId === board.currentUserId);
-  const totalXp = rankedMembers.reduce((sum, member) => sum + member.xpByPeriod[period], 0);
-  const maxXp = Math.max(...rankedMembers.map((member) => member.xpByPeriod[period]));
+  const currentUser = rankedMembers.find((member) => isSameUserId(member.userId, board.currentUserId));
+  const totalXp = rankedMembers.reduce((sum, member) => sum + getMemberPeriodXp(member, period), 0);
+  const maxXp = Math.max(...rankedMembers.map((member) => getMemberPeriodXp(member, period)));
   const leader = topThree[0];
   const panelSurfaceClassName = isDarkMode
     ? "border-zinc-800/95 bg-zinc-950/92 shadow-[0_28px_80px_-52px_rgba(0,0,0,0.92)]"
@@ -604,7 +612,7 @@ export function LevelLeaderboardPreview({
                   <MemberAvatar member={member} size={index === 1 ? 44 : 36} />
                   <div className={`flex w-full flex-col items-center justify-end rounded-2xl border p-2 ${heightClassName} ${getRankTone(member.rank, isDarkMode)}`}>
                     <span className="font-due-date text-lg font-semibold">#{member.rank}</span>
-                    <span className="font-due-date text-[11px] font-semibold">{formatNumber(member.xpByPeriod[period])}</span>
+                    <span className="font-due-date text-[11px] font-semibold">{formatNumber(getMemberPeriodXp(member, period))}</span>
                   </div>
                 </div>
               );
@@ -659,7 +667,7 @@ export function LevelLeaderboardPreview({
                 <div key={member.userId} className={`grid grid-cols-[2.5rem_1fr_auto] items-center gap-2 rounded-xl border px-2 py-2 ${currentTheme.border} ${isDarkMode ? "bg-black/18" : "bg-white/70"}`}>
                   <span className={`font-due-date text-base font-semibold ${currentTheme.primaryText}`}>0{member.rank}</span>
                   <span className={`truncate text-xs font-semibold ${currentTheme.text}`}>{member.displayName}</span>
-                  <span className={`font-due-date text-right text-xs ${currentTheme.textMuted}`}>{formatNumber(member.xpByPeriod[period])} / L{member.level}</span>
+                  <span className={`font-due-date text-right text-xs ${currentTheme.textMuted}`}>{formatNumber(getMemberPeriodXp(member, period))} / L{member.level}</span>
                 </div>
               ))}
             </div>
@@ -683,7 +691,7 @@ export function LevelLeaderboardPreview({
                     <RankBadge rank={member.rank} isDarkMode={isDarkMode} />
                     <span className={`truncate text-sm font-semibold ${currentTheme.text}`}>{member.displayName}</span>
                   </div>
-                  <span className={`font-due-date text-xs font-semibold ${currentTheme.textMuted}`}>{formatNumber(member.xpByPeriod[period])}</span>
+                  <span className={`font-due-date text-xs font-semibold ${currentTheme.textMuted}`}>{formatNumber(getMemberPeriodXp(member, period))}</span>
                 </div>
                 <div className={`h-3 overflow-hidden rounded-full ${isDarkMode ? "bg-white/[0.06]" : "bg-slate-200/80"}`}>
                   <div className={`h-full rounded-full bg-gradient-to-r ${currentTheme.primary}`} style={{ width: getProgressWidth(member, period, maxXp) }} />
@@ -709,7 +717,7 @@ export function LevelLeaderboardPreview({
                 <Crown className="h-7 w-7" aria-hidden="true" />
               </div>
               <p className="mt-3 truncate text-base font-semibold">{leader.displayName}</p>
-              <p className="font-due-date mt-1 text-2xl font-semibold">{formatNumber(leader.xpByPeriod[period])} XP</p>
+              <p className="font-due-date mt-1 text-2xl font-semibold">{formatNumber(getMemberPeriodXp(leader, period))} XP</p>
             </div>
           ) : null}
           <div className="mt-3 grid grid-cols-2 gap-2">
@@ -717,7 +725,7 @@ export function LevelLeaderboardPreview({
               <div key={member.userId} className={`rounded-2xl border p-2 ${getRankTone(member.rank, isDarkMode)}`}>
                 <RankBadge rank={member.rank} isDarkMode={isDarkMode} />
                 <p className="mt-2 truncate text-xs font-semibold">{member.displayName}</p>
-                <p className="font-due-date text-xs opacity-80">{formatNumber(member.xpByPeriod[period])}</p>
+                <p className="font-due-date text-xs opacity-80">{formatNumber(getMemberPeriodXp(member, period))}</p>
               </div>
             ))}
           </div>
@@ -764,7 +772,7 @@ export function LevelLeaderboardPreview({
           <div className="space-y-2.5">
             {topThree.map((member) => {
               const rankStyle = crownStackRankStyles[member.rank] ?? crownStackRankStyles[3];
-              const isCurrentUser = member.userId === board.currentUserId;
+              const isCurrentUser = isSameUserId(member.userId, board.currentUserId);
 
               return (
                 <div
@@ -795,7 +803,7 @@ export function LevelLeaderboardPreview({
                     </div>
                   </div>
                   <p className={`font-due-date relative z-10 font-semibold ${rankStyle.xpClassName}`}>
-                    {formatNumber(member.xpByPeriod[period])} XP
+                    {formatNumber(getMemberPeriodXp(member, period))} XP
                   </p>
                 </div>
               );
@@ -813,7 +821,7 @@ export function LevelLeaderboardPreview({
                 <span className={`font-due-date shrink-0 text-[10px] font-semibold ${currentTheme.primaryText}`}>#{crownStackCurrentUser.rank}</span>
               </div>
               <p className={`font-due-date text-base font-semibold ${currentTheme.text}`}>
-                {formatNumber(crownStackCurrentUser.xpByPeriod[period])} XP
+                {formatNumber(getMemberPeriodXp(crownStackCurrentUser, period))} XP
               </p>
             </div>
           ) : null}
@@ -836,7 +844,7 @@ export function LevelLeaderboardPreview({
               <div key={member.userId} className={`rounded-xl border px-3 py-2 ${currentTheme.border} ${quietSurfaceClassName}`}>
                 <div className="flex items-center justify-between gap-2">
                   <span className={currentTheme.text}>#{member.rank} {member.username}</span>
-                  <span className={currentTheme.primaryText}>{formatNumber(member.xpByPeriod[period])}</span>
+                  <span className={currentTheme.primaryText}>{formatNumber(getMemberPeriodXp(member, period))}</span>
                 </div>
               </div>
             ))}
@@ -861,7 +869,7 @@ export function LevelLeaderboardPreview({
                   <p className={`truncate text-sm font-semibold ${currentTheme.text}`}>{member.displayName}</p>
                   <p className={`font-due-date text-xs ${currentTheme.textMuted}`}>#{member.rank} - L{member.level}</p>
                 </div>
-                <span className={`font-due-date text-sm font-semibold ${currentTheme.text}`}>{formatNumber(member.xpByPeriod[period])}</span>
+                <span className={`font-due-date text-sm font-semibold ${currentTheme.text}`}>{formatNumber(getMemberPeriodXp(member, period))}</span>
               </div>
             ))}
           </div>
@@ -886,7 +894,7 @@ export function LevelLeaderboardPreview({
                       <span className="font-due-date">#{member.rank}</span>{" "}
                       <span className="font-ui-condensed tracking-[0.01em]">{member.displayName}</span>
                     </span>
-                    <span className={`font-due-date text-xs font-semibold ${currentTheme.primaryText}`}>{formatNumber(member.xpByPeriod[period])}</span>
+                    <span className={`font-due-date text-xs font-semibold ${currentTheme.primaryText}`}>{formatNumber(getMemberPeriodXp(member, period))}</span>
                   </div>
                 </div>
               </div>
@@ -907,7 +915,7 @@ export function LevelLeaderboardPreview({
               <div key={member.userId} className={`rounded-2xl border p-2 ${currentTheme.border} ${quietSurfaceClassName}`}>
                 <p className={`font-due-date text-[11px] font-semibold ${currentTheme.primaryText}`}>#{member.rank}</p>
                 <p className={`mt-1 truncate text-xs font-semibold ${currentTheme.text}`}>{member.displayName}</p>
-                <p className={`font-due-date mt-1 text-sm font-semibold ${currentTheme.text}`}>{formatNumber(member.xpByPeriod[period])}</p>
+                <p className={`font-due-date mt-1 text-sm font-semibold ${currentTheme.text}`}>{formatNumber(getMemberPeriodXp(member, period))}</p>
               </div>
             ))}
           </div>

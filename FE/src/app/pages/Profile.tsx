@@ -18,6 +18,7 @@ import { MilestoneSummaryCard } from "../components/profile/MilestoneSummaryCard
 import { PreferencesSettingsSections } from "../components/PreferencesSettingsSections";
 import { useLocalStorageBoolean } from "../hooks/useLocalStorageBoolean";
 import { useAuth } from "../contexts/AuthContext";
+import { useGamificationSummary } from "../contexts/GamificationSummaryContext";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import {
   changeCurrentUserPassword,
@@ -29,11 +30,7 @@ import {
   USERNAME_MAX_LENGTH,
   USERNAME_MIN_LENGTH,
 } from "../utils/auth";
-import {
-  fetchCurrentUserGamificationSummary,
-  GamificationSummary,
-  getDefaultGamificationSummary,
-} from "../utils/gamification";
+import { getDefaultGamificationSummary } from "../utils/gamification";
 import {
   fetchCurrentUserMilestones,
   getDefaultUserMilestonesResponse,
@@ -95,6 +92,10 @@ function parseDeleteBlockedPayload(payload: unknown): DeleteCurrentUserBlockedRe
 export function Profile() {
   const navigate = useNavigate();
   const { user, logout, setCurrentUser } = useAuth();
+  const {
+    summary: loadedGamificationSummary,
+    isLoading: isLoadingProgress,
+  } = useGamificationSummary();
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
@@ -103,8 +104,7 @@ export function Profile() {
   const [gamificationEnabled, setGamificationEnabled] = useLocalStorageBoolean("settings.gamification", true);
   const [notificationsEnabled, setNotificationsEnabled] = useLocalStorageBoolean("settings.notifications", true);
 
-  const [gamificationSummary, setGamificationSummary] = useState<GamificationSummary>(() => getDefaultGamificationSummary());
-  const [isLoadingProgress, setIsLoadingProgress] = useState(true);
+  const gamificationSummary = loadedGamificationSummary ?? getDefaultGamificationSummary();
   const [milestoneSummary, setMilestoneSummary] = useState<UserMilestoneSummary>(() => getDefaultUserMilestonesResponse().summary);
   const [isLoadingMilestones, setIsLoadingMilestones] = useState(true);
   const [milestonesError, setMilestonesError] = useState("");
@@ -171,42 +171,6 @@ export function Profile() {
     };
 
     void loadMilestones();
-
-    return () => {
-      isActive = false;
-    };
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-
-    let isActive = true;
-
-    const loadProgress = async () => {
-      setIsLoadingProgress(true);
-      try {
-        const summary = await fetchCurrentUserGamificationSummary();
-        if (!isActive) {
-          return;
-        }
-
-        setGamificationSummary(summary);
-      } catch {
-        if (!isActive) {
-          return;
-        }
-
-        setGamificationSummary(getDefaultGamificationSummary());
-      } finally {
-        if (isActive) {
-          setIsLoadingProgress(false);
-        }
-      }
-    };
-
-    void loadProgress();
 
     return () => {
       isActive = false;

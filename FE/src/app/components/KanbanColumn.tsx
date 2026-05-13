@@ -4,7 +4,7 @@ import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { Label } from "../utils/labels";
 import { Card, Priority, TaskAssignee, TaskType } from "../utils/cards";
 import { CustomScrollArea } from "./CustomScrollArea";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type ColumnCard = Card & {
   priority?: Priority;
@@ -37,6 +37,8 @@ type DraggedKanbanCard = {
 type ColumnLimitState = "none" | "healthy" | "soft" | "hard";
 
 const COLUMN_LIMIT_SEGMENT_GAP_REM = 0.375;
+const COLUMN_DRAG_SCROLL_EDGE_PX = 72;
+const COLUMN_DRAG_SCROLL_MAX_STEP_PX = 18;
 
 function getColumnLimitState(count: number, softLimit?: number | null, hardLimit?: number | null): ColumnLimitState {
   if (hardLimit != null && count >= hardLimit) {
@@ -137,6 +139,79 @@ export function KanbanColumn({
   const limitBorderClassName = currentTheme.border;
   const [isBlockedDropFeedbackVisible, setIsBlockedDropFeedbackVisible] = useState(false);
   const blockedDropFeedbackTimeoutRef = useRef<number | null>(null);
+  const scrollViewportRef = useRef<HTMLDivElement | null>(null);
+  const autoScrollFrameRef = useRef<number | null>(null);
+  const autoScrollStepRef = useRef(0);
+
+  const stopColumnAutoScroll = () => {
+    autoScrollStepRef.current = 0;
+    if (autoScrollFrameRef.current !== null) {
+      window.cancelAnimationFrame(autoScrollFrameRef.current);
+      autoScrollFrameRef.current = null;
+    }
+  };
+
+  const runColumnAutoScroll = () => {
+    const viewport = scrollViewportRef.current;
+    const scrollStep = autoScrollStepRef.current;
+
+    if (!viewport || scrollStep === 0) {
+      autoScrollFrameRef.current = null;
+      return;
+    }
+
+    const previousScrollTop = viewport.scrollTop;
+    viewport.scrollTop += scrollStep;
+
+    if (viewport.scrollTop === previousScrollTop) {
+      stopColumnAutoScroll();
+      return;
+    }
+
+    autoScrollFrameRef.current = window.requestAnimationFrame(runColumnAutoScroll);
+  };
+
+  const updateColumnAutoScroll = (clientOffset: { x: number; y: number } | null) => {
+    const viewport = scrollViewportRef.current;
+    if (!viewport || !clientOffset) {
+      stopColumnAutoScroll();
+      return;
+    }
+
+    const viewportRect = viewport.getBoundingClientRect();
+    const isInsideViewportX = clientOffset.x >= viewportRect.left && clientOffset.x <= viewportRect.right;
+    const isInsideViewportY = clientOffset.y >= viewportRect.top && clientOffset.y <= viewportRect.bottom;
+    if (!isInsideViewportX || !isInsideViewportY) {
+      stopColumnAutoScroll();
+      return;
+    }
+
+    const distanceFromTop = clientOffset.y - viewportRect.top;
+    const distanceFromBottom = viewportRect.bottom - clientOffset.y;
+    let nextScrollStep = 0;
+
+    if (distanceFromTop < COLUMN_DRAG_SCROLL_EDGE_PX) {
+      const intensity = (COLUMN_DRAG_SCROLL_EDGE_PX - distanceFromTop) / COLUMN_DRAG_SCROLL_EDGE_PX;
+      nextScrollStep = -Math.ceil(intensity * COLUMN_DRAG_SCROLL_MAX_STEP_PX);
+    } else if (distanceFromBottom < COLUMN_DRAG_SCROLL_EDGE_PX) {
+      const intensity = (COLUMN_DRAG_SCROLL_EDGE_PX - distanceFromBottom) / COLUMN_DRAG_SCROLL_EDGE_PX;
+      nextScrollStep = Math.ceil(intensity * COLUMN_DRAG_SCROLL_MAX_STEP_PX);
+    }
+
+    if (nextScrollStep === 0) {
+      stopColumnAutoScroll();
+      return;
+    }
+
+    autoScrollStepRef.current = nextScrollStep;
+    if (autoScrollFrameRef.current === null) {
+      autoScrollFrameRef.current = window.requestAnimationFrame(runColumnAutoScroll);
+    }
+  };
+
+  const setScrollViewportRef = useCallback((node: HTMLDivElement | null) => {
+    scrollViewportRef.current = node;
+  }, []);
 
   const showBlockedDropFeedback = () => {
     if (blockedDropFeedbackTimeoutRef.current !== null) {
@@ -154,6 +229,7 @@ export function KanbanColumn({
     accept: "CARD",
     canDrop: () => true,
     drop: (item, monitor) => {
+      stopColumnAutoScroll();
       if (monitor.didDrop()) {
         return;
       }
@@ -164,6 +240,9 @@ export function KanbanColumn({
       }
 
       onCardDrop(item.id, item.columnId, id, 0);
+    },
+    hover: (_item, monitor) => {
+      updateColumnAutoScroll(monitor.getClientOffset());
     },
     collect: (monitor) => ({
       isOver: monitor.isOver(),
@@ -195,8 +274,15 @@ export function KanbanColumn({
       if (blockedDropFeedbackTimeoutRef.current !== null) {
         window.clearTimeout(blockedDropFeedbackTimeoutRef.current);
       }
+      stopColumnAutoScroll();
     };
   }, []);
+
+  useEffect(() => {
+    if (!isOver) {
+      stopColumnAutoScroll();
+    }
+  }, [isOver]);
 
   return (
     <div className={`w-full min-h-0 lg:h-full ${isBlockedDropFeedbackVisible ? "kanban-column-limit-shake" : ""}`}>
@@ -261,6 +347,7 @@ export function KanbanColumn({
         <CustomScrollArea
           className="flex-1 min-h-0"
           viewportClassName="h-full min-h-0 px-4 py-4"
+          onViewportRef={setScrollViewportRef}
         >
           {cards.length > 0 ? (
             <div className="space-y-3">

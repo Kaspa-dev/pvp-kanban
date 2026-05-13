@@ -1,10 +1,11 @@
-import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "../contexts/ThemeContext";
 
 interface CustomScrollAreaProps {
   children: ReactNode;
   className?: string;
   viewportClassName?: string;
+  onViewportRef?: (node: HTMLDivElement | null) => void;
 }
 
 const THUMB_MIN_HEIGHT = 36;
@@ -14,6 +15,7 @@ export function CustomScrollArea({
   children,
   className = "",
   viewportClassName = "",
+  onViewportRef,
 }: CustomScrollAreaProps) {
   const { isDarkMode } = useTheme();
   const scrollbarPalette = useMemo(
@@ -187,10 +189,15 @@ export function CustomScrollArea({
     viewport.scrollTop = (nextThumbOffset / maxThumbOffset) * maxScrollTop;
   };
 
+  const setViewportRef = useCallback((node: HTMLDivElement | null) => {
+    viewportRef.current = node;
+    onViewportRef?.(node);
+  }, [onViewportRef]);
+
   return (
     <div className={`relative ${className}`}>
       <div
-        ref={viewportRef}
+        ref={setViewportRef}
         className={`hide-native-scrollbar overflow-y-auto ${reservedScrollbarGutterClassName} ${viewportClassName}`}
         style={{ scrollbarGutter: "stable" }}
       >

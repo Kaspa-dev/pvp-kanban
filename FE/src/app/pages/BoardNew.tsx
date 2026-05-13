@@ -20,12 +20,12 @@ import { UtilityIconButton } from "../components/UtilityIconButton";
 import { SidebarInset, SidebarProvider } from "../components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../components/ui/tooltip";
 import { useAuth } from "../contexts/AuthContext";
+import { useGamificationSummary } from "../contexts/GamificationSummaryContext";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { useUserPreferences } from "../contexts/UserPreferencesContext";
 import { BoardWorkspaceView, getCoachmarkFlowForView, useBoardCoachmarks } from "../hooks/useBoardCoachmarks";
 import {
-  fetchCurrentUserGamificationSummary,
-  GamificationSummary,
+  type GamificationSummary,
   getDefaultGamificationSummary,
 } from "../utils/gamification";
 import {
@@ -241,6 +241,7 @@ function moveCardToColumnPosition(
 export function Board() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { summary: gamificationSummary, refreshSummary } = useGamificationSummary();
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
@@ -287,9 +288,10 @@ export function Board() {
   const refreshIndicatorTimeoutRef = useRef<number | null>(null);
   const refreshIndicatorMinUntilRef = useRef<number>(0);
 
-  const [gamificationSummary, setGamificationSummary] = useState<GamificationSummary>(() => getDefaultGamificationSummary());
+  const [navbarXpPulse, setNavbarXpPulse] = useState<{ amount: number; key: number } | null>(null);
   const [levelLeaderboard, setLevelLeaderboard] = useState<LevelLeaderboardBoard | null>(null);
   const [levelLeaderboardState, setLevelLeaderboardState] = useState<"loading" | "ready" | "error">("loading");
+  const gamificationSummaryRef = useRef<GamificationSummary>(gamificationSummary ?? getDefaultGamificationSummary());
 
   const {
     preferences,
@@ -301,6 +303,12 @@ export function Board() {
   useEffect(() => {
     setTaskDataVersion((current) => current + 1);
   }, [cards]);
+
+  useEffect(() => {
+    if (gamificationSummary) {
+      gamificationSummaryRef.current = gamificationSummary;
+    }
+  }, [gamificationSummary]);
 
   const loadPlanningPokerSession = useCallback(async (boardId: number): Promise<PlanningPokerSession | null> => {
     try {
@@ -400,10 +408,9 @@ export function Board() {
           return;
         }
 
-        const [boardLabels, boardCards, summary, session, leaderboardResult] = await Promise.all([
+        const [boardLabels, boardCards, session, leaderboardResult] = await Promise.all([
           getBoardLabels(numericBoardId),
           getBoardCards(numericBoardId),
-          fetchCurrentUserGamificationSummary(),
           loadPlanningPokerSession(numericBoardId),
           loadBoardLevelLeaderboard(numericBoardId),
         ]);
@@ -418,7 +425,6 @@ export function Board() {
         setLabels(boardLabels);
         setCards(boardCards);
         setPlanningPokerSession(session);
-        setGamificationSummary(summary);
         if (leaderboardResult.status === "ready") {
           setLevelLeaderboard(leaderboardResult.leaderboard);
           setLevelLeaderboardState("ready");
@@ -520,19 +526,34 @@ export function Board() {
     navigate(`/app/${numericBoardId}/tasks/${taskId}`);
   };
 
-  const refreshProgress = async () => {
-    if (!user) {
+  const triggerNavbarXpPulse = (amount: number) => {
+    if (amount <= 0) {
       return;
     }
 
+    setNavbarXpPulse((current) => ({
+      amount,
+      key: (current?.key ?? 0) + 1,
+    }));
+  };
+
+  const refreshProgress = async () => {
+    if (!user) {
+      return null;
+    }
+
     try {
+      const previousLifetimeXp = gamificationSummaryRef.current.lifetimeXp;
       const [summary, leaderboardResult] = await Promise.all([
-        fetchCurrentUserGamificationSummary(),
+        refreshSummary(),
         Number.isFinite(numericBoardId)
           ? loadBoardLevelLeaderboard(numericBoardId)
           : Promise.resolve<BoardLevelLeaderboardLoadResult>({ status: "error" }),
       ]);
-      setGamificationSummary(summary);
+      const xpDelta = summary ? Math.max(0, summary.lifetimeXp - previousLifetimeXp) : 0;
+      if (summary) {
+        gamificationSummaryRef.current = summary;
+      }
       if (leaderboardResult.status === "ready") {
         setLevelLeaderboard(leaderboardResult.leaderboard);
         setLevelLeaderboardState("ready");
@@ -540,9 +561,12 @@ export function Board() {
         setLevelLeaderboard(null);
         setLevelLeaderboardState("error");
       }
+
+      return { summary, xpDelta };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to refresh your progress.";
       showErrorToast(message);
+      return null;
     }
   };
 
@@ -570,10 +594,12 @@ export function Board() {
       return;
     }
 
+    const nextStatus = updates.status ?? existingTask.status;
+    const shouldPulseForCompletion = existingTask.status !== "done" && nextStatus === "done";
     const updatedTask = await updateBoardTask(numericBoardId, taskId, {
       title: updates.title ?? existingTask.title,
       description: updates.description ?? existingTask.description ?? "",
-      status: updates.status ?? existingTask.status,
+      status: nextStatus,
       labelIds: updates.labelIds ?? existingTask.labelIds,
       assigneeUserId:
         updates.assignee === undefined
@@ -593,7 +619,10 @@ export function Board() {
 
     setTaskInState(updatedTask);
     invalidateBoardAssigneeSuggestions(numericBoardId);
-    await refreshProgress();
+    const progressResult = await refreshProgress();
+    if (shouldPulseForCompletion && progressResult && progressResult.xpDelta > 0) {
+      triggerNavbarXpPulse(progressResult.xpDelta);
+    }
     if (options.refetchWorkspace ?? true) {
       triggerWorkspaceRefetch("soft");
     }
@@ -811,6 +840,7 @@ export function Board() {
     }
 
     const targetStatus = toColumnId as BoardColumnTaskStatus;
+    const shouldPulseForCompletion = existingTask.status !== "done" && targetStatus === "done";
     const previousCards = cards;
     setCards((currentCards) => moveCardToColumnPosition(currentCards, cardId, targetStatus, targetIndex));
 
@@ -830,7 +860,10 @@ export function Board() {
         ),
       );
       invalidateBoardAssigneeSuggestions(numericBoardId);
-      await refreshProgress();
+      const progressResult = await refreshProgress();
+      if (shouldPulseForCompletion && progressResult && progressResult.xpDelta > 0) {
+        triggerNavbarXpPulse(progressResult.xpDelta);
+      }
       triggerWorkspaceRefetch("soft");
     } catch (error) {
       setCards(previousCards);
@@ -1263,12 +1296,12 @@ export function Board() {
                 ? () => replayFlowForView(activeWorkspaceView)
                 : undefined
             }
+            xpPulseAmount={navbarXpPulse?.amount}
+            xpPulseKey={navbarXpPulse?.key}
             userProfile={{
               username: user.username,
               fullName: `${user.firstName} ${user.lastName}`.trim(),
               subtitle: `${user.firstName} ${user.lastName}`.trim(),
-              level: gamificationSummary.currentLevel,
-              gamificationSummary,
             }}
           />
         </div>
