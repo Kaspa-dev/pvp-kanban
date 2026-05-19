@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import {
   AlertCircle,
+  ArrowLeft,
   ArrowRight,
   CheckCircle2,
   ClipboardList,
   Clock3,
-  FolderKanban,
   RotateCw,
 } from "lucide-react";
 import { BoardLogo } from "../components/BoardLogo";
@@ -235,9 +235,9 @@ export function MyTasks() {
                 <button
                   type="button"
                   onClick={() => navigate("/app")}
-                  className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-medium ${currentTheme.border} ${currentTheme.textSecondary} ${isDarkMode ? "bg-white/[0.04]" : "bg-white/80"} transition-colors hover:${currentTheme.borderHover}`}
+                  className={`font-ui-condensed group inline-flex items-center gap-2.5 rounded-xl bg-gradient-to-r px-5 py-3 text-sm font-bold tracking-[0.01em] text-white shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-2xl focus-visible:outline-none focus-visible:ring-2 ${currentTheme.focus} ${currentTheme.primary}`}
                 >
-                  <FolderKanban className="h-4 w-4" />
+                  <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
                   Projects
                 </button>
               </div>

@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Award, Compass, Trophy } from "lucide-react";
 import { useNavigate } from "react-router";
-import { BanBanLogo } from "../components/BanBanLogo";
 import { MilestoneSection } from "../components/profile/MilestoneSection";
+import { SettingsModal } from "../components/SettingsModal";
+import { Skeleton } from "../components/ui/skeleton";
+import { Toolbar } from "../components/Toolbar";
+import { getPanelEyebrowClassName } from "../components/typographyStyles";
+import { useAuth } from "../contexts/AuthContext";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import {
   fetchCurrentUserMilestones,
@@ -16,12 +20,15 @@ import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
 
 export function ProfileMilestones() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
+  const panelEyebrowClassName = getPanelEyebrowClassName(currentTheme.textMuted);
   const [milestoneResponse, setMilestoneResponse] = useState(() => getDefaultUserMilestonesResponse());
   const [isLoadingMilestones, setIsLoadingMilestones] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   useEffect(() => {
     let isActive = true;
@@ -79,22 +86,32 @@ export function ProfileMilestones() {
     {
       label: "Unlocked",
       value: unlockedMilestones.length,
-      detail: "Permanent achievements already earned",
       icon: Trophy,
     },
     {
       label: "In Progress",
       value: inProgressMilestones.length,
-      detail: "Achievements already moving forward",
       icon: Award,
     },
     {
-      label: "Coming Up",
+      label: "Locked",
       value: comingSoonMilestones.length,
-      detail: "Fresh goals waiting for the first action",
       icon: Compass,
     },
   ];
+  const completionPercent = milestoneResponse.summary.totalCount > 0
+    ? Math.round((milestoneResponse.summary.unlockedCount / milestoneResponse.summary.totalCount) * 100)
+    : 0;
+  const fullName = user ? `${user.firstName} ${user.lastName}`.trim() || user.displayName || user.username : "";
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className={workspaceSurface.pageClassName}>
@@ -104,57 +121,91 @@ export function ProfileMilestones() {
         ))}
       </div>
 
-      <header
-        className={workspaceSurface.glassHeaderClassName}
-        style={workspaceSurface.glassHeaderStyle}
-      >
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <BanBanLogo size="lg" />
-          <button
-            type="button"
-            onClick={() => navigate("/app/profile")}
-            className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-medium ${currentTheme.border} ${currentTheme.textSecondary} ${currentTheme.bg} transition-colors hover:${currentTheme.borderHover}`}
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Profile
-          </button>
-        </div>
-      </header>
+      <Toolbar
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onLogout={handleLogout}
+        onProfileClick={() => navigate("/app/profile")}
+        userProfile={{
+          username: user.username,
+          fullName,
+          subtitle: user.email,
+        }}
+      />
 
-      <main className="relative z-10 mx-auto flex max-w-7xl flex-col gap-6 px-6 py-10">
-        <section className={`relative overflow-hidden rounded-[2.25rem] border ${currentTheme.border} ${currentTheme.cardBg} p-8 shadow-[0_30px_100px_-50px_rgba(15,23,42,0.55)]`}>
+      <main className="relative z-10 px-6 py-10">
+        <div className="mx-auto flex w-full max-w-[1850px] flex-col gap-6">
+        <section className={`${workspaceSurface.elevatedPanelSurfaceClassName} relative overflow-hidden rounded-[2rem] px-6 py-7 shadow-[0_28px_90px_-48px_rgba(15,23,42,0.55)] lg:px-8 lg:py-8`}>
           <div className={`absolute -right-12 top-0 h-72 w-72 rounded-full bg-gradient-to-br ${currentTheme.primarySoftStrong} blur-3xl`} />
-          <div className="relative z-10 flex flex-col gap-8">
-            <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-              <div className="max-w-3xl">
-                <p className={`text-xs font-semibold uppercase tracking-[0.22em] ${currentTheme.textMuted}`}>Profile Achievements</p>
-                <h1 className={`mt-3 text-4xl font-semibold tracking-tight ${currentTheme.text}`}>Milestones</h1>
-                <p className={`mt-4 text-base leading-7 ${currentTheme.textSecondary}`}>
-                  Every unlocked achievement marks visible progress in the way you organize work, create boards, invite teammates, and run planning poker sessions.
-                </p>
+          <div className={`absolute -bottom-24 left-12 h-72 w-72 rounded-full bg-gradient-to-tr ${currentTheme.primarySoft} blur-3xl`} />
+
+          <div className="relative z-10 flex flex-col gap-7">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className={panelEyebrowClassName}>Achievements</p>
+                <h1 className={`font-ui-condensed mt-3 text-4xl font-semibold tracking-[0.01em] ${currentTheme.text} lg:text-5xl`}>
+                  Milestones
+                </h1>
               </div>
 
-              <div className="lg:text-right">
-                <p className={`text-sm font-semibold ${currentTheme.text}`}>{milestoneResponse.summary.unlockedCount} of {milestoneResponse.summary.totalCount} unlocked</p>
-                <p className={`mt-1 text-sm ${currentTheme.textMuted}`}>Tracking starts from this feature rollout onward.</p>
-              </div>
+              <button
+                type="button"
+                onClick={() => navigate("/app/profile")}
+                className={`font-ui-condensed group inline-flex items-center gap-2.5 rounded-xl bg-gradient-to-r px-5 py-3 text-sm font-bold tracking-[0.01em] text-white shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-2xl focus-visible:outline-none focus-visible:ring-2 ${currentTheme.focus} ${currentTheme.primary}`}
+              >
+                <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
+                Profile
+              </button>
             </div>
 
-            <div className={`h-px w-full ${currentTheme.border}`} />
-
-            <div className="grid gap-6 md:grid-cols-3">
-              {summaryCards.map(({ label, value, detail, icon: Icon }) => (
-                <div key={label} className="flex items-start gap-3">
-                  <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-[1rem] bg-gradient-to-br ${currentTheme.primary} text-white`}>
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${currentTheme.textMuted}`}>{label}</p>
-                    <p className={`mt-1 text-2xl font-semibold ${currentTheme.text}`}>{value}</p>
-                    <p className={`mt-2 text-sm leading-6 ${currentTheme.textSecondary}`}>{detail}</p>
-                  </div>
+            <div className={`grid gap-7 border-t pt-6 ${currentTheme.border} xl:grid-cols-[0.78fr_1.22fr]`}>
+              <div className={`rounded-[1.5rem] border px-5 py-5 ${currentTheme.border} ${currentTheme.bgSecondary}`}>
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <p className={`font-due-date text-4xl font-semibold leading-none ${currentTheme.text}`}>{completionPercent}%</p>
+                  <p className={`pb-0.5 text-sm ${currentTheme.textMuted}`}>
+                    <span className={`font-due-date font-semibold ${currentTheme.text}`}>{milestoneResponse.summary.unlockedCount}</span>
+                    {" "}of{" "}
+                    <span className={`font-due-date font-semibold ${currentTheme.text}`}>{milestoneResponse.summary.totalCount}</span>
+                    {" "}unlocked
+                  </p>
                 </div>
-              ))}
+                <div className={`mt-5 h-2.5 overflow-hidden rounded-full ${isDarkMode ? "bg-zinc-800" : "bg-slate-200"}`} aria-hidden="true">
+                  <div
+                    className={`h-full rounded-full bg-gradient-to-r ${currentTheme.primary} transition-[width] duration-500`}
+                    style={{ width: `${completionPercent}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className={`relative overflow-hidden rounded-[1.5rem] border-y py-5 ${currentTheme.border}`}>
+                <div
+                  className={`pointer-events-none absolute inset-y-5 left-0 w-px bg-gradient-to-b from-transparent via-current to-transparent ${currentTheme.primaryText} opacity-50`}
+                  aria-hidden="true"
+                />
+                <div
+                  className={`pointer-events-none absolute inset-y-5 right-0 w-px bg-gradient-to-b from-transparent via-current to-transparent ${currentTheme.primaryText} opacity-50`}
+                  aria-hidden="true"
+                />
+                <div className="grid gap-y-5 md:grid-cols-3">
+                {summaryCards.map(({ label, value, icon: Icon }) => (
+                  <div
+                    key={label}
+                    className={`group relative px-5 md:border-r md:last:border-r-0 ${currentTheme.border}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${currentTheme.primaryBg} ${currentTheme.primaryText} transition-transform duration-300 group-hover:scale-110`}>
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <p className={`font-ui-condensed text-base font-semibold tracking-[0.08em] ${currentTheme.textMuted}`}>
+                        {label}
+                      </p>
+                    </div>
+                    <p className={`font-due-date mt-4 text-[2.65rem] font-semibold leading-none tracking-[-0.04em] ${currentTheme.primaryText}`}>
+                      {value}
+                    </p>
+                  </div>
+                ))}
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -173,12 +224,12 @@ export function ProfileMilestones() {
           <section className={`rounded-[2rem] border p-6 ${currentTheme.border} ${currentTheme.cardBg}`}>
             <div className="grid gap-4 xl:grid-cols-2">
               {Array.from({ length: 4 }).map((_, index) => (
-                <div key={index} className={`animate-pulse rounded-[1.25rem] border p-5 ${currentTheme.border} ${currentTheme.bgSecondary}`}>
-                  <div className={`h-4 w-24 rounded-full ${currentTheme.primaryBg}`} />
-                  <div className={`mt-4 h-6 w-40 rounded-full ${currentTheme.primaryBg}`} />
-                  <div className={`mt-3 h-4 w-full rounded-full ${currentTheme.primaryBg}`} />
-                  <div className={`mt-3 h-4 w-3/4 rounded-full ${currentTheme.primaryBg}`} />
-                  <div className={`mt-5 h-2.5 w-full rounded-full ${currentTheme.primaryBg}`} />
+                <div key={index} className={`rounded-[1.25rem] border p-5 ${currentTheme.border} ${currentTheme.bgSecondary}`}>
+                  <Skeleton className="h-4 w-24 rounded-lg" />
+                  <Skeleton className="mt-4 h-6 w-40 rounded-lg" />
+                  <Skeleton className="mt-3 h-4 w-full rounded-lg" />
+                  <Skeleton className="mt-3 h-4 w-3/4 rounded-lg" />
+                  <Skeleton className="mt-5 h-2.5 w-full rounded-full" />
                 </div>
               ))}
             </div>
@@ -189,13 +240,18 @@ export function ProfileMilestones() {
           ))
         ) : (
           <section className={`rounded-[2rem] border p-8 text-center shadow-[0_24px_90px_-60px_rgba(15,23,42,0.6)] ${currentTheme.border} ${currentTheme.cardBg}`}>
-            <h2 className={`text-2xl font-semibold ${currentTheme.text}`}>No milestones yet</h2>
-            <p className={`mx-auto mt-3 max-w-2xl text-sm leading-6 ${currentTheme.textSecondary}`}>
-              This page is ready to track achievements from rollout onward. Complete a task, create a board, invite a teammate, or start planning poker to light up your first card.
-            </p>
+            <h2 className={`font-ui-condensed text-2xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>No milestones yet</h2>
           </section>
         )}
+        </div>
       </main>
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        onOpenProfile={() => navigate("/app/profile")}
+        onOpenMyTasks={() => navigate("/app/my-tasks")}
+      />
     </div>
   );
 }

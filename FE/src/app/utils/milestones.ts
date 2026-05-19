@@ -1,13 +1,18 @@
-import {
-  Award,
-  Flag,
-  ListChecks,
-  LucideIcon,
-  MessageSquareMore,
-  Sparkles,
-  Trophy,
-  Users,
-} from "lucide-react";
+import { CardsThree } from "@phosphor-icons/react/CardsThree";
+import { ChatsTeardrop } from "@phosphor-icons/react/ChatsTeardrop";
+import { CheckCircle } from "@phosphor-icons/react/CheckCircle";
+import { Checks } from "@phosphor-icons/react/Checks";
+import { Confetti } from "@phosphor-icons/react/Confetti";
+import { Crown } from "@phosphor-icons/react/Crown";
+import { FlagBanner } from "@phosphor-icons/react/FlagBanner";
+import { Folders } from "@phosphor-icons/react/Folders";
+import { Kanban } from "@phosphor-icons/react/Kanban";
+import { ListChecks } from "@phosphor-icons/react/ListChecks";
+import { Medal } from "@phosphor-icons/react/Medal";
+import { Sparkle } from "@phosphor-icons/react/Sparkle";
+import { UserPlus } from "@phosphor-icons/react/UserPlus";
+import { UsersThree } from "@phosphor-icons/react/UsersThree";
+import type { Icon } from "@phosphor-icons/react/dist/lib/types";
 import { apiJson } from "./auth";
 
 export interface UserMilestone {
@@ -87,22 +92,37 @@ export function getMilestoneCategoryDescription(category: string) {
   }
 }
 
-export function getMilestoneIcon(iconKey: string): LucideIcon {
+export function getMilestoneIcon(iconKey: string): Icon {
   switch (iconKey) {
-    case "flag":
-      return Flag;
-    case "sparkles":
-      return Sparkles;
-    case "users":
-      return Users;
-    case "message-square":
-      return MessageSquareMore;
-    case "award":
-      return Award;
-    case "trophy":
-      return Trophy;
-    default:
+    case "check-circle-2":
+      return CheckCircle;
+    case "check-check":
+      return Checks;
+    case "list-checks":
       return ListChecks;
+    case "flag":
+      return FlagBanner;
+    case "layout-dashboard":
+      return Kanban;
+    case "folder-kanban":
+      return Folders;
+    case "user-plus":
+      return UserPlus;
+    case "sparkles":
+      return Sparkle;
+    case "users":
+      return UsersThree;
+    case "message-square":
+    case "messages-square":
+      return ChatsTeardrop;
+    case "cards":
+      return CardsThree;
+    case "award":
+      return Medal;
+    case "trophy":
+      return Crown;
+    default:
+      return Confetti;
   }
 }
 

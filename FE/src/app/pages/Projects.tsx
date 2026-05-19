@@ -82,6 +82,7 @@ const DEFAULT_MEMBERSHIP_FILTER: BoardMembershipFilter = "all";
 const DEFAULT_SORT: BoardSort = "newest";
 const PROJECTS_TOOLTIP_DELAY = 500;
 const CREATE_PROJECT_TOOLTIP = "Create a new project and invite members";
+const MY_TASKS_TOOLTIP = "Review tasks assigned to you across all projects";
 const BOARD_SORT_OPTIONS: Array<{ value: BoardSort; label: string }> = [
   { value: "newest", label: "Newest" },
   { value: "nameAsc", label: "Name A-Z" },
@@ -663,14 +664,27 @@ export function Projects() {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <button
-                onClick={() => navigate("/app/my-tasks")}
-                className={`inline-flex items-center gap-2.5 rounded-xl border px-5 py-3 text-sm font-semibold ${currentTheme.border} ${currentTheme.textSecondary} ${workspaceSurface.controlSurfaceClassName} ${workspaceSurface.controlSurfaceHoverClassName}`}
-                type="button"
-              >
-                <ListTodo className="h-4.5 w-4.5" />
-                My Tasks
-              </button>
+              <Tooltip delayDuration={PROJECTS_TOOLTIP_DELAY}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => navigate("/app/my-tasks")}
+                    className={`font-ui-condensed group relative inline-flex items-center gap-2.5 overflow-hidden rounded-xl border-2 px-5 py-3.5 text-sm font-semibold tracking-[0.01em] ${currentTheme.primaryBorder} ${currentTheme.primaryText} bg-gradient-to-r ${currentTheme.primarySoft} shadow-sm transition-all duration-300 ease-out hover:scale-[1.03] hover:shadow-lg focus-visible:border-transparent focus-visible:outline-none focus-visible:ring-2 ${currentTheme.focus}`}
+                    type="button"
+                    aria-label="Open my assigned tasks"
+                  >
+                    <span
+                      className={`pointer-events-none absolute inset-0 bg-gradient-to-r ${currentTheme.primarySoftStrong} opacity-0 transition-opacity duration-300 ease-out group-hover:opacity-100`}
+                    />
+                    <span className="relative inline-flex items-center gap-2.5">
+                      <ListTodo className="h-4 w-4 transition-transform duration-300 ease-out group-hover:-rotate-6 group-hover:scale-110" />
+                      <span>My Tasks</span>
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" sideOffset={8}>
+                  {MY_TASKS_TOOLTIP}
+                </TooltipContent>
+              </Tooltip>
               <button
                 onClick={() => setIsCreateModalOpen(true)}
                 data-coachmark="projects-create-board"
