@@ -1,5 +1,5 @@
 import { FormEvent, useMemo, useState } from "react";
-import { MessageSquareMore, Pencil, Save, Trash2, X } from "lucide-react";
+import { Pencil, Save, Send, Trash2, X } from "lucide-react";
 import { getThemeColors, useTheme } from "../../contexts/ThemeContext";
 import {
   createTaskComment,
@@ -8,6 +8,9 @@ import {
   updateTaskComment,
 } from "../../utils/cards";
 import { showErrorToast, showSuccessToast } from "../../utils/toast";
+import { AppAvatar } from "../AppAvatar";
+import { getNativeInputFieldClassName } from "../inputLikeControlStyles";
+import { UtilityIconButton } from "../UtilityIconButton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 interface TaskCommentThreadProps {
@@ -41,6 +44,12 @@ export function TaskCommentThread({
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const dividerClassName = isDarkMode ? "border-white/10" : "border-slate-200/80";
+  const inputSurfaceClassName = isDarkMode ? currentTheme.inputBg : "bg-input-background";
+  const commentInputClassName = getNativeInputFieldClassName(currentTheme, {
+    surfaceClassName: inputSurfaceClassName,
+  });
+  const secondaryButtonClassName = `inline-flex items-center justify-center gap-2 rounded-xl border-2 px-4 py-2 text-sm font-semibold transition-[border-color,box-shadow,color,background-color] duration-300 focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} ${currentTheme.inputBorder} ${inputSurfaceClassName} ${currentTheme.textSecondary} hover:${currentTheme.borderHover} hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--foreground)_10%,transparent)] dark:hover:shadow-[0_0_0_1px_color-mix(in_srgb,white_12%,transparent)]`;
+  const primaryButtonClassName = `group inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-xl active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-lg ${currentTheme.focus} ${currentTheme.primary}`;
   const [draft, setDraft] = useState("");
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,6 +91,7 @@ export function TaskCommentThread({
     setEditingCommentId(comment.id);
     setEditingContent(comment.content);
     setSubmitError("");
+    setPendingDeleteId(null);
   };
 
   const handleSaveEdit = async (commentId: number) => {
@@ -131,22 +141,17 @@ export function TaskCommentThread({
   };
 
   return (
-    <section className="overflow-hidden">
-      <div className={`border-b px-6 py-5 ${dividerClassName}`}>
-        <div className="flex items-center gap-3">
-          <div className={`flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-r ${currentTheme.primary}`}>
-            <MessageSquareMore className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h2 className={`text-xl font-semibold ${currentTheme.text}`}>Comments</h2>
-            <p className={`mt-1 text-sm ${currentTheme.textMuted}`}>
-              Keep task discussion in one place for the whole board.
-            </p>
-          </div>
+    <section className={`overflow-hidden rounded-[2rem] border ${currentTheme.border} ${currentTheme.cardBg} shadow-[0_24px_70px_-46px_rgba(15,23,42,0.48)]`}>
+      <div className={`flex flex-wrap items-end justify-between gap-3 border-b px-5 py-5 sm:px-6 ${dividerClassName}`}>
+        <div>
+          <h2 className={`font-ui-condensed text-2xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>Comments</h2>
+          <p className={`font-due-date mt-1 text-xs ${currentTheme.textMuted}`}>
+            {orderedComments.length} {orderedComments.length === 1 ? "comment" : "comments"}
+          </p>
         </div>
       </div>
 
-      <div className="px-6 py-6">
+      <div className="px-5 py-6 sm:px-6">
         <form onSubmit={handleCreate} className="space-y-3">
           <label htmlFor="task-comment-draft" className={`block text-sm font-semibold ${currentTheme.textSecondary}`}>
             New comment
@@ -155,123 +160,167 @@ export function TaskCommentThread({
             id="task-comment-draft"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            placeholder="Add context, feedback, or the next step for this task..."
+            placeholder="Add a comment..."
             rows={4}
-            className={`w-full rounded-2xl border px-4 py-3 ${currentTheme.inputBorder} ${currentTheme.inputBg} ${currentTheme.text} placeholder:${currentTheme.textMuted} focus:outline-none focus:ring-2 ${currentTheme.focus}`}
+            className={`min-h-28 w-full resize-y px-4 py-3 placeholder:${currentTheme.textMuted} ${commentInputClassName}`}
           />
-          <div className="flex items-center justify-between gap-3">
-            <p className={`text-xs ${currentTheme.textMuted}`}>Comments are visible to all board members.</p>
+          <div className="flex flex-wrap items-center justify-end gap-3">
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`inline-flex items-center gap-2 rounded-xl bg-gradient-to-r px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition-all disabled:cursor-not-allowed disabled:opacity-50 ${currentTheme.primary}`}
+              className={primaryButtonClassName}
             >
-              <Save className="h-4 w-4" />
+              <Send className="h-4 w-4" aria-hidden="true" />
               {isSubmitting ? "Posting..." : "Post comment"}
             </button>
           </div>
         </form>
 
         {submitError && (
-          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div
+            className={`mt-4 rounded-xl border px-4 py-3 text-sm ${
+              isDarkMode
+                ? "border-rose-400/30 bg-rose-500/10 text-rose-100"
+                : "border-rose-200 bg-rose-50 text-rose-700"
+            }`}
+            role="alert"
+          >
             {submitError}
           </div>
         )}
 
-        <div className={`mt-6 border-t pt-4 ${dividerClassName}`}>
+        <div className={`mt-6 border-t ${dividerClassName}`}>
           {orderedComments.length === 0 ? (
-            <div className={`px-2 py-10 text-center ${currentTheme.textMuted}`}>
-              <p className={`text-sm ${currentTheme.textMuted}`}>No comments yet. Start the conversation for this task.</p>
+            <div className={`px-1 py-8 text-sm ${currentTheme.textMuted}`}>
+              No comments yet.
             </div>
           ) : (
             <div>
               {orderedComments.map((comment) => {
                 const isEditing = editingCommentId === comment.id;
                 const wasEdited = Boolean(comment.updatedAt && comment.updatedAt !== comment.createdAt);
+                const authorName = comment.author.displayName || comment.author.name;
 
                 return (
-                  <article key={comment.id} className={`px-1 py-5 ${dividerClassName} ${orderedComments[orderedComments.length - 1]?.id !== comment.id ? "border-b" : ""}`}>
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className={`text-sm font-semibold ${currentTheme.text}`}>{comment.author.displayName || comment.author.name}</p>
-                        <div className={`mt-1 flex flex-wrap items-center gap-2 text-xs ${currentTheme.textMuted}`}>
-                          <span>{formatCommentTimestamp(comment.createdAt)}</span>
-                          {wasEdited && <span className={`rounded-full border px-2 py-0.5 ${dividerClassName}`}>Edited</span>}
-                        </div>
-                      </div>
+                  <article key={comment.id} className={`py-5 ${dividerClassName} ${orderedComments[orderedComments.length - 1]?.id !== comment.id ? "border-b" : ""}`}>
+                    <div className="flex gap-3">
+                      <AppAvatar
+                        username={comment.author.username || authorName}
+                        fullName={authorName}
+                        size={36}
+                        interactive={false}
+                        enableBlink={false}
+                        level={comment.author.currentLevel}
+                      />
 
-                      <div className="flex items-center gap-2">
-                        {comment.canEdit && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className={`truncate text-sm font-semibold ${currentTheme.text}`}>{authorName}</p>
+                            <div className={`mt-1 flex flex-wrap items-center gap-2 ${currentTheme.textMuted}`}>
+                              <time className="font-due-date text-xs" dateTime={comment.createdAt}>
+                                {formatCommentTimestamp(comment.createdAt)}
+                              </time>
+                              {wasEdited && (
+                                <span className={`font-due-date rounded-full border px-2 py-0.5 text-[11px] ${currentTheme.border}`}>
+                                  Edited
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            {comment.canEdit && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <UtilityIconButton
+                                    type="button"
+                                    size="md"
+                                    onClick={() => handleStartEdit(comment)}
+                                    aria-label={`Edit comment from ${authorName}`}
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </UtilityIconButton>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" sideOffset={8}>Edit comment</TooltipContent>
+                              </Tooltip>
+                            )}
+                            {comment.canDelete && (
+                              pendingDeleteId === comment.id ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <button
+                                      type="button"
+                                      onClick={() => void handleDelete(comment.id)}
+                                      className={`inline-flex h-9 items-center justify-center rounded-xl border px-3 text-sm font-semibold ${
+                                        isDarkMode
+                                          ? "border-rose-400/30 bg-rose-500/10 text-rose-100"
+                                          : "border-rose-200 bg-rose-50 text-rose-700"
+                                      }`}
+                                      aria-label={`Confirm delete comment from ${authorName}`}
+                                    >
+                                      Confirm
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" sideOffset={8}>Delete comment</TooltipContent>
+                                </Tooltip>
+                              ) : (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <UtilityIconButton
+                                      type="button"
+                                      size="md"
+                                      onClick={() => void handleDelete(comment.id)}
+                                      aria-label={`Delete comment from ${authorName}`}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </UtilityIconButton>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" sideOffset={8}>Delete comment</TooltipContent>
+                                </Tooltip>
+                              )
+                            )}
+                          </div>
+                        </div>
+
+                        {isEditing ? (
+                          <div className="mt-4 space-y-3">
+                            <textarea
+                              value={editingContent}
+                              onChange={(event) => setEditingContent(event.target.value)}
+                              rows={4}
+                              className={`min-h-28 w-full resize-y px-4 py-3 ${commentInputClassName}`}
+                            />
+                            <div className="flex flex-wrap items-center justify-end gap-2">
                               <button
                                 type="button"
-                                onClick={() => handleStartEdit(comment)}
-                                className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border ${dividerClassName} ${currentTheme.textSecondary}`}
-                                aria-label={`Edit comment from ${comment.author.displayName || comment.author.name}`}
+                                onClick={() => {
+                                  setEditingCommentId(null);
+                                  setEditingContent("");
+                                }}
+                                className={secondaryButtonClassName}
                               >
-                                <Pencil className="h-4 w-4" />
+                                <X className="h-4 w-4" aria-hidden="true" />
+                                Cancel
                               </button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" sideOffset={8}>Edit comment</TooltipContent>
-                          </Tooltip>
-                        )}
-                        {comment.canDelete && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
                               <button
                                 type="button"
-                                onClick={() => void handleDelete(comment.id)}
-                                className={`inline-flex h-9 items-center justify-center rounded-xl border px-3 text-sm font-medium ${pendingDeleteId === comment.id ? "border-red-400 text-red-600" : `${dividerClassName} ${currentTheme.textSecondary}`}`}
-                                aria-label={`Delete comment from ${comment.author.displayName || comment.author.name}`}
+                                onClick={() => void handleSaveEdit(comment.id)}
+                                disabled={isSubmitting}
+                                className={primaryButtonClassName}
                               >
-                                {pendingDeleteId === comment.id ? "Confirm delete" : <Trash2 className="h-4 w-4" />}
+                                <Save className="h-4 w-4" aria-hidden="true" />
+                                Save
                               </button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" sideOffset={8}>
-                              {pendingDeleteId === comment.id ? "Click again to confirm delete" : "Delete comment"}
-                            </TooltipContent>
-                          </Tooltip>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className={`mt-4 whitespace-pre-wrap text-sm leading-7 ${currentTheme.textSecondary}`}>
+                            {comment.content}
+                          </p>
                         )}
                       </div>
                     </div>
-
-                    {isEditing ? (
-                      <div className="mt-4 space-y-3">
-                        <textarea
-                          value={editingContent}
-                          onChange={(event) => setEditingContent(event.target.value)}
-                          rows={4}
-                          className={`w-full rounded-2xl border px-4 py-3 ${currentTheme.inputBorder} ${currentTheme.inputBg} ${currentTheme.text} focus:outline-none focus:ring-2 ${currentTheme.focus}`}
-                        />
-                        <div className="flex flex-wrap items-center justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingCommentId(null);
-                              setEditingContent("");
-                            }}
-                            className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium ${dividerClassName} ${currentTheme.textSecondary}`}
-                          >
-                            <X className="h-4 w-4" />
-                            Cancel
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void handleSaveEdit(comment.id)}
-                            disabled={isSubmitting}
-                            className={`inline-flex items-center gap-2 rounded-xl bg-gradient-to-r px-4 py-2 text-sm font-semibold text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-50 ${currentTheme.primary}`}
-                          >
-                            <Save className="h-4 w-4" />
-                            Save
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className={`mt-4 whitespace-pre-wrap text-sm leading-6 ${currentTheme.textSecondary}`}>
-                        {comment.content}
-                      </p>
-                    )}
                   </article>
                 );
               })}

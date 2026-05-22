@@ -642,17 +642,9 @@ export function Projects() {
 
       <main className="relative z-10 w-full px-6 py-12">
         <div className="mx-auto w-full max-w-[1850px]">
-        <div className={`${workspaceSurface.elevatedPanelSurfaceClassName} relative mb-10 overflow-hidden rounded-3xl p-10`}>
+        <div className={`relative mb-10 overflow-hidden rounded-3xl border p-10 backdrop-blur-xl ${workspaceSurface.profilePopoverSurfaceClassName}`}>
           <div className={`absolute top-0 right-0 w-96 h-96 bg-gradient-to-br ${currentTheme.primarySoftStrong} rounded-full blur-3xl animate-pulse`} style={{ animationDuration: "6s" }} />
           <div className={`absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr ${currentTheme.primarySoft} rounded-full blur-3xl animate-pulse`} style={{ animationDuration: "8s", animationDelay: "1s" }} />
-
-          <div
-            className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]"
-            style={{
-              backgroundImage: `linear-gradient(${isDarkMode ? "#fff" : "#000"} 1px, transparent 1px), linear-gradient(90deg, ${isDarkMode ? "#fff" : "#000"} 1px, transparent 1px)`,
-              backgroundSize: "40px 40px",
-            }}
-          />
 
           <div className="relative z-10 flex items-center justify-between flex-wrap gap-6">
             <div className="flex-1 min-w-[280px]">

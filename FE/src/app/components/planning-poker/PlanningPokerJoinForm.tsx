@@ -2,16 +2,8 @@ import { LoaderCircle, UserRound } from "lucide-react";
 
 import { getThemeColors, useTheme } from "../../contexts/ThemeContext";
 import { getWorkspaceSurfaceStyles } from "../../utils/workspaceSurfaceStyles";
+import { getNativeInputFieldClassName } from "../inputLikeControlStyles";
 import { Button } from "../ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
 import { cn } from "../ui/utils";
 
 interface PlanningPokerJoinFormProps {
@@ -38,83 +30,62 @@ export function PlanningPokerJoinForm({
   const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
 
   return (
-    <Card
+    <section
       className={cn(
-        "overflow-hidden rounded-[2rem] shadow-2xl shadow-slate-950/10",
+        "relative overflow-hidden rounded-[2rem] border px-5 py-5 shadow-[0_28px_90px_-54px_rgba(15,23,42,0.62)] sm:px-6 sm:py-6",
         workspaceSurface.elevatedPanelSurfaceClassName,
       )}
+      aria-labelledby="planning-poker-join-title"
     >
-      <CardHeader className={cn("space-y-4 border-b px-5 py-5 sm:px-6", currentTheme.border)}>
-        <div
-          className={cn(
-            "flex h-12 w-12 items-center justify-center rounded-2xl border bg-gradient-to-br",
-            currentTheme.primaryText,
-            currentTheme.primaryBorder,
-            currentTheme.primarySoftStrong,
-          )}
-        >
-          <UserRound className="h-5 w-5" aria-hidden="true" />
+      <div className={`pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-gradient-to-br ${currentTheme.primarySoft} blur-3xl`} />
+      <div className="relative z-10">
+        <div className="flex items-start gap-4">
+          <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border bg-gradient-to-br ${currentTheme.primarySoftStrong} ${currentTheme.primaryBorder} ${currentTheme.primaryText}`}>
+            <UserRound className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <h1 id="planning-poker-join-title" className={`font-ui-condensed text-3xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
+              Join room
+            </h1>
+            <p className={`mt-1 text-sm ${currentTheme.textMuted}`}>
+              {isAuthenticated ? "Continue with your account." : "Enter the name shown at the table."}
+            </p>
+          </div>
         </div>
-        <div className="space-y-2">
-          <CardTitle className={cn("text-2xl font-semibold", currentTheme.text)}>
-            Join the planning room
-          </CardTitle>
-          <CardDescription className={cn("max-w-xl text-sm leading-6", currentTheme.textMuted)}>
-            {isAuthenticated
-              ? "Your account is ready to enter the shared room. Continue to reconnect to the live session."
-              : "Pick the name other participants will see. You can join as a guest through the shared link."}
-          </CardDescription>
-        </div>
-      </CardHeader>
-      <CardContent className="px-5 py-5 sm:px-6">
+
         <form
-          className="space-y-4"
+          className="mt-6 space-y-4"
           onSubmit={(event) => {
             event.preventDefault();
             void onSubmit();
           }}
         >
           {isAuthenticated ? (
-            <div
-              className={cn(
-                "rounded-2xl border bg-gradient-to-r px-4 py-3 text-sm",
-                currentTheme.primaryText,
-                currentTheme.primaryBorder,
-                currentTheme.primarySoftStrong,
-              )}
-            >
-              Signed in as <span className="font-semibold">{authenticatedLabel}</span>.
+            <div className={`rounded-2xl border px-4 py-3 text-sm ${currentTheme.primaryBorder} ${currentTheme.primaryText} ${isDarkMode ? "bg-white/[0.04]" : "bg-white/82"}`}>
+              Continuing as <span className="font-semibold">{authenticatedLabel}</span>
             </div>
           ) : (
             <div className="space-y-2">
-              <Label htmlFor="planning-poker-display-name" className={currentTheme.text}>
+              <label htmlFor="planning-poker-display-name" className={`font-ui-condensed text-sm font-semibold tracking-[0.01em] ${currentTheme.text}`}>
                 Display name
-              </Label>
-              <Input
+              </label>
+              <input
                 id="planning-poker-display-name"
                 value={displayName}
                 onChange={(event) => onDisplayNameChange(event.target.value)}
-                placeholder="Enter your display name"
+                placeholder="Your name"
                 autoComplete="name"
                 maxLength={80}
                 className={cn(
-                  "h-11 rounded-xl",
-                  workspaceSurface.inputSurfaceClassName,
-                  currentTheme.text,
-                  currentTheme.focus,
-                  isDarkMode
-                    ? "placeholder:text-zinc-500"
-                    : "placeholder:text-zinc-400",
+                  "h-12 w-full px-4 text-sm",
+                  getNativeInputFieldClassName(currentTheme, {
+                    surfaceClassName: workspaceSurface.inputSurfaceClassName,
+                  }),
+                  isDarkMode ? "placeholder:text-zinc-500" : "placeholder:text-zinc-400",
                 )}
                 aria-invalid={errorMessage ? "true" : "false"}
-                aria-describedby="planning-poker-display-name-hint planning-poker-join-error"
+                aria-describedby={errorMessage ? "planning-poker-join-error" : undefined}
               />
-              <p
-                id="planning-poker-display-name-hint"
-                className={cn("text-xs leading-5", currentTheme.textMuted)}
-              >
-                Keep it short and recognizable so the host can see who has voted.
-              </p>
             </div>
           )}
 
@@ -135,24 +106,20 @@ export function PlanningPokerJoinForm({
 
           <Button
             type="submit"
-            className={cn(
-              "h-11 w-full rounded-xl bg-gradient-to-r text-white shadow-lg shadow-black/5",
-              currentTheme.primary,
-              currentTheme.primaryHover,
-            )}
+            className={`h-12 w-full rounded-xl bg-gradient-to-r text-sm font-semibold text-white shadow-lg transition-all hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 ${currentTheme.primary}`}
             disabled={isSubmitting}
           >
             {isSubmitting ? (
               <>
                 <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
-                Joining room...
+                Joining
               </>
             ) : (
-              "Join room"
+              "Join"
             )}
           </Button>
         </form>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

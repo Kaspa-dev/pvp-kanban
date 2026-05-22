@@ -9,8 +9,10 @@ import { useParams } from "react-router";
 
 import { PlanningPokerJoinForm } from "../components/planning-poker/PlanningPokerJoinForm";
 import { PlanningPokerBacklogPickerDialog } from "../components/planning-poker/PlanningPokerBacklogPickerDialog";
-import { PlanningPokerTaskQueue } from "../components/planning-poker/PlanningPokerTaskQueue";
+import { PlanningPokerRoomRail } from "../components/planning-poker/PlanningPokerRoomRail";
+import { PlanningPokerTable } from "../components/planning-poker/PlanningPokerTable";
 import { PlanningPokerVoteDeck } from "../components/planning-poker/PlanningPokerVoteDeck";
+import { AppAvatar } from "../components/AppAvatar";
 import { Button } from "../components/ui/button";
 import { Skeleton } from "../components/ui/skeleton";
 import { useAuth } from "../contexts/AuthContext";
@@ -34,7 +36,7 @@ import {
 } from "../utils/planningPokerGuest";
 import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
 
-const VOTE_DECK_VALUES = [0, 1, 2, 3, 5, 8, 13, 21];
+const VOTE_DECK_VALUES = [0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89];
 const pageWidthClassName = "mx-auto w-full max-w-[1850px]";
 
 type ConnectionBannerState =
@@ -102,15 +104,29 @@ function getCurrentParticipant(
 function getConnectionBannerLabel(value: ConnectionBannerState) {
   switch (value) {
     case "connecting":
-      return "Connecting to the live room...";
+      return "Connecting";
     case "connected":
-      return "Live updates connected.";
+      return "Live";
     case "reconnecting":
-      return "Connection lost. Trying to reconnect and rejoin the room...";
+      return "Reconnecting";
     case "disconnected":
-      return "Disconnected from the room. Rejoin to keep voting.";
+      return "Offline";
     default:
-      return "Preparing room connection...";
+      return "Ready";
+  }
+}
+
+function getConnectionDotClassName(value: ConnectionBannerState) {
+  switch (value) {
+    case "connected":
+      return "bg-emerald-500";
+    case "connecting":
+    case "reconnecting":
+      return "bg-amber-500";
+    case "disconnected":
+      return "bg-rose-500";
+    default:
+      return "bg-zinc-400";
   }
 }
 
@@ -139,6 +155,7 @@ export function PlanningPokerRoom() {
   const [selectedVote, setSelectedVote] = useState<number | null>(null);
   const [joinError, setJoinError] = useState("");
   const [roomError, setRoomError] = useState("");
+  const [copyFeedback, setCopyFeedback] = useState("");
   const [isJoining, setIsJoining] = useState(false);
   const [isVoteSubmitting, setIsVoteSubmitting] = useState(false);
   const [isRevealing, setIsRevealing] = useState(false);
@@ -301,6 +318,16 @@ export function PlanningPokerRoom() {
 
     setSelectedVote(null);
   }, [session?.isRevealed]);
+
+  useEffect(() => {
+    if (!copyFeedback) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => setCopyFeedback(""), 2200);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [copyFeedback]);
 
   useEffect(() => {
     const nextActiveTaskId = activeTask?.sessionTaskId ?? null;
@@ -621,8 +648,21 @@ export function PlanningPokerRoom() {
     }
   };
 
+  const handleCopyJoinUrl = async () => {
+    if (!session?.joinUrl) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(session.joinUrl);
+      setCopyFeedback("Copied");
+    } catch {
+      setCopyFeedback("Copy failed");
+    }
+  };
+
   return (
-    <main className={`${workspaceSurface.pageClassName} px-4 py-4 ${currentTheme.text} sm:px-6 lg:px-8`}>
+    <main className={`${workspaceSurface.pageClassName} min-h-dvh px-4 py-4 ${currentTheme.text} sm:px-6 lg:px-8`}>
       <div className={workspaceSurface.backgroundLayerClassName}>
         {workspaceSurface.backgroundBlobs.map((blob, index) => (
           <div key={index} className={blob.className} style={blob.style} />
@@ -630,9 +670,10 @@ export function PlanningPokerRoom() {
       </div>
 
       <div className="relative z-10">
-        <div className={`${pageWidthClassName} flex flex-col gap-4`}>
-          <section
-            className={`border-b ${currentTheme.border} pb-3`}
+        <div className={`${pageWidthClassName} flex min-h-[calc(100dvh-2rem)] flex-col gap-4`}>
+          <header
+            className={`shrink-0 rounded-[1.5rem] border px-4 py-3 shadow-[0_18px_58px_-48px_rgba(15,23,42,0.72)] backdrop-blur-xl ${currentTheme.border}`}
+            style={workspaceSurface.glassHeaderStyle}
             aria-label="Planning poker room status"
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -640,41 +681,55 @@ export function PlanningPokerRoom() {
                 <h1 className={`font-ui-condensed text-3xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
                   Planning poker
                 </h1>
-                {normalizedJoinToken ? (
-                  <p className={`mt-1 text-xs ${currentTheme.textMuted}`}>
-                    Token {normalizedJoinToken}
-                  </p>
-                ) : null}
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 text-sm">
-                <span className={currentTheme.textMuted}>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm ${currentTheme.border} ${currentTheme.textSecondary} ${isDarkMode ? "bg-white/[0.035]" : "bg-white/78"}`}>
+                  <span className={`h-2 w-2 rounded-full ${getConnectionDotClassName(connectionBannerState)}`} aria-hidden="true" />
                   {getConnectionBannerLabel(connectionBannerState)}
                 </span>
+
                 {session ? (
-                  <span className={currentTheme.textMuted}>
-                    <span className="font-due-date">{votedCount}/{session.participants.length}</span> voted
+                  <span className={`font-due-date inline-flex rounded-full border px-3 py-1.5 text-sm font-semibold ${currentTheme.border} ${currentTheme.textSecondary} ${isDarkMode ? "bg-white/[0.035]" : "bg-white/78"}`}>
+                    <span className={currentTheme.primaryText}>{votedCount}/{session.participants.length}</span>&nbsp;voted
                   </span>
                 ) : null}
+
+                {currentParticipant ? (
+                  <div className={`flex items-center gap-2 rounded-full border py-1 pl-1 pr-3 ${currentTheme.border} ${isDarkMode ? "bg-white/[0.035]" : "bg-white/78"}`}>
+                    <AppAvatar
+                      username={currentParticipant.displayName}
+                      fullName={currentParticipant.displayName}
+                      size={30}
+                      interactive={false}
+                      enableBlink={false}
+                      aria-hidden="true"
+                    />
+                    <span className={`max-w-36 truncate text-sm font-semibold ${currentTheme.text}`}>
+                      {currentParticipant.displayName}
+                    </span>
+                  </div>
+                ) : null}
+
                 {shouldShowReconnectControl ? (
                   <Button
                     type="button"
                     variant="outline"
-                    className={`h-8 px-3 ${currentTheme.border} ${
+                    className={`h-9 rounded-xl border px-3 text-sm font-semibold ${currentTheme.border} ${currentTheme.textSecondary} ${
                       isDarkMode
-                        ? "bg-white/[0.03] text-zinc-100 hover:bg-white/[0.06]"
-                        : "bg-white/80 text-slate-700 hover:bg-white"
+                        ? "bg-white/[0.03] hover:bg-white/[0.06]"
+                        : "bg-white/80 hover:bg-white"
                     }`}
                     onClick={() => void handleJoin()}
                     disabled={isJoining}
                   >
                     <RefreshCcw className="h-4 w-4" aria-hidden="true" />
-                    {session ? "Rejoin room" : "Retry connection"}
+                    {session ? "Rejoin" : "Retry"}
                   </Button>
                 ) : null}
               </div>
             </div>
-          </section>
+          </header>
 
           {!normalizedJoinToken ? (
             <div
@@ -688,9 +743,9 @@ export function PlanningPokerRoom() {
               <div className="flex items-start gap-3">
                 <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
                 <div>
-                  <h2 className="text-sm font-semibold">Missing join token</h2>
+                  <h2 className="text-sm font-semibold">Missing room link</h2>
                   <p className="mt-1 text-sm leading-6">
-                    This link does not include a valid planning poker room token.
+                    This planning poker link is not valid.
                   </p>
                 </div>
               </div>
@@ -698,16 +753,18 @@ export function PlanningPokerRoom() {
           ) : null}
 
           {normalizedJoinToken && !session && !deletedSessionMessage ? (
-            <div className="max-w-2xl">
-              <PlanningPokerJoinForm
-                displayName={guestDisplayName}
-                isAuthenticated={isAuthenticated}
-                authenticatedLabel={authenticatedLabel}
-                isSubmitting={isJoining}
-                errorMessage={joinError}
-                onDisplayNameChange={setGuestDisplayName}
-                onSubmit={() => handleJoin()}
-              />
+            <div className="grid flex-1 place-items-center py-8">
+              <div className="w-full max-w-xl">
+                <PlanningPokerJoinForm
+                  displayName={guestDisplayName}
+                  isAuthenticated={isAuthenticated}
+                  authenticatedLabel={authenticatedLabel}
+                  isSubmitting={isJoining}
+                  errorMessage={joinError}
+                  onDisplayNameChange={setGuestDisplayName}
+                  onSubmit={() => handleJoin()}
+                />
+              </div>
             </div>
           ) : null}
 
@@ -723,7 +780,7 @@ export function PlanningPokerRoom() {
               <div className="flex items-start gap-3">
                 <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
                 <div>
-                  <h2 className="text-sm font-semibold">Session deleted</h2>
+                  <h2 className="text-sm font-semibold">Room closed</h2>
                   <p className="mt-1 text-sm leading-6">{deletedSessionMessage}</p>
                 </div>
               </div>
@@ -732,7 +789,7 @@ export function PlanningPokerRoom() {
 
           {normalizedJoinToken && isJoining && !session ? (
             <section
-              className={`max-w-2xl rounded-2xl border px-4 py-4 ${
+              className={`mx-auto w-full max-w-xl rounded-2xl border px-4 py-4 ${
                 isDarkMode
                   ? "border-white/10 bg-white/[0.03]"
                   : "border-slate-200 bg-white/70"
@@ -741,7 +798,7 @@ export function PlanningPokerRoom() {
             >
               <div className={`mb-4 flex items-center gap-2 text-sm font-medium ${currentTheme.text}`}>
                 <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
-                Joining room
+                Joining
               </div>
               <div className="space-y-3">
                 <Skeleton className="h-10 rounded-2xl" />
@@ -751,10 +808,10 @@ export function PlanningPokerRoom() {
           ) : null}
 
           {session ? (
-            <>
+            <div className="flex min-h-0 flex-1 flex-col gap-4">
               {roomError ? (
                 <div
-                  className={`rounded-2xl border px-4 py-3 text-sm ${
+                  className={`shrink-0 rounded-2xl border px-4 py-3 text-sm ${
                     isDarkMode
                       ? "border-amber-400/20 bg-amber-400/10 text-amber-100"
                       : "border-amber-200 bg-amber-50 text-amber-900"
@@ -767,7 +824,7 @@ export function PlanningPokerRoom() {
                       <Button
                         type="button"
                         variant="outline"
-                        className={`h-8 px-3 ${currentTheme.border} ${
+                        className={`h-8 rounded-xl border px-3 ${currentTheme.border} ${
                           isDarkMode
                             ? "bg-white/[0.03] text-zinc-100 hover:bg-white/[0.06]"
                             : "bg-white/80 text-slate-700 hover:bg-white"
@@ -776,46 +833,55 @@ export function PlanningPokerRoom() {
                         disabled={isJoining}
                       >
                         <RefreshCcw className="h-4 w-4" aria-hidden="true" />
-                        {session ? "Rejoin room" : "Retry connection"}
+                        {session ? "Rejoin" : "Retry"}
                       </Button>
                     ) : null}
                   </div>
                 </div>
               ) : null}
 
-              <div className="flex flex-col gap-4">
-                <PlanningPokerTaskQueue
+              <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1fr)_25rem]">
+                <section className="flex min-h-0 flex-col gap-4">
+                  <PlanningPokerTable
+                    activeTask={activeTask}
+                    participants={session.participants}
+                    currentParticipantId={participantId}
+                    votedCount={votedCount}
+                    isRevealed={session.isRevealed}
+                    isHost={isCurrentParticipantHost}
+                    isRevealing={isRevealing}
+                    isSelectingRecommendation={isSelectingRecommendation}
+                    isApplyingRecommendation={isApplyingRecommendation}
+                    recommendationOptions={VOTE_DECK_VALUES}
+                    onReveal={handleReveal}
+                    onSelectRecommendation={handleSelectRecommendation}
+                    onApplyRecommendation={handleApplyRecommendation}
+                  />
+
+                  <PlanningPokerVoteDeck
+                    cardValues={VOTE_DECK_VALUES}
+                    selectedValue={selectedVote}
+                    isSubmitting={isVoteSubmitting}
+                    hasActiveTask={Boolean(activeTask)}
+                    disabled={!activeTask || isRevealing || session.isRevealed}
+                    onVote={handleVote}
+                  />
+                </section>
+
+                <PlanningPokerRoomRail
+                  session={session}
                   activeTask={activeTask}
-                  queue={session.queue}
-                  isRevealed={session.isRevealed}
+                  currentParticipantId={participantId}
                   isHost={isCurrentParticipantHost}
-                  recommendationOptions={VOTE_DECK_VALUES}
-                  isSelectingRecommendation={isSelectingRecommendation}
-                  isApplyingRecommendation={isApplyingRecommendation}
                   isAdvancingTask={isAdvancingTask}
                   canOpenBacklogPicker={isCurrentParticipantHost}
-                  onSelectRecommendation={handleSelectRecommendation}
-                  onApplyRecommendation={handleApplyRecommendation}
-                  onAdvanceToNextTask={handleAdvanceToNextTask}
+                  copyFeedback={copyFeedback}
+                  onCopyLink={handleCopyJoinUrl}
                   onOpenBacklogPicker={handleOpenBacklogPicker}
+                  onAdvanceToNextTask={handleAdvanceToNextTask}
                 />
-
-                <PlanningPokerVoteDeck
-                  cardValues={VOTE_DECK_VALUES}
-                  selectedValue={selectedVote}
-                  isSubmitting={isVoteSubmitting}
-                  isRevealed={session.isRevealed}
-                  isRevealing={isRevealing}
-                  isHost={isCurrentParticipantHost}
-                  hasActiveTask={Boolean(activeTask)}
-                  disabled={!activeTask || isRevealing}
-                  participants={session.participants}
-                  onReveal={handleReveal}
-                  onVote={handleVote}
-                />
-
               </div>
-            </>
+            </div>
           ) : null}
         </div>
       </div>

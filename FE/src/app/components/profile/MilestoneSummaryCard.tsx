@@ -1,6 +1,7 @@
 import { ArrowRight, Lock, Trophy } from "lucide-react";
 import { getThemeColors, useTheme } from "../../contexts/ThemeContext";
 import { formatMilestoneDate, UserMilestoneSummary } from "../../utils/milestones";
+import { getMilestoneProgressFillClassName, getMilestoneProgressTrackClassName } from "./milestoneProgressStyles";
 
 interface MilestoneSummaryCardProps {
   summary: UserMilestoneSummary;
@@ -25,8 +26,7 @@ export function MilestoneSummaryCard({
     <section className={`rounded-[1.75rem] border p-6 ${currentTheme.border} ${currentTheme.bgSecondary}`}>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${currentTheme.textMuted}`}>Achievements</p>
-          <h2 className={`mt-2 text-2xl font-semibold ${currentTheme.text}`}>Milestones</h2>
+          <h2 className={`text-2xl font-semibold ${currentTheme.text}`}>Milestones</h2>
           <p className={`mt-2 max-w-xl text-sm leading-6 ${currentTheme.textSecondary}`}>
             Keep an eye on the next wins waiting in your Kanban journey, then open the full page for category-by-category progress.
           </p>
@@ -83,11 +83,11 @@ export function MilestoneSummaryCard({
               <span className={`font-semibold ${currentTheme.text}`}>{completionPercent}%</span>
             </div>
             <div
-              className={`mt-2 h-2.5 w-full overflow-hidden rounded-full ${currentTheme.isDark ? "bg-gray-700/80" : "bg-slate-200"}`}
+              className={`mt-2 h-2.5 w-full overflow-hidden rounded-full ${getMilestoneProgressTrackClassName(isDarkMode)}`}
               aria-hidden="true"
             >
               <div
-                className={`h-full rounded-full bg-gradient-to-r ${currentTheme.primary}`}
+                className={`h-full rounded-full ${getMilestoneProgressFillClassName(isDarkMode)}`}
                 style={{ width: `${completionPercent}%` }}
               />
             </div>

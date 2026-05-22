@@ -181,9 +181,28 @@ public class BoardTaskListQueryDto
     public int PageSize { get; set; } = 10;
 }
 
+public class PagedMyTaskListResponseDto
+{
+    public List<MyTaskItemDto> Items { get; set; } = new();
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalItems { get; set; }
+    public int TotalPages { get; set; }
+}
+
 public class MyTaskListQueryDto
 {
     public string Scope { get; set; } = "active";
+    public string? Q { get; set; }
+    public string QuickFilter { get; set; } = "all";
+    [FromQuery(Name = "priorities")]
+    public List<string> Priorities { get; set; } = new();
+    [FromQuery(Name = "taskTypes")]
+    public List<string> TaskTypes { get; set; } = new();
+    public string? Sort { get; set; }
+    public string? Direction { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 10;
 }
 
 public class MyTaskItemDto

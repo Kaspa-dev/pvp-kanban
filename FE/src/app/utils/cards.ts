@@ -197,6 +197,8 @@ export type BoardTaskListScope = "active" | "backlog" | "history";
 export type BoardTaskSortKey = "priority" | "title" | "status" | "storyPoints" | "dueDate" | "assignee" | "readiness";
 export type BoardTaskSortDirection = "asc" | "desc";
 export type MyTasksScope = "active" | "all";
+export type MyTaskQuickFilter = "all" | "due" | "overdue";
+export type MyTaskSortKey = "priority" | "title" | "board" | "status" | "storyPoints" | "dueDate";
 
 interface PagedBoardTaskListResponse {
   items: ApiTask[];
@@ -217,6 +219,10 @@ type ApiMyTasksResponse =
   | ApiMyTaskItem[]
   | {
       items: ApiMyTaskItem[];
+      page?: number;
+      pageSize?: number;
+      totalItems?: number;
+      totalPages?: number;
     };
 
 export interface BoardTaskListPage {
@@ -234,6 +240,14 @@ export interface MyTask extends Card {
   boardLogoColorKey: BoardLogoColorKey;
 }
 
+export interface MyTaskListPage {
+  items: MyTask[];
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+}
+
 export interface GetBoardTaskPageInput {
   scope: BoardTaskListScope;
   q?: string;
@@ -244,6 +258,19 @@ export interface GetBoardTaskPageInput {
   taskTypes?: TaskTypeFilterValue[];
   stageFilter?: BacklogStageFilter;
   sort?: BoardTaskSortKey;
+  direction?: BoardTaskSortDirection;
+  page?: number;
+  pageSize?: number;
+  signal?: AbortSignal;
+}
+
+export interface GetMyTaskPageInput {
+  scope: MyTasksScope;
+  q?: string;
+  quickFilter?: MyTaskQuickFilter;
+  priorities?: PriorityFilterValue[];
+  taskTypes?: TaskTypeFilterValue[];
+  sort?: MyTaskSortKey;
   direction?: BoardTaskSortDirection;
   page?: number;
   pageSize?: number;
@@ -526,18 +553,67 @@ export async function getBoardTaskPage(
   };
 }
 
-export async function getMyTasks(scope: MyTasksScope = "active"): Promise<MyTask[]> {
-  const normalizedScope: MyTasksScope = scope === "all" ? "all" : "active";
+export async function getMyTaskPage(input: GetMyTaskPageInput): Promise<MyTaskListPage> {
+  const normalizedScope: MyTasksScope = input.scope === "all" ? "all" : "active";
+  const params = new URLSearchParams();
+  params.set("scope", normalizedScope);
+
+  if (input.q?.trim()) {
+    params.set("q", input.q.trim());
+  }
+
+  if (input.quickFilter && input.quickFilter !== "all") {
+    params.set("quickFilter", input.quickFilter);
+  }
+
+  if (input.sort) {
+    params.set("sort", input.sort);
+  }
+
+  if (input.direction) {
+    params.set("direction", input.direction);
+  }
+
+  if (typeof input.page === "number" && input.page > 0) {
+    params.set("page", String(input.page));
+  }
+
+  if (typeof input.pageSize === "number" && input.pageSize > 0) {
+    params.set("pageSize", String(input.pageSize));
+  }
+
+  input.priorities?.forEach((priority) => {
+    params.append("priorities", priority);
+  });
+
+  input.taskTypes?.forEach((taskType) => {
+    params.append("taskTypes", taskType);
+  });
+
   const response = await apiJson<ApiMyTasksResponse>(
-    `/api/users/me/tasks?scope=${normalizedScope}`,
+    `/api/users/me/tasks?${params.toString()}`,
     {
       method: "GET",
+      signal: input.signal,
     },
     "Unable to load your tasks right now.",
   );
 
   const items = Array.isArray(response) ? response : response.items;
-  return items.map(normalizeMyTask);
+  const fallbackTotalItems = items.length;
+
+  return {
+    items: items.map(normalizeMyTask),
+    page: Array.isArray(response) ? 1 : response.page ?? 1,
+    pageSize: Array.isArray(response) ? fallbackTotalItems : response.pageSize ?? fallbackTotalItems,
+    totalItems: Array.isArray(response) ? fallbackTotalItems : response.totalItems ?? fallbackTotalItems,
+    totalPages: Array.isArray(response) ? (fallbackTotalItems > 0 ? 1 : 0) : response.totalPages ?? (fallbackTotalItems > 0 ? 1 : 0),
+  };
+}
+
+export async function getMyTasks(scope: MyTasksScope = "active"): Promise<MyTask[]> {
+  const response = await getMyTaskPage({ scope });
+  return response.items;
 }
 
 export async function createBoardTask(

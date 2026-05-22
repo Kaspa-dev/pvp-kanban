@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { AppAvatar } from "../components/AppAvatar";
 import { LevelNumberBadge } from "../components/LevelNumberBadge";
+import { getMilestoneProgressFillClassName, getMilestoneProgressTrackClassName } from "../components/profile/milestoneProgressStyles";
 import { SettingsModal } from "../components/SettingsModal";
 import { Toolbar } from "../components/Toolbar";
 import { getPanelEyebrowClassName } from "../components/typographyStyles";
@@ -582,9 +583,9 @@ export function Profile() {
                         locked
                       </p>
                     </div>
-                    <div className={`mt-6 h-2.5 overflow-hidden rounded-full ${isDarkMode ? "bg-zinc-800" : "bg-slate-200"}`} aria-hidden="true">
+                    <div className={`mt-6 h-2.5 overflow-hidden rounded-full ${getMilestoneProgressTrackClassName(isDarkMode)}`} aria-hidden="true">
                       <div
-                        className={`h-full rounded-full bg-gradient-to-r ${currentTheme.primary}`}
+                        className={`h-full rounded-full ${getMilestoneProgressFillClassName(isDarkMode)}`}
                         style={{ width: `${milestonePercent}%` }}
                       />
                     </div>

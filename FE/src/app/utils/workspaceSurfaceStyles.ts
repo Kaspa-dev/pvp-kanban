@@ -74,6 +74,9 @@ export function getWorkspaceSurfaceStyles(
       backgroundColor: isDarkMode ? "rgba(12, 12, 14, 0.96)" : "rgba(255, 255, 255, 0.96)",
     },
     elevatedPanelSurfaceClassName: `${currentTheme.cardBg} border ${currentTheme.border} shadow-lg`,
+    profilePopoverSurfaceClassName: isDarkMode
+      ? "border-zinc-800/95 bg-zinc-950/92 shadow-[0_28px_80px_-52px_rgba(0,0,0,0.92)]"
+      : "border-slate-200 bg-white/96 shadow-[0_28px_80px_-52px_rgba(15,23,42,0.42)]",
     elevatedSurfaceClassName: `${currentTheme.cardBg} ${currentTheme.border}`,
     subtleSurfaceClassName: `${currentTheme.bgSecondary} ${currentTheme.border}`,
     controlSurfaceClassName,

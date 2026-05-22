@@ -7,6 +7,7 @@ import {
   getMilestoneProgressPercent,
   UserMilestone,
 } from "../../utils/milestones";
+import { getMilestoneProgressFillClassName, getMilestoneProgressTrackClassName } from "./milestoneProgressStyles";
 
 interface MilestoneCardProps {
   milestone: UserMilestone;
@@ -112,11 +113,11 @@ export function MilestoneCard({ milestone }: MilestoneCardProps) {
             </span>
           </div>
           <div
-            className={`mt-3 h-2.5 w-full overflow-hidden rounded-full ${currentTheme.isDark ? "bg-gray-700/80" : "bg-slate-200"}`}
+            className={`mt-3 h-2.5 w-full overflow-hidden rounded-full ${getMilestoneProgressTrackClassName(isDarkMode)}`}
             aria-hidden="true"
           >
             <div
-              className={`h-full rounded-full bg-gradient-to-r ${currentTheme.primary} transition-all duration-500`}
+              className={`h-full rounded-full ${getMilestoneProgressFillClassName(isDarkMode)} transition-all duration-500`}
               style={{ width: `${progressPercent}%` }}
             />
           </div>

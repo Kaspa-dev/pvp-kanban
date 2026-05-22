@@ -19,6 +19,8 @@ namespace BE.Controllers;
 [Route("api/[controller]")]
 public class UsersController : ControllerBase
 {
+    private const int DefaultTaskPageSize = 10;
+    private const int MaxTaskPageSize = 24;
     private static readonly JsonSerializerOptions UserPreferenceJsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly HashSet<string> AllowedCoachmarkFlows =
     [
@@ -174,7 +176,7 @@ public class UsersController : ControllerBase
 
     // GET api/users/me/tasks?scope=active
     [HttpGet("me/tasks")]
-    public async Task<ActionResult<IEnumerable<MyTaskItemDto>>> GetMyTasks(
+    public async Task<ActionResult<PagedMyTaskListResponseDto>> GetMyTasks(
         [FromQuery] MyTaskListQueryDto query,
         CancellationToken cancellationToken)
     {
@@ -196,16 +198,20 @@ public class UsersController : ControllerBase
                 task.AssigneeId == userId &&
                 (task.Board.CreatorId == userId || task.Board.Memberships.Any(membership => membership.UserId == userId)));
 
-        if (scope == "active")
+        tasksQuery = ApplyMyTaskListFilters(tasksQuery, scope, query);
+
+        int pageSize = Math.Clamp(query.PageSize <= 0 ? DefaultTaskPageSize : query.PageSize, 1, MaxTaskPageSize);
+        int totalItems = await tasksQuery.CountAsync(cancellationToken);
+        int totalPages = totalItems == 0 ? 0 : (int)Math.Ceiling(totalItems / (double)pageSize);
+        int page = Math.Max(query.Page, 1);
+        if (totalPages > 0 && page > totalPages)
         {
-            tasksQuery = tasksQuery.Where(task => task.Status.Title.ToLower() != "done");
+            page = totalPages;
         }
 
-        List<TaskEntity> taskEntities = await tasksQuery
-            .OrderBy(task => task.DueDate.HasValue ? 0 : 1)
-            .ThenBy(task => task.DueDate)
-            .ThenBy(task => task.Board.Title)
-            .ThenBy(task => task.Title)
+        List<TaskEntity> taskEntities = await ApplyMyTaskListSorting(tasksQuery, query)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync(cancellationToken);
 
         Dictionary<int, int> userLevels = await _gamificationService.GetUserLevelsAsync(
@@ -218,7 +224,14 @@ public class UsersController : ControllerBase
             .Select(task => ToMyTaskItemDto(task, userLevels))
             .ToList();
 
-        return Ok(tasks);
+        return Ok(new PagedMyTaskListResponseDto
+        {
+            Items = tasks,
+            Page = page,
+            PageSize = pageSize,
+            TotalItems = totalItems,
+            TotalPages = totalPages,
+        });
     }
 
     // GET api/users/me/gamification-summary
@@ -463,6 +476,201 @@ public class UsersController : ControllerBase
         return string.Equals(scope?.Trim(), "all", StringComparison.OrdinalIgnoreCase)
             ? "all"
             : "active";
+    }
+
+    private static IQueryable<TaskEntity> ApplyMyTaskListFilters(
+        IQueryable<TaskEntity> query,
+        string scope,
+        MyTaskListQueryDto request)
+    {
+        if (scope == "active")
+        {
+            query = query.Where(task => task.Status.Title != "done");
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Q))
+        {
+            string search = request.Q.Trim();
+            query = query.Where(task =>
+                EF.Functions.Like(task.Title, $"%{search}%") ||
+                EF.Functions.Like(task.Description, $"%{search}%") ||
+                EF.Functions.Like(task.Board.Title, $"%{search}%"));
+        }
+
+        if (string.Equals(request.QuickFilter, "due", StringComparison.OrdinalIgnoreCase))
+        {
+            DateTime utcToday = DateTime.UtcNow.Date;
+            int daysSinceMonday = ((int)utcToday.DayOfWeek + 6) % 7;
+            DateTime startOfWeek = utcToday.AddDays(-daysSinceMonday);
+            DateTime endOfWeek = startOfWeek.AddDays(7);
+
+            query = query.Where(task =>
+                task.DueDate.HasValue &&
+                task.DueDate.Value >= startOfWeek &&
+                task.DueDate.Value < endOfWeek);
+        }
+        else if (string.Equals(request.QuickFilter, "overdue", StringComparison.OrdinalIgnoreCase))
+        {
+            DateTime utcToday = DateTime.UtcNow.Date;
+
+            query = query.Where(task =>
+                task.DueDate.HasValue &&
+                task.DueDate.Value < utcToday);
+        }
+
+        List<Priority> priorityFilters = new();
+        bool includeNoPriority = false;
+        foreach (string priorityFilter in request.Priorities.Select(value => value.Trim().ToLowerInvariant()).Distinct())
+        {
+            if (priorityFilter == "none")
+            {
+                includeNoPriority = true;
+                continue;
+            }
+
+            if (TryParsePriority(priorityFilter, out Priority? priority) && priority.HasValue)
+            {
+                priorityFilters.Add(priority.Value);
+            }
+        }
+
+        if (priorityFilters.Count > 0 || includeNoPriority)
+        {
+            bool includeLowPriority = priorityFilters.Contains(Priority.Low);
+            bool includeMediumPriority = priorityFilters.Contains(Priority.Medium);
+            bool includeHighPriority = priorityFilters.Contains(Priority.High);
+            bool includeCriticalPriority = priorityFilters.Contains(Priority.Critical);
+
+            query = query.Where(task =>
+                includeLowPriority && task.Priority == Priority.Low ||
+                includeMediumPriority && task.Priority == Priority.Medium ||
+                includeHighPriority && task.Priority == Priority.High ||
+                includeCriticalPriority && task.Priority == Priority.Critical ||
+                includeNoPriority && !task.Priority.HasValue);
+        }
+
+        List<BE.Models.Type> taskTypeFilters = new();
+        bool includeNoTaskType = false;
+        foreach (string taskTypeFilter in request.TaskTypes.Select(value => value.Trim().ToLowerInvariant()).Distinct())
+        {
+            if (taskTypeFilter == "none")
+            {
+                includeNoTaskType = true;
+                continue;
+            }
+
+            if (TryParseTaskType(taskTypeFilter, out BE.Models.Type? taskType) && taskType.HasValue)
+            {
+                taskTypeFilters.Add(taskType.Value);
+            }
+        }
+
+        if (taskTypeFilters.Count > 0 || includeNoTaskType)
+        {
+            bool includeStoryType = taskTypeFilters.Contains(BE.Models.Type.Story);
+            bool includeTaskType = taskTypeFilters.Contains(BE.Models.Type.Task);
+            bool includeSpikeType = taskTypeFilters.Contains(BE.Models.Type.Spike);
+            bool includeBugType = taskTypeFilters.Contains(BE.Models.Type.Bug);
+            bool includeFeatureType = taskTypeFilters.Contains(BE.Models.Type.Feature);
+            bool includeEpicType = taskTypeFilters.Contains(BE.Models.Type.Epic);
+
+            query = query.Where(task =>
+                includeStoryType && task.Type == BE.Models.Type.Story ||
+                includeTaskType && task.Type == BE.Models.Type.Task ||
+                includeSpikeType && task.Type == BE.Models.Type.Spike ||
+                includeBugType && task.Type == BE.Models.Type.Bug ||
+                includeFeatureType && task.Type == BE.Models.Type.Feature ||
+                includeEpicType && task.Type == BE.Models.Type.Epic ||
+                includeNoTaskType && !task.Type.HasValue);
+        }
+
+        return query;
+    }
+
+    private static IQueryable<TaskEntity> ApplyMyTaskListSorting(
+        IQueryable<TaskEntity> query,
+        MyTaskListQueryDto request)
+    {
+        bool isDescending = string.Equals(request.Direction, "desc", StringComparison.OrdinalIgnoreCase);
+        string sortKey = string.IsNullOrWhiteSpace(request.Sort)
+            ? "duedate"
+            : request.Sort.Trim().ToLowerInvariant();
+
+        return sortKey switch
+        {
+            "priority" => isDescending
+                ? query
+                    .OrderByDescending(task => task.Priority == Priority.Critical)
+                    .ThenByDescending(task => task.Priority == Priority.High)
+                    .ThenByDescending(task => task.Priority == Priority.Medium)
+                    .ThenBy(task => task.Title)
+                : query
+                    .OrderByDescending(task => task.Priority == null)
+                    .ThenByDescending(task => task.Priority == Priority.Low)
+                    .ThenByDescending(task => task.Priority == Priority.Medium)
+                    .ThenByDescending(task => task.Priority == Priority.High)
+                    .ThenBy(task => task.Title),
+            "title" => isDescending
+                ? query.OrderByDescending(task => task.Title).ThenByDescending(task => task.Id)
+                : query.OrderBy(task => task.Title).ThenByDescending(task => task.Id),
+            "board" => isDescending
+                ? query.OrderByDescending(task => task.Board.Title).ThenBy(task => task.Title)
+                : query.OrderBy(task => task.Board.Title).ThenBy(task => task.Title),
+            "status" => isDescending
+                ? query
+                    .OrderByDescending(task => task.Status.Title == "done")
+                    .ThenByDescending(task => task.Status.Title == "inReview")
+                    .ThenByDescending(task => task.Status.Title == "inProgress")
+                    .ThenByDescending(task => task.Status.Title == "todo")
+                    .ThenByDescending(task => task.Id)
+                : query
+                    .OrderByDescending(task => task.Status.Title == "backlog")
+                    .ThenByDescending(task => task.Status.Title == "todo")
+                    .ThenByDescending(task => task.Status.Title == "inProgress")
+                    .ThenByDescending(task => task.Status.Title == "inReview")
+                    .ThenByDescending(task => task.Id),
+            "storypoints" => isDescending
+                ? query.OrderByDescending(task => task.StoryPoints ?? int.MinValue).ThenBy(task => task.Title)
+                : query.OrderBy(task => task.StoryPoints ?? int.MaxValue).ThenBy(task => task.Title),
+            "duedate" => isDescending
+                ? query.OrderByDescending(task => task.DueDate.HasValue).ThenByDescending(task => task.DueDate).ThenBy(task => task.Title)
+                : query.OrderByDescending(task => task.DueDate.HasValue).ThenBy(task => task.DueDate).ThenBy(task => task.Title),
+            _ => query.OrderByDescending(task => task.DueDate.HasValue).ThenBy(task => task.DueDate).ThenBy(task => task.Title),
+        };
+    }
+
+    private static bool TryParsePriority(string? value, out Priority? priority)
+    {
+        priority = null;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return true;
+        }
+
+        if (Enum.TryParse(value, true, out Priority parsedPriority))
+        {
+            priority = parsedPriority;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryParseTaskType(string? value, out BE.Models.Type? taskType)
+    {
+        taskType = null;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return true;
+        }
+
+        if (Enum.TryParse(value, true, out BE.Models.Type parsedType))
+        {
+            taskType = parsedType;
+            return true;
+        }
+
+        return false;
     }
 
     private static AuthUserDto ToAuthUserDto(User user)

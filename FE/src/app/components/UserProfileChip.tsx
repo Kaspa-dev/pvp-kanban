@@ -4,6 +4,7 @@ import { useGamificationSummary } from "../contexts/GamificationSummaryContext";
 import { AppAvatar } from "./AppAvatar";
 import { LevelProgressCard } from "./LevelProgressCard";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
 
 interface UserProfileChipProps {
   username: string;
@@ -27,11 +28,9 @@ export function UserProfileChip({
     refreshSummary,
   } = useGamificationSummary();
   const [isOpen, setIsOpen] = useState(false);
+  const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
 
   const displayedLevel = summary?.currentLevel ?? null;
-  const profilePopoverSurfaceClassName = isDarkMode
-    ? "border-zinc-800/95 bg-zinc-950/92 shadow-[0_28px_80px_-52px_rgba(0,0,0,0.92)]"
-    : "border-slate-200 bg-white/96 shadow-[0_28px_80px_-52px_rgba(15,23,42,0.42)]";
 
   const loadSummaryIfNeeded = () => {
     if (summary || isLoadingSummary) {
@@ -102,7 +101,7 @@ export function UserProfileChip({
         align="end"
         side="bottom"
         sideOffset={12}
-        className={`relative w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-[1.75rem] border p-3.5 backdrop-blur-xl ${profilePopoverSurfaceClassName}`}
+        className={`relative w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-[1.75rem] border p-3.5 backdrop-blur-xl ${workspaceSurface.profilePopoverSurfaceClassName}`}
       >
         <div className={`pointer-events-none absolute -right-12 -top-14 h-32 w-32 rounded-full bg-gradient-to-br ${currentTheme.primarySoft} blur-3xl`} />
         <div className={`pointer-events-none absolute -bottom-16 left-4 h-28 w-28 rounded-full bg-gradient-to-tr ${currentTheme.primarySoftStrong} blur-3xl`} />

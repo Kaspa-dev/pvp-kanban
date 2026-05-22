@@ -1,24 +1,16 @@
 import { FormEvent, useId, useState } from "react";
 import { LoaderCircle } from "lucide-react";
 
-import { useTheme, getThemeColors } from "../../contexts/ThemeContext";
-import type { PlanningPokerParticipant } from "../../utils/planningPoker";
-import { AppAvatar } from "../AppAvatar";
+import { getThemeColors, useTheme } from "../../contexts/ThemeContext";
 import { Button } from "../ui/button";
 import { cn } from "../ui/utils";
-import { getPanelEyebrowClassName } from "../typographyStyles";
 
 interface PlanningPokerVoteDeckProps {
   cardValues: number[];
   selectedValue: number | null;
   isSubmitting: boolean;
-  isRevealed: boolean;
-  isRevealing: boolean;
-  isHost: boolean;
   hasActiveTask: boolean;
   disabled: boolean;
-  participants: PlanningPokerParticipant[];
-  onReveal: () => void | Promise<void>;
   onVote: (value: number) => void | Promise<void>;
 }
 
@@ -26,25 +18,14 @@ export function PlanningPokerVoteDeck({
   cardValues,
   selectedValue,
   isSubmitting,
-  isRevealed,
-  isRevealing,
-  isHost,
   hasActiveTask,
   disabled,
-  participants,
-  onReveal,
   onVote,
 }: PlanningPokerVoteDeckProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
-  const panelEyebrowClassName = getPanelEyebrowClassName(currentTheme.textMuted);
-  const voteDeckId = useId();
-  const voteDeckHeadingId = `${voteDeckId}-heading`;
-  const voteDeckHintId = `${voteDeckId}-hint`;
-  const customVoteInputId = `${voteDeckId}-custom`;
+  const customVoteInputId = useId();
   const [customVote, setCustomVote] = useState("");
-  const votedCount = participants.filter((participant) => participant.hasVoted).length;
-  const canReveal = isHost && !isRevealed && votedCount > 0 && !isRevealing;
   const parsedCustomVote = Number(customVote);
   const canSubmitCustomVote =
     customVote.trim().length > 0 &&
@@ -59,104 +40,74 @@ export function PlanningPokerVoteDeck({
     customVote.trim().length > 0 &&
     Number.isFinite(parsedCustomVote) &&
     selectedValue === parsedCustomVote;
-
-  const statusMessage = isSubmitting
-    ? "Saving vote..."
-    : isRevealing
-      ? "Revealing votes..."
-      : isRevealed
-        ? "Votes revealed."
-        : !hasActiveTask
-          ? "Waiting for a task."
-          : selectedValue !== null
-            ? `Selected ${selectedValue}.`
-            : "Choose one estimate.";
+  const statusLabel = isSubmitting
+    ? "Saving"
+    : !hasActiveTask
+      ? "No task"
+      : selectedValue !== null
+        ? `Selected ${selectedValue}`
+        : "Pick a card";
 
   return (
     <section
-      className={cn("space-y-3 border-t pt-4", currentTheme.border)}
-      aria-labelledby={voteDeckHeadingId}
+      className={`rounded-[2rem] border px-4 py-4 shadow-[0_20px_64px_-52px_rgba(15,23,42,0.6)] ${currentTheme.border} ${isDarkMode ? "bg-zinc-950/62" : "bg-white/82"}`}
+      aria-labelledby="planning-poker-vote-deck-title"
     >
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h2 id={voteDeckHeadingId} className={cn("text-lg font-semibold", currentTheme.text)}>
-            Vote
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 id="planning-poker-vote-deck-title" className={`font-ui-condensed text-xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
+            Your card
           </h2>
-          <p id={voteDeckHintId} className={cn("mt-0.5 text-sm", currentTheme.textMuted)} aria-live="polite">
-            {statusMessage}
+          <p className={`font-due-date mt-0.5 text-xs font-semibold ${selectedValue !== null ? currentTheme.primaryText : currentTheme.textMuted}`} aria-live="polite">
+            {statusLabel}
           </p>
         </div>
-
-        {isHost ? (
-          <Button
-            type="button"
-            disabled={!canReveal}
-            onClick={() => void onReveal()}
-            className={cn(
-              "h-9 rounded-full bg-gradient-to-r px-4 text-sm text-white disabled:cursor-not-allowed disabled:opacity-60",
-              currentTheme.primary,
-            )}
-          >
-            {isRevealing ? (
-              <>
-                <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
-                Revealing
-              </>
-            ) : isRevealed ? (
-              "Revealed"
-            ) : (
-              "Reveal votes"
-            )}
-          </Button>
+        {isSubmitting ? (
+          <span className={`inline-flex items-center gap-2 text-sm ${currentTheme.textMuted}`}>
+            <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+            Saving vote
+          </span>
         ) : null}
       </div>
 
       <div
-        className="grid grid-cols-4 gap-2 sm:grid-cols-8 xl:grid-cols-[repeat(8,minmax(0,1fr))_minmax(11rem,14rem)]"
+        className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-[repeat(11,minmax(3.8rem,1fr))_minmax(8.5rem,11rem)]"
         role="group"
-        aria-labelledby={voteDeckHeadingId}
-        aria-describedby={voteDeckHintId}
+        aria-labelledby="planning-poker-vote-deck-title"
       >
         {cardValues.map((value) => {
           const isSelected = selectedValue === value;
 
           return (
-            <Button
+            <button
               key={value}
               type="button"
-              variant="outline"
               disabled={disabled || isSubmitting}
               onClick={() => void onVote(value)}
               aria-pressed={isSelected}
               className={cn(
-                "h-11 rounded-xl border text-base font-semibold transition-colors",
-                "focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-                currentTheme.border,
+                "font-due-date group relative flex h-20 items-center justify-center overflow-hidden rounded-2xl border text-2xl font-semibold transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 sm:h-24",
                 currentTheme.focus,
                 disabled || isSubmitting
                   ? isDarkMode
-                    ? "bg-slate-950/35 text-slate-500"
-                    : "bg-slate-100/70 text-slate-400"
+                    ? "cursor-not-allowed border-zinc-800 bg-zinc-950/45 text-zinc-600"
+                    : "cursor-not-allowed border-slate-200 bg-slate-100/80 text-slate-400"
                   : isDarkMode
-                    ? "bg-transparent text-slate-100 hover:bg-white/[0.06]"
-                    : "bg-transparent text-slate-700 hover:bg-slate-950/[0.04]",
+                    ? "border-zinc-700/90 bg-zinc-950/72 text-zinc-100 hover:-translate-y-1 hover:border-zinc-500 hover:bg-zinc-900"
+                    : "border-slate-300 bg-white text-slate-700 hover:-translate-y-1 hover:border-slate-400 hover:bg-slate-50",
                 isSelected &&
-                  cn(
-                    currentTheme.primaryText,
-                    `border ${currentTheme.primaryBorder}`,
-                    `bg-gradient-to-r ${currentTheme.primarySoftStrong}`,
-                  ),
-                isRevealed && "opacity-70",
+                  `border-transparent bg-gradient-to-br ${currentTheme.primary} text-white shadow-[0_20px_46px_-28px_rgba(15,23,42,0.78)]`,
               )}
             >
-              <span className="sr-only">{isSelected ? "Selected card " : "Vote "}</span>
+              <span className={`pointer-events-none absolute inset-x-3 top-2 h-px rounded-full transition-opacity ${isSelected ? "bg-white/65 opacity-100" : "bg-current opacity-10 group-hover:opacity-20"}`} />
+              <span className="sr-only">{isSelected ? "Selected estimate " : "Vote estimate "}</span>
               {value}
-            </Button>
+            </button>
           );
         })}
 
         <form
-          className="col-span-4 flex gap-2 sm:col-span-8 xl:col-span-1"
+          className="col-span-3 grid grid-cols-[1fr_auto] gap-2 sm:col-span-4 md:col-span-6 xl:col-span-1 xl:grid-cols-1"
           onSubmit={(event: FormEvent<HTMLFormElement>) => {
             event.preventDefault();
 
@@ -182,73 +133,23 @@ export function PlanningPokerVoteDeck({
             onChange={(event) => setCustomVote(event.target.value)}
             placeholder="Custom"
             className={cn(
-              "h-11 min-w-0 flex-1 rounded-xl border px-3 text-sm outline-none transition-colors",
-              currentTheme.border,
+              "h-12 min-w-0 rounded-2xl border px-3 text-sm outline-none transition-colors focus:ring-2 xl:h-[3.7rem]",
               currentTheme.focus,
-              isDarkMode
-                ? "bg-transparent text-slate-100 placeholder:text-slate-500"
-                : "bg-transparent text-slate-700 placeholder:text-slate-400",
-              isCustomVoteSelected &&
-                cn(
-                  currentTheme.primaryText,
-                  `border ${currentTheme.primaryBorder}`,
-                  `bg-gradient-to-r ${currentTheme.primarySoftStrong}`,
-                ),
+              isCustomVoteSelected
+                ? `${currentTheme.primaryBorder} ${currentTheme.primaryText} ${currentTheme.primaryBg}`
+                : `${currentTheme.border} ${currentTheme.text} ${isDarkMode ? "bg-zinc-950/72 placeholder:text-zinc-500" : "bg-white placeholder:text-slate-400"}`,
+              (disabled || isSubmitting) && "cursor-not-allowed opacity-60",
             )}
           />
           <Button
             type="submit"
             variant="outline"
             disabled={!canSubmitCustomVote}
-            className={cn(
-              "h-11 rounded-xl border px-3 text-sm font-semibold",
-              currentTheme.border,
-              currentTheme.focus,
-              isDarkMode
-                ? "bg-transparent text-slate-100 hover:bg-white/[0.06]"
-                : "bg-transparent text-slate-700 hover:bg-slate-950/[0.04]",
-            )}
+            className={`h-12 rounded-2xl border px-4 text-sm font-semibold xl:h-[3.7rem] ${currentTheme.border} ${currentTheme.textSecondary} ${isDarkMode ? "bg-zinc-950/72 hover:bg-zinc-900" : "bg-white hover:bg-slate-50"}`}
           >
             Use
           </Button>
         </form>
-      </div>
-
-      <div className={cn("space-y-2 border-t pt-3", currentTheme.border)}>
-        <p className={panelEyebrowClassName}>
-          Members
-        </p>
-        <ul className="flex flex-wrap gap-2" aria-label="Planning poker members">
-          {participants.map((participant) => (
-            <li
-              key={participant.participantId}
-              className={cn(
-                "flex min-w-0 max-w-56 items-center gap-2 rounded-full border px-2.5 py-1.5",
-                currentTheme.border,
-                isDarkMode ? "bg-white/[0.02]" : "bg-black/[0.025]",
-              )}
-            >
-              <AppAvatar
-                username={participant.displayName}
-                fullName={participant.displayName}
-                size={22}
-                interactive={false}
-                enableBlink={false}
-                aria-hidden="true"
-              />
-              <span className={cn("truncate text-sm", currentTheme.text)}>
-                {participant.displayName}
-              </span>
-              <span className={cn("ml-auto shrink-0 text-xs", currentTheme.textMuted)}>
-                {participant.hasVoted
-                  ? isRevealed
-                    ? participant.revealedCardValue ?? "Shown"
-                    : "Voted"
-                  : "Waiting"}
-              </span>
-            </li>
-          ))}
-        </ul>
       </div>
     </section>
   );

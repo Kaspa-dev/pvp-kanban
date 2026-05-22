@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Award, Compass, Trophy } from "lucide-react";
 import { useNavigate } from "react-router";
 import { MilestoneSection } from "../components/profile/MilestoneSection";
+import { getMilestoneProgressFillClassName, getMilestoneProgressTrackClassName } from "../components/profile/milestoneProgressStyles";
 import { SettingsModal } from "../components/SettingsModal";
 import { Skeleton } from "../components/ui/skeleton";
 import { Toolbar } from "../components/Toolbar";
-import { getPanelEyebrowClassName } from "../components/typographyStyles";
 import { useAuth } from "../contexts/AuthContext";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import {
@@ -24,7 +24,6 @@ export function ProfileMilestones() {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
-  const panelEyebrowClassName = getPanelEyebrowClassName(currentTheme.textMuted);
   const [milestoneResponse, setMilestoneResponse] = useState(() => getDefaultUserMilestonesResponse());
   const [isLoadingMilestones, setIsLoadingMilestones] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -141,8 +140,7 @@ export function ProfileMilestones() {
           <div className="relative z-10 flex flex-col gap-7">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <p className={panelEyebrowClassName}>Achievements</p>
-                <h1 className={`font-ui-condensed mt-3 text-4xl font-semibold tracking-[0.01em] ${currentTheme.text} lg:text-5xl`}>
+                <h1 className={`font-ui-condensed text-4xl font-semibold tracking-[0.01em] ${currentTheme.text} lg:text-5xl`}>
                   Milestones
                 </h1>
               </div>
@@ -168,9 +166,9 @@ export function ProfileMilestones() {
                     {" "}unlocked
                   </p>
                 </div>
-                <div className={`mt-5 h-2.5 overflow-hidden rounded-full ${isDarkMode ? "bg-zinc-800" : "bg-slate-200"}`} aria-hidden="true">
+                <div className={`mt-5 h-2.5 overflow-hidden rounded-full ${getMilestoneProgressTrackClassName(isDarkMode)}`} aria-hidden="true">
                   <div
-                    className={`h-full rounded-full bg-gradient-to-r ${currentTheme.primary} transition-[width] duration-500`}
+                    className={`h-full rounded-full ${getMilestoneProgressFillClassName(isDarkMode)} transition-[width] duration-500`}
                     style={{ width: `${completionPercent}%` }}
                   />
                 </div>

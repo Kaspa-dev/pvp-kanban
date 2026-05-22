@@ -3,9 +3,10 @@ import { LoaderCircle, Search } from "lucide-react";
 
 import type { Card } from "../../utils/cards";
 import { getThemeColors, useTheme } from "../../contexts/ThemeContext";
+import { CustomScrollArea } from "../CustomScrollArea";
+import { getNativeInputFieldClassName } from "../inputLikeControlStyles";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
-import { Input } from "../ui/input";
 import { cn } from "../ui/utils";
 
 interface PlanningPokerBacklogPickerDialogProps {
@@ -54,58 +55,68 @@ export function PlanningPokerBacklogPickerDialog({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Backlog tasks</DialogTitle>
+          <DialogTitle className="font-ui-condensed tracking-[0.01em]">Backlog tasks</DialogTitle>
           <DialogDescription>
-            Choose an unestimated backlog task to make it active in this planning poker room.
+            Pick the next task to estimate.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="relative">
             <Search className={cn("pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2", currentTheme.textMuted)} />
-            <Input
+            <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search backlog tasks"
-              className="pl-9"
+              className={cn(
+                "h-11 w-full pl-9 pr-3 text-sm",
+                getNativeInputFieldClassName(currentTheme),
+                isDarkMode ? "placeholder:text-zinc-500" : "placeholder:text-slate-400",
+              )}
             />
           </div>
 
-          <div className={cn("max-h-[24rem] space-y-2 overflow-y-auto rounded-xl border p-2", currentTheme.border)}>
+          <CustomScrollArea
+            className={cn("max-h-[24rem] overflow-hidden rounded-xl border", currentTheme.border)}
+            viewportClassName="max-h-[24rem] p-2 pr-5"
+          >
             {isLoading ? (
               <div className={cn("flex items-center justify-center gap-2 px-4 py-10 text-sm", currentTheme.textMuted)}>
                 <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
-                Loading backlog tasks...
+                Loading tasks
               </div>
             ) : filteredTasks.length === 0 ? (
               <div className={cn("px-4 py-10 text-center text-sm", currentTheme.textMuted)}>
-                No unestimated backlog tasks match this search.
+                No matching tasks.
               </div>
             ) : (
-              filteredTasks.map((task) => (
-                <button
-                  key={task.id}
-                  type="button"
-                  disabled={isSubmitting}
-                  onClick={() => void onSelectTask(task.id)}
-                  className={cn(
-                    "flex w-full items-start justify-between gap-3 rounded-lg border px-3 py-3 text-left transition-colors",
-                    currentTheme.border,
-                    isDarkMode ? "bg-slate-950/40 hover:bg-slate-950/70" : "bg-white hover:bg-slate-50",
-                    isSubmitting && "cursor-not-allowed opacity-60",
-                  )}
-                >
-                  <div className="min-w-0 space-y-1">
-                    <p className={cn("truncate text-sm font-semibold", currentTheme.text)}>{task.title}</p>
-                    {task.description?.trim() ? (
-                      <p className={cn("line-clamp-2 text-xs", currentTheme.textMuted)}>{task.description}</p>
-                    ) : null}
-                  </div>
-                  <span className={cn("shrink-0 text-xs font-medium", currentTheme.textMuted)}>Choose</span>
-                </button>
-              ))
+              <div className="space-y-2">
+                {filteredTasks.map((task) => (
+                  <button
+                    key={task.id}
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={() => void onSelectTask(task.id)}
+                    className={cn(
+                      "flex w-full items-start justify-between gap-3 rounded-xl border px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2",
+                      currentTheme.focus,
+                      currentTheme.border,
+                      isDarkMode ? "bg-zinc-950/52 hover:bg-zinc-900" : "bg-white hover:bg-slate-50",
+                      isSubmitting && "cursor-not-allowed opacity-60",
+                    )}
+                  >
+                    <div className="min-w-0 space-y-1">
+                      <p className={cn("truncate text-sm font-semibold", currentTheme.text)}>{task.title}</p>
+                      {task.description?.trim() ? (
+                        <p className={cn("line-clamp-2 text-xs", currentTheme.textMuted)}>{task.description}</p>
+                      ) : null}
+                    </div>
+                    <span className={cn("shrink-0 text-xs font-medium", currentTheme.primaryText)}>Choose</span>
+                  </button>
+                ))}
+              </div>
             )}
-          </div>
+          </CustomScrollArea>
 
           <div className="flex justify-end">
             <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>

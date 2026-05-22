@@ -2,21 +2,29 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 import {
   ArrowLeft,
+  Bug,
   CalendarDays,
   CheckSquare,
   CircleDot,
+  Clock3,
+  FileText,
   Flag,
   Hash,
-  Tag,
+  Lightbulb,
   UserRound,
+  type LucideIcon,
 } from "lucide-react";
 import { Board } from "../../utils/boards";
 import { getThemeColors, useTheme } from "../../contexts/ThemeContext";
 import { TaskDetails, UNASSIGNED_ASSIGNEE } from "../../utils/cards";
 import { Label } from "../../utils/labels";
+import { AppAvatar } from "../AppAvatar";
 import { BoardLogo } from "../BoardLogo";
 import { BoardStatusBadge } from "../BoardStatusBadge";
+import { LabelBadge } from "../LabelBadge";
 import { PriorityBadge } from "../PriorityBadge";
+import { TaskColumnAgeBadge } from "../TaskColumnAgeBadge";
+import { TaskDueDateBadge } from "../TaskDueDateBadge";
 import { getPanelEyebrowClassName } from "../typographyStyles";
 
 interface TaskDetailsSummaryProps {
@@ -26,49 +34,38 @@ interface TaskDetailsSummaryProps {
   labels: Label[];
 }
 
-const TASK_TYPE_LABELS: Record<NonNullable<TaskDetails["taskType"]>, string> = {
-  story: "Story",
-  task: "Task",
-  bug: "Bug",
-  spike: "Spike",
+const TASK_TYPE_DISPLAY: Record<NonNullable<TaskDetails["taskType"]>, { icon: LucideIcon; label: string }> = {
+  story: { icon: FileText, label: "Story" },
+  task: { icon: CheckSquare, label: "Task" },
+  bug: { icon: Bug, label: "Bug" },
+  spike: { icon: Lightbulb, label: "Spike" },
 };
 
-function formatDueDate(value: string | null | undefined) {
-  if (!value) {
-    return "No due date";
-  }
-
-  const parsedDate = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(parsedDate);
-}
-
-function DetailRow({
+function FactRow({
   icon: Icon,
   label,
-  value,
   children,
+  dividerClassName,
+  labelClassName,
+  textClassName,
+  mutedIconClassName,
 }: {
-  icon: typeof CalendarDays;
+  icon: LucideIcon;
   label: string;
-  value?: string;
-  children?: ReactNode;
+  children: ReactNode;
+  dividerClassName: string;
+  labelClassName: string;
+  textClassName: string;
+  mutedIconClassName: string;
 }) {
   return (
-    <div className="py-4">
-      <div className={`${getPanelEyebrowClassName("opacity-70")} flex items-center gap-2`}>
-        <Icon className="h-4 w-4" />
-        <span>{label}</span>
-      </div>
-      <div className="mt-3 text-sm font-medium leading-6">
-        {children ?? value}
+    <div className={`grid grid-cols-[1.25rem_1fr] gap-3 border-b py-4 last:border-b-0 ${dividerClassName}`}>
+      <Icon className={`mt-0.5 h-4 w-4 ${mutedIconClassName}`} aria-hidden="true" />
+      <div className="min-w-0">
+        <p className={labelClassName}>{label}</p>
+        <div className={`mt-2 min-w-0 text-sm leading-6 ${textClassName}`}>
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -78,94 +75,134 @@ export function TaskDetailsSummary({ board, boardId, task, labels }: TaskDetails
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const panelEyebrowClassName = getPanelEyebrowClassName(currentTheme.textMuted);
-  const assignee = task.assigneeUserId ? task.assignee : UNASSIGNED_ASSIGNEE;
-  const taskLabels = labels.filter((label) => task.labelIds.includes(label.id));
   const dividerClassName = isDarkMode ? "border-white/10" : "border-slate-200/80";
+  const assignee = task.assigneeUserId ? task.assignee : UNASSIGNED_ASSIGNEE;
+  const isAssigned = Boolean(task.assigneeUserId);
+  const taskLabels = labels.filter((label) => task.labelIds.includes(label.id));
+  const taskType = task.taskType ? TASK_TYPE_DISPLAY[task.taskType] : null;
+  const factRowProps = {
+    dividerClassName,
+    labelClassName: panelEyebrowClassName,
+    textClassName: currentTheme.textSecondary,
+    mutedIconClassName: currentTheme.textMuted,
+  };
 
   return (
-    <section className={`rounded-[2rem] border ${currentTheme.border} ${currentTheme.cardBg} shadow-[0_24px_70px_-42px_rgba(15,23,42,0.45)]`}>
-      <div className="px-6 py-6">
-        <Link
-          to={Number.isFinite(boardId) ? `/app/${boardId}` : "/app"}
-          className={`inline-flex items-center gap-2 text-sm font-medium ${currentTheme.textSecondary} hover:${currentTheme.text}`}
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to board
-        </Link>
-
-        <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start">
-          <BoardLogo iconKey={board.logoIconKey} colorKey={board.logoColorKey} size="md" />
-          <div className="min-w-0 flex-1">
-            <p className={panelEyebrowClassName}>
-              Task details
-            </p>
-            <h1 className={`font-ui-condensed mt-1 break-words text-3xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
-              {task.title}
-            </h1>
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <BoardStatusBadge statusKey={task.status} />
-              <span className={`rounded-full border px-3 py-1 text-xs font-medium ${currentTheme.border} ${currentTheme.textMuted}`}>
-                Task ID <span className="font-due-date">#{task.id}</span>
+    <section className={`overflow-hidden rounded-[2rem] border ${currentTheme.border} ${currentTheme.cardBg} shadow-[0_24px_70px_-46px_rgba(15,23,42,0.48)]`}>
+      <div className={`border-b px-5 py-5 sm:px-6 ${dividerClassName}`}>
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-center">
+          <div className="min-w-0">
+            <Link
+              to={Number.isFinite(boardId) ? `/app/${boardId}` : "/app"}
+              aria-label={`Back to ${board.name}`}
+              className={`group inline-flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r px-4 text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-xl active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} ${currentTheme.primary}`}
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              Back to board
+            </Link>
+            <div className="mt-5 flex min-w-0 items-center gap-2">
+              <BoardLogo iconKey={board.logoIconKey} colorKey={board.logoColorKey} size="xs" />
+              <span className={`truncate font-ui-condensed text-sm font-semibold tracking-[0.01em] ${currentTheme.textSecondary}`}>
+                {board.name}
               </span>
             </div>
-          </div>
-        </div>
-
-        <div className={`mt-6 border-t ${dividerClassName}`}>
-          <div className={`grid gap-x-12 md:grid-cols-2 ${currentTheme.textSecondary}`}>
-            <div className={`border-b ${dividerClassName}`}>
-              <DetailRow icon={UserRound} label="Assignee">
-                <div>
-                  <p className={currentTheme.text}>{assignee.displayName || assignee.name}</p>
-                  {assignee.username ? (
-                    <p className={`text-xs ${currentTheme.textMuted}`}>@{assignee.username}</p>
-                  ) : null}
-                </div>
-              </DetailRow>
-            </div>
-            <div className={`border-b ${dividerClassName}`}>
-              <DetailRow icon={CalendarDays} label="Due date" value={formatDueDate(task.dueDate)} />
-            </div>
-            <div className={`border-b ${dividerClassName}`}>
-              <DetailRow icon={Hash} label="Story points" value={task.storyPoints != null ? String(task.storyPoints) : "Not estimated"} />
-            </div>
-            <div className={`border-b ${dividerClassName}`}>
-              <DetailRow icon={CheckSquare} label="Task type" value={task.taskType ? TASK_TYPE_LABELS[task.taskType] : "Not set"} />
-            </div>
-            <div className={`border-b ${dividerClassName}`}>
-              <DetailRow icon={Flag} label="Priority">
-                {task.priority ? <PriorityBadge priority={task.priority} /> : <span>Not set</span>}
-              </DetailRow>
-            </div>
-            <div className={`border-b ${dividerClassName}`}>
-              <DetailRow icon={Tag} label="Labels">
-                {taskLabels.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {taskLabels.map((label) => (
-                      <span
-                        key={label.id}
-                        className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold text-white"
-                        style={{ backgroundColor: label.color }}
-                      >
-                        {label.name}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <span>No labels</span>
-                )}
-              </DetailRow>
-            </div>
+            <h1 className={`font-ui-condensed mt-3 break-words text-3xl font-semibold leading-tight tracking-[0.01em] sm:text-4xl ${currentTheme.text}`}>
+              {task.title}
+            </h1>
           </div>
 
-          <div className={`border-b ${dividerClassName}`}>
-            <DetailRow icon={CircleDot} label="Description">
-              <p className={`min-h-16 whitespace-pre-wrap ${task.description?.trim() ? currentTheme.textSecondary : currentTheme.textMuted}`}>
-                {task.description?.trim() || "No description provided."}
-              </p>
-            </DetailRow>
+          <div className={`flex items-center gap-4 self-center border-l-0 xl:border-l xl:pl-6 ${dividerClassName}`}>
+            {isAssigned ? (
+              <AppAvatar
+                username={assignee.username || assignee.displayName}
+                fullName={assignee.displayName || assignee.name}
+                size={58}
+                interactive={false}
+                enableBlink={false}
+                level={assignee.currentLevel}
+              />
+            ) : (
+              <div className={`flex h-14 w-14 items-center justify-center rounded-full border ${currentTheme.border} ${currentTheme.textMuted}`}>
+                <UserRound className="h-6 w-6" aria-hidden="true" />
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className={`truncate text-xl font-semibold leading-tight ${currentTheme.text}`}>{assignee.displayName || assignee.name}</p>
+              {isAssigned && assignee.username ? (
+                <p className={`mt-1 truncate text-sm ${currentTheme.textMuted}`}>@{assignee.username}</p>
+              ) : null}
+            </div>
           </div>
         </div>
+      </div>
+
+      <div className="grid lg:grid-cols-[minmax(0,1fr)_24rem]">
+        <div className="min-w-0 px-5 py-6 sm:px-6">
+          <section>
+            <p className={panelEyebrowClassName}>Description</p>
+            <p className={`mt-3 min-h-16 whitespace-pre-wrap text-sm leading-7 ${task.description?.trim() ? currentTheme.textSecondary : currentTheme.textMuted}`}>
+              {task.description?.trim() || "No description."}
+            </p>
+          </section>
+
+          <section className={`mt-6 border-t pt-5 ${dividerClassName}`}>
+            <p className={panelEyebrowClassName}>Labels</p>
+            {taskLabels.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {taskLabels.map((label) => (
+                  <LabelBadge
+                    key={label.id}
+                    label={label}
+                    tooltip
+                    className="max-w-[14rem] px-3 py-1.5 text-xs font-semibold shadow-sm"
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className={`mt-3 text-sm ${currentTheme.textMuted}`}>No labels.</p>
+            )}
+          </section>
+        </div>
+
+        <aside className={`border-t px-5 py-2 sm:px-6 lg:border-l lg:border-t-0 ${dividerClassName}`}>
+          <FactRow icon={CalendarDays} label="Due date" {...factRowProps}>
+            {task.dueDate ? (
+              <TaskDueDateBadge dueDate={task.dueDate} className="text-sm" iconClassName="h-4 w-4" />
+            ) : (
+              <span className={currentTheme.textMuted}>No due date</span>
+            )}
+          </FactRow>
+          <FactRow icon={Clock3} label="Time in column" {...factRowProps}>
+            {task.statusEnteredAtUtc ? (
+              <TaskColumnAgeBadge
+                status={task.status}
+                statusEnteredAtUtc={task.statusEnteredAtUtc}
+                className="text-sm"
+                iconClassName="h-4 w-4"
+              />
+            ) : (
+              <span className={currentTheme.textMuted}>No date</span>
+            )}
+          </FactRow>
+          <FactRow icon={Hash} label="Story points" {...factRowProps}>
+            <span className={`font-due-date ${task.storyPoints != null ? currentTheme.text : currentTheme.textMuted}`}>
+              {task.storyPoints ?? "Not estimated"}
+            </span>
+          </FactRow>
+          <FactRow icon={CheckSquare} label="Task type" {...factRowProps}>
+            <span>{taskType?.label ?? "No type"}</span>
+          </FactRow>
+          <FactRow icon={Flag} label="Priority" {...factRowProps}>
+            {task.priority ? (
+              <PriorityBadge priority={task.priority} isDarkMode={isDarkMode} compact />
+            ) : (
+              <span className={currentTheme.textMuted}>No priority</span>
+            )}
+          </FactRow>
+          <FactRow icon={CircleDot} label="Status" {...factRowProps}>
+            <BoardStatusBadge statusKey={task.status} />
+          </FactRow>
+        </aside>
       </div>
     </section>
   );
