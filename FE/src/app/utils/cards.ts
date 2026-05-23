@@ -289,6 +289,7 @@ export interface BoardStatisticsArchiveTrendBucket {
   key: string;
   label: string;
   concludedCount: number;
+  unconcludedCount: number;
 }
 
 export interface BoardStatisticsArchiveTrend {

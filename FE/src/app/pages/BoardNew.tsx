@@ -77,6 +77,11 @@ import {
   getPlanningPokerSession,
   type PlanningPokerSession,
 } from "../utils/planningPoker";
+import {
+  createPlanningPokerConnection,
+  stopPlanningPokerConnection,
+  watchPlanningPokerBoardSession,
+} from "../utils/planningPokerGuest";
 import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
 import { showErrorToast, showSuccessToast } from "../utils/toast";
 import {
@@ -470,6 +475,57 @@ export function Board() {
       isActive = false;
     };
   }, [loadBoardLevelLeaderboard, loadPlanningPokerSession, numericBoardId, user, workspaceReloadState]);
+
+  const planningPokerSessionId = planningPokerSession?.sessionId ?? null;
+
+  useEffect(() => {
+    if (!user || !Number.isFinite(numericBoardId) || !planningPokerSessionId) {
+      return;
+    }
+
+    let isActive = true;
+    const applyWatchedPlanningPokerSession = (session: PlanningPokerSession) => {
+      if (!isActive || session.boardId !== numericBoardId) {
+        return;
+      }
+
+      setPlanningPokerSession((currentSession) => ({
+        ...session,
+        isCurrentUserHost: currentSession?.isCurrentUserHost ?? session.isCurrentUserHost,
+      }));
+    };
+    const connection = createPlanningPokerConnection({
+      onSessionUpdated: (session) => {
+        applyWatchedPlanningPokerSession(session);
+      },
+      onVotingUpdated: (session) => {
+        applyWatchedPlanningPokerSession(session);
+      },
+      onSessionDeleted: (event) => {
+        if (isActive && event.boardId === numericBoardId) {
+          setPlanningPokerSession(null);
+        }
+      },
+    });
+
+    async function watchPlanningPokerSession() {
+      try {
+        const session = await watchPlanningPokerBoardSession(connection, numericBoardId);
+        applyWatchedPlanningPokerSession(session);
+      } catch {
+        if (isActive) {
+          setPlanningPokerSession(null);
+        }
+      }
+    }
+
+    void watchPlanningPokerSession();
+
+    return () => {
+      isActive = false;
+      void stopPlanningPokerConnection(connection);
+    };
+  }, [numericBoardId, planningPokerSessionId, user]);
 
   const availableAssignees: TaskAssignee[] = useMemo(
     () =>

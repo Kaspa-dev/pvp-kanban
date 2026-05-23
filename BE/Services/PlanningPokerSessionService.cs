@@ -67,15 +67,6 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
             Position = index,
             RoundState = index == 0 ? VotingRoundState : PendingRoundState,
         }).ToList();
-        session.Participants.Add(new PlanningPokerParticipant
-        {
-            UserId = hostUserId,
-            ParticipantToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(24)).ToLowerInvariant(),
-            DisplayName = BuildPlanningPokerDisplayName(board.Memberships.Single(membership => membership.UserId == hostUserId).User),
-            IsHost = true,
-            IsGuest = false,
-            LastSeenAtUtc = now,
-        });
 
         _context.PlanningPokerSessions.Add(session);
         await _context.SaveChangesAsync(cancellationToken);
@@ -91,11 +82,8 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
 
     public async System.Threading.Tasks.Task<PlanningPokerSessionDto> GetBoardSessionAsync(int boardId, int userId, CancellationToken cancellationToken)
     {
-        Board board = await GetBoardWithMembershipsAsync(boardId, userId, cancellationToken);
+        await GetBoardWithMembershipsAsync(boardId, userId, cancellationToken);
         PlanningPokerSession session = await GetActiveSessionForBoardAsync(boardId, cancellationToken);
-
-        await EnsureBoardMemberParticipantAsync(session, board, userId, cancellationToken);
-        await _context.SaveChangesAsync(cancellationToken);
 
         return await LoadSessionDtoByIdAsync(session.Id, userId, null, cancellationToken);
     }
@@ -384,14 +372,13 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
         int userId,
         CancellationToken cancellationToken)
     {
-        Board board = await GetBoardWithMembershipsAsync(boardId, userId, cancellationToken);
+        await GetBoardWithMembershipsAsync(boardId, userId, cancellationToken);
         PlanningPokerSession session = await GetActiveSessionForBoardAsync(boardId, cancellationToken);
 
-        PlanningPokerParticipant participant = session.Participants
-            .FirstOrDefault(item => item.UserId == userId)
-            ?? throw new PlanningPokerAccessDeniedException("You must join the planning poker session before deleting it.");
-
-        EnsureParticipantIsHost(session, participant);
+        if (session.HostUserId != userId)
+        {
+            throw new PlanningPokerAccessDeniedException("Only the host can delete the planning poker session.");
+        }
 
         PlanningPokerDeletedSessionResult result = new(session.Id, session.BoardId, session.JoinToken);
         session.ActiveSessionTaskId = null;
@@ -640,7 +627,7 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
         PlanningPokerSession session = await LoadSessionForDtoQuery()
             .FirstAsync(item => item.Id == sessionId, cancellationToken);
 
-        return ToSessionDto(session, GetCurrentParticipant(session, currentUserId, participantToken));
+        return ToSessionDto(session, GetCurrentParticipant(session, currentUserId, participantToken), currentUserId);
     }
 
     private static PlanningPokerSessionTask GetActiveVotingTask(PlanningPokerSession session)
@@ -732,7 +719,8 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
 
     private static PlanningPokerSessionDto ToSessionDto(
         PlanningPokerSession session,
-        PlanningPokerParticipant? currentParticipant)
+        PlanningPokerParticipant? currentParticipant,
+        int? currentUserId = null)
     {
         PlanningPokerSessionTask? activeTask = session.ActiveSessionTask
             ?? session.Tasks
@@ -755,7 +743,9 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
             JoinToken = session.JoinToken,
             JoinUrl = $"/planning-poker/{session.JoinToken}",
             Status = session.Status,
-            IsCurrentUserHost = currentParticipant is not null && currentParticipant.IsHost,
+            IsCurrentUserHost =
+                currentParticipant is not null && currentParticipant.IsHost ||
+                currentUserId.HasValue && currentUserId.Value == session.HostUserId,
             ActiveTask = activeTask is null ? new PlanningPokerSessionTaskDto() : ToSessionTaskDto(activeTask),
             Queue = session.Tasks
                 .OrderBy(task => task.Position)

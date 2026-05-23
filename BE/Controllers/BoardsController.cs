@@ -41,7 +41,7 @@ public class BoardsController(
     private const int MaxTaskDescriptionLength = 2000;
     private const int MaxTaskCommentLength = 2000;
     private const int MaxTaskLabels = 5;
-    private const int BoardStatisticsAgingTaskLimit = 8;
+    private const int BoardStatisticsAgingTaskLimit = 5;
     private const int MinTaskStoryPoints = 1;
     private const int MaxTaskStoryPoints = 100;
     private const int MaxBoardLabels = 12;
@@ -925,6 +925,7 @@ public class BoardsController(
 
         Dictionary<string, BoardStatisticsStatusAggregate> statusLookup = statusAggregates
             .ToDictionary(item => GetBoardStatisticsStatusAggregateKey(item.StatusKey, item.IsQueued), StringComparer.OrdinalIgnoreCase);
+        int unconcludedTaskCount = statusAggregates.Sum(item => item.TaskCount);
 
         var agingTaskRows = await _context.Tasks
             .Where(task =>
@@ -969,6 +970,7 @@ public class BoardsController(
             .ToList();
 
         List<BoardStatisticsPriorityAggregate> priorityAggregates = await currentTasks
+            .Where(task => task.Status.Title != "backlog")
             .GroupBy(task => task.Priority)
             .Select(group => new BoardStatisticsPriorityAggregate(group.Key, group.Count()))
             .ToListAsync(cancellationToken);
@@ -981,8 +983,7 @@ public class BoardsController(
         List<DateTime> concludedDates = await _context.Tasks
             .Where(task =>
                 task.BoardId == boardId &&
-                task.ConcludedAtUtc != null &&
-                task.ConcludedAtUtc >= resolvedArchiveRange.StartUtc)
+                task.ConcludedAtUtc != null)
             .Select(task => task.ConcludedAtUtc!.Value)
             .ToListAsync(cancellationToken);
 
@@ -999,7 +1000,7 @@ public class BoardsController(
                     .ToList(),
             },
             AgingTasks = agingTasks,
-            ArchiveTrend = BuildBoardStatisticsArchiveTrend(resolvedArchiveRange, concludedDates),
+            ArchiveTrend = BuildBoardStatisticsArchiveTrend(resolvedArchiveRange, concludedDates, unconcludedTaskCount),
             PriorityMix =
             [
                 ToBoardStatisticsPriorityMixDto("critical", priorityLookup),
@@ -2412,7 +2413,8 @@ public class BoardsController(
 
     private static BoardStatisticsArchiveTrendDto BuildBoardStatisticsArchiveTrend(
         BoardStatisticsArchiveRange archiveRange,
-        IEnumerable<DateTime> concludedDates)
+        IEnumerable<DateTime> concludedDates,
+        int unconcludedTaskCount)
     {
         List<BoardStatisticsArchiveTrendBucketDto> buckets = [];
 
@@ -2425,11 +2427,13 @@ public class BoardsController(
             for (int index = 0; index < archiveRange.BucketCount; index += 1)
             {
                 DateTime bucketStart = archiveRange.StartUtc.AddDays(index * 7);
+                DateTime bucketEnd = bucketStart.AddDays(7);
                 buckets.Add(new BoardStatisticsArchiveTrendBucketDto
                 {
                     Key = bucketStart.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                     Label = bucketStart.ToString("MMM d", CultureInfo.InvariantCulture),
                     ConcludedCount = concludedByWeek.GetValueOrDefault(bucketStart),
+                    UnconcludedCount = GetUnconcludedCountAtBucketEnd(concludedDates, unconcludedTaskCount, bucketEnd),
                 });
             }
 
@@ -2448,11 +2452,13 @@ public class BoardsController(
         for (int index = 0; index < archiveRange.BucketCount; index += 1)
         {
             DateTime bucketDate = archiveRange.StartUtc.AddDays(index);
+            DateTime bucketEnd = bucketDate.AddDays(1);
             buckets.Add(new BoardStatisticsArchiveTrendBucketDto
             {
                 Key = bucketDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                 Label = bucketDate.ToString("MMM d", CultureInfo.InvariantCulture),
                 ConcludedCount = concludedByDay.GetValueOrDefault(bucketDate),
+                UnconcludedCount = GetUnconcludedCountAtBucketEnd(concludedDates, unconcludedTaskCount, bucketEnd),
             });
         }
 
@@ -2462,6 +2468,14 @@ public class BoardsController(
             Bucket = archiveRange.Bucket,
             Buckets = buckets,
         };
+    }
+
+    private static int GetUnconcludedCountAtBucketEnd(
+        IEnumerable<DateTime> concludedDates,
+        int currentUnconcludedTaskCount,
+        DateTime bucketEnd)
+    {
+        return currentUnconcludedTaskCount + concludedDates.Count(concludedAt => concludedAt >= bucketEnd);
     }
 
     private static bool TryNormalizeBoardLogoKey(

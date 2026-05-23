@@ -10,6 +10,7 @@ export interface User {
 export const USERNAME_MIN_LENGTH = 3;
 export const USERNAME_MAX_LENGTH = 32;
 export const NAME_MAX_LENGTH = 32;
+export const EMAIL_MAX_LENGTH = 254;
 
 export interface RegisterInput {
   email: string;

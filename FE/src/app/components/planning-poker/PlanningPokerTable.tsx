@@ -27,6 +27,13 @@ interface PlanningPokerTableProps {
 }
 
 const tableSeatLimit = 20;
+type SeatLayoutMode = "small" | "medium" | "large";
+type ParticipantSeatGroups = {
+  top: PlanningPokerParticipant[];
+  right: PlanningPokerParticipant[];
+  bottom: PlanningPokerParticipant[];
+  left: PlanningPokerParticipant[];
+};
 
 function getVisibleParticipants(
   participants: PlanningPokerParticipant[],
@@ -46,25 +53,51 @@ function getVisibleParticipants(
   return [...visible.slice(0, -1), currentParticipant];
 }
 
-function getParticipantSeatGroups(participants: PlanningPokerParticipant[]) {
-  return participants.reduce<{
-    top: PlanningPokerParticipant[];
-    right: PlanningPokerParticipant[];
-    bottom: PlanningPokerParticipant[];
-    left: PlanningPokerParticipant[];
-  }>(
-    (groups, participant, index) => {
-      const groupKey = (["top", "right", "bottom", "left"] as const)[index % 4];
-      groups[groupKey].push(participant);
-      return groups;
-    },
-    {
-      top: [],
-      right: [],
-      bottom: [],
-      left: [],
-    },
-  );
+function getSeatLayoutMode(participantCount: number): SeatLayoutMode {
+  if (participantCount < 6) {
+    return "small";
+  }
+
+  if (participantCount <= 12) {
+    return "medium";
+  }
+
+  return "large";
+}
+
+function createEmptyParticipantSeatGroups(): ParticipantSeatGroups {
+  return {
+    top: [],
+    right: [],
+    bottom: [],
+    left: [],
+  };
+}
+
+function getParticipantSeatGroups(
+  participants: PlanningPokerParticipant[],
+  layoutMode: SeatLayoutMode,
+) {
+  const groups = createEmptyParticipantSeatGroups();
+
+  if (layoutMode === "small") {
+    groups.bottom = participants;
+    return groups;
+  }
+
+  if (layoutMode === "medium") {
+    const splitIndex = Math.ceil(participants.length / 2);
+    groups.top = participants.slice(0, splitIndex);
+    groups.bottom = participants.slice(splitIndex);
+    return groups;
+  }
+
+  participants.forEach((participant, index) => {
+    const groupKey = (["top", "right", "bottom", "left"] as const)[index % 4];
+    groups[groupKey].push(participant);
+  });
+
+  return groups;
 }
 
 function getVoteStateLabel(participant: PlanningPokerParticipant, isRevealed: boolean) {
@@ -426,9 +459,10 @@ export function PlanningPokerTable({
     () => getVisibleParticipants(participants, currentParticipantId),
     [currentParticipantId, participants],
   );
+  const seatLayoutMode = getSeatLayoutMode(visibleParticipants.length);
   const participantSeatGroups = useMemo(
-    () => getParticipantSeatGroups(visibleParticipants),
-    [visibleParticipants],
+    () => getParticipantSeatGroups(visibleParticipants, seatLayoutMode),
+    [seatLayoutMode, visibleParticipants],
   );
   const hiddenParticipantCount = Math.max(participants.length - visibleParticipants.length, 0);
   const averageVoteLabel = useMemo(
@@ -448,6 +482,23 @@ export function PlanningPokerTable({
       : votedCount > 0
         ? "Waiting for votes"
         : "Choose a card";
+  const renderCenterTable = (className = "") => (
+    <div className={cn("relative flex items-center justify-center", className)}>
+      <div className={`pointer-events-none h-56 w-full max-w-[34rem] rounded-full border ${currentTheme.border} ${isDarkMode ? "bg-zinc-900/28" : "bg-slate-100/58"}`} aria-hidden="true" />
+      <div className={`pointer-events-none absolute h-36 w-[72%] max-w-[25rem] rounded-full border border-dashed ${currentTheme.border}`} aria-hidden="true" />
+      {tableCenterMetric ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="sr-only">{tableCenterMetric.label === "AVG" ? "Average vote" : "Votes submitted"}</span>
+          <span className={`font-system-signal text-xs font-semibold uppercase tracking-[0.28em] ${currentTheme.textMuted}`}>
+            {tableCenterMetric.label}
+          </span>
+          <span className={`font-due-date text-7xl font-semibold leading-none ${currentTheme.primaryText}`}>
+            {tableCenterMetric.value}
+          </span>
+        </div>
+      ) : null}
+    </div>
+  );
 
   return (
     <section
@@ -508,69 +559,102 @@ export function PlanningPokerTable({
             </div>
           </div>
 
-          <div className="hidden min-h-[41rem] grid-cols-[minmax(12rem,1fr)_minmax(24rem,38rem)_minmax(12rem,1fr)] grid-rows-[auto_minmax(15rem,1fr)_auto] gap-4 xl:grid">
-            <ul className="col-start-2 row-start-1 flex flex-wrap justify-center gap-3" aria-label="Top planning poker seats">
-              {participantSeatGroups.top.map((participant) => (
-                <ParticipantSeat
-                  key={participant.participantId}
-                  participant={participant}
-                  isCurrentUser={participant.participantId === currentParticipantId}
-                  isRevealed={isRevealed}
-                  side="vertical"
-                />
-              ))}
-            </ul>
-
-            <ul className="col-start-1 row-start-2 flex flex-col justify-center gap-3" aria-label="Left planning poker seats">
-              {participantSeatGroups.left.map((participant) => (
-                <ParticipantSeat
-                  key={participant.participantId}
-                  participant={participant}
-                  isCurrentUser={participant.participantId === currentParticipantId}
-                  isRevealed={isRevealed}
-                />
-              ))}
-            </ul>
-
-            <div className="relative col-start-2 row-start-2 flex items-center justify-center">
-              <div className={`pointer-events-none h-56 w-full max-w-[34rem] rounded-full border ${currentTheme.border} ${isDarkMode ? "bg-zinc-900/28" : "bg-slate-100/58"}`} aria-hidden="true" />
-              <div className={`pointer-events-none absolute h-36 w-[72%] max-w-[25rem] rounded-full border border-dashed ${currentTheme.border}`} aria-hidden="true" />
-              {tableCenterMetric ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="sr-only">{tableCenterMetric.label === "AVG" ? "Average vote" : "Votes submitted"}</span>
-                  <span className={`font-system-signal text-xs font-semibold uppercase tracking-[0.28em] ${currentTheme.textMuted}`}>
-                    {tableCenterMetric.label}
-                  </span>
-                  <span className={`font-due-date text-7xl font-semibold leading-none ${currentTheme.primaryText}`}>
-                    {tableCenterMetric.value}
-                  </span>
-                </div>
-              ) : null}
+          {seatLayoutMode === "small" ? (
+            <div className="hidden min-h-[32rem] grid-cols-[minmax(24rem,44rem)] grid-rows-[minmax(16rem,1fr)_auto] justify-center gap-5 xl:grid">
+              {renderCenterTable("col-start-1 row-start-1")}
+              <ul className="col-start-1 row-start-2 flex flex-wrap justify-center gap-4" aria-label="Planning poker seats">
+                {participantSeatGroups.bottom.map((participant) => (
+                  <ParticipantSeat
+                    key={participant.participantId}
+                    participant={participant}
+                    isCurrentUser={participant.participantId === currentParticipantId}
+                    isRevealed={isRevealed}
+                    side="vertical"
+                  />
+                ))}
+              </ul>
             </div>
+          ) : null}
 
-            <ul className="col-start-3 row-start-2 flex flex-col items-end justify-center gap-3" aria-label="Right planning poker seats">
-              {participantSeatGroups.right.map((participant) => (
-                <ParticipantSeat
-                  key={participant.participantId}
-                  participant={participant}
-                  isCurrentUser={participant.participantId === currentParticipantId}
-                  isRevealed={isRevealed}
-                />
-              ))}
-            </ul>
+          {seatLayoutMode === "medium" ? (
+            <div className="hidden min-h-[37rem] grid-cols-[minmax(28rem,48rem)] grid-rows-[auto_minmax(16rem,1fr)_auto] justify-center gap-4 xl:grid">
+              <ul className="col-start-1 row-start-1 flex flex-wrap justify-center gap-3" aria-label="Top planning poker seats">
+                {participantSeatGroups.top.map((participant) => (
+                  <ParticipantSeat
+                    key={participant.participantId}
+                    participant={participant}
+                    isCurrentUser={participant.participantId === currentParticipantId}
+                    isRevealed={isRevealed}
+                    side="vertical"
+                  />
+                ))}
+              </ul>
+              {renderCenterTable("col-start-1 row-start-2")}
+              <ul className="col-start-1 row-start-3 flex flex-wrap justify-center gap-3" aria-label="Bottom planning poker seats">
+                {participantSeatGroups.bottom.map((participant) => (
+                  <ParticipantSeat
+                    key={participant.participantId}
+                    participant={participant}
+                    isCurrentUser={participant.participantId === currentParticipantId}
+                    isRevealed={isRevealed}
+                    side="vertical"
+                  />
+                ))}
+              </ul>
+            </div>
+          ) : null}
 
-            <ul className="col-start-2 row-start-3 flex flex-wrap justify-center gap-3" aria-label="Bottom planning poker seats">
-              {participantSeatGroups.bottom.map((participant) => (
-                <ParticipantSeat
-                  key={participant.participantId}
-                  participant={participant}
-                  isCurrentUser={participant.participantId === currentParticipantId}
-                  isRevealed={isRevealed}
-                  side="vertical"
-                />
-              ))}
-            </ul>
-          </div>
+          {seatLayoutMode === "large" ? (
+            <div className="hidden min-h-[41rem] grid-cols-[minmax(12rem,1fr)_minmax(24rem,38rem)_minmax(12rem,1fr)] grid-rows-[auto_minmax(15rem,1fr)_auto] gap-4 xl:grid">
+              <ul className="col-start-2 row-start-1 flex flex-wrap justify-center gap-3" aria-label="Top planning poker seats">
+                {participantSeatGroups.top.map((participant) => (
+                  <ParticipantSeat
+                    key={participant.participantId}
+                    participant={participant}
+                    isCurrentUser={participant.participantId === currentParticipantId}
+                    isRevealed={isRevealed}
+                    side="vertical"
+                  />
+                ))}
+              </ul>
+
+              <ul className="col-start-1 row-start-2 flex flex-col justify-center gap-3" aria-label="Left planning poker seats">
+                {participantSeatGroups.left.map((participant) => (
+                  <ParticipantSeat
+                    key={participant.participantId}
+                    participant={participant}
+                    isCurrentUser={participant.participantId === currentParticipantId}
+                    isRevealed={isRevealed}
+                  />
+                ))}
+              </ul>
+
+              {renderCenterTable("col-start-2 row-start-2")}
+
+              <ul className="col-start-3 row-start-2 flex flex-col items-end justify-center gap-3" aria-label="Right planning poker seats">
+                {participantSeatGroups.right.map((participant) => (
+                  <ParticipantSeat
+                    key={participant.participantId}
+                    participant={participant}
+                    isCurrentUser={participant.participantId === currentParticipantId}
+                    isRevealed={isRevealed}
+                  />
+                ))}
+              </ul>
+
+              <ul className="col-start-2 row-start-3 flex flex-wrap justify-center gap-3" aria-label="Bottom planning poker seats">
+                {participantSeatGroups.bottom.map((participant) => (
+                  <ParticipantSeat
+                    key={participant.participantId}
+                    participant={participant}
+                    isCurrentUser={participant.participantId === currentParticipantId}
+                    isRevealed={isRevealed}
+                    side="vertical"
+                  />
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
 
         <div

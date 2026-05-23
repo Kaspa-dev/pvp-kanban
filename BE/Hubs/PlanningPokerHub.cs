@@ -54,6 +54,7 @@ public class PlanningPokerHub(IPlanningPokerSessionService service, AppDbContext
             await Groups.AddToGroupAsync(Context.ConnectionId, groupName, Context.ConnectionAborted);
             ConnectedParticipants[Context.ConnectionId] = new ConnectedPlanningPokerParticipant(
                 result.Session.SessionId,
+                participantId,
                 joinToken.Trim().ToLowerInvariant(),
                 result.ParticipantToken,
                 TryGetCurrentUserId());
@@ -65,6 +66,30 @@ public class PlanningPokerHub(IPlanningPokerSessionService service, AppDbContext
                 ParticipantToken = result.ParticipantToken,
                 ParticipantId = participantId,
             };
+        }
+        catch (PlanningPokerException exception)
+        {
+            throw new HubException(exception.Message);
+        }
+    }
+
+    public async Task<PlanningPokerSessionDto> WatchBoardSession(int boardId)
+    {
+        try
+        {
+            int userId = TryGetCurrentUserId()
+                ?? throw new PlanningPokerAccessDeniedException("You must be signed in to watch a planning poker session.");
+            PlanningPokerSessionDto session = await _service.GetBoardSessionAsync(
+                boardId,
+                userId,
+                Context.ConnectionAborted);
+
+            await Groups.AddToGroupAsync(
+                Context.ConnectionId,
+                GetGroupNameForSession(session.SessionId),
+                Context.ConnectionAborted);
+
+            return session;
         }
         catch (PlanningPokerException exception)
         {
@@ -239,20 +264,22 @@ public class PlanningPokerHub(IPlanningPokerSessionService service, AppDbContext
     {
         if (ConnectedParticipants.TryRemove(Context.ConnectionId, out ConnectedPlanningPokerParticipant? participant))
         {
-            try
+            bool hasAnotherConnection = ConnectedParticipants.Values.Any(item =>
+                item.SessionId == participant.SessionId &&
+                item.ParticipantToken == participant.ParticipantToken);
+
+            if (!hasAnotherConnection)
             {
-                PlanningPokerSessionDto? session = await LoadSessionSnapshotByJoinTokenAsync(
-                    participant.JoinToken,
+                PlanningPokerSessionDto? session = await RemoveDisconnectedParticipantAsync(
+                    participant,
                     CancellationToken.None);
 
                 if (session is not null)
                 {
-                    await Clients.Group(GetGroupNameForSession(participant.SessionId))
-                        .SendAsync(SessionUpdatedEventName, session, CancellationToken.None);
+                    string groupName = GetGroupNameForSession(participant.SessionId);
+                    await Clients.Group(groupName).SendAsync(VotingUpdatedEventName, session, CancellationToken.None);
+                    await Clients.Group(groupName).SendAsync(SessionUpdatedEventName, session, CancellationToken.None);
                 }
-            }
-            catch (PlanningPokerException)
-            {
             }
         }
 
@@ -268,9 +295,37 @@ public class PlanningPokerHub(IPlanningPokerSessionService service, AppDbContext
 
     private sealed record ConnectedPlanningPokerParticipant(
         int SessionId,
+        int ParticipantId,
         string JoinToken,
         string ParticipantToken,
         int? UserId);
+
+    private async System.Threading.Tasks.Task<PlanningPokerSessionDto?> RemoveDisconnectedParticipantAsync(
+        ConnectedPlanningPokerParticipant participant,
+        CancellationToken cancellationToken)
+    {
+        BE.Models.PlanningPokerParticipant? sessionParticipant = await _context.PlanningPokerParticipants
+            .FirstOrDefaultAsync(item =>
+                item.Id == participant.ParticipantId &&
+                item.SessionId == participant.SessionId &&
+                item.ParticipantToken == participant.ParticipantToken,
+                cancellationToken);
+
+        if (sessionParticipant is null)
+        {
+            return await LoadSessionSnapshotByJoinTokenAsync(participant.JoinToken, cancellationToken);
+        }
+
+        List<BE.Models.PlanningPokerVote> votes = await _context.PlanningPokerVotes
+            .Where(vote => vote.ParticipantId == sessionParticipant.Id)
+            .ToListAsync(cancellationToken);
+
+        _context.PlanningPokerVotes.RemoveRange(votes);
+        _context.PlanningPokerParticipants.Remove(sessionParticipant);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return await LoadSessionSnapshotByJoinTokenAsync(participant.JoinToken, cancellationToken);
+    }
 
     private async System.Threading.Tasks.Task<PlanningPokerSessionDto?> LoadSessionSnapshotByJoinTokenAsync(
         string joinToken,

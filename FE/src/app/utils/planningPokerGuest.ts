@@ -81,6 +81,18 @@ export async function joinPlanningPokerSession(
   );
 }
 
+export async function watchPlanningPokerBoardSession(
+  connection: HubConnection,
+  boardId: number | string,
+): Promise<PlanningPokerSession> {
+  await ensurePlanningPokerConnection(connection);
+
+  return connection.invoke<PlanningPokerSession>(
+    "WatchBoardSession",
+    Number(boardId),
+  );
+}
+
 export async function submitPlanningPokerVote(
   connection: HubConnection,
   joinToken: string,

@@ -2,23 +2,25 @@ import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import {
   Area,
-  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
+  ComposedChart,
+  Line,
   Pie,
   PieChart,
-  ReferenceLine,
   XAxis,
   YAxis,
 } from "recharts";
+import type { TooltipProps } from "recharts";
 import { BarChart3, Clock3, HelpCircle, LoaderCircle, PieChart as PieChartIcon, TimerReset } from "lucide-react";
 import { getThemeColors, type Theme, useTheme } from "../contexts/ThemeContext";
 import { isApiError } from "../utils/auth";
 import {
   BoardStatistics,
   BoardStatisticsArchiveRange,
+  BoardStatisticsAgingTask,
   BoardStatisticsStatusCount,
   getBoardStatistics,
 } from "../utils/cards";
@@ -66,12 +68,9 @@ const ARCHIVE_CHART_CONFIG = {
     label: "Concluded",
     color: "var(--board-stat-accent)",
   },
-} satisfies ChartConfig;
-
-const AGING_CHART_CONFIG = {
-  daysInStatus: {
-    label: "Days",
-    color: "var(--board-stat-accent)",
+  unconcludedCount: {
+    label: "Not concluded",
+    color: "var(--board-stat-accent-soft)",
   },
 } satisfies ChartConfig;
 
@@ -85,38 +84,46 @@ function getTotalTaskCount(rows: Array<{ taskCount: number }>) {
   return rows.reduce((total, row) => total + row.taskCount, 0);
 }
 
-function getTotalStoryPoints(rows: BoardStatisticsStatusCount[]) {
-  return rows.reduce((total, row) => total + row.storyPoints, 0);
-}
-
-function truncateChartLabel(value: string, maxLength = 22) {
-  return value.length > maxLength ? `${value.slice(0, maxLength - 1)}...` : value;
-}
-
-function getRangeSummary(range: BoardStatisticsArchiveRange) {
-  if (range === "12w") {
-    return "Last 12 weeks";
+function getAgingToneMeta(dayCount: number, isDarkMode: boolean) {
+  if (dayCount >= 7) {
+    return {
+      label: "Stale",
+      className: isDarkMode
+        ? "border-red-500/25 bg-red-500/10 text-red-200"
+        : "border-red-200 bg-red-50 text-red-700",
+      meterClassName: "bg-red-500",
+    };
   }
 
-  return `Last ${range.replace("d", "")} days`;
+  if (dayCount >= 3) {
+    return {
+      label: "Watch",
+      className: isDarkMode
+        ? "border-amber-400/25 bg-amber-400/10 text-amber-200"
+        : "border-amber-200 bg-amber-50 text-amber-700",
+      meterClassName: "bg-amber-400",
+    };
+  }
+
+  return {
+    label: "Fresh",
+    className: isDarkMode
+      ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-200"
+      : "border-emerald-200 bg-emerald-50 text-emerald-700",
+    meterClassName: "bg-emerald-500",
+  };
 }
 
-function buildStatusChartRows(items: BoardStatisticsStatusCount[]) {
-  const activeRows = items.filter((item) => item.group === "active");
-  const backlogRows = items.filter((item) => item.group === "backlog");
+function getAgingMeterWidth(dayCount: number) {
+  return `${Math.min(100, Math.max(14, (dayCount / 14) * 100))}%`;
+}
 
-  return [
-    ...activeRows,
-    {
-      statusKey: "backlog",
-      label: "",
-      group: "separator",
-      taskCount: 0,
-      storyPoints: 0,
-      isSeparator: true,
-    },
-    ...backlogRows,
-  ];
+function getAgingSummary(tasks: BoardStatisticsAgingTask[]) {
+  return {
+    watchCount: tasks.filter((task) => task.daysInStatus >= 3 && task.daysInStatus < 7).length,
+    staleCount: tasks.filter((task) => task.daysInStatus >= 7).length,
+    oldestDays: tasks[0]?.daysInStatus ?? 0,
+  };
 }
 
 function StatisticsPanel({
@@ -139,7 +146,7 @@ function StatisticsPanel({
   const subtleIconClassName = isDarkMode ? "text-zinc-500" : "text-gray-400";
 
   return (
-    <section className={cn("rounded-2xl border p-5 shadow-sm backdrop-blur-xl", currentTheme.cardBg, currentTheme.border, className)}>
+    <section className={cn("flex flex-col rounded-2xl border p-5 shadow-sm backdrop-blur-xl", currentTheme.cardBg, currentTheme.border, className)}>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className={cn("inline-flex h-9 w-9 items-center justify-center rounded-xl", currentTheme.primaryBg, currentTheme.primaryText)}>
@@ -161,7 +168,7 @@ function StatisticsPanel({
         </div>
         {action}
       </div>
-      {children}
+      <div className="min-h-0 flex-1">{children}</div>
     </section>
   );
 }
@@ -171,7 +178,7 @@ function StatisticsEmptyState({ label }: { label: string }) {
   const currentTheme = getThemeColors(theme, isDarkMode);
 
   return (
-    <div className={cn("flex min-h-[220px] items-center justify-center rounded-2xl border border-dashed px-4 text-sm", currentTheme.border, currentTheme.textMuted)}>
+    <div className={cn("flex h-full min-h-[220px] items-center justify-center rounded-2xl border border-dashed px-4 text-sm", currentTheme.border, currentTheme.textMuted)}>
       {label}
     </div>
   );
@@ -192,6 +199,48 @@ function StatisticsSkeleton() {
           <div className={cn("mt-8 h-48 rounded-2xl", isDarkMode ? "bg-white/[0.08]" : "bg-black/[0.08]")} />
         </div>
       ))}
+    </div>
+  );
+}
+
+function ArchiveTrendTooltip({ active, payload, label }: TooltipProps<number, string>) {
+  const { theme, isDarkMode } = useTheme();
+  const currentTheme = getThemeColors(theme, isDarkMode);
+
+  if (!active || !payload?.length) {
+    return null;
+  }
+
+  const concludedItem = payload.find((item) => item.dataKey === "concludedCount");
+  const unconcludedItem = payload.find((item) => item.dataKey === "unconcludedCount");
+  const concludedValue = typeof concludedItem?.value === "number" ? concludedItem.value : 0;
+  const unconcludedValue = typeof unconcludedItem?.value === "number" ? unconcludedItem.value : 0;
+
+  return (
+    <div className={cn("grid min-w-[11rem] gap-2 rounded-lg border px-3 py-2 text-xs shadow-xl", currentTheme.cardBg, currentTheme.border)}>
+      <div className={cn("font-medium", currentTheme.text)}>{label}</div>
+      <div className="grid gap-1.5">
+        <div className="flex items-center justify-between gap-5">
+          <span className={cn("inline-flex items-center gap-2", currentTheme.textSecondary)}>
+            <span className="h-2.5 w-2.5 rounded-[3px]" style={{ backgroundColor: "var(--board-stat-accent)" }} />
+            Concluded
+          </span>
+          <span className={cn("font-due-date font-semibold tabular-nums", currentTheme.text)}>{concludedValue}</span>
+        </div>
+        <div className="flex items-center justify-between gap-5">
+          <span className={cn("inline-flex items-center gap-2", currentTheme.textSecondary)}>
+            <span
+              className="inline-block h-0 w-4 border-t-2"
+              style={{
+                borderColor: "var(--board-stat-accent-soft)",
+                borderTopStyle: "dashed",
+              }}
+            />
+            Not concluded
+          </span>
+          <span className={cn("font-due-date font-semibold tabular-nums", currentTheme.text)}>{unconcludedValue}</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -248,24 +297,24 @@ export function BoardStatisticsView({ boardId, taskDataVersion }: BoardStatistic
   };
 
   const statusRows = statistics?.statusCounts.items ?? [];
-  const statusChartRows = useMemo(() => buildStatusChartRows(statusRows), [statusRows]);
-  const statusTotal = getTotalTaskCount(statusRows);
-  const statusStoryPoints = getTotalStoryPoints(statusRows);
+  const boardStatusRows = statusRows.filter((item) => item.group === "active");
+  const backlogStatusRows = statusRows.filter((item) => item.group === "backlog");
+  const boardStatusTotal = getTotalTaskCount(boardStatusRows);
+  const backlogStatusTotal = getTotalTaskCount(backlogStatusRows);
   const archiveTotal = getTotalTaskCount(
     statistics?.archiveTrend.buckets.map((bucket) => ({
       taskCount: bucket.concludedCount,
     })) ?? [],
   );
+  const unconcludedReferenceCount = statistics?.archiveTrend.buckets[0]?.unconcludedCount ?? 0;
+  const hasArchiveTrendData = archiveTotal > 0 || unconcludedReferenceCount > 0;
   const priorityTotal = getTotalTaskCount(statistics?.priorityMix ?? []);
 
-  const agingChartRows = useMemo(
-    () =>
-      (statistics?.agingTasks ?? []).map((task) => ({
-        ...task,
-        shortTitle: truncateChartLabel(task.title, 28),
-      })),
+  const agingWatchlist = useMemo(
+    () => (statistics?.agingTasks ?? []).filter((task) => task.daysInStatus > 0).slice(0, 5),
     [statistics],
   );
+  const agingSummary = getAgingSummary(agingWatchlist);
 
   const priorityRows = useMemo(
     () =>
@@ -337,60 +386,61 @@ export function BoardStatisticsView({ boardId, taskDataVersion }: BoardStatistic
                 </div>
               </div>
 
-              <div className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]">
+              <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.82fr)_minmax(340px,0.78fr)]">
                 <StatisticsPanel
-                  title="Tasks By Status"
+                  title="Board Tasks By Status"
                   icon={BarChart3}
-                  tooltip="Shows current unconcluded work. Active workflow columns are separated from queued and unqueued backlog tasks."
+                  tooltip="Shows current unconcluded tasks in the active board workflow columns."
                 >
-                  <div className="mb-4 flex flex-wrap gap-4">
-                    <span className={cn("font-due-date text-sm tabular-nums", currentTheme.textMuted)}>
-                      {statusTotal} tasks
-                    </span>
-                    <span className={cn("font-due-date text-sm tabular-nums", currentTheme.textMuted)}>
-                      {statusStoryPoints} points
-                    </span>
-                  </div>
-                  {statusTotal > 0 ? (
+                  {boardStatusTotal > 0 ? (
                     <ChartContainer
                       config={STATUS_CHART_CONFIG}
-                      className="h-[270px] w-full"
-                      aria-label="Tasks by status"
+                      className="h-full min-h-[360px] w-full aspect-auto"
+                      aria-label="Board tasks by status"
                     >
-                      <BarChart data={statusChartRows} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
+                      <BarChart data={boardStatusRows} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
                         <CartesianGrid vertical={false} strokeDasharray="3 3" />
                         <XAxis dataKey="label" tickLine={false} axisLine={false} />
                         <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={34} />
                         <ChartTooltip content={<ChartTooltipContent />} cursor={false} />
-                        <ReferenceLine x="" stroke={isDarkMode ? "rgba(255,255,255,0.22)" : "rgba(15,23,42,0.18)"} strokeDasharray="4 4" />
-                        <Bar dataKey="taskCount" radius={[10, 10, 4, 4]}>
-                          {statusChartRows.map((entry) => (
-                            <Cell
-                              key={entry.statusKey}
-                              fill={
-                                entry.group === "separator"
-                                  ? "transparent"
-                                  : entry.group === "backlog"
-                                    ? "var(--board-stat-accent-secondary)"
-                                    : "var(--color-taskCount)"
-                              }
-                            />
-                          ))}
-                        </Bar>
+                        <Bar dataKey="taskCount" fill="var(--color-taskCount)" radius={[10, 10, 4, 4]} />
                       </BarChart>
                     </ChartContainer>
                   ) : (
-                    <StatisticsEmptyState label="No current tasks yet." />
+                    <StatisticsEmptyState label="No active board tasks yet." />
                   )}
                 </StatisticsPanel>
 
                 <StatisticsPanel
-                  title="Priority Mix"
+                  title="Backlog Tasks By Readiness"
+                  icon={BarChart3}
+                  tooltip="Shows current unconcluded backlog tasks split by queued and unqueued work."
+                >
+                  {backlogStatusTotal > 0 ? (
+                    <ChartContainer
+                      config={STATUS_CHART_CONFIG}
+                      className="h-full min-h-[360px] w-full aspect-auto"
+                      aria-label="Backlog tasks by readiness"
+                    >
+                      <BarChart data={backlogStatusRows} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
+                        <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                        <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                        <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={34} />
+                        <ChartTooltip content={<ChartTooltipContent />} cursor={false} />
+                        <Bar dataKey="taskCount" fill="var(--board-stat-accent-soft)" radius={[10, 10, 4, 4]} />
+                      </BarChart>
+                    </ChartContainer>
+                  ) : (
+                    <StatisticsEmptyState label="No backlog tasks yet." />
+                  )}
+                </StatisticsPanel>
+                <StatisticsPanel
+                  title="Board Priorities Distribution"
                   icon={PieChartIcon}
-                  tooltip="Shows how current unconcluded work is distributed by priority, including tasks without priority."
+                  tooltip="Shows how active board workflow tasks are distributed by priority, excluding backlog and concluded tasks."
                 >
                   {priorityTotal > 0 ? (
-                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_180px] xl:grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_180px]">
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_180px] xl:grid-cols-1">
                       <ChartContainer
                         config={PRIORITY_CHART_CONFIG}
                         className="h-[250px] w-full"
@@ -425,72 +475,93 @@ export function BoardStatisticsView({ boardId, taskDataVersion }: BoardStatistic
                       </div>
                     </div>
                   ) : (
-                    <StatisticsEmptyState label="No current tasks to classify." />
+                    <StatisticsEmptyState label="No active board tasks to classify." />
                   )}
                 </StatisticsPanel>
               </div>
 
               <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
                 <StatisticsPanel
-                  title="Aging Tasks"
+                  title="Aging Watchlist"
                   icon={Clock3}
-                  tooltip="Shows the oldest unconcluded tasks based on how long each task has stayed in its current status."
+                  tooltip="Surfaces tasks that have stayed in the same status for at least one day, so stale work is easier to spot."
                 >
-                  {agingChartRows.length > 0 ? (
-                    <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_360px]">
-                      <ChartContainer
-                        config={AGING_CHART_CONFIG}
-                        className="h-[300px] w-full"
-                        aria-label="Oldest current tasks by days in status"
-                      >
-                        <BarChart
-                          data={agingChartRows}
-                          layout="vertical"
-                          margin={{ left: 8, right: 16, top: 8, bottom: 8 }}
-                        >
-                          <CartesianGrid horizontal={false} strokeDasharray="3 3" />
-                          <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
-                          <YAxis dataKey="shortTitle" type="category" width={120} tickLine={false} axisLine={false} />
-                          <ChartTooltip content={<ChartTooltipContent />} cursor={false} />
-                          <Bar dataKey="daysInStatus" fill="var(--color-daysInStatus)" radius={[0, 10, 10, 0]} />
-                        </BarChart>
-                      </ChartContainer>
+                  {agingWatchlist.length > 0 ? (
+                    <div className="grid gap-5">
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <div className={cn("rounded-xl border px-4 py-3", currentTheme.border, isDarkMode ? "bg-white/[0.03]" : "bg-white/70")}>
+                          <p className={getToolbarLabelClassName(currentTheme.textMuted)}>Oldest</p>
+                          <p className={cn("mt-1 font-due-date text-2xl font-semibold tabular-nums", currentTheme.text)}>
+                            {agingSummary.oldestDays}d
+                          </p>
+                        </div>
+                        <div className={cn("rounded-xl border px-4 py-3", currentTheme.border, isDarkMode ? "bg-white/[0.03]" : "bg-white/70")}>
+                          <p className={getToolbarLabelClassName(currentTheme.textMuted)}>Watch</p>
+                          <p className={cn("mt-1 font-due-date text-2xl font-semibold tabular-nums", currentTheme.text)}>
+                            {agingSummary.watchCount}
+                          </p>
+                        </div>
+                        <div className={cn("rounded-xl border px-4 py-3", currentTheme.border, isDarkMode ? "bg-white/[0.03]" : "bg-white/70")}>
+                          <p className={getToolbarLabelClassName(currentTheme.textMuted)}>Stale</p>
+                          <p className={cn("mt-1 font-due-date text-2xl font-semibold tabular-nums", currentTheme.text)}>
+                            {agingSummary.staleCount}
+                          </p>
+                        </div>
+                      </div>
+
                       <div className="space-y-2">
-                        {statistics.agingTasks.map((task) => (
+                        {agingWatchlist.map((task) => {
+                          const agingTone = getAgingToneMeta(task.daysInStatus, isDarkMode);
+
+                          return (
                           <div
                             key={task.taskId}
-                            className={cn("flex items-center justify-between gap-3 rounded-xl border px-3 py-2", currentTheme.border, isDarkMode ? "bg-white/[0.03]" : "bg-white/70")}
+                            className={cn("rounded-xl border px-4 py-3", currentTheme.border, isDarkMode ? "bg-white/[0.03]" : "bg-white/80")}
                           >
-                            <div className="min-w-0">
-                              <p className={cn("truncate text-sm font-semibold", currentTheme.text)}>{task.title}</p>
-                              <p className={cn("mt-0.5 text-xs", currentTheme.textMuted)}>{task.statusLabel}</p>
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="min-w-0">
+                                <p className={cn("truncate text-sm font-semibold", currentTheme.text)}>{task.title}</p>
+                                <div className="mt-1 flex flex-wrap items-center gap-2">
+                                  <span className={cn("text-xs", currentTheme.textMuted)}>{task.statusLabel}</span>
+                                  <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-semibold", agingTone.className)}>
+                                    {agingTone.label}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex shrink-0 items-center gap-2">
+                                {task.assignee ? (
+                                  <AppAvatar
+                                    username={task.assignee.username}
+                                    fullName={task.assignee.displayName}
+                                    size={26}
+                                    showTooltip
+                                    tooltip={task.assignee.displayName || task.assignee.username}
+                                    level={task.assignee.currentLevel}
+                                  />
+                                ) : null}
+                                <span className={cn("font-due-date text-sm font-semibold tabular-nums", currentTheme.primaryText)}>
+                                  {task.daysInStatus}d
+                                </span>
+                              </div>
                             </div>
-                            <div className="flex shrink-0 items-center gap-2">
-                              {task.assignee ? (
-                                <AppAvatar
-                                  username={task.assignee.username}
-                                  fullName={task.assignee.displayName}
-                                  size={26}
-                                  showTooltip
-                                  tooltip={task.assignee.displayName || task.assignee.username}
-                                  level={task.assignee.currentLevel}
-                                />
-                              ) : null}
-                              <span className={cn("font-due-date text-sm font-semibold tabular-nums", currentTheme.primaryText)}>
-                                {task.daysInStatus}d
-                              </span>
+                            <div className={cn("mt-3 h-1.5 overflow-hidden rounded-full", isDarkMode ? "bg-white/10" : "bg-slate-200/80")}>
+                              <div
+                                className={cn("h-full rounded-full", agingTone.meterClassName)}
+                                style={{ width: getAgingMeterWidth(task.daysInStatus) }}
+                              />
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   ) : (
-                    <StatisticsEmptyState label="No aging current tasks yet." />
+                    <StatisticsEmptyState label="No aging tasks yet. Tasks appear here after at least one day in the same status." />
                   )}
                 </StatisticsPanel>
 
                 <StatisticsPanel
-                  title="Archive Trend"
+                  title="Conclusion History"
                   icon={TimerReset}
                   tooltip="Shows concluded tasks over the selected period. These are tasks moved into History."
                   action={
@@ -512,21 +583,13 @@ export function BoardStatisticsView({ boardId, taskDataVersion }: BoardStatistic
                     </div>
                   }
                 >
-                  <div className="mb-4 flex flex-wrap gap-4">
-                    <span className={cn("font-due-date text-sm tabular-nums", currentTheme.textMuted)}>
-                      {getRangeSummary(archiveRange)}
-                    </span>
-                    <span className={cn("font-due-date text-sm tabular-nums", currentTheme.textMuted)}>
-                      {archiveTotal} concluded
-                    </span>
-                  </div>
-                  {archiveTotal > 0 ? (
+                  {hasArchiveTrendData ? (
                     <ChartContainer
                       config={ARCHIVE_CHART_CONFIG}
                       className="h-[300px] w-full"
-                      aria-label="Concluded tasks over time"
+                      aria-label="Concluded and unconcluded tasks over time"
                     >
-                      <AreaChart data={statistics.archiveTrend.buckets} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
+                      <ComposedChart data={statistics.archiveTrend.buckets} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
                         <defs>
                           <linearGradient id="archiveTrendFill" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="var(--board-stat-accent)" stopOpacity={0.34} />
@@ -536,7 +599,7 @@ export function BoardStatisticsView({ boardId, taskDataVersion }: BoardStatistic
                         <CartesianGrid vertical={false} strokeDasharray="3 3" />
                         <XAxis dataKey="label" tickLine={false} axisLine={false} interval="preserveStartEnd" />
                         <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={34} />
-                        <ChartTooltip content={<ChartTooltipContent />} cursor={false} />
+                        <ChartTooltip content={<ArchiveTrendTooltip />} cursor={false} />
                         <Area
                           type="monotone"
                           dataKey="concludedCount"
@@ -544,10 +607,20 @@ export function BoardStatisticsView({ boardId, taskDataVersion }: BoardStatistic
                           strokeWidth={2}
                           fill="url(#archiveTrendFill)"
                         />
-                      </AreaChart>
+                        <Line
+                          type="monotone"
+                          dataKey="unconcludedCount"
+                          stroke="var(--color-unconcludedCount)"
+                          strokeWidth={2}
+                          strokeDasharray="5 5"
+                          dot={false}
+                          activeDot={{ r: 4, strokeWidth: 0 }}
+                          opacity={0.55}
+                        />
+                      </ComposedChart>
                     </ChartContainer>
                   ) : (
-                    <StatisticsEmptyState label="No concluded tasks in this period." />
+                    <StatisticsEmptyState label="No concluded or current tasks in this period." />
                   )}
                 </StatisticsPanel>
               </div>
