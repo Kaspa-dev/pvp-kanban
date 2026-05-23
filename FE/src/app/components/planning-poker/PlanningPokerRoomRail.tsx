@@ -1,6 +1,7 @@
-import { CheckCircle2, ClipboardList, Copy, Crown, LoaderCircle, RefreshCcw, UsersRound } from "lucide-react";
+import { Copy, Crown, UsersRound } from "lucide-react";
 
 import { getThemeColors, useTheme } from "../../contexts/ThemeContext";
+import type { Card } from "../../utils/cards";
 import type { PlanningPokerParticipant, PlanningPokerSession, PlanningPokerSessionTask } from "../../utils/planningPoker";
 import { AppAvatar } from "../AppAvatar";
 import { CustomScrollArea } from "../CustomScrollArea";
@@ -10,26 +11,39 @@ import { cn } from "../ui/utils";
 interface PlanningPokerRoomRailProps {
   session: PlanningPokerSession;
   activeTask: PlanningPokerSessionTask | null;
+  backlogTasks: Card[];
   currentParticipantId: number | null;
   isHost: boolean;
-  isAdvancingTask: boolean;
-  canOpenBacklogPicker: boolean;
+  isSelectingTask: boolean;
   copyFeedback: string;
   onCopyLink: () => void | Promise<void>;
-  onOpenBacklogPicker: () => void;
-  onAdvanceToNextTask: () => void | Promise<void>;
+  onSelectTask: (taskId: number) => void | Promise<void>;
 }
 
-function getTaskStateLabel(task: PlanningPokerSessionTask, isActive: boolean) {
-  if (task.appliedStoryPoints !== null) {
-    return `${task.appliedStoryPoints} pts`;
+function getTaskStateLabel(sessionTask: PlanningPokerSessionTask | undefined, isActive: boolean) {
+  if (isActive) {
+    return sessionTask?.recommendedStoryPoints !== null && sessionTask?.recommendedStoryPoints !== undefined
+      ? `${sessionTask.recommendedStoryPoints} picked`
+      : "Voting";
   }
 
-  if (isActive) {
-    return task.recommendedStoryPoints !== null ? `${task.recommendedStoryPoints} picked` : "Voting";
+  if (!sessionTask) {
+    return "Backlog";
+  }
+
+  if (sessionTask.roundState.toLowerCase() === "revealed" || sessionTask.recommendedStoryPoints !== null) {
+    return "Review";
   }
 
   return "Queued";
+}
+
+function hasPickedRecommendation(sessionTask: PlanningPokerSessionTask | undefined) {
+  return sessionTask?.recommendedStoryPoints !== null && sessionTask?.recommendedStoryPoints !== undefined;
+}
+
+function isRevealedSessionTask(sessionTask: PlanningPokerSessionTask | undefined) {
+  return sessionTask?.roundState.toLowerCase() === "revealed";
 }
 
 function getParticipantStatus(participant: PlanningPokerParticipant, isRevealed: boolean) {
@@ -51,15 +65,15 @@ function ParticipantRow({
 }) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
+  const participantLabel = isCurrentUser ? "YOU" : participant.displayName;
 
   return (
     <li
       className={cn(
         "flex items-center gap-3 rounded-2xl border px-3 py-3",
-        isCurrentUser
-          ? `${currentTheme.primaryBorder} ${isDarkMode ? "bg-white/[0.055]" : "bg-white"}`
-          : `${currentTheme.border} ${isDarkMode ? "bg-white/[0.025]" : "bg-slate-50/78"}`,
+        `${currentTheme.border} ${isDarkMode ? "bg-white/[0.025]" : "bg-slate-50/78"}`,
       )}
+      aria-label={`${isCurrentUser ? "You" : participant.displayName}: ${getParticipantStatus(participant, isRevealed)}`}
     >
       <AppAvatar
         username={participant.displayName}
@@ -72,7 +86,7 @@ function ParticipantRow({
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-center gap-1.5">
           <span className={`truncate text-sm font-semibold ${currentTheme.text}`}>
-            {participant.displayName}
+            {participantLabel}
           </span>
           {participant.isHost ? <Crown className={`h-3.5 w-3.5 shrink-0 ${currentTheme.primaryText}`} aria-label="Host" /> : null}
         </div>
@@ -90,18 +104,51 @@ function ParticipantRow({
 export function PlanningPokerRoomRail({
   session,
   activeTask,
+  backlogTasks,
   currentParticipantId,
   isHost,
-  isAdvancingTask,
-  canOpenBacklogPicker,
+  isSelectingTask,
   copyFeedback,
   onCopyLink,
-  onOpenBacklogPicker,
-  onAdvanceToNextTask,
+  onSelectTask,
 }: PlanningPokerRoomRailProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
-  const canAdvanceToNextTask = isHost && session.queue.length > 0 && !isAdvancingTask;
+  const sessionTasksByTaskId = new Map(
+    [activeTask, ...session.queue]
+      .filter((task): task is PlanningPokerSessionTask => Boolean(task))
+      .map((task) => [task.taskId, task]),
+  );
+  const unratedBacklogTasks = backlogTasks
+    .filter((task) => task.status === "backlog" && task.storyPoints == null)
+    .sort((firstTask, secondTask) => firstTask.columnPosition - secondTask.columnPosition);
+  const taskGroups = [
+    {
+      label: "Current",
+      tasks: unratedBacklogTasks.filter((task) => activeTask?.taskId === task.id),
+    },
+    {
+      label: "Review",
+      tasks: unratedBacklogTasks.filter((task) => {
+        const sessionTask = sessionTasksByTaskId.get(task.id);
+        return activeTask?.taskId !== task.id && (isRevealedSessionTask(sessionTask) || hasPickedRecommendation(sessionTask));
+      }),
+    },
+    {
+      label: "Queued",
+      tasks: unratedBacklogTasks.filter((task) => {
+        const sessionTask = sessionTasksByTaskId.get(task.id);
+        return activeTask?.taskId !== task.id &&
+          Boolean(sessionTask) &&
+          !isRevealedSessionTask(sessionTask) &&
+          !hasPickedRecommendation(sessionTask);
+      }),
+    },
+    {
+      label: "Backlog",
+      tasks: unratedBacklogTasks.filter((task) => !sessionTasksByTaskId.has(task.id)),
+    },
+  ].filter((group) => group.tasks.length > 0);
 
   return (
     <aside
@@ -115,21 +162,9 @@ export function PlanningPokerRoomRail({
               Tasks
             </h2>
             <p className={`font-due-date mt-0.5 text-xs font-semibold ${currentTheme.textMuted}`}>
-              {session.queue.length + (activeTask ? 1 : 0)} in room
+              {unratedBacklogTasks.length} unrated backlog {unratedBacklogTasks.length === 1 ? "task" : "tasks"}
             </p>
           </div>
-          {isHost ? (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!canOpenBacklogPicker}
-              onClick={onOpenBacklogPicker}
-              className={`h-9 rounded-xl border px-3 text-sm font-semibold ${currentTheme.border} ${currentTheme.textSecondary} ${isDarkMode ? "bg-white/[0.035] hover:bg-white/[0.06]" : "bg-slate-50 hover:bg-white"}`}
-            >
-              <ClipboardList className="h-4 w-4" aria-hidden="true" />
-              Change
-            </Button>
-          ) : null}
         </div>
       </div>
 
@@ -139,63 +174,83 @@ export function PlanningPokerRoomRail({
             <h3 id="planning-poker-rail-tasks" className="sr-only">
               Task queue
             </h3>
-            <div className="space-y-2">
-              {activeTask ? (
-                <div
-                  className={`rounded-2xl border px-3 py-3 ${currentTheme.primaryBorder} ${isDarkMode ? "bg-white/[0.05]" : "bg-white"}`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className={`line-clamp-2 text-sm font-semibold ${currentTheme.text}`}>{activeTask.title}</p>
-                      <p className={`font-due-date mt-2 text-xs font-semibold ${currentTheme.primaryText}`}>
-                        {getTaskStateLabel(activeTask, true)}
-                      </p>
+            {taskGroups.length > 0 ? (
+              <div className="space-y-4">
+                {taskGroups.map((group) => (
+                  <div key={group.label} className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className={`font-ui-condensed text-sm font-semibold tracking-[0.01em] ${currentTheme.textMuted}`}>
+                        {group.label}
+                      </h4>
+                      <span className={`font-due-date text-[11px] font-semibold ${currentTheme.textMuted}`}>
+                        {group.tasks.length}
+                      </span>
                     </div>
-                    {activeTask.appliedStoryPoints !== null ? (
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" aria-label="Applied" />
-                    ) : null}
+
+                    <div className="space-y-2">
+                      {group.tasks.map((task) => {
+                        const sessionTask = sessionTasksByTaskId.get(task.id);
+                        const isActiveTask = activeTask?.taskId === task.id;
+                        const canSelectTask =
+                          isHost && !isActiveTask && !isSelectingTask;
+                        const taskContent = (
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className={`line-clamp-2 text-sm font-semibold ${currentTheme.text}`}>{task.title}</p>
+                              <p className={`font-due-date mt-2 text-xs font-semibold ${isActiveTask ? currentTheme.primaryText : currentTheme.textMuted}`}>
+                                {getTaskStateLabel(sessionTask, isActiveTask)}
+                              </p>
+                            </div>
+                          </div>
+                        );
+
+                        if (!isHost) {
+                          return (
+                            <div
+                              key={task.id}
+                              className={`rounded-2xl border px-3 py-3 text-left ${isActiveTask ? currentTheme.primaryBorder : currentTheme.border} ${
+                                isActiveTask
+                                  ? isDarkMode ? "bg-white/[0.05]" : "bg-white"
+                                  : isDarkMode ? "bg-white/[0.025]" : "bg-slate-50/78"
+                              }`}
+                              aria-current={isActiveTask ? "true" : undefined}
+                            >
+                              {taskContent}
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <button
+                            key={task.id}
+                            type="button"
+                            disabled={!canSelectTask}
+                            onClick={() => void onSelectTask(task.id)}
+                            className={`w-full rounded-2xl border px-3 py-3 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 ${currentTheme.focus} ${
+                              isActiveTask
+                                ? `${currentTheme.primaryBorder} ${isDarkMode ? "bg-white/[0.05]" : "bg-white"}`
+                                : `${currentTheme.border} ${isDarkMode ? "bg-white/[0.025] hover:bg-white/[0.055]" : "bg-slate-50/78 hover:bg-white"}`
+                            } ${!canSelectTask && !isActiveTask ? "cursor-not-allowed opacity-60" : ""}`}
+                            aria-current={isActiveTask ? "true" : undefined}
+                            aria-label={
+                              isActiveTask
+                                ? `${task.title}, current task`
+                                : `Switch to ${task.title}`
+                            }
+                          >
+                            {taskContent}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                ))}
+              </div>
               ) : (
                 <div className={`rounded-2xl border px-3 py-4 text-sm ${currentTheme.border} ${currentTheme.textMuted} ${isDarkMode ? "bg-white/[0.025]" : "bg-slate-50/78"}`}>
-                  No active task
+                  No unrated backlog tasks
                 </div>
               )}
-
-              {session.queue.map((task) => (
-                <div
-                  key={task.sessionTaskId}
-                  className={`rounded-2xl border px-3 py-3 ${currentTheme.border} ${isDarkMode ? "bg-white/[0.025]" : "bg-slate-50/78"}`}
-                >
-                  <p className={`line-clamp-2 text-sm font-semibold ${currentTheme.text}`}>{task.title}</p>
-                  <p className={`font-due-date mt-2 text-xs font-semibold ${currentTheme.textMuted}`}>
-                    {getTaskStateLabel(task, false)}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            {isHost ? (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={!canAdvanceToNextTask}
-                onClick={() => void onAdvanceToNextTask()}
-                className={`mt-3 h-10 w-full rounded-xl border text-sm font-semibold ${currentTheme.border} ${currentTheme.textSecondary} ${isDarkMode ? "bg-white/[0.035] hover:bg-white/[0.06]" : "bg-slate-50 hover:bg-white"}`}
-              >
-                {isAdvancingTask ? (
-                  <>
-                    <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
-                    Moving
-                  </>
-                ) : (
-                  <>
-                    <RefreshCcw className="h-4 w-4" aria-hidden="true" />
-                    Next task
-                  </>
-                )}
-              </Button>
-            ) : null}
           </section>
 
           <section aria-labelledby="planning-poker-rail-participants">

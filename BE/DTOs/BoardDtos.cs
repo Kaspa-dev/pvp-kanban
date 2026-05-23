@@ -122,8 +122,71 @@ public class BoardTaskDto
     public int? StoryPoints { get; set; }
     public string? DueDate { get; set; }
     public DateTime? StatusEnteredAtUtc { get; set; }
+    public DateTime? ConcludedAtUtc { get; set; }
+    public int? ConcludedByUserId { get; set; }
     public string? Priority { get; set; }
     public string? TaskType { get; set; }
+}
+
+public class ConcludeBoardTasksResponseDto
+{
+    public List<int> TaskIds { get; set; } = new();
+    public int Count { get; set; }
+}
+
+public class BoardStatisticsDto
+{
+    public BoardStatisticsStatusSummaryDto StatusCounts { get; set; } = new();
+    public List<BoardStatisticsAgingTaskDto> AgingTasks { get; set; } = new();
+    public BoardStatisticsArchiveTrendDto ArchiveTrend { get; set; } = new();
+    public List<BoardStatisticsPriorityMixDto> PriorityMix { get; set; } = new();
+}
+
+public class BoardStatisticsStatusSummaryDto
+{
+    public List<BoardStatisticsStatusCountDto> Items { get; set; } = new();
+}
+
+public class BoardStatisticsStatusCountDto
+{
+    public string StatusKey { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string Group { get; set; } = string.Empty;
+    public int TaskCount { get; set; }
+    public int StoryPoints { get; set; }
+}
+
+public class BoardStatisticsAgingTaskDto
+{
+    public int TaskId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string StatusKey { get; set; } = string.Empty;
+    public string StatusLabel { get; set; } = string.Empty;
+    public int DaysInStatus { get; set; }
+    public DateTime? StatusEnteredAtUtc { get; set; }
+    public string? Priority { get; set; }
+    public BoardMemberDto? Assignee { get; set; }
+}
+
+public class BoardStatisticsArchiveTrendDto
+{
+    public string Range { get; set; } = "30d";
+    public string Bucket { get; set; } = "day";
+    public List<BoardStatisticsArchiveTrendBucketDto> Buckets { get; set; } = new();
+}
+
+public class BoardStatisticsArchiveTrendBucketDto
+{
+    public string Key { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public int ConcludedCount { get; set; }
+}
+
+public class BoardStatisticsPriorityMixDto
+{
+    public string Priority { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public int TaskCount { get; set; }
 }
 
 public class TaskCommentDto
@@ -190,9 +253,20 @@ public class PagedMyTaskListResponseDto
     public int TotalPages { get; set; }
 }
 
+public class MyTaskBoardOptionDto
+{
+    public int BoardId { get; set; }
+    public string BoardName { get; set; } = string.Empty;
+    public string BoardLogoIconKey { get; set; } = string.Empty;
+    public string BoardLogoColorKey { get; set; } = string.Empty;
+}
+
 public class MyTaskListQueryDto
 {
     public string Scope { get; set; } = "active";
+    public int? BoardId { get; set; }
+    [FromQuery(Name = "boardIds")]
+    public List<int> BoardIds { get; set; } = new();
     public string? Q { get; set; }
     public string QuickFilter { get; set; } = "all";
     [FromQuery(Name = "priorities")]
@@ -219,6 +293,9 @@ public class MyTaskItemDto
     public int ReporterUserId { get; set; }
     public int? StoryPoints { get; set; }
     public string? DueDate { get; set; }
+    public DateTime? StatusEnteredAtUtc { get; set; }
+    public DateTime? ConcludedAtUtc { get; set; }
+    public int? ConcludedByUserId { get; set; }
     public string? Priority { get; set; }
     public string? TaskType { get; set; }
     public int BoardId { get; set; }

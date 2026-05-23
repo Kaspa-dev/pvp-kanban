@@ -174,6 +174,33 @@ public class UsersController : ControllerBase
         return Ok(progress);
     }
 
+    // GET api/users/me/tasks/boards
+    [HttpGet("me/tasks/boards")]
+    public async Task<ActionResult<IEnumerable<MyTaskBoardOptionDto>>> GetMyTaskBoards(CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        var boards = await _context.Boards
+            .AsNoTracking()
+            .Where(board =>
+                board.CreatorId == userId ||
+                board.Memberships.Any(membership => membership.UserId == userId))
+            .OrderBy(board => board.Title)
+            .Select(board => new MyTaskBoardOptionDto
+            {
+                BoardId = board.Id,
+                BoardName = board.Title,
+                BoardLogoIconKey = board.LogoIconKey,
+                BoardLogoColorKey = board.LogoColorKey,
+            })
+            .ToListAsync(cancellationToken);
+
+        return Ok(boards);
+    }
+
     // GET api/users/me/tasks?scope=active
     [HttpGet("me/tasks")]
     public async Task<ActionResult<PagedMyTaskListResponseDto>> GetMyTasks(
@@ -483,9 +510,25 @@ public class UsersController : ControllerBase
         string scope,
         MyTaskListQueryDto request)
     {
+        query = query.Where(task => task.ConcludedAtUtc == null);
+
         if (scope == "active")
         {
             query = query.Where(task => task.Status.Title != "done");
+        }
+
+        List<int> boardIds = request.BoardIds
+            .Where(boardId => boardId > 0)
+            .Distinct()
+            .ToList();
+        if (request.BoardId.HasValue && request.BoardId.Value > 0 && !boardIds.Contains(request.BoardId.Value))
+        {
+            boardIds.Add(request.BoardId.Value);
+        }
+
+        if (boardIds.Count > 0)
+        {
+            query = query.Where(task => boardIds.Contains(task.BoardId));
         }
 
         if (!string.IsNullOrWhiteSpace(request.Q))
@@ -729,6 +772,9 @@ public class UsersController : ControllerBase
             ReporterUserId = task.ReporterId,
             StoryPoints = task.StoryPoints,
             DueDate = task.DueDate?.ToString("yyyy-MM-dd"),
+            StatusEnteredAtUtc = task.StatusEnteredAtUtc,
+            ConcludedAtUtc = task.ConcludedAtUtc,
+            ConcludedByUserId = task.ConcludedByUserId,
             Priority = task.Priority?.ToString().ToLowerInvariant(),
             TaskType = task.Type?.ToString().ToLowerInvariant(),
             BoardId = task.BoardId,

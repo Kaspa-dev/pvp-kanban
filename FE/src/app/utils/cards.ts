@@ -106,6 +106,8 @@ export interface ApiTask {
   storyPoints?: number;
   dueDate?: string | null;
   statusEnteredAtUtc?: string | null;
+  concludedAtUtc?: string | null;
+  concludedByUserId?: number | null;
   priority?: Priority;
   taskType?: TaskType;
 }
@@ -146,6 +148,8 @@ export interface Card {
   storyPoints?: number;
   dueDate?: string | null;
   statusEnteredAtUtc?: string | null;
+  concludedAtUtc?: string | null;
+  concludedByUserId?: number | null;
   priority?: Priority;
   taskType?: TaskType;
   reporterUserId?: number;
@@ -166,6 +170,11 @@ interface ApiTaskComment {
 
 interface ApiTaskDetails extends ApiTask {
   comments: ApiTaskComment[];
+}
+
+interface ApiConcludeBoardTasksResponse {
+  taskIds: number[];
+  count: number;
 }
 
 export interface TaskComment {
@@ -215,6 +224,13 @@ interface ApiMyTaskItem extends ApiTask {
   boardLogoColorKey: BoardLogoColorKey;
 }
 
+interface ApiMyTaskBoardOption {
+  boardId: number;
+  boardName: string;
+  boardLogoIconKey: BoardLogoIconKey;
+  boardLogoColorKey: BoardLogoColorKey;
+}
+
 type ApiMyTasksResponse =
   | ApiMyTaskItem[]
   | {
@@ -248,6 +264,61 @@ export interface MyTaskListPage {
   totalPages: number;
 }
 
+export type BoardStatisticsArchiveRange = "14d" | "30d" | "12w";
+
+export interface BoardStatisticsStatusCount {
+  statusKey: TaskStatus;
+  label: string;
+  group: "active" | "backlog";
+  taskCount: number;
+  storyPoints: number;
+}
+
+export interface BoardStatisticsAgingTask {
+  taskId: number;
+  title: string;
+  statusKey: TaskStatus;
+  statusLabel: string;
+  daysInStatus: number;
+  statusEnteredAtUtc?: string | null;
+  priority?: Priority | null;
+  assignee: TaskAssignee | null;
+}
+
+export interface BoardStatisticsArchiveTrendBucket {
+  key: string;
+  label: string;
+  concludedCount: number;
+}
+
+export interface BoardStatisticsArchiveTrend {
+  range: BoardStatisticsArchiveRange;
+  bucket: "day" | "week";
+  buckets: BoardStatisticsArchiveTrendBucket[];
+}
+
+export interface BoardStatisticsPriorityMixItem {
+  priority: PriorityFilterValue;
+  label: string;
+  taskCount: number;
+}
+
+export interface BoardStatistics {
+  statusCounts: {
+    items: BoardStatisticsStatusCount[];
+  };
+  agingTasks: BoardStatisticsAgingTask[];
+  archiveTrend: BoardStatisticsArchiveTrend;
+  priorityMix: BoardStatisticsPriorityMixItem[];
+}
+
+export interface MyTaskBoardOption {
+  boardId: number;
+  boardName: string;
+  boardLogoIconKey: BoardLogoIconKey;
+  boardLogoColorKey: BoardLogoColorKey;
+}
+
 export interface GetBoardTaskPageInput {
   scope: BoardTaskListScope;
   q?: string;
@@ -266,6 +337,8 @@ export interface GetBoardTaskPageInput {
 
 export interface GetMyTaskPageInput {
   scope: MyTasksScope;
+  boardId?: number | null;
+  boardIds?: number[];
   q?: string;
   quickFilter?: MyTaskQuickFilter;
   priorities?: PriorityFilterValue[];
@@ -331,6 +404,8 @@ export function normalizeTask(task: ApiTask): Card {
     storyPoints: task.storyPoints,
     dueDate: task.dueDate ?? null,
     statusEnteredAtUtc: task.statusEnteredAtUtc ?? null,
+    concludedAtUtc: task.concludedAtUtc ?? null,
+    concludedByUserId: task.concludedByUserId ?? null,
     priority: task.priority,
     taskType: task.taskType,
     reporterUserId: task.reporterUserId,
@@ -553,10 +628,34 @@ export async function getBoardTaskPage(
   };
 }
 
+export async function getBoardStatistics(
+  boardId: number | string,
+  archiveRange: BoardStatisticsArchiveRange = "30d",
+): Promise<BoardStatistics> {
+  const params = new URLSearchParams();
+  params.set("archiveRange", archiveRange);
+
+  return apiJson<BoardStatistics>(
+    `/api/boards/${Number(boardId)}/statistics?${params.toString()}`,
+    { method: "GET" },
+    "Unable to load board statistics right now.",
+  );
+}
+
 export async function getMyTaskPage(input: GetMyTaskPageInput): Promise<MyTaskListPage> {
   const normalizedScope: MyTasksScope = input.scope === "all" ? "all" : "active";
   const params = new URLSearchParams();
   params.set("scope", normalizedScope);
+
+  if (typeof input.boardId === "number" && Number.isFinite(input.boardId) && input.boardId > 0) {
+    params.set("boardId", String(input.boardId));
+  }
+
+  input.boardIds?.forEach((boardId) => {
+    if (Number.isFinite(boardId) && boardId > 0) {
+      params.append("boardIds", String(boardId));
+    }
+  });
 
   if (input.q?.trim()) {
     params.set("q", input.q.trim());
@@ -609,6 +708,28 @@ export async function getMyTaskPage(input: GetMyTaskPageInput): Promise<MyTaskLi
     totalItems: Array.isArray(response) ? fallbackTotalItems : response.totalItems ?? fallbackTotalItems,
     totalPages: Array.isArray(response) ? (fallbackTotalItems > 0 ? 1 : 0) : response.totalPages ?? (fallbackTotalItems > 0 ? 1 : 0),
   };
+}
+
+function normalizeMyTaskBoardOption(board: ApiMyTaskBoardOption): MyTaskBoardOption {
+  return {
+    boardId: board.boardId,
+    boardName: board.boardName,
+    boardLogoIconKey: board.boardLogoIconKey,
+    boardLogoColorKey: board.boardLogoColorKey,
+  };
+}
+
+export async function getMyTaskBoardOptions(signal?: AbortSignal): Promise<MyTaskBoardOption[]> {
+  const boards = await apiJson<ApiMyTaskBoardOption[]>(
+    "/api/users/me/tasks/boards",
+    {
+      method: "GET",
+      signal,
+    },
+    "Unable to load task boards right now.",
+  );
+
+  return boards.map(normalizeMyTaskBoardOption);
 }
 
 export async function getMyTasks(scope: MyTasksScope = "active"): Promise<MyTask[]> {
@@ -707,6 +828,42 @@ export async function updateBoardTaskPosition(
       }),
     },
     "Unable to move the task right now.",
+  );
+
+  return normalizeTask(task);
+}
+
+export async function concludeBoardTask(
+  boardId: number | string,
+  taskId: number | string,
+): Promise<Card> {
+  const task = await apiJson<ApiTask>(
+    `/api/boards/${Number(boardId)}/tasks/${Number(taskId)}/conclude`,
+    { method: "POST" },
+    "Unable to conclude the task right now.",
+  );
+
+  return normalizeTask(task);
+}
+
+export async function concludeDoneBoardTasks(
+  boardId: number | string,
+): Promise<{ taskIds: number[]; count: number }> {
+  return apiJson<ApiConcludeBoardTasksResponse>(
+    `/api/boards/${Number(boardId)}/tasks/conclude-done`,
+    { method: "POST" },
+    "Unable to conclude done tasks right now.",
+  );
+}
+
+export async function restoreBoardTaskToBacklog(
+  boardId: number | string,
+  taskId: number | string,
+): Promise<Card> {
+  const task = await apiJson<ApiTask>(
+    `/api/boards/${Number(boardId)}/tasks/${Number(taskId)}/restore-to-backlog`,
+    { method: "POST" },
+    "Unable to restore the task right now.",
   );
 
   return normalizeTask(task);

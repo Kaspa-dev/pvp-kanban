@@ -9,9 +9,9 @@ import {
   Clock3,
   FileText,
   Flag,
-  Hash,
   Lightbulb,
-  UserRound,
+  PencilLine,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 import { Board } from "../../utils/boards";
@@ -26,12 +26,14 @@ import { PriorityBadge } from "../PriorityBadge";
 import { TaskColumnAgeBadge } from "../TaskColumnAgeBadge";
 import { TaskDueDateBadge } from "../TaskDueDateBadge";
 import { getPanelEyebrowClassName } from "../typographyStyles";
+import { WorkspaceSecondaryActionButton } from "../WorkspaceSecondaryActionButton";
 
 interface TaskDetailsSummaryProps {
   board: Board;
   boardId: number;
   task: TaskDetails;
   labels: Label[];
+  onEditTask?: () => void;
 }
 
 const TASK_TYPE_DISPLAY: Record<NonNullable<TaskDetails["taskType"]>, { icon: LucideIcon; label: string }> = {
@@ -71,7 +73,7 @@ function FactRow({
   );
 }
 
-export function TaskDetailsSummary({ board, boardId, task, labels }: TaskDetailsSummaryProps) {
+export function TaskDetailsSummary({ board, boardId, task, labels, onEditTask }: TaskDetailsSummaryProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const panelEyebrowClassName = getPanelEyebrowClassName(currentTheme.textMuted);
@@ -92,14 +94,27 @@ export function TaskDetailsSummary({ board, boardId, task, labels }: TaskDetails
       <div className={`border-b px-5 py-5 sm:px-6 ${dividerClassName}`}>
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-center">
           <div className="min-w-0">
-            <Link
-              to={Number.isFinite(boardId) ? `/app/${boardId}` : "/app"}
-              aria-label={`Back to ${board.name}`}
-              className={`group inline-flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r px-4 text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-xl active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} ${currentTheme.primary}`}
-            >
-              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-              Back to board
-            </Link>
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                to={Number.isFinite(boardId) ? `/app/${boardId}` : "/app"}
+                aria-label={`Back to ${board.name}`}
+                className={`group inline-flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r px-4 text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-xl active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} ${currentTheme.primary}`}
+              >
+                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                Back to board
+              </Link>
+              {onEditTask ? (
+                <WorkspaceSecondaryActionButton
+                  type="button"
+                  onClick={onEditTask}
+                  className="h-10 px-4 py-0"
+                  aria-label={`Edit task ${task.title}`}
+                  icon={<PencilLine className="h-4 w-4" aria-hidden="true" />}
+                >
+                  Edit task
+                </WorkspaceSecondaryActionButton>
+              ) : null}
+            </div>
             <div className="mt-5 flex min-w-0 items-center gap-2">
               <BoardLogo iconKey={board.logoIconKey} colorKey={board.logoColorKey} size="xs" />
               <span className={`truncate font-ui-condensed text-sm font-semibold tracking-[0.01em] ${currentTheme.textSecondary}`}>
@@ -111,8 +126,8 @@ export function TaskDetailsSummary({ board, boardId, task, labels }: TaskDetails
             </h1>
           </div>
 
-          <div className={`flex items-center gap-4 self-center border-l-0 xl:border-l xl:pl-6 ${dividerClassName}`}>
-            {isAssigned ? (
+          <div className="flex items-center gap-4 self-center">
+            {isAssigned && (
               <AppAvatar
                 username={assignee.username || assignee.displayName}
                 fullName={assignee.displayName || assignee.name}
@@ -121,10 +136,6 @@ export function TaskDetailsSummary({ board, boardId, task, labels }: TaskDetails
                 enableBlink={false}
                 level={assignee.currentLevel}
               />
-            ) : (
-              <div className={`flex h-14 w-14 items-center justify-center rounded-full border ${currentTheme.border} ${currentTheme.textMuted}`}>
-                <UserRound className="h-6 w-6" aria-hidden="true" />
-              </div>
             )}
             <div className="min-w-0">
               <p className={`truncate text-xl font-semibold leading-tight ${currentTheme.text}`}>{assignee.displayName || assignee.name}</p>
@@ -184,7 +195,7 @@ export function TaskDetailsSummary({ board, boardId, task, labels }: TaskDetails
               <span className={currentTheme.textMuted}>No date</span>
             )}
           </FactRow>
-          <FactRow icon={Hash} label="Story points" {...factRowProps}>
+          <FactRow icon={Zap} label="Story points" {...factRowProps}>
             <span className={`font-due-date ${task.storyPoints != null ? currentTheme.text : currentTheme.textMuted}`}>
               {task.storyPoints ?? "Not estimated"}
             </span>

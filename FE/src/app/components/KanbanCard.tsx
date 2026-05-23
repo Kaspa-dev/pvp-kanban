@@ -1,4 +1,4 @@
-import { Trash2, Zap, Edit, FileText, Bug, Lightbulb, CheckSquare, Undo2 } from "lucide-react";
+import { Archive, Trash2, Zap, Edit, FileText, Bug, Lightbulb, CheckSquare, Undo2 } from "lucide-react";
 import { useDrag, useDrop } from "react-dnd";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { Label } from "../utils/labels";
@@ -29,6 +29,7 @@ interface KanbanCardProps {
   onDelete: (cardId: number, title: string) => void;
   onEdit?: (cardId: number) => void;
   onMoveToBacklog?: (cardId: number) => void;
+  onConclude?: (cardId: number) => void;
   availableAssignees: TaskAssignee[];
   labels: Label[];
   storyPoints?: number;
@@ -62,6 +63,7 @@ export function KanbanCard({
   onDelete,
   onEdit,
   onMoveToBacklog,
+  onConclude,
   availableAssignees,
   labels,
   storyPoints,
@@ -174,7 +176,7 @@ export function KanbanCard({
   const hasStoryPoints = storyPoints !== undefined && storyPoints > 0;
   const hasTopMeta = Boolean(cardLabels.length > 0 || taskTypeDisplay || showDueDateInTopMeta || showColumnAgeInTopMeta || priorityIndicator);
   const canMoveToBacklog = columnId !== "backlog" && columnId !== "queue" && Boolean(onMoveToBacklog);
-  const revealActionsClassName = "flex max-w-0 shrink-0 translate-y-1 items-center gap-2 overflow-hidden opacity-0 transition-[max-width,opacity,transform] duration-200 ease-out group-hover:max-w-[9rem] group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:max-w-[9rem] group-focus-within:translate-y-0 group-focus-within:opacity-100";
+  const revealActionsClassName = "flex max-w-0 shrink-0 translate-y-1 items-center gap-2 overflow-hidden opacity-0 transition-[max-width,opacity,transform] duration-200 ease-out group-hover:max-w-[12rem] group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:max-w-[12rem] group-focus-within:translate-y-0 group-focus-within:opacity-100";
   const isOpenable = Boolean(onOpen);
   const isDropSlotVisible = Boolean(dropEdge && isDropOver && !isDragging);
   const dropSlot = isDropSlotVisible ? (
@@ -315,6 +317,23 @@ export function KanbanCard({
                         </UtilityIconButton>
                       </TooltipTrigger>
                       <TooltipContent side="top" sideOffset={8}>Edit task</TooltipContent>
+                    </Tooltip>
+                  )}
+
+                  {onConclude && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <UtilityIconButton
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onConclude(id);
+                          }}
+                          onMouseDown={(e) => e.stopPropagation()}
+                        >
+                          <Archive className="w-4 h-4" />
+                        </UtilityIconButton>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" sideOffset={8}>Conclude task</TooltipContent>
                     </Tooltip>
                   )}
 

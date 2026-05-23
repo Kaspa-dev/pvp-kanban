@@ -8,22 +8,28 @@ import {
 import { useParams } from "react-router";
 
 import { PlanningPokerJoinForm } from "../components/planning-poker/PlanningPokerJoinForm";
-import { PlanningPokerBacklogPickerDialog } from "../components/planning-poker/PlanningPokerBacklogPickerDialog";
 import { PlanningPokerRoomRail } from "../components/planning-poker/PlanningPokerRoomRail";
 import { PlanningPokerTable } from "../components/planning-poker/PlanningPokerTable";
 import { PlanningPokerVoteDeck } from "../components/planning-poker/PlanningPokerVoteDeck";
-import { AppAvatar } from "../components/AppAvatar";
 import { Button } from "../components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
 import { Skeleton } from "../components/ui/skeleton";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
+import { getBoardCards, type Card } from "../utils/cards";
 import type {
   PlanningPokerParticipant,
   PlanningPokerSession,
   PlanningPokerSessionTask,
 } from "../utils/planningPoker";
 import { applyPlanningPokerRecommendation } from "../utils/planningPoker";
-import { getBoardCards, type Card } from "../utils/cards";
 import {
   activatePlanningPokerBacklogTask,
   advancePlanningPokerToNextTask,
@@ -101,40 +107,78 @@ function getCurrentParticipant(
   return participants.find((participant) => participant.participantId === participantId) ?? null;
 }
 
-function getConnectionBannerLabel(value: ConnectionBannerState) {
-  switch (value) {
-    case "connecting":
-      return "Connecting";
-    case "connected":
-      return "Live";
-    case "reconnecting":
-      return "Reconnecting";
-    case "disconnected":
-      return "Offline";
-    default:
-      return "Ready";
-  }
-}
-
-function getConnectionDotClassName(value: ConnectionBannerState) {
-  switch (value) {
-    case "connected":
-      return "bg-emerald-500";
-    case "connecting":
-    case "reconnecting":
-      return "bg-amber-500";
-    case "disconnected":
-      return "bg-rose-500";
-    default:
-      return "bg-zinc-400";
-  }
-}
-
 function normalizePlanningPokerErrorMessage(message: string) {
   return message
-    .replace("An unexpected error occurred invoking 'JoinSession' on the server. ", "")
+    .replace(/^An unexpected error occurred invoking '[^']+' on the server\.\s*/i, "")
     .replace("HubException: ", "")
     .trim();
+}
+
+interface PlanningPokerRoomIssueDialogProps {
+  message: string;
+  canRetry: boolean;
+  isRetrying: boolean;
+  onRetry: () => void;
+  onClose: () => void;
+}
+
+function PlanningPokerRoomIssueDialog({
+  message,
+  canRetry,
+  isRetrying,
+  onRetry,
+  onClose,
+}: PlanningPokerRoomIssueDialogProps) {
+  const { theme, isDarkMode } = useTheme();
+  const currentTheme = getThemeColors(theme, isDarkMode);
+
+  return (
+    <Dialog open={Boolean(message)} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent
+        className={`rounded-2xl border ${currentTheme.border} ${currentTheme.cardBg} ${currentTheme.text} shadow-2xl sm:max-w-md`}
+      >
+        <DialogHeader>
+          <div
+            className={`mb-1 inline-flex h-10 w-10 items-center justify-center rounded-xl ${
+              isDarkMode ? "bg-amber-400/12 text-amber-200" : "bg-amber-100 text-amber-700"
+            }`}
+          >
+            <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <DialogTitle className={`font-ui-condensed text-xl tracking-[0.01em] ${currentTheme.text}`}>
+            Planning poker needs attention
+          </DialogTitle>
+          <DialogDescription className={`text-sm leading-6 ${currentTheme.textSecondary}`}>
+            {message}
+          </DialogDescription>
+        </DialogHeader>
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            className={`h-10 rounded-xl border px-4 text-sm font-semibold ${currentTheme.border} ${currentTheme.textSecondary} ${
+              isDarkMode ? "bg-white/[0.03] hover:bg-white/[0.06]" : "bg-white/80 hover:bg-white"
+            }`}
+            onClick={onClose}
+          >
+            Close
+          </Button>
+          {canRetry ? (
+            <Button
+              type="button"
+              className={`h-10 rounded-xl bg-gradient-to-r px-4 text-sm font-semibold text-white ${currentTheme.primary}`}
+              onClick={onRetry}
+              disabled={isRetrying}
+            >
+              <RefreshCcw className={`h-4 w-4 ${isRetrying ? "animate-spin" : ""}`} aria-hidden="true" />
+              {isRetrying ? "Retrying" : "Retry"}
+            </Button>
+          ) : null}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export function PlanningPokerRoom() {
@@ -156,16 +200,14 @@ export function PlanningPokerRoom() {
   const [joinError, setJoinError] = useState("");
   const [roomError, setRoomError] = useState("");
   const [copyFeedback, setCopyFeedback] = useState("");
+  const [backlogTasks, setBacklogTasks] = useState<Card[]>([]);
   const [isJoining, setIsJoining] = useState(false);
   const [isVoteSubmitting, setIsVoteSubmitting] = useState(false);
   const [isRevealing, setIsRevealing] = useState(false);
   const [isSelectingRecommendation, setIsSelectingRecommendation] = useState(false);
   const [isApplyingRecommendation, setIsApplyingRecommendation] = useState(false);
   const [isAdvancingTask, setIsAdvancingTask] = useState(false);
-  const [isBacklogPickerOpen, setIsBacklogPickerOpen] = useState(false);
-  const [isBacklogPickerLoading, setIsBacklogPickerLoading] = useState(false);
-  const [isBacklogTaskSubmitting, setIsBacklogTaskSubmitting] = useState(false);
-  const [backlogTasks, setBacklogTasks] = useState<Card[]>([]);
+  const [isTaskSelecting, setIsTaskSelecting] = useState(false);
   const [deletedSessionMessage, setDeletedSessionMessage] = useState("");
   const [connectionBannerState, setConnectionBannerState] =
     useState<ConnectionBannerState>("idle");
@@ -193,6 +235,7 @@ export function PlanningPokerRoom() {
   const canJoinWithoutForm = isAuthenticated || participantToken.length > 0;
   const activeTask: PlanningPokerSessionTask | null =
     session && session.activeTask.sessionTaskId > 0 ? session.activeTask : null;
+  const sessionBoardId = session?.boardId ?? null;
   const shouldShowReconnectControl =
     Boolean(normalizedJoinToken) &&
     connectionBannerState !== "connected" &&
@@ -210,6 +253,46 @@ export function PlanningPokerRoom() {
   useEffect(() => {
     isAuthenticatedRef.current = isAuthenticated;
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!sessionBoardId || !isAuthenticated) {
+      setBacklogTasks([]);
+      return;
+    }
+
+    const boardId = sessionBoardId;
+    let isMounted = true;
+
+    async function loadBacklogTasks() {
+      try {
+        const cards = await getBoardCards(boardId);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setBacklogTasks(cards.backlog.filter((task) => task.storyPoints == null));
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setRoomError(
+          normalizePlanningPokerErrorMessage(
+            error instanceof Error
+              ? error.message
+              : "Unable to load backlog tasks for this planning poker room.",
+          ),
+        );
+      }
+    }
+
+    void loadBacklogTasks();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated, sessionBoardId]);
 
   useEffect(() => {
     if (!participantStorageKey || !guestNameStorageKey) {
@@ -256,12 +339,12 @@ export function PlanningPokerRoom() {
 
     connection.onreconnecting(() => {
       setConnectionBannerState("reconnecting");
-      setRoomError("The room connection dropped. Reconnecting now.");
+      setRoomError("");
     });
 
     connection.onreconnected(async () => {
       setConnectionBannerState("connecting");
-      setRoomError("Connection restored. Rejoining the planning poker room.");
+      setRoomError("");
 
       try {
         const response = await joinPlanningPokerSession(
@@ -526,6 +609,12 @@ export function PlanningPokerRoom() {
       );
       const appliedStoryPoints = updatedTask.storyPoints ?? null;
 
+      if (appliedStoryPoints !== null) {
+        setBacklogTasks((currentTasks) =>
+          currentTasks.filter((task) => task.id !== updatedTask.id),
+        );
+      }
+
       setSession((currentSession) => {
         if (!currentSession) {
           return currentSession;
@@ -589,39 +678,13 @@ export function PlanningPokerRoom() {
     }
   };
 
-  const loadBacklogTasks = useCallback(async () => {
-    if (!session) {
-      return;
-    }
-
-    setIsBacklogPickerLoading(true);
-
-    try {
-      const cards = await getBoardCards(session.boardId);
-      setBacklogTasks(
-        cards.backlog.filter((task) => task.storyPoints === null || task.storyPoints === undefined),
-      );
-    } finally {
-      setIsBacklogPickerLoading(false);
-    }
-  }, [session]);
-
-  const handleOpenBacklogPicker = () => {
-    if (!session) {
-      return;
-    }
-
-    setIsBacklogPickerOpen(true);
-    void loadBacklogTasks();
-  };
-
   const handleActivateBacklogTask = async (taskId: number) => {
     const connection = connectionRef.current;
     if (!connection || !normalizedJoinToken) {
       return;
     }
 
-    setIsBacklogTaskSubmitting(true);
+    setIsTaskSelecting(true);
     setRoomError("");
 
     try {
@@ -634,7 +697,6 @@ export function PlanningPokerRoom() {
 
       setSession(nextSession);
       setSelectedVote(null);
-      setIsBacklogPickerOpen(false);
     } catch (error) {
       setRoomError(
         normalizePlanningPokerErrorMessage(
@@ -644,7 +706,7 @@ export function PlanningPokerRoom() {
         ),
       );
     } finally {
-      setIsBacklogTaskSubmitting(false);
+      setIsTaskSelecting(false);
     }
   };
 
@@ -671,66 +733,6 @@ export function PlanningPokerRoom() {
 
       <div className="relative z-10">
         <div className={`${pageWidthClassName} flex min-h-[calc(100dvh-2rem)] flex-col gap-4`}>
-          <header
-            className={`shrink-0 rounded-[1.5rem] border px-4 py-3 shadow-[0_18px_58px_-48px_rgba(15,23,42,0.72)] backdrop-blur-xl ${currentTheme.border}`}
-            style={workspaceSurface.glassHeaderStyle}
-            aria-label="Planning poker room status"
-          >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="min-w-0">
-                <h1 className={`font-ui-condensed text-3xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
-                  Planning poker
-                </h1>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm ${currentTheme.border} ${currentTheme.textSecondary} ${isDarkMode ? "bg-white/[0.035]" : "bg-white/78"}`}>
-                  <span className={`h-2 w-2 rounded-full ${getConnectionDotClassName(connectionBannerState)}`} aria-hidden="true" />
-                  {getConnectionBannerLabel(connectionBannerState)}
-                </span>
-
-                {session ? (
-                  <span className={`font-due-date inline-flex rounded-full border px-3 py-1.5 text-sm font-semibold ${currentTheme.border} ${currentTheme.textSecondary} ${isDarkMode ? "bg-white/[0.035]" : "bg-white/78"}`}>
-                    <span className={currentTheme.primaryText}>{votedCount}/{session.participants.length}</span>&nbsp;voted
-                  </span>
-                ) : null}
-
-                {currentParticipant ? (
-                  <div className={`flex items-center gap-2 rounded-full border py-1 pl-1 pr-3 ${currentTheme.border} ${isDarkMode ? "bg-white/[0.035]" : "bg-white/78"}`}>
-                    <AppAvatar
-                      username={currentParticipant.displayName}
-                      fullName={currentParticipant.displayName}
-                      size={30}
-                      interactive={false}
-                      enableBlink={false}
-                      aria-hidden="true"
-                    />
-                    <span className={`max-w-36 truncate text-sm font-semibold ${currentTheme.text}`}>
-                      {currentParticipant.displayName}
-                    </span>
-                  </div>
-                ) : null}
-
-                {shouldShowReconnectControl ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className={`h-9 rounded-xl border px-3 text-sm font-semibold ${currentTheme.border} ${currentTheme.textSecondary} ${
-                      isDarkMode
-                        ? "bg-white/[0.03] hover:bg-white/[0.06]"
-                        : "bg-white/80 hover:bg-white"
-                    }`}
-                    onClick={() => void handleJoin()}
-                    disabled={isJoining}
-                  >
-                    <RefreshCcw className="h-4 w-4" aria-hidden="true" />
-                    {session ? "Rejoin" : "Retry"}
-                  </Button>
-                ) : null}
-              </div>
-            </div>
-          </header>
-
           {!normalizedJoinToken ? (
             <div
               className={`rounded-2xl border px-4 py-3 ${
@@ -809,41 +811,11 @@ export function PlanningPokerRoom() {
 
           {session ? (
             <div className="flex min-h-0 flex-1 flex-col gap-4">
-              {roomError ? (
-                <div
-                  className={`shrink-0 rounded-2xl border px-4 py-3 text-sm ${
-                    isDarkMode
-                      ? "border-amber-400/20 bg-amber-400/10 text-amber-100"
-                      : "border-amber-200 bg-amber-50 text-amber-900"
-                  }`}
-                  role="alert"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <span>{roomError}</span>
-                    {shouldShowReconnectControl ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className={`h-8 rounded-xl border px-3 ${currentTheme.border} ${
-                          isDarkMode
-                            ? "bg-white/[0.03] text-zinc-100 hover:bg-white/[0.06]"
-                            : "bg-white/80 text-slate-700 hover:bg-white"
-                        }`}
-                        onClick={() => void handleJoin()}
-                        disabled={isJoining}
-                      >
-                        <RefreshCcw className="h-4 w-4" aria-hidden="true" />
-                        {session ? "Rejoin" : "Retry"}
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
-              ) : null}
-
               <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1fr)_25rem]">
                 <section className="flex min-h-0 flex-col gap-4">
                   <PlanningPokerTable
                     activeTask={activeTask}
+                    nextTask={session.queue[0] ?? null}
                     participants={session.participants}
                     currentParticipantId={participantId}
                     votedCount={votedCount}
@@ -852,17 +824,18 @@ export function PlanningPokerRoom() {
                     isRevealing={isRevealing}
                     isSelectingRecommendation={isSelectingRecommendation}
                     isApplyingRecommendation={isApplyingRecommendation}
+                    isAdvancingTask={isAdvancingTask}
                     recommendationOptions={VOTE_DECK_VALUES}
                     onReveal={handleReveal}
                     onSelectRecommendation={handleSelectRecommendation}
                     onApplyRecommendation={handleApplyRecommendation}
+                    onAdvanceToNextTask={handleAdvanceToNextTask}
                   />
 
                   <PlanningPokerVoteDeck
                     cardValues={VOTE_DECK_VALUES}
                     selectedValue={selectedVote}
                     isSubmitting={isVoteSubmitting}
-                    hasActiveTask={Boolean(activeTask)}
                     disabled={!activeTask || isRevealing || session.isRevealed}
                     onVote={handleVote}
                   />
@@ -871,14 +844,13 @@ export function PlanningPokerRoom() {
                 <PlanningPokerRoomRail
                   session={session}
                   activeTask={activeTask}
+                  backlogTasks={backlogTasks}
                   currentParticipantId={participantId}
                   isHost={isCurrentParticipantHost}
-                  isAdvancingTask={isAdvancingTask}
-                  canOpenBacklogPicker={isCurrentParticipantHost}
+                  isSelectingTask={isTaskSelecting}
                   copyFeedback={copyFeedback}
                   onCopyLink={handleCopyJoinUrl}
-                  onOpenBacklogPicker={handleOpenBacklogPicker}
-                  onAdvanceToNextTask={handleAdvanceToNextTask}
+                  onSelectTask={handleActivateBacklogTask}
                 />
               </div>
             </div>
@@ -886,15 +858,14 @@ export function PlanningPokerRoom() {
         </div>
       </div>
 
-      <PlanningPokerBacklogPickerDialog
-        isOpen={isBacklogPickerOpen}
-        isLoading={isBacklogPickerLoading}
-        isSubmitting={isBacklogTaskSubmitting}
-        tasks={backlogTasks}
-        currentTaskId={activeTask?.taskId ?? null}
-        onClose={() => setIsBacklogPickerOpen(false)}
-        onSelectTask={handleActivateBacklogTask}
+      <PlanningPokerRoomIssueDialog
+        message={roomError}
+        canRetry={shouldShowReconnectControl}
+        isRetrying={isJoining}
+        onRetry={() => void handleJoin()}
+        onClose={() => setRoomError("")}
       />
+
     </main>
   );
 }

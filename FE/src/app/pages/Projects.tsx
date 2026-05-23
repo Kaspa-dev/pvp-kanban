@@ -37,6 +37,7 @@ import { BoardInfoModal } from "../components/BoardInfoModal";
 import { CoachmarkOverlay } from "../components/CoachmarkOverlay";
 import { Toolbar } from "../components/Toolbar";
 import { WorkspaceClearButton, WorkspaceFilterChip } from "../components/WorkspaceFilterChip";
+import { WorkspaceSecondaryActionButton } from "../components/WorkspaceSecondaryActionButton";
 import { WorkspaceToolbarSelect } from "../components/WorkspaceToolbarSelect";
 import {
   getNeutralElevatedCardHoverClassName,
@@ -658,20 +659,14 @@ export function Projects() {
             <div className="flex flex-wrap items-center gap-3">
               <Tooltip delayDuration={PROJECTS_TOOLTIP_DELAY}>
                 <TooltipTrigger asChild>
-                  <button
+                  <WorkspaceSecondaryActionButton
                     onClick={() => navigate("/app/my-tasks")}
-                    className={`font-ui-condensed group relative inline-flex items-center gap-2.5 overflow-hidden rounded-xl border-2 px-5 py-3.5 text-sm font-semibold tracking-[0.01em] ${currentTheme.primaryBorder} ${currentTheme.primaryText} bg-gradient-to-r ${currentTheme.primarySoft} shadow-sm transition-all duration-300 ease-out hover:scale-[1.03] hover:shadow-lg focus-visible:border-transparent focus-visible:outline-none focus-visible:ring-2 ${currentTheme.focus}`}
                     type="button"
                     aria-label="Open my assigned tasks"
+                    icon={<ListTodo className="h-4 w-4" aria-hidden="true" />}
                   >
-                    <span
-                      className={`pointer-events-none absolute inset-0 bg-gradient-to-r ${currentTheme.primarySoftStrong} opacity-0 transition-opacity duration-300 ease-out group-hover:opacity-100`}
-                    />
-                    <span className="relative inline-flex items-center gap-2.5">
-                      <ListTodo className="h-4 w-4 transition-transform duration-300 ease-out group-hover:-rotate-6 group-hover:scale-110" />
-                      <span>My Tasks</span>
-                    </span>
-                  </button>
+                    My Tasks
+                  </WorkspaceSecondaryActionButton>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" sideOffset={8}>
                   {MY_TASKS_TOOLTIP}
@@ -697,7 +692,7 @@ export function Projects() {
             </div>
           </div>
 
-          <div className={`relative z-10 mt-8 pt-6 border-t ${currentTheme.accentDivider}`}>
+          <div className="relative z-10 mt-8 pt-6">
             <div className="grid grid-cols-2 gap-6 xl:grid-cols-4">
               {dashboardIndicators.map((indicator) => {
                 const Icon = indicator.icon;

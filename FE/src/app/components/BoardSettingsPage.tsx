@@ -754,14 +754,14 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
                       Boards can have up to {MAX_BOARD_MEMBERS} members total. This board is currently using {totalMemberCount} of {MAX_BOARD_MEMBERS}.
                     </p>
 
-                    <div className={`overflow-hidden border-y ${currentTheme.border}`}>
+                    <div className={`overflow-visible border-y py-1 ${currentTheme.border}`}>
                       {members.map((member, index) => {
                         const isOwner = member.role === "owner";
 
                         return (
                           <div
                             key={member.userId}
-                            className={index > 0 ? `border-t ${currentTheme.border}` : ""}
+                            className={`${index > 0 ? `border-t ${currentTheme.border}` : ""} overflow-visible`}
                           >
                             <BoardMemberListItem
                               currentTheme={currentTheme}
@@ -769,7 +769,7 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
                               username={member.username}
                               role={member.role}
                               level={member.currentLevel}
-                              surfaceClassName=""
+                              surfaceClassName="px-2"
                               variant="flat"
                               showRoleIcon={false}
                               action={

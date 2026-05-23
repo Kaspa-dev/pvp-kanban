@@ -321,6 +321,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.IsQueued).HasDefaultValue(false);
             entity.Property(e => e.ColumnPosition).HasDefaultValue(0);
             entity.Property(e => e.StatusEnteredAtUtc);
+            entity.Property(e => e.ConcludedAtUtc);
             entity.Property(e => e.Priority)
                 .HasConversion<string>()
                 .HasMaxLength(16);
@@ -328,6 +329,8 @@ public class AppDbContext : DbContext
                 .HasConversion<string>()
                 .HasMaxLength(16);
             entity.Property(e => e.DueDate);
+            entity.HasIndex(e => e.BoardId);
+            entity.HasIndex(e => new { e.BoardId, e.ConcludedAtUtc });
 
             entity.HasOne(e => e.Board)
                 .WithMany(b => b.Backlog)
@@ -348,6 +351,11 @@ public class AppDbContext : DbContext
                 .WithMany(u => u.CreatedTasks)
                 .HasForeignKey(e => e.ReporterId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.ConcludedBy)
+                .WithMany()
+                .HasForeignKey(e => e.ConcludedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
             
             entity.HasOne(e => e.AssignedTeam)
                 .WithMany(ou => ou.AssignedTasks)

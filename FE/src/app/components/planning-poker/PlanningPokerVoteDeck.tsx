@@ -9,7 +9,6 @@ interface PlanningPokerVoteDeckProps {
   cardValues: number[];
   selectedValue: number | null;
   isSubmitting: boolean;
-  hasActiveTask: boolean;
   disabled: boolean;
   onVote: (value: number) => void | Promise<void>;
 }
@@ -18,7 +17,6 @@ export function PlanningPokerVoteDeck({
   cardValues,
   selectedValue,
   isSubmitting,
-  hasActiveTask,
   disabled,
   onVote,
 }: PlanningPokerVoteDeckProps) {
@@ -40,14 +38,6 @@ export function PlanningPokerVoteDeck({
     customVote.trim().length > 0 &&
     Number.isFinite(parsedCustomVote) &&
     selectedValue === parsedCustomVote;
-  const statusLabel = isSubmitting
-    ? "Saving"
-    : !hasActiveTask
-      ? "No task"
-      : selectedValue !== null
-        ? `Selected ${selectedValue}`
-        : "Pick a card";
-
   return (
     <section
       className={`rounded-[2rem] border px-4 py-4 shadow-[0_20px_64px_-52px_rgba(15,23,42,0.6)] ${currentTheme.border} ${isDarkMode ? "bg-zinc-950/62" : "bg-white/82"}`}
@@ -58,9 +48,6 @@ export function PlanningPokerVoteDeck({
           <h2 id="planning-poker-vote-deck-title" className={`font-ui-condensed text-xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
             Your card
           </h2>
-          <p className={`font-due-date mt-0.5 text-xs font-semibold ${selectedValue !== null ? currentTheme.primaryText : currentTheme.textMuted}`} aria-live="polite">
-            {statusLabel}
-          </p>
         </div>
         {isSubmitting ? (
           <span className={`inline-flex items-center gap-2 text-sm ${currentTheme.textMuted}`}>
@@ -71,7 +58,7 @@ export function PlanningPokerVoteDeck({
       </div>
 
       <div
-        className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-[repeat(11,minmax(3.8rem,1fr))_minmax(8.5rem,11rem)]"
+        className="flex flex-wrap items-start gap-2.5"
         role="group"
         aria-labelledby="planning-poker-vote-deck-title"
       >
@@ -86,7 +73,7 @@ export function PlanningPokerVoteDeck({
               onClick={() => void onVote(value)}
               aria-pressed={isSelected}
               className={cn(
-                "font-due-date group relative flex h-20 items-center justify-center overflow-hidden rounded-2xl border text-2xl font-semibold transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 sm:h-24",
+                "font-due-date group relative flex h-24 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border text-2xl font-semibold transition-all duration-300 focus-visible:outline-none focus-visible:ring-2",
                 currentTheme.focus,
                 disabled || isSubmitting
                   ? isDarkMode
@@ -99,7 +86,6 @@ export function PlanningPokerVoteDeck({
                   `border-transparent bg-gradient-to-br ${currentTheme.primary} text-white shadow-[0_20px_46px_-28px_rgba(15,23,42,0.78)]`,
               )}
             >
-              <span className={`pointer-events-none absolute inset-x-3 top-2 h-px rounded-full transition-opacity ${isSelected ? "bg-white/65 opacity-100" : "bg-current opacity-10 group-hover:opacity-20"}`} />
               <span className="sr-only">{isSelected ? "Selected estimate " : "Vote estimate "}</span>
               {value}
             </button>
@@ -107,7 +93,7 @@ export function PlanningPokerVoteDeck({
         })}
 
         <form
-          className="col-span-3 grid grid-cols-[1fr_auto] gap-2 sm:col-span-4 md:col-span-6 xl:col-span-1 xl:grid-cols-1"
+          className="grid min-w-[10rem] flex-1 grid-cols-[1fr_auto] gap-2 sm:flex-none"
           onSubmit={(event: FormEvent<HTMLFormElement>) => {
             event.preventDefault();
 
@@ -133,7 +119,7 @@ export function PlanningPokerVoteDeck({
             onChange={(event) => setCustomVote(event.target.value)}
             placeholder="Custom"
             className={cn(
-              "h-12 min-w-0 rounded-2xl border px-3 text-sm outline-none transition-colors focus:ring-2 xl:h-[3.7rem]",
+              "h-12 min-w-0 rounded-2xl border px-3 text-sm outline-none transition-colors focus:ring-2 sm:h-24 sm:w-24",
               currentTheme.focus,
               isCustomVoteSelected
                 ? `${currentTheme.primaryBorder} ${currentTheme.primaryText} ${currentTheme.primaryBg}`
@@ -145,7 +131,7 @@ export function PlanningPokerVoteDeck({
             type="submit"
             variant="outline"
             disabled={!canSubmitCustomVote}
-            className={`h-12 rounded-2xl border px-4 text-sm font-semibold xl:h-[3.7rem] ${currentTheme.border} ${currentTheme.textSecondary} ${isDarkMode ? "bg-zinc-950/72 hover:bg-zinc-900" : "bg-white hover:bg-slate-50"}`}
+            className={`h-12 rounded-2xl border px-4 text-sm font-semibold sm:h-24 ${currentTheme.border} ${currentTheme.textSecondary} ${isDarkMode ? "bg-zinc-950/72 hover:bg-zinc-900" : "bg-white hover:bg-slate-50"}`}
           >
             Use
           </Button>

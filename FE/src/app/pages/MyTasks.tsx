@@ -9,6 +9,7 @@ import {
   FileText,
   Flag,
   Lightbulb,
+  LayoutGrid,
   RotateCw,
   Search,
   Shapes,
@@ -18,6 +19,7 @@ import {
 import { useNavigate } from "react-router";
 import { BoardLogo } from "../components/BoardLogo";
 import { BoardStatusBadge } from "../components/BoardStatusBadge";
+import { CustomScrollArea } from "../components/CustomScrollArea";
 import { getInputLikeControlClassName, getNativeInputFieldClassName } from "../components/inputLikeControlStyles";
 import { SettingsModal } from "../components/SettingsModal";
 import { TaskDueDateBadge } from "../components/TaskDueDateBadge";
@@ -33,7 +35,9 @@ import { useAuth } from "../contexts/AuthContext";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import {
   BoardTaskSortDirection,
+  getMyTaskBoardOptions,
   getMyTaskPage,
+  MyTaskBoardOption,
   MyTaskListPage,
   MyTaskQuickFilter,
   MyTasksScope,
@@ -137,6 +141,18 @@ function getTaskTypeFilterSummary(selectedTaskTypes: TaskTypeFilterValue[]): str
   return `${selectedTaskTypes.length} task types selected`;
 }
 
+function getBoardFilterSummary(selectedBoardIds: number[], selectedBoards: MyTaskBoardOption[]): string {
+  if (selectedBoardIds.length === 0) {
+    return "All boards";
+  }
+
+  if (selectedBoardIds.length === 1) {
+    return selectedBoards[0]?.boardName ?? "1 board selected";
+  }
+
+  return `${selectedBoardIds.length} boards selected`;
+}
+
 function getTaskTypeDisplay(taskType?: TaskType) {
   switch (taskType) {
     case "story":
@@ -160,10 +176,6 @@ function getResultsSummaryText(page: number, pageSize: number, totalItems: numbe
   const start = (page - 1) * pageSize + 1;
   const end = Math.min(page * pageSize, totalItems);
   return `Showing ${start}-${end} of ${totalItems} tasks`;
-}
-
-function formatTaskCount(totalItems: number) {
-  return `${totalItems} ${totalItems === 1 ? "task" : "tasks"}`;
 }
 
 function isAbortError(error: unknown) {
@@ -242,6 +254,11 @@ export function MyTasks() {
   const [scope, setScope] = useState<MyTasksScope>("active");
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedBoardIds, setSelectedBoardIds] = useState<number[]>([]);
+  const [boardOptions, setBoardOptions] = useState<MyTaskBoardOption[]>([]);
+  const [isBoardFilterOpen, setIsBoardFilterOpen] = useState(false);
+  const [isBoardOptionsLoading, setIsBoardOptionsLoading] = useState(true);
+  const [boardOptionsError, setBoardOptionsError] = useState("");
   const [quickFilter, setQuickFilter] = useState<MyTaskQuickFilter>("all");
   const [selectedPriorities, setSelectedPriorities] = useState<PriorityFilterValue[]>([]);
   const [selectedTaskTypes, setSelectedTaskTypes] = useState<TaskTypeFilterValue[]>([]);
@@ -278,11 +295,62 @@ export function MyTasks() {
           return null;
         }
 
+        setIsBoardOptionsLoading(true);
+        setBoardOptionsError("");
+
+        return getMyTaskBoardOptions(controller.signal);
+      })
+      .then((boards) => {
+        if (!isActive || boards === null) {
+          return;
+        }
+
+        setBoardOptions(boards);
+        setSelectedBoardIds((currentBoardIds) =>
+          currentBoardIds.filter((boardId) => boards.some((board) => board.boardId === boardId)),
+        );
+      })
+      .catch((error) => {
+        if (!isActive || isAbortError(error)) {
+          return;
+        }
+
+        setBoardOptionsError(error instanceof Error ? error.message : "Unable to load task boards right now.");
+      })
+      .finally(() => {
+        if (!isActive) {
+          return;
+        }
+
+        setIsBoardOptionsLoading(false);
+      });
+
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    const controller = new AbortController();
+    let isActive = true;
+
+    void Promise.resolve()
+      .then(() => {
+        if (!isActive) {
+          return null;
+        }
+
         setIsLoading(true);
         setLoadError("");
 
         return getMyTaskPage({
           scope,
+          boardIds: selectedBoardIds,
           q: searchQuery,
           quickFilter,
           priorities: selectedPriorities,
@@ -329,6 +397,7 @@ export function MyTasks() {
     reloadVersion,
     scope,
     searchQuery,
+    selectedBoardIds,
     selectedPriorities,
     selectedTaskTypes,
     sortState.direction,
@@ -382,6 +451,7 @@ export function MyTasks() {
   const hasActiveFilters =
     searchQuery.length > 0 ||
     searchInput.trim().length > 0 ||
+    selectedBoardIds.length > 0 ||
     quickFilter !== "all" ||
     selectedPriorities.length > 0 ||
     selectedTaskTypes.length > 0;
@@ -405,6 +475,20 @@ export function MyTasks() {
   const setTaskQuickFilter = (nextQuickFilter: MyTaskQuickFilter) => {
     setQuickFilter(nextQuickFilter);
     setCurrentPage(1);
+  };
+
+  const clearSelectedBoards = () => {
+    setSelectedBoardIds([]);
+    setCurrentPage(1);
+  };
+
+  const toggleSelectedBoard = (boardId: number) => {
+    setCurrentPage(1);
+    setSelectedBoardIds((currentBoardIds) =>
+      currentBoardIds.includes(boardId)
+        ? currentBoardIds.filter((value) => value !== boardId)
+        : [...currentBoardIds, boardId],
+    );
   };
 
   const toggleSelectedPriority = (priority: PriorityFilterValue) => {
@@ -436,6 +520,7 @@ export function MyTasks() {
   const clearFilters = () => {
     setSearchInput("");
     setSearchQuery("");
+    setSelectedBoardIds([]);
     setQuickFilter("all");
     setSelectedPriorities([]);
     setSelectedTaskTypes([]);
@@ -443,6 +528,11 @@ export function MyTasks() {
   };
 
   const getSortDirection = (key: MyTaskSortKey) => (sortState.key === key ? sortState.direction : null);
+  const selectedBoardOptions = selectedBoardIds
+    .map((boardId) => boardOptions.find((board) => board.boardId === boardId))
+    .filter((board): board is MyTaskBoardOption => Boolean(board));
+  const selectedBoardOption = selectedBoardIds.length === 1 ? selectedBoardOptions[0] ?? null : null;
+  const boardFilterSummary = getBoardFilterSummary(selectedBoardIds, selectedBoardOptions);
 
   if (!user) {
     return null;
@@ -471,14 +561,9 @@ export function MyTasks() {
         <div className={`${currentTheme.bgSecondary} min-h-full`}>
           <div className="mx-auto flex w-full max-w-[1850px] flex-col px-8 py-6 lg:px-10 xl:px-12">
             <div className="shrink-0">
-              <div className="flex items-center justify-between gap-4">
-                <h1 className={`font-ui-condensed text-[2rem] font-semibold tracking-[0.01em] ${currentTheme.text}`}>
-                  My tasks
-                </h1>
-                <p className={`font-due-date text-sm ${currentTheme.textMuted}`} aria-live="polite">
-                  {isLoading ? "Loading" : formatTaskCount(taskPage.totalItems)}
-                </p>
-              </div>
+              <h1 className={`font-ui-condensed text-[2rem] font-semibold tracking-[0.01em] ${currentTheme.text}`}>
+                My tasks
+              </h1>
             </div>
 
             <div className={`mt-6 border-t ${currentTheme.border} py-4`}>
@@ -553,7 +638,118 @@ export function MyTasks() {
                 </div>
 
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-                  <div className="grid gap-4 md:grid-cols-2 xl:flex xl:items-end">
+                  <div className="grid gap-4 md:grid-cols-3 xl:flex xl:items-end">
+                    <div className="flex min-w-0 flex-col gap-2 xl:w-64">
+                      <span className={toolbarLabelClassName}>Board</span>
+                      <Popover.Root open={isBoardFilterOpen} onOpenChange={setIsBoardFilterOpen}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Popover.Trigger asChild>
+                              <button
+                                type="button"
+                                className={`flex h-11 w-full items-center justify-between gap-3 px-4 text-left text-sm shadow-none ${currentTheme.text} ${filterTriggerClassName} hover:!bg-white dark:hover:!bg-input/30 ${
+                                  isBoardFilterOpen ? `border-transparent ring-2 ${currentTheme.ring}` : ""
+                                }`}
+                              >
+                                <span className="flex min-w-0 items-center gap-2">
+                                  {selectedBoardOption ? (
+                                    <BoardLogo
+                                      iconKey={selectedBoardOption.boardLogoIconKey}
+                                      colorKey={selectedBoardOption.boardLogoColorKey}
+                                      size="xs"
+                                      className="h-7 w-7 rounded-lg"
+                                    />
+                                  ) : (
+                                    <LayoutGrid className={`h-4 w-4 shrink-0 ${selectedBoardIds.length > 0 ? currentTheme.primaryText : currentTheme.textMuted}`} />
+                                  )}
+                                  <span className={`truncate ${selectedBoardIds.length > 0 ? currentTheme.text : currentTheme.textMuted}`}>
+                                    {boardFilterSummary}
+                                  </span>
+                                </span>
+                                <ChevronDown className={`h-4 w-4 shrink-0 ${currentTheme.textMuted}`} />
+                              </button>
+                            </Popover.Trigger>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" sideOffset={8}>
+                            Filter assigned tasks by one or more boards.
+                          </TooltipContent>
+                        </Tooltip>
+                        <Popover.Portal>
+                          <Popover.Content
+                            sideOffset={8}
+                            align="start"
+                            className={`z-50 w-72 overflow-hidden rounded-xl border p-1 ${currentTheme.border} ${currentTheme.cardBg} shadow-xl animate-in fade-in zoom-in-95 duration-200`}
+                          >
+                            <div className={`space-y-1 rounded-lg ${currentTheme.cardBg}`}>
+                              <button
+                                type="button"
+                                onClick={clearSelectedBoards}
+                                aria-pressed={selectedBoardIds.length === 0}
+                                className={`relative flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                                  selectedBoardIds.length === 0
+                                    ? `${currentTheme.primaryBg} ${currentTheme.primaryText} hover:brightness-[0.98] dark:hover:brightness-110`
+                                    : `${currentTheme.cardBg} ${currentTheme.textSecondary} hover:${currentTheme.primaryBg} hover:${currentTheme.primaryText}`
+                                }`}
+                              >
+                                <span className="inline-flex min-w-0 items-center gap-2">
+                                  <LayoutGrid className="h-4 w-4 shrink-0" />
+                                  <span>All boards</span>
+                                </span>
+                                {selectedBoardIds.length === 0 ? <Check className="h-4 w-4 shrink-0" /> : null}
+                              </button>
+
+                              <CustomScrollArea className={`overflow-hidden rounded-lg ${currentTheme.cardBg}`} viewportClassName={`max-h-[13.75rem] ${currentTheme.cardBg}`}>
+                                <div className={`space-y-1 pr-4 ${currentTheme.cardBg}`}>
+                                  {isBoardOptionsLoading ? (
+                                    <div className={`px-3 py-2 text-sm ${currentTheme.textMuted}`}>
+                                      Loading boards
+                                    </div>
+                                  ) : boardOptionsError ? (
+                                    <div className={`px-3 py-2 text-sm ${currentTheme.textMuted}`}>
+                                      Boards unavailable
+                                    </div>
+                                  ) : boardOptions.length === 0 ? (
+                                    <div className={`px-3 py-2 text-sm ${currentTheme.textMuted}`}>
+                                      No boards available
+                                    </div>
+                                  ) : (
+                                    boardOptions.map((board) => {
+                                      const isSelected = selectedBoardIds.includes(board.boardId);
+
+                                      return (
+                                        <button
+                                          key={board.boardId}
+                                          type="button"
+                                          onClick={() => toggleSelectedBoard(board.boardId)}
+                                          aria-pressed={isSelected}
+                                          className={`relative flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                                            isSelected
+                                              ? `${currentTheme.primaryBg} ${currentTheme.primaryText} hover:brightness-[0.98] dark:hover:brightness-110`
+                                              : `${currentTheme.cardBg} ${currentTheme.textSecondary} hover:${currentTheme.primaryBg} hover:${currentTheme.primaryText}`
+                                          }`}
+                                        >
+                                          <span className="inline-flex min-w-0 items-center gap-2">
+                                            <BoardLogo
+                                              iconKey={board.boardLogoIconKey}
+                                              colorKey={board.boardLogoColorKey}
+                                              size="xs"
+                                              className="h-7 w-7 rounded-lg"
+                                            />
+                                            <span className="truncate">{board.boardName}</span>
+                                          </span>
+                                          {isSelected ? <Check className="h-4 w-4 shrink-0" /> : null}
+                                        </button>
+                                      );
+                                    })
+                                  )}
+                                </div>
+                              </CustomScrollArea>
+                            </div>
+                          </Popover.Content>
+                        </Popover.Portal>
+                      </Popover.Root>
+                    </div>
+
                     <div className="flex min-w-0 flex-col gap-2 xl:w-56">
                       <span className={toolbarLabelClassName}>Priority</span>
                       <Popover.Root open={isPriorityFilterOpen} onOpenChange={setIsPriorityFilterOpen}>
@@ -698,6 +894,34 @@ export function MyTasks() {
                 </div>
               </div>
             </div>
+
+            {selectedBoardOptions.length > 0 ? (
+              <div className={`mt-4 min-h-11 border-t pt-4 ${currentTheme.border}`}>
+                <div className="flex flex-wrap items-center gap-2">
+                  {selectedBoardOptions.map((board) => (
+                    <span
+                      key={board.boardId}
+                      className={`inline-flex max-w-[14rem] items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold shadow-sm ${currentTheme.primaryBg} ${currentTheme.primaryText} ${currentTheme.primaryBorder}`}
+                    >
+                      <span className="truncate">{board.boardName}</span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={() => toggleSelectedBoard(board.boardId)}
+                            className="inline-flex h-4 w-4 items-center justify-center rounded-full transition-colors hover:bg-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current"
+                            aria-label={`Remove ${board.boardName}`}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" sideOffset={8}>Remove {board.boardName}</TooltipContent>
+                      </Tooltip>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             <div className="mt-4">
               <div className="py-2.5">

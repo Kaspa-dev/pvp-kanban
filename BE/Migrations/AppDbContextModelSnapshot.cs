@@ -528,6 +528,12 @@ namespace BE.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
+                    b.Property<DateTime?>("ConcludedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("ConcludedByUserId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(2000)
@@ -548,14 +554,14 @@ namespace BE.Migrations
                     b.Property<int>("ReporterId")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("StatusEnteredAtUtc")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<int>("StatusId")
                         .HasColumnType("int");
 
                     b.Property<int?>("StoryPoints")
                         .HasColumnType("int");
-
-                    b.Property<DateTime?>("StatusEnteredAtUtc")
-                        .HasColumnType("datetime(6)");
 
                     b.Property<int?>("TeamId")
                         .HasColumnType("int");
@@ -575,11 +581,15 @@ namespace BE.Migrations
 
                     b.HasIndex("BoardId");
 
+                    b.HasIndex("ConcludedByUserId");
+
                     b.HasIndex("ReporterId");
 
                     b.HasIndex("StatusId");
 
                     b.HasIndex("TeamId");
+
+                    b.HasIndex("BoardId", "ConcludedAtUtc");
 
                     b.ToTable("Tasks");
                 });
@@ -1039,6 +1049,11 @@ namespace BE.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("BE.Models.User", "ConcludedBy")
+                        .WithMany()
+                        .HasForeignKey("ConcludedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("BE.Models.User", "Reporter")
                         .WithMany("CreatedTasks")
                         .HasForeignKey("ReporterId")
@@ -1061,6 +1076,8 @@ namespace BE.Migrations
                     b.Navigation("Assignee");
 
                     b.Navigation("Board");
+
+                    b.Navigation("ConcludedBy");
 
                     b.Navigation("Reporter");
 

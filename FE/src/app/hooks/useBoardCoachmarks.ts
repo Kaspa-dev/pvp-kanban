@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CoachmarkFlowId } from "../utils/userPreferences";
 
-export type BoardWorkspaceView = "board" | "list" | "staging" | "backlog" | "history";
+export type BoardWorkspaceView = "board" | "list" | "staging" | "backlog" | "history" | "statistics";
 type BoardCoachmarkFlowId =
   | "board-no-active-sprint"
   | "board-active-sprint"

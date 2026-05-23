@@ -1,4 +1,4 @@
-import { Inbox, LoaderCircle, Play, Plus } from "lucide-react";
+import { Inbox, LoaderCircle, Play, Plus, Users } from "lucide-react";
 import { useDrop } from "react-dnd";
 import { KanbanCard } from "./KanbanCard";
 import { CustomScrollArea } from "./CustomScrollArea";
@@ -8,6 +8,8 @@ import { Card, TaskAssignee } from "../utils/cards";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { PlanningPokerLaunchCard } from "./planning-poker/PlanningPokerLaunchCard";
 import type { PlanningPokerSession } from "../utils/planningPoker";
+import { WorkspaceSecondaryActionButton } from "./WorkspaceSecondaryActionButton";
+import { StagingTaskActionButton } from "./StagingTaskActionButton";
 
 interface BacklogViewProps {
   boardId: number;
@@ -65,12 +67,10 @@ export function BacklogView2({
 
   const primaryActionButtonClassName = `group relative inline-flex items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r font-bold text-white shadow-lg transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} ${currentTheme.primary}`;
   const queueActionButtonClassName = `${primaryActionButtonClassName} gap-2 px-5 py-3 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-lg`;
-  const inlineActionButtonClassName = `group inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-0 ${currentTheme.focus} ${currentTheme.border} ${currentTheme.textSecondary} ${isDarkMode ? "bg-white/[0.03] hover:bg-white/[0.06]" : "bg-slate-50 hover:bg-white"} hover:${currentTheme.primaryText}`;
-  const planningPokerActionButtonClassName = `${queueActionButtonClassName} px-4 text-sm`;
   const regionDividerClassName = currentTheme.border;
   const activeDropRegionClassName = isDarkMode ? "bg-white/[0.03]" : "bg-black/[0.02]";
-  const emptyStateContainerClassName = `${isDarkMode ? "border-white/12 bg-white/[0.03]" : "border-slate-300/70 bg-slate-100/80"} rounded-xl border border-dashed`;
-  const emptyStateIconClassName = `${currentTheme.textMuted} h-5 w-5`;
+  const emptyStateContainerClassName = `${isDarkMode ? "border-zinc-700/70 bg-zinc-900/35" : "border-zinc-300/75 bg-zinc-100/70"} rounded-xl border border-dashed`;
+  const emptyStateIconClassName = `${isDarkMode ? "text-zinc-500" : "text-zinc-400"} h-5 w-5`;
   const canLaunchPlanningPoker =
     !planningPokerSession && planningPokerEligibleTaskCount > 0 && !isPlanningPokerLoading && !isPlanningPokerCreating;
 
@@ -211,14 +211,13 @@ export function BacklogView2({
                         footerAction={
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <button
+                              <StagingTaskActionButton
                                 type="button"
                                 onClick={() => onAddToQueue(card.id)}
                                 onMouseDown={(event) => event.stopPropagation()}
-                                className={inlineActionButtonClassName}
                               >
-                                <span className="leading-none">Add to Queue</span>
-                              </button>
+                                Add to Queue
+                              </StagingTaskActionButton>
                             </TooltipTrigger>
                             <TooltipContent side="top" sideOffset={8}>Stage task in the queue batch</TooltipContent>
                           </Tooltip>
@@ -249,26 +248,31 @@ export function BacklogView2({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       {planningPokerSession ? (
-                        <button
+                        <WorkspaceSecondaryActionButton
                           type="button"
                           disabled
                           aria-disabled="true"
-                          className={`${planningPokerActionButtonClassName} disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 disabled:hover:shadow-lg`}
+                          className="h-11 px-4 py-0"
+                          icon={<Users className="h-4 w-4" aria-hidden="true" />}
                         >
-                          <span>Open Planning Poker</span>
-                        </button>
+                          Open Planning Poker
+                        </WorkspaceSecondaryActionButton>
                       ) : (
-                        <button
+                        <WorkspaceSecondaryActionButton
                           type="button"
                           onClick={onCreatePlanningPokerSession}
                           disabled={!canLaunchPlanningPoker}
-                          className={`${planningPokerActionButtonClassName} disabled:cursor-not-allowed disabled:opacity-60`}
+                          className="h-11 px-4 py-0"
+                          icon={
+                            isPlanningPokerCreating ? (
+                              <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+                            ) : (
+                              <Users className="h-4 w-4" aria-hidden="true" />
+                            )
+                          }
                         >
-                          {isPlanningPokerCreating ? (
-                            <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
-                          ) : null}
-                          <span>{isPlanningPokerCreating ? "Creating..." : "Launch Planning Poker"}</span>
-                        </button>
+                          {isPlanningPokerCreating ? "Creating..." : "Launch Planning Poker"}
+                        </WorkspaceSecondaryActionButton>
                       )}
                     </TooltipTrigger>
                     <TooltipContent side="bottom" sideOffset={8}>
@@ -337,14 +341,13 @@ export function BacklogView2({
                         footerAction={
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <button
+                              <StagingTaskActionButton
                                 type="button"
                                 onClick={() => onRemoveFromQueue(card.id)}
                                 onMouseDown={(event) => event.stopPropagation()}
-                                className={inlineActionButtonClassName}
                               >
-                                <span className="leading-none">Back to Staging</span>
-                              </button>
+                                Back to Staging
+                              </StagingTaskActionButton>
                             </TooltipTrigger>
                             <TooltipContent side="top" sideOffset={8}>Return task to staging</TooltipContent>
                           </Tooltip>

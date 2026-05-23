@@ -71,7 +71,7 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
         {
             UserId = hostUserId,
             ParticipantToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(24)).ToLowerInvariant(),
-            DisplayName = BuildDisplayName(board.Memberships.Single(membership => membership.UserId == hostUserId).User),
+            DisplayName = BuildPlanningPokerDisplayName(board.Memberships.Single(membership => membership.UserId == hostUserId).User),
             IsHost = true,
             IsGuest = false,
             LastSeenAtUtc = now,
@@ -296,6 +296,8 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
         }
 
         activeTask.RoundState = PendingRoundState;
+        nextTask.Votes.Clear();
+        nextTask.RecommendedStoryPoints = null;
         nextTask.RoundState = VotingRoundState;
         session.ActiveSessionTaskId = nextTask.Id;
         session.ActiveSessionTask = nextTask;
@@ -322,6 +324,17 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
             cancellationToken);
         EnsureParticipantIsHost(session, participant);
 
+        PlanningPokerSessionTask? activeTask = session.ActiveSessionTask
+            ?? session.Tasks
+                .OrderBy(item => item.Position)
+                .FirstOrDefault(item =>
+                    item.RoundState.Equals(VotingRoundState, StringComparison.OrdinalIgnoreCase) ||
+                    item.RoundState.Equals(RevealedRoundState, StringComparison.OrdinalIgnoreCase));
+
+        PlanningPokerSessionTask? sessionTask = session.Tasks
+            .OrderBy(item => item.Position)
+            .FirstOrDefault(item => item.TaskId == taskId);
+
         TaskEntity task = await _context.Tasks
             .Include(item => item.Status)
             .FirstOrDefaultAsync(item => item.Id == taskId && item.BoardId == session.BoardId, cancellationToken)
@@ -337,17 +350,9 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
             throw new PlanningPokerValidationException("Only unestimated backlog tasks can be selected.");
         }
 
-        PlanningPokerSessionTask? activeTask = session.ActiveSessionTask
-            ?? session.Tasks
-                .OrderBy(item => item.Position)
-                .FirstOrDefault(item =>
-                    item.RoundState.Equals(VotingRoundState, StringComparison.OrdinalIgnoreCase) ||
-                    item.RoundState.Equals(RevealedRoundState, StringComparison.OrdinalIgnoreCase));
-
-        PlanningPokerSessionTask sessionTask = session.Tasks
-            .OrderBy(item => item.Position)
-            .FirstOrDefault(item => item.TaskId == taskId)
-            ?? new PlanningPokerSessionTask
+        if (sessionTask is null)
+        {
+            sessionTask = new PlanningPokerSessionTask
             {
                 SessionId = session.Id,
                 TaskId = taskId,
@@ -355,8 +360,6 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
                 RoundState = PendingRoundState,
             };
 
-        if (!session.Tasks.Any(item => item.TaskId == taskId))
-        {
             session.Tasks.Add(sessionTask);
         }
 
@@ -365,6 +368,8 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
             activeTask.RoundState = PendingRoundState;
         }
 
+        sessionTask.Votes.Clear();
+        sessionTask.RecommendedStoryPoints = null;
         sessionTask.RoundState = VotingRoundState;
         session.ActiveSessionTask = sessionTask;
         session.ActiveSessionTaskId = sessionTask.Id;
@@ -518,19 +523,23 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
         CancellationToken cancellationToken)
     {
         PlanningPokerParticipant? participant = session.Participants.FirstOrDefault(item => item.UserId == userId);
+        User user = board.Memberships.Single(membership => membership.UserId == userId).User;
+        string displayName = BuildPlanningPokerDisplayName(user);
+
         if (participant is not null)
         {
+            participant.DisplayName = displayName;
             participant.LastSeenAtUtc = DateTime.UtcNow;
+            await _context.SaveChangesAsync(cancellationToken);
             return;
         }
 
-        User user = board.Memberships.Single(membership => membership.UserId == userId).User;
         session.Participants.Add(new PlanningPokerParticipant
         {
             SessionId = session.Id,
             UserId = userId,
             ParticipantToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(24)).ToLowerInvariant(),
-            DisplayName = BuildDisplayName(user),
+            DisplayName = displayName,
             IsHost = userId == session.HostUserId,
             IsGuest = false,
             LastSeenAtUtc = DateTime.UtcNow,
@@ -843,6 +852,11 @@ public class PlanningPokerSessionService : IPlanningPokerSessionService
     {
         string displayName = $"{user.FirstName} {user.LastName}".Trim();
         return string.IsNullOrWhiteSpace(displayName) ? user.Username : displayName;
+    }
+
+    private static string BuildPlanningPokerDisplayName(User user)
+    {
+        return user.Username;
     }
 
 }

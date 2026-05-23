@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { useNavigate, useParams } from "react-router";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import { Archive, ClipboardList, Clock, LayoutGrid, List as ListIcon, LoaderCircle, RotateCw } from "lucide-react";
+import { Archive, BarChart3, ClipboardList, Clock, LayoutGrid, List as ListIcon, LoaderCircle, RotateCw } from "lucide-react";
 import { KanbanColumn } from "../components/KanbanColumn";
 import { AddCardModal } from "../components/AddCardModal";
 import { EditTaskModal } from "../components/EditTaskModal";
@@ -11,12 +11,15 @@ import { Sidebar } from "../components/Sidebar";
 import { Toolbar } from "../components/Toolbar";
 import { SettingsModal } from "../components/SettingsModal";
 import { ConfirmDeleteDialog } from "../components/ConfirmDeleteDialog";
+import { ConfirmConcludeDoneDialog } from "../components/ConfirmConcludeDoneDialog";
 import { ListView } from "../components/ListView";
 import { BacklogView2 } from "../components/BacklogView2";
+import { BoardStatisticsView } from "../components/BoardStatisticsView";
 import { BoardSettingsPage } from "../components/BoardSettingsPage";
 import { CoachmarkOverlay } from "../components/CoachmarkOverlay";
 import { PlanningPokerDeleteSessionDialog } from "../components/planning-poker/PlanningPokerDeleteSessionDialog";
 import { UtilityIconButton } from "../components/UtilityIconButton";
+import { StagingTaskActionButton } from "../components/StagingTaskActionButton";
 import { SidebarInset, SidebarProvider } from "../components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../components/ui/tooltip";
 import { useAuth } from "../contexts/AuthContext";
@@ -39,6 +42,8 @@ import {
   BoardColumnTaskStatus,
   Card,
   Cards,
+  concludeBoardTask,
+  concludeDoneBoardTasks,
   createBoardTask,
   createEmptyCards,
   deleteBoardTask,
@@ -52,6 +57,7 @@ import {
   TaskType,
   flattenCards,
   groupCards,
+  restoreBoardTaskToBacklog,
   updateBoardTask,
   updateBoardTaskPosition,
 } from "../utils/cards";
@@ -80,13 +86,14 @@ import {
   TaskWorkspaceFilters,
 } from "../utils/taskWorkspaceFilters";
 
-const WORKSPACE_VIEW_ORDER: BoardWorkspaceView[] = ["board", "list", "staging", "backlog", "history"];
+const WORKSPACE_VIEW_ORDER: BoardWorkspaceView[] = ["board", "list", "staging", "backlog", "history", "statistics"];
 const BOARD_VIEW_TABS: Array<{ value: BoardWorkspaceView; label: string; icon: typeof LayoutGrid }> = [
   { value: "board", label: "Board", icon: LayoutGrid },
   { value: "list", label: "List", icon: ListIcon },
   { value: "staging", label: "Staging", icon: Archive },
   { value: "backlog", label: "Backlog", icon: ClipboardList },
   { value: "history", label: "History", icon: Clock },
+  { value: "statistics", label: "Statistics", icon: BarChart3 },
 ];
 const TASK_INDEX_VIEWS: BoardWorkspaceView[] = ["list", "backlog", "history"];
 type BoardPageView = BoardWorkspaceView | "boardSettings";
@@ -105,7 +112,9 @@ function getBoardWorkspaceTabTooltip(view: BoardWorkspaceView) {
     case "backlog":
       return "Refine waiting and queued backlog tasks.";
     case "history":
-      return "Review completed work and team progress.";
+      return "Review concluded work and restore anything that needs another pass.";
+    case "statistics":
+      return "Review board health, aging work, archive movement, and priority mix.";
     default:
       return "Open workspace view.";
   }
@@ -258,6 +267,8 @@ export function Board() {
     cardId: null,
     title: "",
   });
+  const [isConcludeDoneDialogOpen, setIsConcludeDoneDialogOpen] = useState(false);
+  const [isConcludingDoneTasks, setIsConcludingDoneTasks] = useState(false);
 
   const [view, setView] = useState<BoardPageView>("board");
   const [listFilters, setListFilters] = useState<TaskWorkspaceFilters>(DEFAULT_TASK_WORKSPACE_FILTERS);
@@ -662,6 +673,7 @@ export function Board() {
     }),
     [workflowCards],
   );
+  const doneTaskCount = workflowColumns.done.length;
 
   const currentBoardFlow = useMemo(
     () => getCoachmarkFlowForView(activeWorkspaceView, workflowCards.length > 0),
@@ -721,7 +733,8 @@ export function Board() {
       isGlobalSettingsOpen ||
       view === "boardSettings" ||
       editingTask !== null ||
-      deleteDialog.isOpen,
+      deleteDialog.isOpen ||
+      isConcludeDoneDialogOpen,
     onFlowCompleted: (flowId) => {
       void markFlowCompleted(flowId);
     },
@@ -753,6 +766,7 @@ export function Board() {
       isGlobalSettingsOpen ||
       editingTask !== null ||
       deleteDialog.isOpen ||
+      isConcludeDoneDialogOpen ||
       activeFlowId !== null
     ) {
       return;
@@ -815,6 +829,7 @@ export function Board() {
     currentBoard,
     deleteDialog.isOpen,
     editingTask,
+    isConcludeDoneDialogOpen,
     isBoardSettingsView,
     isTaskIndexRefreshing,
     isRefreshingWorkspace,
@@ -1001,6 +1016,59 @@ export function Board() {
       showSuccessToast("Task status updated.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to move the task back to staging right now.";
+      showErrorToast(message);
+    }
+  };
+
+  const handleConcludeTask = async (cardId: number) => {
+    if (!Number.isFinite(numericBoardId)) {
+      return;
+    }
+
+    try {
+      await concludeBoardTask(numericBoardId, cardId);
+      removeTaskFromState(cardId);
+      triggerWorkspaceRefetch("soft");
+      showSuccessToast("Task concluded.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to conclude the task right now.";
+      showErrorToast(message);
+    }
+  };
+
+  const handleConcludeDoneTasks = async () => {
+    if (!Number.isFinite(numericBoardId) || isConcludingDoneTasks) {
+      return;
+    }
+
+    try {
+      setIsConcludingDoneTasks(true);
+      const result = await concludeDoneBoardTasks(numericBoardId);
+      result.taskIds.forEach(removeTaskFromState);
+      setIsConcludeDoneDialogOpen(false);
+      triggerWorkspaceRefetch("soft");
+      showSuccessToast(result.count === 1 ? "Concluded 1 task." : `Concluded ${result.count} tasks.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to conclude done tasks right now.";
+      showErrorToast(message);
+    } finally {
+      setIsConcludingDoneTasks(false);
+    }
+  };
+
+  const handleRestoreTaskToBacklog = async (cardId: number) => {
+    if (!Number.isFinite(numericBoardId)) {
+      return;
+    }
+
+    try {
+      const restoredTask = await restoreBoardTaskToBacklog(numericBoardId, cardId);
+      setTaskInState(restoredTask);
+      triggerWorkspaceRefetch("soft");
+      await refreshProgress();
+      showSuccessToast("Task restored to backlog.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to restore the task right now.";
       showErrorToast(message);
     }
   };
@@ -1424,7 +1492,34 @@ export function Board() {
                       <KanbanColumn boardId={numericBoardId} id="todo" title="To Do" count={workflowColumns.todo.length} softLimit={currentBoard.columnLimits.todo?.softLimit ?? null} hardLimit={currentBoard.columnLimits.todo?.hardLimit ?? null} cards={workflowColumns.todo} onCardDrop={handleCardDrop} onOpen={handleOpenTask} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
                       <KanbanColumn boardId={numericBoardId} id="inProgress" title="In Progress" count={workflowColumns.inProgress.length} softLimit={currentBoard.columnLimits.inProgress?.softLimit ?? null} hardLimit={currentBoard.columnLimits.inProgress?.hardLimit ?? null} cards={workflowColumns.inProgress} onCardDrop={handleCardDrop} onOpen={handleOpenTask} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
                       <KanbanColumn boardId={numericBoardId} id="inReview" title="In Review" count={workflowColumns.inReview.length} softLimit={currentBoard.columnLimits.inReview?.softLimit ?? null} hardLimit={currentBoard.columnLimits.inReview?.hardLimit ?? null} cards={workflowColumns.inReview} onCardDrop={handleCardDrop} onOpen={handleOpenTask} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
-                        <KanbanColumn boardId={numericBoardId} id="done" title="Done" count={workflowColumns.done.length} softLimit={currentBoard.columnLimits.done?.softLimit ?? null} hardLimit={currentBoard.columnLimits.done?.hardLimit ?? null} cards={workflowColumns.done} onCardDrop={handleCardDrop} onOpen={handleOpenTask} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                        <KanbanColumn
+                          boardId={numericBoardId}
+                          id="done"
+                          title="Done"
+                          count={workflowColumns.done.length}
+                          softLimit={currentBoard.columnLimits.done?.softLimit ?? null}
+                          hardLimit={currentBoard.columnLimits.done?.hardLimit ?? null}
+                          cards={workflowColumns.done}
+                          onCardDrop={handleCardDrop}
+                          onOpen={handleOpenTask}
+                          onAssigneeChange={handleAssigneeChange}
+                          onDelete={handleDeleteRequest}
+                          onEdit={handleEditTask}
+                          onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)}
+                          onConclude={(cardId) => void handleConcludeTask(cardId)}
+                          availableAssignees={availableAssignees}
+                          labels={labels}
+                          headerAction={
+                            <StagingTaskActionButton
+                              type="button"
+                              disabled={doneTaskCount === 0}
+                              onClick={() => setIsConcludeDoneDialogOpen(true)}
+                              className={doneTaskCount === 0 ? "cursor-not-allowed opacity-50" : ""}
+                            >
+                              Conclude all
+                            </StagingTaskActionButton>
+                          }
+                        />
                       </div>
                     </div>
 
@@ -1516,10 +1611,16 @@ export function Board() {
                   onOpen={handleOpenTask}
                   onAssigneeChange={handleAssigneeChange}
                   onDelete={handleDeleteRequest}
-                  onEdit={handleEditTask}
-                  onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)}
+                  onRestoreToBacklog={(cardId) => void handleRestoreTaskToBacklog(cardId)}
                   availableAssignees={availableAssignees}
                   labels={labels}
+                />
+              )}
+
+              {view === "statistics" && (
+                <BoardStatisticsView
+                  boardId={numericBoardId}
+                  taskDataVersion={taskDataVersion}
                 />
               )}
 
@@ -1569,6 +1670,18 @@ export function Board() {
               onClose={() => setDeleteDialog({ isOpen: false, cardId: null, title: "" })}
               onConfirm={() => void handleDeleteConfirm()}
               taskTitle={deleteDialog.title}
+            />
+
+            <ConfirmConcludeDoneDialog
+              isOpen={isConcludeDoneDialogOpen}
+              taskCount={doneTaskCount}
+              isSubmitting={isConcludingDoneTasks}
+              onClose={() => {
+                if (!isConcludingDoneTasks) {
+                  setIsConcludeDoneDialogOpen(false);
+                }
+              }}
+              onConfirm={() => void handleConcludeDoneTasks()}
             />
 
             <PlanningPokerDeleteSessionDialog

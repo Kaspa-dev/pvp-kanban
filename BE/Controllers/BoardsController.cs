@@ -41,6 +41,7 @@ public class BoardsController(
     private const int MaxTaskDescriptionLength = 2000;
     private const int MaxTaskCommentLength = 2000;
     private const int MaxTaskLabels = 5;
+    private const int BoardStatisticsAgingTaskLimit = 8;
     private const int MinTaskStoryPoints = 1;
     private const int MaxTaskStoryPoints = 100;
     private const int MaxBoardLabels = 12;
@@ -120,12 +121,14 @@ public class BoardsController(
             AssignedTasks = await _context.Tasks
                 .Where(task =>
                     task.AssigneeId == userId &&
+                    task.ConcludedAtUtc == null &&
                     accessibleBoardsQuery.Select(board => board.Id).Contains(task.BoardId))
                 .CountAsync(cancellationToken),
             OpenTasks = await _context.Tasks
                 .Where(task =>
                     task.AssigneeId == userId &&
                     accessibleBoardsQuery.Select(board => board.Id).Contains(task.BoardId) &&
+                    task.ConcludedAtUtc == null &&
                     task.Status.Title != "done")
                 .CountAsync(cancellationToken),
             CompletedTasks = await _context.Tasks
@@ -788,7 +791,7 @@ public class BoardsController(
         Dictionary<int, BoardMemberDto> memberLookup = await GetBoardMemberLookupAsync(board, cancellationToken);
 
         var tasks = await _context.Tasks
-            .Where(task => task.BoardId == boardId)
+            .Where(task => task.BoardId == boardId && task.ConcludedAtUtc == null)
             .Include(task => task.Status)
             .Include(task => task.Assignee)
             .Include(task => task.LabeledTasks)
@@ -883,6 +886,128 @@ public class BoardsController(
             PageSize = pageSize,
             TotalItems = totalItems,
             TotalPages = totalPages,
+        });
+    }
+
+    [HttpGet("{boardId:int}/statistics")]
+    public async Task<ActionResult<BoardStatisticsDto>> GetBoardStatistics(
+        int boardId,
+        [FromQuery] string archiveRange = "30d",
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        var (accessContext, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
+        if (failure is not null)
+        {
+            return failure;
+        }
+
+        Board board = accessContext!.Board;
+        Dictionary<int, BoardMemberDto> memberLookup = await GetBoardMemberLookupAsync(board, cancellationToken);
+        DateTime utcToday = DateTime.UtcNow.Date;
+        BoardStatisticsArchiveRange resolvedArchiveRange = ResolveBoardStatisticsArchiveRange(archiveRange, utcToday);
+
+        IQueryable<TaskEntity> currentTasks = _context.Tasks
+            .Where(task => task.BoardId == boardId && task.ConcludedAtUtc == null);
+
+        List<BoardStatisticsStatusAggregate> statusAggregates = await currentTasks
+            .GroupBy(task => new { StatusKey = task.Status.Title, task.IsQueued })
+            .Select(group => new BoardStatisticsStatusAggregate(
+                group.Key.StatusKey,
+                group.Key.IsQueued,
+                group.Count(),
+                group.Sum(task => task.StoryPoints ?? 0)))
+            .ToListAsync(cancellationToken);
+
+        Dictionary<string, BoardStatisticsStatusAggregate> statusLookup = statusAggregates
+            .ToDictionary(item => GetBoardStatisticsStatusAggregateKey(item.StatusKey, item.IsQueued), StringComparer.OrdinalIgnoreCase);
+
+        var agingTaskRows = await _context.Tasks
+            .Where(task =>
+                task.BoardId == boardId &&
+                task.ConcludedAtUtc == null &&
+                task.StatusEnteredAtUtc != null)
+            .OrderBy(task => task.StatusEnteredAtUtc)
+            .ThenBy(task => task.Id)
+            .Take(BoardStatisticsAgingTaskLimit)
+            .Select(task => new
+            {
+                task.Id,
+                task.Title,
+                StatusKey = task.Status.Title,
+                task.StatusEnteredAtUtc,
+                task.Priority,
+                task.AssigneeId,
+            })
+            .ToListAsync(cancellationToken);
+
+        List<BoardStatisticsAgingTaskDto> agingTasks = agingTaskRows
+            .Select(task =>
+            {
+                int daysInStatus = task.StatusEnteredAtUtc.HasValue
+                    ? Math.Max(0, (utcToday - task.StatusEnteredAtUtc.Value.Date).Days)
+                    : 0;
+
+                return new BoardStatisticsAgingTaskDto
+                {
+                    TaskId = task.Id,
+                    Title = task.Title,
+                    StatusKey = task.StatusKey,
+                    StatusLabel = GetBoardStatusDisplayName(task.StatusKey),
+                    DaysInStatus = daysInStatus,
+                    StatusEnteredAtUtc = task.StatusEnteredAtUtc,
+                    Priority = task.Priority?.ToString().ToLowerInvariant(),
+                    Assignee = task.AssigneeId.HasValue && memberLookup.TryGetValue(task.AssigneeId.Value, out BoardMemberDto? assignee)
+                        ? assignee
+                        : null,
+                };
+            })
+            .ToList();
+
+        List<BoardStatisticsPriorityAggregate> priorityAggregates = await currentTasks
+            .GroupBy(task => task.Priority)
+            .Select(group => new BoardStatisticsPriorityAggregate(group.Key, group.Count()))
+            .ToListAsync(cancellationToken);
+
+        Dictionary<string, int> priorityLookup = priorityAggregates.ToDictionary(
+            item => item.Priority?.ToString().ToLowerInvariant() ?? "none",
+            item => item.TaskCount,
+            StringComparer.OrdinalIgnoreCase);
+
+        List<DateTime> concludedDates = await _context.Tasks
+            .Where(task =>
+                task.BoardId == boardId &&
+                task.ConcludedAtUtc != null &&
+                task.ConcludedAtUtc >= resolvedArchiveRange.StartUtc)
+            .Select(task => task.ConcludedAtUtc!.Value)
+            .ToListAsync(cancellationToken);
+
+        return Ok(new BoardStatisticsDto
+        {
+            StatusCounts = new BoardStatisticsStatusSummaryDto
+            {
+                Items = EditableBoardColumnStatusKeys
+                    .Select(statusKey => ToBoardStatisticsStatusCountDto(statusKey, statusLookup))
+                    .Concat([
+                        ToBoardStatisticsBacklogStatusCountDto("backlogQueued", "Queued", true, statusLookup),
+                        ToBoardStatisticsBacklogStatusCountDto("backlogUnqueued", "Unqueued", false, statusLookup),
+                    ])
+                    .ToList(),
+            },
+            AgingTasks = agingTasks,
+            ArchiveTrend = BuildBoardStatisticsArchiveTrend(resolvedArchiveRange, concludedDates),
+            PriorityMix =
+            [
+                ToBoardStatisticsPriorityMixDto("critical", priorityLookup),
+                ToBoardStatisticsPriorityMixDto("high", priorityLookup),
+                ToBoardStatisticsPriorityMixDto("medium", priorityLookup),
+                ToBoardStatisticsPriorityMixDto("low", priorityLookup),
+                ToBoardStatisticsPriorityMixDto("none", priorityLookup),
+            ],
         });
     }
 
@@ -1201,6 +1326,11 @@ public class BoardsController(
             return NotFound();
         }
 
+        if (task.ConcludedAtUtc.HasValue)
+        {
+            return BadRequest(new { message = "Restore the task before moving it." });
+        }
+
         string previousStatusKey = task.Status.Title;
         bool statusChanged = !string.Equals(previousStatusKey, status!.Title, StringComparison.OrdinalIgnoreCase);
         if (statusChanged)
@@ -1224,6 +1354,152 @@ public class BoardsController(
         }
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        var memberLookup = await GetBoardMemberLookupAsync(board, cancellationToken);
+
+        return Ok(ToTaskDto(task, memberLookup));
+    }
+
+    [HttpPost("{boardId:int}/tasks/{taskId:int}/conclude")]
+    public async Task<ActionResult<BoardTaskDto>> ConcludeTask(int boardId, int taskId, CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        var (accessContext, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
+        if (failure is not null)
+        {
+            return failure;
+        }
+
+        Board board = accessContext!.Board;
+        TaskEntity? task = await _context.Tasks
+            .Where(item => item.Id == taskId && item.BoardId == boardId)
+            .Include(item => item.Status)
+            .Include(item => item.Assignee)
+            .Include(item => item.LabeledTasks)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (task is null)
+        {
+            return NotFound();
+        }
+
+        if (task.ConcludedAtUtc.HasValue)
+        {
+            return BadRequest(new { message = "Task is already concluded." });
+        }
+
+        if (!string.Equals(task.Status.Title, "done", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { message = "Only Done tasks can be concluded." });
+        }
+
+        task.ConcludedAtUtc = DateTime.UtcNow;
+        task.ConcludedByUserId = userId;
+        task.ConcludedBy = accessContext.Membership.User;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var memberLookup = await GetBoardMemberLookupAsync(board, cancellationToken);
+
+        return Ok(ToTaskDto(task, memberLookup));
+    }
+
+    [HttpPost("{boardId:int}/tasks/conclude-done")]
+    public async Task<ActionResult<ConcludeBoardTasksResponseDto>> ConcludeDoneTasks(int boardId, CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        var (_, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
+        if (failure is not null)
+        {
+            return failure;
+        }
+
+        DateTime concludedAtUtc = DateTime.UtcNow;
+        List<TaskEntity> tasks = await _context.Tasks
+            .Where(task =>
+                task.BoardId == boardId &&
+                task.ConcludedAtUtc == null &&
+                task.Status.Title == "done")
+            .Include(task => task.Status)
+            .OrderBy(task => task.ColumnPosition)
+            .ThenByDescending(task => task.Id)
+            .ToListAsync(cancellationToken);
+
+        foreach (TaskEntity task in tasks)
+        {
+            task.ConcludedAtUtc = concludedAtUtc;
+            task.ConcludedByUserId = userId;
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        List<int> taskIds = tasks.Select(task => task.Id).ToList();
+        return Ok(new ConcludeBoardTasksResponseDto
+        {
+            TaskIds = taskIds,
+            Count = taskIds.Count,
+        });
+    }
+
+    [HttpPost("{boardId:int}/tasks/{taskId:int}/restore-to-backlog")]
+    public async Task<ActionResult<BoardTaskDto>> RestoreTaskToBacklog(int boardId, int taskId, CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out int userId))
+        {
+            return Unauthorized();
+        }
+
+        var (accessContext, failure) = await GetBoardAccessAsync(boardId, userId, requireOwner: false, cancellationToken);
+        if (failure is not null)
+        {
+            return failure;
+        }
+
+        Board board = accessContext!.Board;
+        if (!TryResolveTaskStatus(board, "backlog", out BoardTaskStatus? backlogStatus))
+        {
+            return BadRequest(new { message = "The board is missing a backlog status." });
+        }
+        BoardTaskStatus resolvedBacklogStatus = backlogStatus!;
+
+        TaskEntity? task = await _context.Tasks
+            .Where(item => item.Id == taskId && item.BoardId == boardId)
+            .Include(item => item.Status)
+            .Include(item => item.Assignee)
+            .Include(item => item.LabeledTasks)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (task is null)
+        {
+            return NotFound();
+        }
+
+        if (!task.ConcludedAtUtc.HasValue)
+        {
+            return BadRequest(new { message = "Only concluded tasks can be restored." });
+        }
+
+        string previousStatusKey = task.Status.Title;
+        await MoveTaskToColumnPositionAsync(task, resolvedBacklogStatus, 0, cancellationToken);
+        task.IsQueued = false;
+        task.ConcludedAtUtc = null;
+        task.ConcludedByUserId = null;
+        task.ConcludedBy = null;
+
+        if (!string.Equals(previousStatusKey, resolvedBacklogStatus.Title, StringComparison.OrdinalIgnoreCase))
+        {
+            await _gamificationService.ApplyTaskTransitionXpAsync(task, previousStatusKey, resolvedBacklogStatus.Title, cancellationToken);
+        }
+
+        await SaveChangesWithMilestoneRecoveryAsync(cancellationToken);
 
         var memberLookup = await GetBoardMemberLookupAsync(board, cancellationToken);
 
@@ -1461,6 +1737,11 @@ public class BoardsController(
             return NotFound();
         }
 
+        if (task.ConcludedAtUtc.HasValue)
+        {
+            return BadRequest(new { message = "Restore the task before adding it to the queue." });
+        }
+
         if (!string.Equals(task.Status.Title, "backlog", StringComparison.OrdinalIgnoreCase))
         {
             return BadRequest(new { message = "Only backlog tasks can be added to the queue." });
@@ -1533,7 +1814,7 @@ public class BoardsController(
         }
 
         var queuedTasks = await _context.Tasks
-            .Where(task => task.BoardId == boardId && task.IsQueued)
+            .Where(task => task.BoardId == boardId && task.IsQueued && task.ConcludedAtUtc == null)
             .Include(task => task.Status)
             .Include(task => task.Assignee)
             .Include(task => task.LabeledTasks)
@@ -2009,6 +2290,7 @@ public class BoardsController(
         int currentCount = await _context.Tasks
             .Where(task =>
                 task.BoardId == boardId &&
+                task.ConcludedAtUtc == null &&
                 task.Status.Title == statusKey)
             .CountAsync(cancellationToken);
 
@@ -2043,6 +2325,142 @@ public class BoardsController(
             "done" => "Done",
             "backlog" => "Backlog",
             _ => statusKey,
+        };
+    }
+
+    private static string GetBoardStatisticsPriorityDisplayName(string priority)
+    {
+        return priority.Trim().ToLowerInvariant() switch
+        {
+            "critical" => "Critical",
+            "high" => "High",
+            "medium" => "Medium",
+            "low" => "Low",
+            "none" => "No priority",
+            _ => priority,
+        };
+    }
+
+    private static BoardStatisticsStatusCountDto ToBoardStatisticsStatusCountDto(
+        string statusKey,
+        IReadOnlyDictionary<string, BoardStatisticsStatusAggregate> statusLookup)
+    {
+        statusLookup.TryGetValue(GetBoardStatisticsStatusAggregateKey(statusKey, false), out BoardStatisticsStatusAggregate? unqueuedAggregate);
+        statusLookup.TryGetValue(GetBoardStatisticsStatusAggregateKey(statusKey, true), out BoardStatisticsStatusAggregate? queuedAggregate);
+
+        return new BoardStatisticsStatusCountDto
+        {
+            StatusKey = statusKey,
+            Label = GetBoardStatusDisplayName(statusKey),
+            Group = "active",
+            TaskCount = (unqueuedAggregate?.TaskCount ?? 0) + (queuedAggregate?.TaskCount ?? 0),
+            StoryPoints = (unqueuedAggregate?.StoryPoints ?? 0) + (queuedAggregate?.StoryPoints ?? 0),
+        };
+    }
+
+    private static BoardStatisticsStatusCountDto ToBoardStatisticsBacklogStatusCountDto(
+        string statusKey,
+        string label,
+        bool isQueued,
+        IReadOnlyDictionary<string, BoardStatisticsStatusAggregate> statusLookup)
+    {
+        statusLookup.TryGetValue(GetBoardStatisticsStatusAggregateKey("backlog", isQueued), out BoardStatisticsStatusAggregate? aggregate);
+
+        return new BoardStatisticsStatusCountDto
+        {
+            StatusKey = statusKey,
+            Label = label,
+            Group = "backlog",
+            TaskCount = aggregate?.TaskCount ?? 0,
+            StoryPoints = aggregate?.StoryPoints ?? 0,
+        };
+    }
+
+    private static string GetBoardStatisticsStatusAggregateKey(string statusKey, bool isQueued)
+    {
+        return $"{statusKey.Trim().ToLowerInvariant()}:{isQueued}";
+    }
+
+    private static BoardStatisticsPriorityMixDto ToBoardStatisticsPriorityMixDto(
+        string priority,
+        IReadOnlyDictionary<string, int> priorityLookup)
+    {
+        return new BoardStatisticsPriorityMixDto
+        {
+            Priority = priority,
+            Label = GetBoardStatisticsPriorityDisplayName(priority),
+            TaskCount = priorityLookup.GetValueOrDefault(priority),
+        };
+    }
+
+    private static BoardStatisticsArchiveRange ResolveBoardStatisticsArchiveRange(string? archiveRange, DateTime utcToday)
+    {
+        string normalizedRange = archiveRange?.Trim().ToLowerInvariant() ?? "30d";
+        return normalizedRange switch
+        {
+            "14d" => new BoardStatisticsArchiveRange("14d", "day", utcToday.AddDays(-13), 14),
+            "12w" => new BoardStatisticsArchiveRange("12w", "week", GetStartOfWeekUtc(utcToday).AddDays(-77), 12),
+            _ => new BoardStatisticsArchiveRange("30d", "day", utcToday.AddDays(-29), 30),
+        };
+    }
+
+    private static DateTime GetStartOfWeekUtc(DateTime date)
+    {
+        int offset = ((int)date.DayOfWeek + 6) % 7;
+        return date.Date.AddDays(-offset);
+    }
+
+    private static BoardStatisticsArchiveTrendDto BuildBoardStatisticsArchiveTrend(
+        BoardStatisticsArchiveRange archiveRange,
+        IEnumerable<DateTime> concludedDates)
+    {
+        List<BoardStatisticsArchiveTrendBucketDto> buckets = [];
+
+        if (archiveRange.Bucket.Equals("week", StringComparison.OrdinalIgnoreCase))
+        {
+            Dictionary<DateTime, int> concludedByWeek = concludedDates
+                .GroupBy(date => GetStartOfWeekUtc(date.Date))
+                .ToDictionary(group => group.Key, group => group.Count());
+
+            for (int index = 0; index < archiveRange.BucketCount; index += 1)
+            {
+                DateTime bucketStart = archiveRange.StartUtc.AddDays(index * 7);
+                buckets.Add(new BoardStatisticsArchiveTrendBucketDto
+                {
+                    Key = bucketStart.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    Label = bucketStart.ToString("MMM d", CultureInfo.InvariantCulture),
+                    ConcludedCount = concludedByWeek.GetValueOrDefault(bucketStart),
+                });
+            }
+
+            return new BoardStatisticsArchiveTrendDto
+            {
+                Range = archiveRange.Range,
+                Bucket = archiveRange.Bucket,
+                Buckets = buckets,
+            };
+        }
+
+        Dictionary<DateTime, int> concludedByDay = concludedDates
+            .GroupBy(date => date.Date)
+            .ToDictionary(group => group.Key, group => group.Count());
+
+        for (int index = 0; index < archiveRange.BucketCount; index += 1)
+        {
+            DateTime bucketDate = archiveRange.StartUtc.AddDays(index);
+            buckets.Add(new BoardStatisticsArchiveTrendBucketDto
+            {
+                Key = bucketDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                Label = bucketDate.ToString("MMM d", CultureInfo.InvariantCulture),
+                ConcludedCount = concludedByDay.GetValueOrDefault(bucketDate),
+            });
+        }
+
+        return new BoardStatisticsArchiveTrendDto
+        {
+            Range = archiveRange.Range,
+            Bucket = archiveRange.Bucket,
+            Buckets = buckets,
         };
     }
 
@@ -2301,10 +2719,10 @@ public class BoardsController(
         bool isBacklogScope = string.Equals(request.Scope, "backlog", StringComparison.OrdinalIgnoreCase);
         bool isHistoryScope = string.Equals(request.Scope, "history", StringComparison.OrdinalIgnoreCase);
         query = isBacklogScope
-            ? query.Where(task => task.Status.Title == "backlog")
+            ? query.Where(task => task.ConcludedAtUtc == null && task.Status.Title == "backlog")
             : isHistoryScope
-                ? query.Where(task => task.Status.Title == "done")
-                : query.Where(task => task.Status.Title != "backlog");
+                ? query.Where(task => task.ConcludedAtUtc != null)
+                : query.Where(task => task.ConcludedAtUtc == null && task.Status.Title != "backlog");
 
         if (!string.IsNullOrWhiteSpace(request.Q))
         {
@@ -2579,6 +2997,8 @@ public class BoardsController(
             StoryPoints = task.StoryPoints,
             DueDate = task.DueDate?.ToString("yyyy-MM-dd"),
             StatusEnteredAtUtc = task.StatusEnteredAtUtc,
+            ConcludedAtUtc = task.ConcludedAtUtc,
+            ConcludedByUserId = task.ConcludedByUserId,
             Priority = task.Priority?.ToString().ToLowerInvariant(),
             TaskType = task.Type?.ToString().ToLowerInvariant(),
         };
@@ -2809,6 +3229,7 @@ public class BoardsController(
         var currentCounts = await _context.Tasks
             .Where(task =>
                 task.BoardId == boardId &&
+                task.ConcludedAtUtc == null &&
                 EditableBoardColumnStatusKeys.Contains(task.Status.Title))
             .GroupBy(task => task.Status.Title)
             .Select(group => new
@@ -2838,6 +3259,12 @@ public class BoardsController(
 
         return null;
     }
+
+    private sealed record BoardStatisticsArchiveRange(string Range, string Bucket, DateTime StartUtc, int BucketCount);
+
+    private sealed record BoardStatisticsStatusAggregate(string StatusKey, bool IsQueued, int TaskCount, int StoryPoints);
+
+    private sealed record BoardStatisticsPriorityAggregate(Priority? Priority, int TaskCount);
 
     private sealed record BoardAccessContext(Board Board, BoardMembership Membership);
 }

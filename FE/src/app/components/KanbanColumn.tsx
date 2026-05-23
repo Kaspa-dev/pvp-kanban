@@ -4,7 +4,7 @@ import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { Label } from "../utils/labels";
 import { Card, Priority, TaskAssignee, TaskType } from "../utils/cards";
 import { CustomScrollArea } from "./CustomScrollArea";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 type ColumnCard = Card & {
   priority?: Priority;
@@ -23,10 +23,12 @@ interface KanbanColumnProps {
   onDelete: (cardId: number, title: string) => void;
   onEdit?: (cardId: number) => void;
   onMoveToBacklog?: (cardId: number) => void;
+  onConclude?: (cardId: number) => void;
   availableAssignees: TaskAssignee[];
   labels: Label[];
   softLimit?: number | null;
   hardLimit?: number | null;
+  headerAction?: ReactNode;
 }
 
 type DraggedKanbanCard = {
@@ -123,10 +125,12 @@ export function KanbanColumn({
   onDelete,
   onEdit,
   onMoveToBacklog,
+  onConclude,
   availableAssignees,
   labels,
   softLimit,
   hardLimit,
+  headerAction,
 }: KanbanColumnProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
@@ -340,6 +344,7 @@ export function KanbanColumn({
             >
               {columnLimitStatusMessage ?? "\u00a0"}
             </p>
+            {headerAction ? <div className="mt-1">{headerAction}</div> : null}
           </div>
         </div>
         
@@ -367,6 +372,7 @@ export function KanbanColumn({
                   onDelete={onDelete}
                   onEdit={onEdit}
                   onMoveToBacklog={onMoveToBacklog}
+                  onConclude={onConclude}
                   availableAssignees={availableAssignees}
                   labels={labels}
                   storyPoints={card.storyPoints}

@@ -17,11 +17,14 @@ public class Task
     public Type? Type { get; set; } = null;
     public DateTime? DueDate { get; set; } = null;
     public DateTime? StatusEnteredAtUtc { get; set; } = null;
+    public DateTime? ConcludedAtUtc { get; set; } = null;
+    public int? ConcludedByUserId { get; set; } = null;
 
     public Board Board { get; set; } = null!;
     public Models.TaskStatus Status { get; set; } = null!;
     public User? Assignee { get; set; } = null;
     public User Reporter { get; set; } = null!;
+    public User? ConcludedBy { get; set; } = null;
     public OrganizationalUnit? AssignedTeam { get; set; } = null;
     public ICollection<LabeledTask> LabeledTasks { get; set; } = new List<LabeledTask>();
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();

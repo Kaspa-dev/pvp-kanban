@@ -1,19 +1,51 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { AlertCircle, RotateCw } from "lucide-react";
 import { SettingsModal } from "../components/SettingsModal";
 import { Toolbar } from "../components/Toolbar";
 import { TaskCommentThread } from "../components/task-details/TaskCommentThread";
+import { TaskDetailsEditPanel, type TaskDetailsEditUpdates } from "../components/task-details/TaskDetailsEditPanel";
 import { TaskDetailsSummary } from "../components/task-details/TaskDetailsSummary";
 import { Skeleton } from "../components/ui/skeleton";
 import { useAuth } from "../contexts/AuthContext";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
 import { getBoard, Board as BoardType } from "../utils/boards";
-import { getBoardTaskDetails, TaskDetails } from "../utils/cards";
+import {
+  getBoardTaskDetails,
+  invalidateBoardAssigneeSuggestions,
+  TaskAssignee,
+  TaskDetails,
+  updateBoardTask,
+} from "../utils/cards";
 import { getBoardLabels, Label } from "../utils/labels";
+import { showErrorToast, showSuccessToast } from "../utils/toast";
 import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
 
 type ThemeColors = ReturnType<typeof getThemeColors>;
+
+function haveSameNumericValues(left: number[], right: number[]) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  const normalizedLeft = [...left].sort((a, b) => a - b);
+  const normalizedRight = [...right].sort((a, b) => a - b);
+
+  return normalizedLeft.every((value, index) => value === normalizedRight[index]);
+}
+
+function areTaskEditUpdatesUnchanged(existingTask: TaskDetails, updates: TaskDetailsEditUpdates) {
+  return (
+    existingTask.title === updates.title &&
+    (existingTask.description ?? "") === updates.description &&
+    haveSameNumericValues(existingTask.labelIds, updates.labelIds) &&
+    (existingTask.assigneeUserId ?? null) === (updates.assignee?.userId ?? null) &&
+    (existingTask.storyPoints ?? null) === (updates.storyPoints ?? null) &&
+    (existingTask.priority ?? null) === (updates.priority ?? null) &&
+    (existingTask.taskType ?? null) === (updates.taskType ?? null) &&
+    (existingTask.dueDate ?? null) === (updates.dueDate ?? null)
+  );
+}
 
 function TaskDetailsLoadingState({
   currentTheme,
@@ -94,9 +126,18 @@ export function TaskDetailsPage() {
   const [loadError, setLoadError] = useState("");
   const [reloadVersion, setReloadVersion] = useState(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isEditingTask, setIsEditingTask] = useState(false);
 
   const numericBoardId = boardId ? Number(boardId) : NaN;
   const numericTaskId = taskId ? Number(taskId) : NaN;
+  const availableAssignees: TaskAssignee[] = useMemo(
+    () =>
+      board?.members.map((member) => ({
+        ...member,
+        name: member.displayName,
+      })) ?? [],
+    [board],
+  );
 
   useEffect(() => {
     let isActive = true;
@@ -172,6 +213,49 @@ export function TaskDetailsPage() {
     navigate("/login");
   };
 
+  const handleSaveEdit = async (cardId: number, updates: TaskDetailsEditUpdates) => {
+    if (!Number.isFinite(numericBoardId) || !task || task.id !== cardId) {
+      return;
+    }
+
+    if (areTaskEditUpdatesUnchanged(task, updates)) {
+      setIsEditingTask(false);
+      showSuccessToast("No task changes to save.");
+      return;
+    }
+
+    try {
+      const updatedTask = await updateBoardTask(numericBoardId, cardId, {
+        title: updates.title,
+        description: updates.description,
+        status: task.status,
+        labelIds: updates.labelIds,
+        assigneeUserId: updates.assignee?.userId || null,
+        storyPoints: updates.storyPoints,
+        dueDate: updates.dueDate ?? null,
+        priority: updates.priority,
+        taskType: updates.taskType,
+      });
+
+      setTask((currentTask) => (
+        currentTask
+          ? {
+              ...currentTask,
+              ...updatedTask,
+              comments: currentTask.comments,
+            }
+          : currentTask
+      ));
+      invalidateBoardAssigneeSuggestions(numericBoardId);
+      setIsEditingTask(false);
+      showSuccessToast("Task changes saved.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to save the task right now.";
+      showErrorToast(message);
+      throw new Error(message);
+    }
+  };
+
   if (!user) {
     return null;
   }
@@ -226,12 +310,26 @@ export function TaskDetailsPage() {
             </section>
           ) : (
             <>
-              <TaskDetailsSummary
-                board={board}
-                boardId={numericBoardId}
-                task={task}
-                labels={labels}
-              />
+              {isEditingTask ? (
+                <TaskDetailsEditPanel
+                  key={task.id}
+                  board={board}
+                  boardId={numericBoardId}
+                  task={task}
+                  availableLabels={labels}
+                  availableAssignees={availableAssignees}
+                  onCancel={() => setIsEditingTask(false)}
+                  onSave={handleSaveEdit}
+                />
+              ) : (
+                <TaskDetailsSummary
+                  board={board}
+                  boardId={numericBoardId}
+                  task={task}
+                  labels={labels}
+                  onEditTask={() => setIsEditingTask(true)}
+                />
+              )}
 
               <TaskCommentThread
                 boardId={numericBoardId}

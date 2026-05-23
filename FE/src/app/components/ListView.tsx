@@ -59,6 +59,7 @@ import { WorkspaceClearButton, WorkspaceFilterChip } from "./WorkspaceFilterChip
 import { WorkspacePaginationFooter } from "./WorkspacePaginationFooter";
 import { getWorkspaceControlSurfaceClassName } from "../utils/workspaceSurfaceStyles";
 import { getToolbarLabelClassName } from "./typographyStyles";
+import { StagingTaskActionButton } from "./StagingTaskActionButton";
 
 type SortState = {
   key: BoardTaskSortKey | null;
@@ -161,6 +162,7 @@ interface ListViewProps {
   onDelete: (cardId: number, title: string) => void;
   onEdit?: (cardId: number) => void;
   onMoveToBacklog?: (cardId: number) => void | Promise<void>;
+  onRestoreToBacklog?: (cardId: number) => void | Promise<void>;
   onAddToQueue?: (cardId: number) => void | Promise<void>;
   onRemoveFromQueue?: (cardId: number) => void | Promise<void>;
   availableAssignees: TaskAssignee[];
@@ -181,6 +183,7 @@ export function ListView({
   onDelete,
   onEdit,
   onMoveToBacklog,
+  onRestoreToBacklog,
   onAddToQueue,
   onRemoveFromQueue,
   availableAssignees,
@@ -551,7 +554,6 @@ export function ListView({
   const labelFilterChipClassName = "max-w-[12rem] px-3 py-1.5 text-xs font-semibold shadow-sm";
   const primaryActionButtonClassName = `group relative inline-flex items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r font-bold text-white shadow-lg transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} ${currentTheme.primary}`;
   const iconActionButtonClassName = getIconActionButtonClassName(currentTheme);
-  const rowTextActionButtonClassName = `inline-flex h-8 items-center justify-center rounded-lg border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-0 ${currentTheme.focus} ${currentTheme.border} ${currentTheme.textSecondary} ${isDarkMode ? "bg-white/[0.03] hover:bg-white/[0.06]" : "bg-slate-50 hover:bg-white"} hover:${currentTheme.text}`;
   const taskRowHoverClassName = isDarkMode ? "hover:bg-white/[0.035]" : "hover:bg-slate-100/70";
   const taskIndexHeaderTextClassName = currentTheme.textSecondary;
   const taskIndexHeaderActiveTextClassName = currentTheme.text;
@@ -560,22 +562,22 @@ export function ListView({
   const searchTooltipText = isBacklogMode
     ? "Search backlog tasks by title or by the labels attached to them."
     : isHistoryMode
-      ? "Search completed tasks by title or by the labels attached to them."
+      ? "Search concluded tasks by title or by the labels attached to them."
       : "Search active tasks by title or by the labels attached to them.";
   const labelFilterTooltipText = isBacklogMode
     ? "Filter backlog tasks by one or more board labels."
     : isHistoryMode
-      ? "Filter completed tasks by one or more board labels."
+      ? "Filter concluded tasks by one or more board labels."
       : "Filter active tasks by one or more board labels.";
   const priorityFilterTooltipText = isBacklogMode
     ? "Filter backlog tasks by priority, including tasks without a priority."
     : isHistoryMode
-      ? "Filter completed tasks by priority, including tasks without a priority."
+      ? "Filter concluded tasks by priority, including tasks without a priority."
       : "Filter active tasks by priority, including tasks without a priority.";
   const taskTypeFilterTooltipText = isBacklogMode
     ? "Filter backlog tasks by task type, including tasks without a type."
     : isHistoryMode
-      ? "Filter completed tasks by task type, including tasks without a type."
+      ? "Filter concluded tasks by task type, including tasks without a type."
       : "Filter active tasks by task type, including tasks without a type.";
   const headerCoachmark = isBacklogMode ? "backlog-header" : isHistoryMode ? "history-header" : "list-header";
   const filterCoachmark = isBacklogMode ? "backlog-filters" : "list-filters";
@@ -584,15 +586,15 @@ export function ListView({
   const pageDescription = isBacklogMode
     ? "Review upcoming work, stage ready tasks into the queue, and keep the backlog prepared for what comes next."
     : isHistoryMode
-      ? "Review completed board work in one place, then sort and filter it to revisit what has already been delivered."
+      ? "Review concluded board work in one place, then restore anything that needs another pass."
       : "Scan active board work in one place, then sort and filter it to focus on what needs attention right now.";
-  const tableLabel = isBacklogMode ? "Backlog tasks" : isHistoryMode ? "Completed board tasks" : "Active board tasks";
+  const tableLabel = isBacklogMode ? "Backlog tasks" : isHistoryMode ? "Concluded board tasks" : "Active board tasks";
   const clearFiltersTooltip = isBacklogMode ? "Reset backlog filters" : isHistoryMode ? "Reset history filters" : "Reset list filters";
   const quickFilterOptions = [
     {
       id: "all" as const,
-      label: isHistoryMode ? "All completed" : "All tasks",
-      tooltip: isHistoryMode ? "Show every completed task in this view" : "Show every task in this view",
+      label: isHistoryMode ? "All concluded" : "All tasks",
+      tooltip: isHistoryMode ? "Show every concluded task in this view" : "Show every task in this view",
     },
     { id: "assigned" as const, label: "Assigned to me", tooltip: "Show only tasks assigned to you" },
     { id: "due" as const, label: "Due this week", tooltip: "Show tasks due within the next 7 days" },
@@ -601,7 +603,7 @@ export function ListView({
   const assigneeFilterTooltipText = isBacklogMode
     ? "Filter backlog tasks by one or more assigned board members."
     : isHistoryMode
-      ? "Filter completed tasks by one or more assigned board members."
+      ? "Filter concluded tasks by one or more assigned board members."
       : "Filter active tasks by one or more assigned board members.";
 
   return (
@@ -1149,7 +1151,7 @@ export function ListView({
                 {taskPage.items.length === 0 && !isLoading ? (
                   <TableRow className="hover:bg-transparent">
                     <TableCell colSpan={8} className={`px-6 py-16 text-center ${currentTheme.textMuted}`}>
-                      {loadError || "No tasks match the current filters."}
+                      {loadError || (isHistoryMode ? "No concluded tasks match the current filters." : "No tasks match the current filters.")}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -1251,13 +1253,33 @@ export function ListView({
                           </TableCell>
                           <TableCell className={`px-4 align-middle ${taskIndexDividerClassName}`}>
                             <div className={`flex items-center justify-center ${isRowPending ? "pointer-events-none" : ""}`}>
-                              <TaskAssigneeControl
-                                boardId={boardId}
-                                taskId={card.id}
-                                assignee={card.assignee}
-                                onAssigneeChange={(taskId, newAssignee) => void runRowAction(taskId, () => onAssigneeChange(taskId, newAssignee))}
-                                availableAssignees={availableAssignees}
-                              />
+                              {isHistoryMode ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="inline-flex items-center justify-center">
+                                      <AppAvatar
+                                        username={card.assignee.username || card.assignee.displayName || card.assignee.name}
+                                        fullName={card.assignee.displayName || card.assignee.name}
+                                        size={30}
+                                        level={card.assignee.currentLevel}
+                                        interactive={false}
+                                        enableBlink={false}
+                                      />
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" sideOffset={8}>
+                                    {card.assignee.displayName || card.assignee.name || "Unassigned"}
+                                  </TooltipContent>
+                                </Tooltip>
+                              ) : (
+                                <TaskAssigneeControl
+                                  boardId={boardId}
+                                  taskId={card.id}
+                                  assignee={card.assignee}
+                                  onAssigneeChange={(taskId, newAssignee) => void runRowAction(taskId, () => onAssigneeChange(taskId, newAssignee))}
+                                  availableAssignees={availableAssignees}
+                                />
+                              )}
                             </div>
                           </TableCell>
                           <TableCell className={`px-4 align-middle ${taskIndexDividerClassName}`}>
@@ -1290,13 +1312,12 @@ export function ListView({
                                   {isBacklogMode && onAddToQueue && !card.isQueued && (
                                     <Tooltip>
                                       <TooltipTrigger asChild>
-                                        <button
+                                        <StagingTaskActionButton
                                           type="button"
                                           onClick={() => void runRowAction(card.id, () => onAddToQueue(card.id))}
-                                          className={rowTextActionButtonClassName}
                                         >
                                           Add to Queue
-                                        </button>
+                                        </StagingTaskActionButton>
                                       </TooltipTrigger>
                                       <TooltipContent side="top" sideOffset={8}>Stage task in the queue batch</TooltipContent>
                                     </Tooltip>
@@ -1304,18 +1325,31 @@ export function ListView({
                                   {isBacklogMode && onRemoveFromQueue && card.isQueued && (
                                     <Tooltip>
                                       <TooltipTrigger asChild>
-                                        <button
+                                        <StagingTaskActionButton
                                           type="button"
                                           onClick={() => void runRowAction(card.id, () => onRemoveFromQueue(card.id))}
-                                          className={rowTextActionButtonClassName}
                                         >
                                           Back to Staging
-                                        </button>
+                                        </StagingTaskActionButton>
                                       </TooltipTrigger>
                                       <TooltipContent side="top" sideOffset={8}>Return task to staging</TooltipContent>
                                     </Tooltip>
                                   )}
-                                  {!isBacklogMode && onMoveToBacklog && (
+                                  {isHistoryMode && onRestoreToBacklog && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <button
+                                          onClick={() => void runRowAction(card.id, () => onRestoreToBacklog(card.id))}
+                                          className={iconActionButtonClassName}
+                                          type="button"
+                                        >
+                                          <Undo2 className="h-4 w-4" />
+                                        </button>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" sideOffset={8}>Restore to backlog</TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                  {!isBacklogMode && !isHistoryMode && onMoveToBacklog && (
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <button
@@ -1329,7 +1363,7 @@ export function ListView({
                                       <TooltipContent side="top" sideOffset={8}>Move to staging</TooltipContent>
                                     </Tooltip>
                                   )}
-                                  {onEdit && (
+                                  {!isHistoryMode && onEdit && (
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <button onClick={() => onEdit(card.id)} className={iconActionButtonClassName} type="button">
