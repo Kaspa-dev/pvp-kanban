@@ -271,7 +271,7 @@ export function PlanningPokerRoom() {
           return;
         }
 
-        setBacklogTasks(cards.backlog.filter((task) => task.storyPoints == null));
+        setBacklogTasks(cards.backlog);
       } catch (error) {
         if (!isMounted) {
           return;
@@ -611,7 +611,14 @@ export function PlanningPokerRoom() {
 
       if (appliedStoryPoints !== null) {
         setBacklogTasks((currentTasks) =>
-          currentTasks.filter((task) => task.id !== updatedTask.id),
+          currentTasks.map((task) =>
+            task.id === updatedTask.id
+              ? {
+                  ...task,
+                  storyPoints: appliedStoryPoints,
+                }
+              : task,
+          ),
         );
       }
 
@@ -815,29 +822,31 @@ export function PlanningPokerRoom() {
                 <section className="flex min-h-0 flex-col gap-4">
                   <PlanningPokerTable
                     activeTask={activeTask}
-                    nextTask={session.queue[0] ?? null}
                     participants={session.participants}
                     currentParticipantId={participantId}
                     votedCount={votedCount}
                     isRevealed={session.isRevealed}
                     isHost={isCurrentParticipantHost}
                     isRevealing={isRevealing}
-                    isSelectingRecommendation={isSelectingRecommendation}
-                    isApplyingRecommendation={isApplyingRecommendation}
-                    isAdvancingTask={isAdvancingTask}
-                    recommendationOptions={VOTE_DECK_VALUES}
                     onReveal={handleReveal}
-                    onSelectRecommendation={handleSelectRecommendation}
-                    onApplyRecommendation={handleApplyRecommendation}
-                    onAdvanceToNextTask={handleAdvanceToNextTask}
                   />
 
                   <PlanningPokerVoteDeck
+                    activeTask={activeTask}
+                    nextTask={session.queue[0] ?? null}
                     cardValues={VOTE_DECK_VALUES}
                     selectedValue={selectedVote}
+                    isRevealed={session.isRevealed}
+                    isHost={isCurrentParticipantHost}
                     isSubmitting={isVoteSubmitting}
+                    isSelectingRecommendation={isSelectingRecommendation}
+                    isApplyingRecommendation={isApplyingRecommendation}
+                    isAdvancingTask={isAdvancingTask}
                     disabled={!activeTask || isRevealing || session.isRevealed}
                     onVote={handleVote}
+                    onSelectRecommendation={handleSelectRecommendation}
+                    onApplyRecommendation={handleApplyRecommendation}
+                    onAdvanceToNextTask={handleAdvanceToNextTask}
                   />
                 </section>
 

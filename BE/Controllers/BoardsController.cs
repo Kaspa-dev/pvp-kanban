@@ -969,6 +969,17 @@ public class BoardsController(
             })
             .ToList();
 
+        List<DateTime> boardTaskStatusEnteredDates = await currentTasks
+            .Where(task =>
+                task.Status.Title != "backlog" &&
+                task.StatusEnteredAtUtc != null)
+            .Select(task => task.StatusEnteredAtUtc!.Value)
+            .ToListAsync(cancellationToken);
+
+        List<int> boardTaskAgeDays = boardTaskStatusEnteredDates
+            .Select(statusEnteredAtUtc => Math.Max(0, (utcToday - statusEnteredAtUtc.Date).Days))
+            .ToList();
+
         List<BoardStatisticsPriorityAggregate> priorityAggregates = await currentTasks
             .Where(task => task.Status.Title != "backlog")
             .GroupBy(task => task.Priority)
@@ -998,6 +1009,11 @@ public class BoardsController(
                         ToBoardStatisticsBacklogStatusCountDto("backlogUnqueued", "Unqueued", false, statusLookup),
                     ])
                     .ToList(),
+            },
+            BoardTaskAgeSummary = new BoardStatisticsBoardTaskAgeSummaryDto
+            {
+                AverageDaysInStatus = boardTaskAgeDays.Count == 0 ? 0 : Math.Round(boardTaskAgeDays.Average(), 1),
+                HighestDaysInStatus = boardTaskAgeDays.Count == 0 ? 0 : boardTaskAgeDays.Max(),
             },
             AgingTasks = agingTasks,
             ArchiveTrend = BuildBoardStatisticsArchiveTrend(resolvedArchiveRange, concludedDates, unconcludedTaskCount),

@@ -18,6 +18,7 @@ import {
   Zap,
 } from "lucide-react";
 import { AppAvatar } from "../components/AppAvatar";
+import { CoachmarkOverlay } from "../components/CoachmarkOverlay";
 import { LevelNumberBadge } from "../components/LevelNumberBadge";
 import { getMilestoneProgressFillClassName, getMilestoneProgressTrackClassName } from "../components/profile/milestoneProgressStyles";
 import { SettingsModal } from "../components/SettingsModal";
@@ -27,6 +28,8 @@ import { Skeleton } from "../components/ui/skeleton";
 import { useAuth } from "../contexts/AuthContext";
 import { useGamificationSummary } from "../contexts/GamificationSummaryContext";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
+import { useUserPreferences } from "../contexts/UserPreferencesContext";
+import { usePageCoachmarks } from "../hooks/usePageCoachmarks";
 import {
   deleteCurrentUserAccount,
   isApiError,
@@ -95,6 +98,11 @@ export function Profile() {
   const navigate = useNavigate();
   const { user, logout, setCurrentUser } = useAuth();
   const {
+    preferences,
+    hasFetched: hasFetchedPreferences,
+    markFlowCompleted,
+  } = useUserPreferences();
+  const {
     summary: loadedGamificationSummary,
     isLoading: isLoadingProgress,
   } = useGamificationSummary();
@@ -115,6 +123,23 @@ export function Profile() {
   const [milestoneSummary, setMilestoneSummary] = useState<UserMilestoneSummary>(() => getDefaultUserMilestonesResponse().summary);
   const [isLoadingMilestones, setIsLoadingMilestones] = useState(true);
   const [milestonesError, setMilestonesError] = useState("");
+
+  const coachmarks = usePageCoachmarks({
+    flowId: "profile-overview",
+    coachmarksEnabled: preferences.coachmarksEnabled,
+    completedFlows: preferences.completedFlows,
+    hasFetchedPreferences,
+    isBlocked:
+      isSettingsOpen ||
+      isEditingProfile ||
+      isSavingProfile ||
+      isDeletingAccount ||
+      isLoadingProgress ||
+      isLoadingMilestones,
+    onFlowCompleted: (flowId) => {
+      void markFlowCompleted(flowId);
+    },
+  });
 
   useEffect(() => {
     if (!user || isEditingProfile) {
@@ -323,6 +348,7 @@ export function Profile() {
         onOpenSettings={() => setIsSettingsOpen(true)}
         onLogout={handleLogout}
         onProfileClick={() => navigate("/app/profile")}
+        onReplayCurrentHints={preferences.coachmarksEnabled ? coachmarks.startFlow : undefined}
         userProfile={{
           username: user.username,
           fullName,
@@ -337,7 +363,7 @@ export function Profile() {
             <div className={`absolute -bottom-24 left-12 h-72 w-72 rounded-full bg-gradient-to-tr ${currentTheme.primarySoft} blur-3xl`} />
 
             <div className="relative flex min-w-0 flex-col gap-7">
-              <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between" data-coachmark="profile-identity">
                 <div className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-center">
                   <AppAvatar
                     username={user.username}
@@ -452,7 +478,7 @@ export function Profile() {
                 ) : null}
               </div>
 
-                <div className={`rounded-[1.5rem] border px-5 py-5 ${currentTheme.border} ${currentTheme.bgSecondary}`}>
+                <div className={`rounded-[1.5rem] border px-5 py-5 ${currentTheme.border} ${currentTheme.bgSecondary}`} data-coachmark="profile-level-progress">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div className="min-w-0">
                       <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -495,7 +521,7 @@ export function Profile() {
                   </div>
                 </div>
 
-                <div className={`grid gap-3 border-t pt-6 ${currentTheme.border} sm:grid-cols-2 xl:grid-cols-4`}>
+                <div className={`grid gap-3 border-t pt-6 ${currentTheme.border} sm:grid-cols-2 xl:grid-cols-4`} data-coachmark="profile-xp-stats">
                   {quickStats.map((stat) => {
                     const Icon = stat.icon;
 
@@ -522,7 +548,7 @@ export function Profile() {
             </div>
           </section>
 
-          <section className={`rounded-[2rem] border ${currentTheme.border} ${currentTheme.cardBg} px-6 py-6 shadow-[0_24px_70px_-44px_rgba(15,23,42,0.45)]`}>
+          <section className={`rounded-[2rem] border ${currentTheme.border} ${currentTheme.cardBg} px-6 py-6 shadow-[0_24px_70px_-44px_rgba(15,23,42,0.45)]`} data-coachmark="profile-milestones">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
               <div className="min-w-0">
                 <div className="flex items-center gap-3">
@@ -637,7 +663,7 @@ export function Profile() {
             </div>
           </section>
 
-          <section className={`rounded-[2rem] border px-6 py-6 shadow-[0_24px_70px_-44px_rgba(15,23,42,0.45)] ${isDarkMode ? "border-red-400/20 bg-red-950/10" : "border-red-200 bg-red-50/70"}`}>
+          <section className={`rounded-[2rem] border px-6 py-6 shadow-[0_24px_70px_-44px_rgba(15,23,42,0.45)] ${isDarkMode ? "border-red-400/20 bg-red-950/10" : "border-red-200 bg-red-50/70"}`} data-coachmark="profile-danger-zone">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
                 <div className="flex items-start gap-3">
@@ -714,6 +740,16 @@ export function Profile() {
         onClose={() => setIsSettingsOpen(false)}
         onOpenProfile={() => navigate("/app/profile")}
         onOpenMyTasks={() => navigate("/app/my-tasks")}
+      />
+      <CoachmarkOverlay
+        isOpen={coachmarks.activeFlowId !== null}
+        step={coachmarks.activeStep}
+        targetRect={coachmarks.targetRect}
+        stepIndex={coachmarks.stepIndex}
+        totalSteps={coachmarks.totalSteps}
+        onBack={coachmarks.goToPreviousStep}
+        onNext={coachmarks.goToNextStep}
+        onClose={() => coachmarks.closeFlow(true)}
       />
     </div>
   );

@@ -137,6 +137,7 @@ public class ConcludeBoardTasksResponseDto
 public class BoardStatisticsDto
 {
     public BoardStatisticsStatusSummaryDto StatusCounts { get; set; } = new();
+    public BoardStatisticsBoardTaskAgeSummaryDto BoardTaskAgeSummary { get; set; } = new();
     public List<BoardStatisticsAgingTaskDto> AgingTasks { get; set; } = new();
     public BoardStatisticsArchiveTrendDto ArchiveTrend { get; set; } = new();
     public List<BoardStatisticsPriorityMixDto> PriorityMix { get; set; } = new();
@@ -166,6 +167,12 @@ public class BoardStatisticsAgingTaskDto
     public DateTime? StatusEnteredAtUtc { get; set; }
     public string? Priority { get; set; }
     public BoardMemberDto? Assignee { get; set; }
+}
+
+public class BoardStatisticsBoardTaskAgeSummaryDto
+{
+    public double AverageDaysInStatus { get; set; }
+    public int HighestDaysInStatus { get; set; }
 }
 
 public class BoardStatisticsArchiveTrendDto

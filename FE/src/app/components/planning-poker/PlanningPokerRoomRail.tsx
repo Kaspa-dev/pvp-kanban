@@ -1,4 +1,4 @@
-import { Copy, Crown, UsersRound } from "lucide-react";
+import { CheckCircle2, Copy, Crown, UsersRound } from "lucide-react";
 
 import { getThemeColors, useTheme } from "../../contexts/ThemeContext";
 import type { Card } from "../../utils/cards";
@@ -18,32 +18,6 @@ interface PlanningPokerRoomRailProps {
   copyFeedback: string;
   onCopyLink: () => void | Promise<void>;
   onSelectTask: (taskId: number) => void | Promise<void>;
-}
-
-function getTaskStateLabel(sessionTask: PlanningPokerSessionTask | undefined, isActive: boolean) {
-  if (isActive) {
-    return sessionTask?.recommendedStoryPoints !== null && sessionTask?.recommendedStoryPoints !== undefined
-      ? `${sessionTask.recommendedStoryPoints} picked`
-      : "Voting";
-  }
-
-  if (!sessionTask) {
-    return "Backlog";
-  }
-
-  if (sessionTask.roundState.toLowerCase() === "revealed" || sessionTask.recommendedStoryPoints !== null) {
-    return "Review";
-  }
-
-  return "Queued";
-}
-
-function hasPickedRecommendation(sessionTask: PlanningPokerSessionTask | undefined) {
-  return sessionTask?.recommendedStoryPoints !== null && sessionTask?.recommendedStoryPoints !== undefined;
-}
-
-function isRevealedSessionTask(sessionTask: PlanningPokerSessionTask | undefined) {
-  return sessionTask?.roundState.toLowerCase() === "revealed";
 }
 
 function getParticipantStatus(participant: PlanningPokerParticipant, isRevealed: boolean) {
@@ -70,8 +44,9 @@ function ParticipantRow({
   return (
     <li
       className={cn(
-        "flex items-center gap-3 rounded-2xl border px-3 py-3",
-        `${currentTheme.border} ${isDarkMode ? "bg-white/[0.025]" : "bg-slate-50/78"}`,
+        "flex items-center gap-3 border-b px-1 py-3 last:border-b-0",
+        currentTheme.border,
+        isCurrentUser ? (isDarkMode ? "bg-white/[0.025]" : "bg-slate-50/54") : "",
       )}
       aria-label={`${isCurrentUser ? "You" : participant.displayName}: ${getParticipantStatus(participant, isRevealed)}`}
     >
@@ -94,7 +69,7 @@ function ParticipantRow({
           {participant.isGuest ? "Guest" : "Member"}
         </p>
       </div>
-      <span className={`font-due-date shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${participant.hasVoted ? currentTheme.primaryText : currentTheme.textMuted} ${isDarkMode ? "bg-zinc-950/64" : "bg-white/82"}`}>
+      <span className={`font-due-date shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${participant.hasVoted ? currentTheme.primaryText : currentTheme.textMuted} ${isDarkMode ? "bg-white/[0.04]" : "bg-slate-100/80"}`}>
         {getParticipantStatus(participant, isRevealed)}
       </span>
     </li>
@@ -114,105 +89,75 @@ export function PlanningPokerRoomRail({
 }: PlanningPokerRoomRailProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
-  const sessionTasksByTaskId = new Map(
-    [activeTask, ...session.queue]
-      .filter((task): task is PlanningPokerSessionTask => Boolean(task))
-      .map((task) => [task.taskId, task]),
-  );
   const unratedBacklogTasks = backlogTasks
     .filter((task) => task.status === "backlog" && task.storyPoints == null)
+    .sort((firstTask, secondTask) => {
+      if (firstTask.id === activeTask?.taskId) {
+        return -1;
+      }
+
+      if (secondTask.id === activeTask?.taskId) {
+        return 1;
+      }
+
+      return firstTask.columnPosition - secondTask.columnPosition;
+    });
+  const concludedBacklogTasks = backlogTasks
+    .filter((task) => task.status === "backlog" && task.storyPoints != null)
     .sort((firstTask, secondTask) => firstTask.columnPosition - secondTask.columnPosition);
-  const taskGroups = [
-    {
-      label: "Current",
-      tasks: unratedBacklogTasks.filter((task) => activeTask?.taskId === task.id),
-    },
-    {
-      label: "Review",
-      tasks: unratedBacklogTasks.filter((task) => {
-        const sessionTask = sessionTasksByTaskId.get(task.id);
-        return activeTask?.taskId !== task.id && (isRevealedSessionTask(sessionTask) || hasPickedRecommendation(sessionTask));
-      }),
-    },
-    {
-      label: "Queued",
-      tasks: unratedBacklogTasks.filter((task) => {
-        const sessionTask = sessionTasksByTaskId.get(task.id);
-        return activeTask?.taskId !== task.id &&
-          Boolean(sessionTask) &&
-          !isRevealedSessionTask(sessionTask) &&
-          !hasPickedRecommendation(sessionTask);
-      }),
-    },
-    {
-      label: "Backlog",
-      tasks: unratedBacklogTasks.filter((task) => !sessionTasksByTaskId.has(task.id)),
-    },
-  ].filter((group) => group.tasks.length > 0);
 
   return (
     <aside
-      className={`flex min-h-[32rem] flex-col overflow-hidden rounded-[2rem] border shadow-[0_24px_76px_-56px_rgba(15,23,42,0.68)] xl:h-full xl:min-h-0 ${currentTheme.border} ${isDarkMode ? "bg-zinc-950/62" : "bg-white/82"}`}
+      className={`flex min-h-[32rem] flex-col overflow-hidden border-t xl:h-full xl:min-h-0 xl:border-l xl:border-t-0 ${currentTheme.border} ${isDarkMode ? "bg-zinc-950/18" : "bg-white/30"}`}
       aria-label="Planning poker room side panel"
     >
-      <div className={`shrink-0 border-b px-4 py-4 ${currentTheme.border}`}>
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className={`font-ui-condensed text-xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
-              Tasks
-            </h2>
-            <p className={`font-due-date mt-0.5 text-xs font-semibold ${currentTheme.textMuted}`}>
-              {unratedBacklogTasks.length} unrated backlog {unratedBacklogTasks.length === 1 ? "task" : "tasks"}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <CustomScrollArea className="min-h-0 flex-1" viewportClassName="h-full min-h-0 px-4 py-4 pr-5">
-        <div className="space-y-5">
-          <section aria-labelledby="planning-poker-rail-tasks">
-            <h3 id="planning-poker-rail-tasks" className="sr-only">
-              Task queue
-            </h3>
-            {taskGroups.length > 0 ? (
+      <div className="flex min-h-0 flex-1 flex-col gap-5 px-1 py-5 sm:px-4 xl:pl-5 xl:pr-1">
+          <section
+            aria-labelledby="planning-poker-rail-tasks"
+            className="flex h-[24rem] min-h-[18rem] shrink-0 flex-col overflow-hidden"
+          >
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h3 id="planning-poker-rail-tasks" className={`font-ui-condensed text-lg font-semibold tracking-[0.01em] ${currentTheme.text}`}>
+                Tasks
+              </h3>
+              <span className={`font-due-date inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${currentTheme.textMuted} ${isDarkMode ? "bg-white/[0.035]" : "bg-slate-50"}`}>
+                {unratedBacklogTasks.length + concludedBacklogTasks.length}
+              </span>
+            </div>
+            <CustomScrollArea className="min-h-0 flex-1" viewportClassName="h-full min-h-0 pr-4">
               <div className="space-y-4">
-                {taskGroups.map((group) => (
-                  <div key={group.label} className="space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <h4 className={`font-ui-condensed text-sm font-semibold tracking-[0.01em] ${currentTheme.textMuted}`}>
-                        {group.label}
-                      </h4>
-                      <span className={`font-due-date text-[11px] font-semibold ${currentTheme.textMuted}`}>
-                        {group.tasks.length}
-                      </span>
-                    </div>
-
-                    <div className="space-y-2">
-                      {group.tasks.map((task) => {
-                        const sessionTask = sessionTasksByTaskId.get(task.id);
+                <div>
+                  <div className={`mb-2 flex items-center justify-between gap-2 border-b pb-2 ${currentTheme.border}`}>
+                    <h4 className={`font-ui-condensed text-sm font-semibold tracking-[0.01em] ${currentTheme.textMuted}`}>
+                      Remaining
+                    </h4>
+                    <span className={`font-due-date text-[11px] font-semibold ${currentTheme.textMuted}`}>
+                      {unratedBacklogTasks.length}
+                    </span>
+                  </div>
+                  {unratedBacklogTasks.length > 0 ? (
+                    <div>
+                      {unratedBacklogTasks.map((task) => {
                         const isActiveTask = activeTask?.taskId === task.id;
-                        const canSelectTask =
-                          isHost && !isActiveTask && !isSelectingTask;
+                        const canSelectTask = isHost && !isActiveTask && !isSelectingTask;
+                        const taskClassName = cn(
+                          "w-full border-b px-1 py-3 text-left transition-all duration-200 last:border-b-0",
+                          currentTheme.border,
+                          isActiveTask
+                            ? `pl-3 shadow-[inset_3px_0_0_currentColor] ${currentTheme.primaryText} ${isDarkMode ? "bg-white/[0.035]" : "bg-slate-50/72"}`
+                            : currentTheme.text,
+                        );
                         const taskContent = (
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className={`line-clamp-2 text-sm font-semibold ${currentTheme.text}`}>{task.title}</p>
-                              <p className={`font-due-date mt-2 text-xs font-semibold ${isActiveTask ? currentTheme.primaryText : currentTheme.textMuted}`}>
-                                {getTaskStateLabel(sessionTask, isActiveTask)}
-                              </p>
-                            </div>
-                          </div>
+                          <p className={`line-clamp-2 text-sm font-semibold ${isActiveTask ? currentTheme.text : currentTheme.text}`}>
+                            {task.title}
+                          </p>
                         );
 
                         if (!isHost) {
                           return (
                             <div
                               key={task.id}
-                              className={`rounded-2xl border px-3 py-3 text-left ${isActiveTask ? currentTheme.primaryBorder : currentTheme.border} ${
-                                isActiveTask
-                                  ? isDarkMode ? "bg-white/[0.05]" : "bg-white"
-                                  : isDarkMode ? "bg-white/[0.025]" : "bg-slate-50/78"
-                              }`}
+                              className={taskClassName}
                               aria-current={isActiveTask ? "true" : undefined}
                             >
                               {taskContent}
@@ -226,34 +171,82 @@ export function PlanningPokerRoomRail({
                             type="button"
                             disabled={!canSelectTask}
                             onClick={() => void onSelectTask(task.id)}
-                            className={`w-full rounded-2xl border px-3 py-3 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 ${currentTheme.focus} ${
-                              isActiveTask
-                                ? `${currentTheme.primaryBorder} ${isDarkMode ? "bg-white/[0.05]" : "bg-white"}`
-                                : `${currentTheme.border} ${isDarkMode ? "bg-white/[0.025] hover:bg-white/[0.055]" : "bg-slate-50/78 hover:bg-white"}`
-                            } ${!canSelectTask && !isActiveTask ? "cursor-not-allowed opacity-60" : ""}`}
+                            className={cn(
+                              taskClassName,
+                              currentTheme.focus,
+                              "focus-visible:outline-none focus-visible:ring-2",
+                              !isActiveTask && canSelectTask
+                                ? isDarkMode ? "hover:bg-white/[0.035]" : "hover:bg-slate-50/72"
+                                : "",
+                              !canSelectTask && !isActiveTask ? "cursor-not-allowed opacity-60" : "",
+                            )}
                             aria-current={isActiveTask ? "true" : undefined}
-                            aria-label={
-                              isActiveTask
-                                ? `${task.title}, current task`
-                                : `Switch to ${task.title}`
-                            }
+                            aria-label={isActiveTask ? `${task.title}, current task` : `Select ${task.title}`}
                           >
                             {taskContent}
                           </button>
                         );
                       })}
                     </div>
-                  </div>
-                ))}
-              </div>
-              ) : (
-                <div className={`rounded-2xl border px-3 py-4 text-sm ${currentTheme.border} ${currentTheme.textMuted} ${isDarkMode ? "bg-white/[0.025]" : "bg-slate-50/78"}`}>
-                  No unrated backlog tasks
+                  ) : (
+                    <div className={`px-1 py-4 text-sm ${currentTheme.textMuted}`}>
+                      No remaining tasks
+                    </div>
+                  )}
                 </div>
-              )}
+
+                {concludedBacklogTasks.length > 0 ? (
+                  <section aria-labelledby="planning-poker-rail-rated-tasks">
+                    <div className={`mb-2 flex items-center justify-between gap-2 border-t pt-4 ${currentTheme.border}`}>
+                      <h3
+                        id="planning-poker-rail-rated-tasks"
+                        className={`font-ui-condensed text-sm font-semibold tracking-[0.01em] ${currentTheme.textMuted}`}
+                      >
+                        Rated
+                      </h3>
+                      <span className={`font-due-date text-[11px] font-semibold ${currentTheme.textMuted}`}>
+                        {concludedBacklogTasks.length}
+                      </span>
+                    </div>
+
+                    <div>
+                      {concludedBacklogTasks.map((task) => (
+                        <div
+                          key={task.id}
+                          className={cn(
+                            "border-b px-1 py-3 text-left opacity-75 grayscale last:border-b-0",
+                            currentTheme.border,
+                          )}
+                          aria-label={`${task.title}, concluded with ${task.storyPoints} story points`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <p className={`line-clamp-2 min-w-0 text-sm font-semibold ${currentTheme.textMuted}`}>
+                              {task.title}
+                            </p>
+                            <span
+                              className={cn(
+                                "font-due-date inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                                isDarkMode ? "bg-zinc-950/62 text-zinc-400" : "bg-white/78 text-slate-500",
+                              )}
+                            >
+                              <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
+                              {task.storyPoints} pts
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
+              </div>
+            </CustomScrollArea>
           </section>
 
-          <section aria-labelledby="planning-poker-rail-participants">
+        <div className={`mt-auto flex min-h-[15rem] flex-1 flex-col overflow-hidden border-t pt-4 ${currentTheme.border}`}>
+          <section
+            aria-labelledby="planning-poker-rail-participants"
+            className="flex min-h-0 flex-1 flex-col overflow-hidden"
+          >
             <div className="mb-3 flex items-center justify-between gap-3">
               <h3 id="planning-poker-rail-participants" className={`font-ui-condensed text-lg font-semibold tracking-[0.01em] ${currentTheme.text}`}>
                 Players
@@ -263,29 +256,30 @@ export function PlanningPokerRoomRail({
                 {session.participants.length}
               </span>
             </div>
-            <ul className="space-y-2">
-              {session.participants.map((participant) => (
-                <ParticipantRow
-                  key={participant.participantId}
-                  participant={participant}
-                  isCurrentUser={participant.participantId === currentParticipantId}
-                  isRevealed={session.isRevealed}
-                />
-              ))}
-            </ul>
+            <CustomScrollArea className="min-h-0 flex-1" viewportClassName="h-full min-h-0 pr-1">
+              <ul>
+                {session.participants.map((participant) => (
+                  <ParticipantRow
+                    key={participant.participantId}
+                    participant={participant}
+                    isCurrentUser={participant.participantId === currentParticipantId}
+                    isRevealed={session.isRevealed}
+                  />
+                ))}
+              </ul>
+            </CustomScrollArea>
           </section>
 
           {isHost ? (
-            <section className={`rounded-2xl border px-3 py-3 ${currentTheme.border} ${isDarkMode ? "bg-white/[0.025]" : "bg-slate-50/78"}`} aria-labelledby="planning-poker-share-room">
-              <div className="flex items-center justify-between gap-3">
+            <section className={`mt-4 shrink-0 border-t pt-4 ${currentTheme.border}`} aria-labelledby="planning-poker-share-room">
+              <div className="flex min-h-10 items-center justify-between gap-3">
                 <h3 id="planning-poker-share-room" className={`font-ui-condensed text-lg font-semibold tracking-[0.01em] ${currentTheme.text}`}>
                   Invite
                 </h3>
                 <Button
                   type="button"
-                  variant="outline"
                   onClick={() => void onCopyLink()}
-                  className={`h-9 rounded-xl border px-3 text-sm font-semibold ${currentTheme.border} ${currentTheme.textSecondary} ${isDarkMode ? "bg-zinc-950/60 hover:bg-zinc-900" : "bg-white hover:bg-slate-50"}`}
+                  className={`inline-flex h-10 items-center justify-center gap-2 rounded-xl border-0 bg-gradient-to-r ${currentTheme.primary} px-3.5 text-sm font-semibold leading-none text-white shadow-lg transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl hover:brightness-105 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus}`}
                 >
                   <Copy className="h-4 w-4" aria-hidden="true" />
                   Copy link
@@ -297,7 +291,7 @@ export function PlanningPokerRoomRail({
             </section>
           ) : null}
         </div>
-      </CustomScrollArea>
+      </div>
     </aside>
   );
 }

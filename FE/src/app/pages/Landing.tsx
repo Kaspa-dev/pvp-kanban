@@ -1,284 +1,161 @@
-import type { ReactNode } from 'react';
-import type { LucideIcon } from 'lucide-react';
-import { Link } from 'react-router';
+import type { ReactNode } from "react";
+import type { LucideIcon } from "lucide-react";
+import { Link } from "react-router";
 import {
   ArrowRight,
   BarChart3,
   CheckCircle2,
-  ChevronRight,
-  Columns3,
   Crown,
   Flame,
   Gauge,
   GitBranch,
+  Layers3,
   ListChecks,
   Medal,
   MessageCircle,
+  Palette,
+  ShieldCheck,
   Sparkles,
   Trophy,
-  Users,
+  UserRoundCheck,
   Zap,
-} from 'lucide-react';
-import { AppAvatar } from '../components/AppAvatar';
-import { BanBanLogo } from '../components/BanBanLogo';
-import { LevelLeaderboardPreview } from '../components/LevelLeaderboardPreview';
-import { LevelProgressCard } from '../components/LevelProgressCard';
-import { PlanningPokerVoteDeck } from '../components/planning-poker/PlanningPokerVoteDeck';
-import { PriorityAccent } from '../components/PriorityAccent';
-import { StagingTaskActionButton } from '../components/StagingTaskActionButton';
-import { TaskDueDateBadge } from '../components/TaskDueDateBadge';
-import { TaskLabelSummary } from '../components/TaskLabelSummary';
-import { WorkspaceSummaryBand } from '../components/WorkspaceSummaryBand';
-import { getThemeColors, useTheme } from '../contexts/ThemeContext';
-import type { Priority, TaskAssignee, TaskType } from '../utils/cards';
-import type { GamificationSummary } from '../utils/gamification';
-import type { Label } from '../utils/labels';
-import type { LevelLeaderboardBoard } from '../utils/levelLeaderboard';
-import { getWorkspaceSurfaceStyles } from '../utils/workspaceSurfaceStyles';
+} from "lucide-react";
+import { BanBanLogo } from "../components/BanBanLogo";
+import { getThemeColors, useTheme } from "../contexts/ThemeContext";
+import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
 
 type ThemeColors = ReturnType<typeof getThemeColors>;
 
 interface FeatureItem {
   icon: LucideIcon;
-  label: string;
+  title: string;
   description: string;
 }
 
-interface PreviewTask {
-  id: number;
-  title: string;
-  labelIds: number[];
-  assignee: TaskAssignee;
-  storyPoints?: number;
-  dueDate?: string | null;
-  priority?: Priority;
-  taskType?: TaskType;
-}
-
-const landingLabels: Label[] = [
-  { id: 1, name: 'UX', color: '#0ea5e9' },
-  { id: 2, name: 'Polish', color: '#8b5cf6' },
-  { id: 3, name: 'Poker', color: '#10b981' },
-  { id: 4, name: 'Auth', color: '#f97316' },
+const navItems = [
+  { label: "Progress", href: "#progress" },
+  { label: "Workflow", href: "#workflow" },
+  { label: "Planning poker", href: "#rituals" },
+  { label: "Workspace", href: "#workspace" },
 ];
 
-const landingAssignees: TaskAssignee[] = [
-  {
-    userId: 1,
-    username: 'mara-flow',
-    displayName: 'Mara Flow',
-    name: 'Mara Flow',
-    email: 'mara@example.com',
-    color: '#0ea5e9',
-    role: 'member',
-    currentLevel: 18,
-  },
-  {
-    userId: 2,
-    username: 'iris-cove',
-    displayName: 'Iris Cove',
-    name: 'Iris Cove',
-    email: 'iris@example.com',
-    color: '#8b5cf6',
-    role: 'member',
-    currentLevel: 16,
-  },
-  {
-    userId: 3,
-    username: 'you',
-    displayName: 'You',
-    name: 'You',
-    email: 'you@example.com',
-    color: '#f43f5e',
-    role: 'owner',
-    currentLevel: 14,
-  },
+const mechanics = [
+  { label: "XP", description: "Reward completed work.", icon: Zap },
+  { label: "Levels", description: "Make momentum visible.", icon: Trophy },
+  { label: "Milestones", description: "Mark meaningful progress.", icon: Medal },
+  { label: "Leaderboard", description: "Keep team energy shared.", icon: Crown },
 ];
 
-const previewTasks: PreviewTask[] = [
-  {
-    id: 1,
-    title: 'Tune profile progress popover',
-    labelIds: [1, 2],
-    assignee: landingAssignees[2],
-    storyPoints: 5,
-    dueDate: '2026-06-12',
-    priority: 'high',
-    taskType: 'task',
-  },
-  {
-    id: 2,
-    title: 'Estimate onboarding flow',
-    labelIds: [3, 4],
-    assignee: landingAssignees[0],
-    storyPoints: 8,
-    dueDate: '2026-06-18',
-    priority: 'medium',
-    taskType: 'story',
-  },
-  {
-    id: 3,
-    title: 'Ship level badge rewards',
-    labelIds: [2],
-    assignee: landingAssignees[1],
-    storyPoints: 3,
-    dueDate: '2026-06-20',
-    priority: 'low',
-    taskType: 'task',
-  },
+const workflowStages = [
+  { label: "Staging", description: "Shape upcoming work before it becomes active.", icon: GitBranch },
+  { label: "Planning poker", description: "Estimate together before moving into delivery.", icon: Gauge },
+  { label: "Board", description: "Move active work through the Kanban flow.", icon: Layers3 },
+  { label: "List", description: "Scan and filter work when density matters.", icon: ListChecks },
+  { label: "History", description: "Review completed work and earned progress.", icon: BarChart3 },
 ];
-
-const sampleSummary: GamificationSummary = {
-  lifetimeXp: 6420,
-  currentLevel: 18,
-  currentLevelName: 'Signal Runner',
-  currentLevelXp: 740,
-  xpForNextLevel: 1000,
-  xpRemainingForNextLevel: 260,
-  progressPercent: 74,
-  weeklyXp: 840,
-  monthlyXp: 2360,
-  tasksCompleted: 128,
-  prestige: 0,
-};
-
-const sampleLeaderboard: LevelLeaderboardBoard = {
-  id: 1,
-  name: 'Product Launch',
-  description: 'Team progress by board',
-  logoIconKey: 'rocket',
-  logoColorKey: 'blue',
-  currentUserId: 3,
-  members: [
-    {
-      userId: 1,
-      username: 'mara-flow',
-      displayName: 'Mara Flow',
-      level: 18,
-      xpByPeriod: { day: 180, week: 2430, month: 7420, year: 42100 },
-    },
-    {
-      userId: 2,
-      username: 'iris-cove',
-      displayName: 'Iris Cove',
-      level: 16,
-      xpByPeriod: { day: 150, week: 2060, month: 7010, year: 39880 },
-    },
-    {
-      userId: 3,
-      username: 'you',
-      displayName: 'You',
-      level: 14,
-      xpByPeriod: { day: 140, week: 1990, month: 6640, year: 35120 },
-    },
-    {
-      userId: 4,
-      username: 'jonas-loop',
-      displayName: 'Jonas Loop',
-      level: 12,
-      xpByPeriod: { day: 90, week: 1310, month: 5420, year: 24100 },
-    },
-  ],
-};
 
 const progressFeatures: FeatureItem[] = [
   {
+    icon: Zap,
+    title: "Progress without a separate game",
+    description: "XP, levels, milestones, and leaderboard state sit on top of real Kanban habits instead of replacing them.",
+  },
+  {
     icon: Trophy,
-    label: 'XP where work happens',
-    description: 'Progress is visible in cards, history, profile surfaces, and board sidebars.',
+    title: "Motivation that stays readable",
+    description: "Gamification is visible enough to matter, but calm enough for daily project work.",
   },
   {
     icon: Crown,
-    label: 'Levels with identity',
-    description: 'Profiles and avatars carry level state without replacing the person behind the work.',
-  },
-  {
-    icon: Medal,
-    label: 'Milestones with proof',
-    description: 'Achievements tie back to actual task completion, comments, planning, and delivery.',
+    title: "Team recognition by board",
+    description: "Leaderboards and levels make contribution visible in the same context where the work happens.",
   },
 ];
 
-const workflowSteps = [
-  { label: 'Staging', icon: GitBranch, description: 'Collect upcoming tasks before they enter active board flow.' },
-  { label: 'Planning poker', icon: Gauge, description: 'Estimate staged work with the team in a live room.' },
-  { label: 'Board/List', icon: Columns3, description: 'Move delivery work through the workspace views.' },
-  { label: 'History', icon: BarChart3, description: 'Review completed work, points, and XP after delivery.' },
-];
-
-const teamFeatures: FeatureItem[] = [
+const ritualFeatures: FeatureItem[] = [
   {
-    icon: Users,
-    label: 'Team access',
-    description: 'Board owners control access while members work in shared context.',
+    icon: Gauge,
+    title: "Planning poker",
+    description: "Estimate staged work in a live room, then bring the result back to the board.",
   },
   {
     icon: MessageCircle,
-    label: 'Task context',
-    description: 'Labels, assignees, due dates, comments, and points stay close to the task.',
+    title: "Shared task context",
+    description: "Keep assignments, priorities, comments, labels, and points close to the work.",
   },
   {
-    icon: ListChecks,
-    label: 'Queue to To Do',
-    description: 'Stage work first, then launch a ready batch into the board.',
+    icon: ShieldCheck,
+    title: "Board ownership",
+    description: "Owners manage team access while members stay focused on delivery.",
   },
 ];
 
-const personalFeatures = [
-  'My Tasks for assigned work',
-  'Filters for labels, people, due dates, and status',
-  'Theme accents in light and dark mode',
-  'Profile progress, levels, and milestones',
+const workspaceFeatures: FeatureItem[] = [
+  {
+    icon: UserRoundCheck,
+    title: "My Tasks",
+    description: "A single place for assigned work across the boards a user belongs to.",
+  },
+  {
+    icon: Palette,
+    title: "Theme control",
+    description: "Light, dark, and accent choices keep the workspace personal without breaking contrast.",
+  },
+  {
+    icon: CheckCircle2,
+    title: "Accessible by default",
+    description: "The product direction keeps keyboard access, readable states, and clear actions in view.",
+  },
 ];
 
 function getGlassPanelClassName(currentTheme: ThemeColors, isDarkMode: boolean) {
   return isDarkMode
-    ? `border-zinc-800/90 bg-zinc-950/78 shadow-[0_32px_90px_-64px_rgba(0,0,0,0.95)] ${currentTheme.text}`
-    : `border-slate-200/90 bg-white/86 shadow-[0_32px_90px_-64px_rgba(15,23,42,0.38)] ${currentTheme.text}`;
+    ? `border-zinc-800/90 bg-zinc-950/74 shadow-[0_30px_90px_-62px_rgba(0,0,0,0.98)] ${currentTheme.text}`
+    : `border-slate-200/90 bg-white/82 shadow-[0_30px_90px_-62px_rgba(15,23,42,0.38)] ${currentTheme.text}`;
 }
 
-function getMutedPanelClassName(currentTheme: ThemeColors, isDarkMode: boolean) {
+function getQuietPanelClassName(currentTheme: ThemeColors, isDarkMode: boolean) {
   return isDarkMode
-    ? `border-zinc-800/75 bg-zinc-950/48 ${currentTheme.text}`
-    : `border-slate-200/80 bg-white/62 ${currentTheme.text}`;
+    ? `border-zinc-800/75 bg-zinc-950/46 ${currentTheme.text}`
+    : `border-slate-200/80 bg-white/58 ${currentTheme.text}`;
 }
 
-function ShineButton({
+function LandingButton({
   to,
   children,
   currentTheme,
-  className = '',
-  variant = 'primary',
+  className = "",
+  variant = "primary",
 }: {
   to: string;
   children: ReactNode;
   currentTheme: ThemeColors;
   className?: string;
-  variant?: 'primary' | 'secondary';
+  variant?: "primary" | "secondary";
 }) {
-  const isPrimary = variant === 'primary';
+  const isPrimary = variant === "primary";
 
   return (
     <Link
       to={to}
       className={[
-        'group relative inline-flex h-12 items-center justify-center overflow-hidden rounded-xl px-5 text-sm font-semibold transition-all duration-300 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-offset-0',
+        "group relative inline-flex h-12 items-center justify-center overflow-hidden rounded-xl px-5 text-sm font-semibold transition-all duration-300 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-offset-0",
         currentTheme.focus,
         isPrimary
           ? `bg-gradient-to-r ${currentTheme.primary} text-white shadow-lg hover:scale-[1.03] hover:shadow-2xl`
           : `border ${currentTheme.border} ${currentTheme.text} bg-white/70 hover:scale-[1.02] hover:bg-white dark:bg-white/[0.04] dark:hover:bg-white/[0.07]`,
         className,
-      ].join(' ')}
+      ].join(" ")}
     >
       {isPrimary ? (
         <span
-          className="pointer-events-none absolute inset-y-0 left-[-35%] w-1/3 rotate-12 bg-white/20 blur-md transition-transform duration-700 group-hover:translate-x-[460%]"
           aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 left-[-35%] w-1/3 rotate-12 bg-white/20 blur-md transition-transform duration-700 group-hover:translate-x-[460%]"
         />
       ) : null}
       <span className="relative inline-flex items-center gap-2">
         {children}
-        <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden="true" />
+        <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
       </span>
     </Link>
   );
@@ -289,14 +166,16 @@ function SectionHeading({
   title,
   description,
   currentTheme,
+  align = "center",
 }: {
   eyebrow: string;
   title: string;
   description: string;
   currentTheme: ThemeColors;
+  align?: "center" | "left";
 }) {
   return (
-    <div className="mx-auto max-w-3xl text-center">
+    <div className={align === "center" ? "mx-auto max-w-3xl text-center" : "max-w-3xl"}>
       <p className={`font-ui-condensed text-sm font-semibold uppercase tracking-[0.16em] ${currentTheme.primaryText}`}>
         {eyebrow}
       </p>
@@ -308,468 +187,224 @@ function SectionHeading({
   );
 }
 
-function getTaskTypeLabel(taskType?: TaskType) {
-  switch (taskType) {
-    case 'bug':
-      return 'Bug';
-    case 'spike':
-      return 'Spike';
-    case 'story':
-      return 'Story';
-    case 'task':
-      return 'Task';
-    default:
-      return null;
-  }
-}
-
-function StaticTaskCard({
-  task,
+function MechanicPill({
+  label,
+  description,
+  icon: Icon,
   currentTheme,
   isDarkMode,
-  footerAction,
 }: {
-  task: PreviewTask;
+  label: string;
+  description: string;
+  icon: LucideIcon;
   currentTheme: ThemeColors;
   isDarkMode: boolean;
-  footerAction?: ReactNode;
 }) {
-  const labels = task.labelIds
-    .map((labelId) => landingLabels.find((label) => label.id === labelId))
-    .filter((label): label is Label => Boolean(label));
-  const taskTypeLabel = getTaskTypeLabel(task.taskType);
-  const taskSurfaceClassName = isDarkMode ? 'bg-zinc-900/90' : 'bg-white/95';
-
   return (
-    <article className={`relative overflow-hidden rounded-lg border-2 ${currentTheme.border} ${taskSurfaceClassName} shadow-none`}>
-      {task.priority ? <PriorityAccent priority={task.priority} isDarkMode={isDarkMode} /> : null}
-      <div className="px-4 py-4 pl-7">
-        <div className="relative min-w-0">
-          {task.storyPoints ? (
-            <div className={`absolute right-0 top-0 flex items-center gap-1 font-medium ${currentTheme.textMuted}`}>
-              <Zap className="h-4 w-4" aria-hidden="true" />
-              <span className="font-due-date text-sm">{task.storyPoints}</span>
-            </div>
-          ) : null}
-
-          <div className={`mb-2 flex min-w-0 items-center gap-2 overflow-hidden ${task.storyPoints ? 'pr-14' : ''} ${currentTheme.textMuted}`}>
-            {taskTypeLabel ? <span className="font-due-date shrink-0 text-xs font-medium">{taskTypeLabel}</span> : null}
-            <TaskLabelSummary labels={labels} maxVisible={2} compactMaxVisible={1} collapseToFit />
-          </div>
-
-          <h3 className={`line-clamp-2 text-sm font-semibold leading-snug ${task.storyPoints ? 'pr-14' : ''} ${currentTheme.text}`}>
-            {task.title}
-          </h3>
-
-          <div className="mt-4 flex min-w-0 items-center justify-between gap-3">
-            <div className="min-w-0">
-              {task.dueDate ? <TaskDueDateBadge dueDate={task.dueDate} /> : null}
-            </div>
-            <AppAvatar
-              username={task.assignee.username}
-              fullName={task.assignee.displayName}
-              level={task.assignee.currentLevel}
-              size={32}
-              interactive={false}
-              enableBlink={false}
-            />
-          </div>
-
-          {footerAction ? <div className="mt-4 flex justify-end">{footerAction}</div> : null}
+    <div className={`group rounded-2xl border px-4 py-3 transition-all duration-300 hover:-translate-y-1 ${getQuietPanelClassName(currentTheme, isDarkMode)}`}>
+      <div className="flex items-center gap-3">
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${currentTheme.primarySoftStrong} ${currentTheme.primaryText}`}>
+          <Icon aria-hidden="true" className="h-5 w-5 transition-transform duration-300 group-hover:rotate-6" />
+        </span>
+        <div className="min-w-0">
+          <p className={`font-due-date text-sm font-semibold leading-none ${label === "XP" ? currentTheme.primaryText : currentTheme.text}`}>
+            {label}
+          </p>
+          <p className={`mt-1 text-xs leading-5 ${currentTheme.textMuted}`}>{description}</p>
         </div>
       </div>
-    </article>
+    </div>
   );
 }
 
-function StaticBoardPreview({
+function AbstractProgressVisual({
   currentTheme,
   isDarkMode,
 }: {
   currentTheme: ThemeColors;
   isDarkMode: boolean;
 }) {
-  const columnSurfaceClassName = isDarkMode ? 'bg-zinc-950/52' : 'bg-slate-50/88';
-  const columnHeaderSurfaceClassName = isDarkMode ? 'bg-zinc-900/46' : 'bg-white/78';
-  const boardColumns = [
-    { title: 'To Do', count: 1, cards: [previewTasks[1]] },
-    { title: 'In Review', count: 1, cards: [previewTasks[2]] },
-  ];
+  const surfaceClassName = getGlassPanelClassName(currentTheme, isDarkMode);
+  const quietLineClassName = isDarkMode ? "bg-white/[0.08]" : "bg-slate-200";
+  const nodeSurfaceClassName = isDarkMode ? "bg-zinc-950/88" : "bg-white/90";
 
   return (
-    <div className={`rounded-[2rem] border p-4 ${getGlassPanelClassName(currentTheme, isDarkMode)}`}>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className={`font-ui-condensed text-xs font-semibold uppercase tracking-[0.16em] ${currentTheme.primaryText}`}>
-            Product Launch
-          </p>
-          <h3 className={`font-ui-condensed text-2xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
-            Staging to board
-          </h3>
-        </div>
-        <div className={`flex rounded-2xl border p-1 ${currentTheme.border} ${isDarkMode ? 'bg-black/22' : 'bg-white/78'}`}>
-          {['Board', 'List', 'Staging', 'History'].map((tab) => (
-            <span
-              key={tab}
-              className={`font-ui-condensed rounded-xl px-3 py-1.5 text-xs font-semibold tracking-[0.01em] ${
-                tab === 'Staging'
-                  ? `bg-gradient-to-r ${currentTheme.primary} text-white shadow-sm`
-                  : currentTheme.textMuted
-              }`}
-            >
-              {tab}
-            </span>
-          ))}
-        </div>
-      </div>
+    <div className="landing-float relative" aria-hidden="true">
+      <div className={`absolute -left-10 top-8 h-48 w-48 rounded-full bg-gradient-to-br ${currentTheme.primarySoftStrong} blur-3xl`} />
+      <div className={`absolute -bottom-12 right-4 h-56 w-56 rounded-full bg-gradient-to-tr ${currentTheme.primarySoft} blur-3xl`} />
 
-      <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-        <section className={`min-h-0 overflow-hidden rounded-2xl border ${currentTheme.border} ${columnSurfaceClassName}`}>
-          <div className={`border-b px-4 py-3 ${currentTheme.border} ${columnHeaderSurfaceClassName}`}>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h4 className={`font-ui-condensed text-lg font-semibold tracking-[0.01em] ${currentTheme.text}`}>Staging Tasks</h4>
-                <p className={`mt-1 text-xs ${currentTheme.textMuted}`}>Upcoming work ready to estimate or queue.</p>
-              </div>
-              <span className={`font-due-date text-xs ${currentTheme.textMuted}`}>2 tasks</span>
-            </div>
-          </div>
-          <div className="space-y-3 p-3">
-            {[previewTasks[0], previewTasks[1]].map((task, index) => (
-              <StaticTaskCard
-                key={task.id}
-                task={task}
-                currentTheme={currentTheme}
-                isDarkMode={isDarkMode}
-                footerAction={
-                  index === 0 ? (
-                    <StagingTaskActionButton tabIndex={-1}>Add to Queue</StagingTaskActionButton>
-                  ) : undefined
-                }
-              />
-            ))}
-          </div>
-        </section>
+      <div className={`relative overflow-hidden rounded-[2.5rem] border p-6 backdrop-blur-xl ${surfaceClassName}`}>
+        <div className="pointer-events-none absolute inset-0 opacity-[0.18]">
+          <div className={`absolute left-8 right-8 top-16 h-px ${quietLineClassName}`} />
+          <div className={`absolute left-12 right-14 top-1/2 h-px ${quietLineClassName}`} />
+          <div className={`absolute bottom-20 left-8 right-10 h-px ${quietLineClassName}`} />
+          <div className={`absolute bottom-8 top-8 left-20 w-px ${quietLineClassName}`} />
+          <div className={`absolute bottom-10 top-12 right-24 w-px ${quietLineClassName}`} />
+        </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          {boardColumns.map((column) => (
-          <section key={column.title} className={`min-h-0 overflow-hidden rounded-2xl border ${currentTheme.border} ${columnSurfaceClassName}`}>
-            <div className={`border-b px-4 py-3 ${currentTheme.border} ${columnHeaderSurfaceClassName}`}>
-              <div className="flex items-center justify-between gap-3">
-                <h4 className={`font-kanban-column-title text-lg font-semibold tracking-[0.01em] ${currentTheme.text}`}>{column.title}</h4>
-                <span className={`font-due-date text-xs ${currentTheme.textMuted}`}>{column.count}</span>
-              </div>
-              <div className={`mt-3 grid h-1.5 grid-cols-5 gap-1 rounded-full`}>
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <span
-                    key={index}
-                    className={`rounded-full ${index < column.count ? `bg-gradient-to-r ${currentTheme.primary}` : isDarkMode ? 'bg-white/[0.07]' : 'bg-slate-200'}`}
-                  />
-                ))}
-              </div>
+        <div className="relative grid min-h-[28rem] gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="flex flex-col justify-between gap-5">
+            <div>
+              <p className={`font-ui-condensed text-sm font-semibold uppercase tracking-[0.16em] ${currentTheme.primaryText}`}>
+                Gamified Kanban
+              </p>
+              <p className={`mt-4 font-display-accent text-4xl font-bold leading-none ${currentTheme.text}`}>
+                Work becomes progress.
+              </p>
             </div>
-            <div className="space-y-3 p-3">
-              {column.cards.map((task) => (
-                <StaticTaskCard
-                  key={task.id}
-                  task={task}
+
+            <div className="grid gap-3">
+              {mechanics.map((item) => (
+                <MechanicPill
+                  key={item.label}
+                  label={item.label}
+                  description={item.description}
+                  icon={item.icon}
                   currentTheme={currentTheme}
                   isDarkMode={isDarkMode}
                 />
               ))}
             </div>
-          </section>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
+          </div>
 
-function HeroWorkspacePreview({
-  currentTheme,
-  isDarkMode,
-}: {
-  currentTheme: ThemeColors;
-  isDarkMode: boolean;
-}) {
-  return (
-    <div className="landing-float relative mx-auto grid w-full max-w-5xl gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]" aria-hidden="true">
-      <div className={`absolute -left-10 top-10 h-40 w-40 rounded-full bg-gradient-to-br ${currentTheme.primarySoftStrong} blur-3xl`} aria-hidden="true" />
-      <div className={`absolute -bottom-10 right-16 h-40 w-40 rounded-full bg-gradient-to-tr ${currentTheme.primarySoft} blur-3xl`} aria-hidden="true" />
+          <div className="relative min-h-[24rem] overflow-hidden rounded-[2rem]">
+            <div className={`absolute inset-x-8 top-1/2 h-1 -translate-y-1/2 rounded-full ${quietLineClassName}`} />
+            <div className={`landing-flow-line absolute left-8 top-1/2 h-1 w-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r ${currentTheme.primary}`} />
 
-      <div className="relative min-w-0">
-        <StaticBoardPreview currentTheme={currentTheme} isDarkMode={isDarkMode} />
-      </div>
-
-      <div className="relative hidden min-w-0 flex-col gap-4 lg:flex">
-        <div className="scale-[0.86] origin-top">
-          <LevelProgressCard
-            username="you"
-            fullName="You"
-            level={sampleSummary.currentLevel}
-            summary={sampleSummary}
-            variant="console-strip"
-            dataVariant="checkpoint-path"
-            showAmbientGrid={false}
-          />
-        </div>
-        <div className="origin-top -translate-y-10 scale-[0.82]">
-          <LevelLeaderboardPreview
-            board={sampleLeaderboard}
-            period="week"
-            onPeriodChange={() => undefined}
-            variant="crown-stack"
-            density="collapsed"
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ProgressShowcase({
-  currentTheme,
-  isDarkMode,
-}: {
-  currentTheme: ThemeColors;
-  isDarkMode: boolean;
-}) {
-  const mutedPanelClassName = getMutedPanelClassName(currentTheme, isDarkMode);
-
-  return (
-    <section id="progress" className="px-5 py-24 sm:px-8">
-      <div className="mx-auto max-w-[1450px]">
-        <SectionHeading
-          eyebrow="Progress loop"
-          title="Gamification that looks like the product."
-          description="XP, levels, milestones, and leaderboards use the same surfaces users see inside the board workspace."
-          currentTheme={currentTheme}
-        />
-
-        <div className="mt-12 grid gap-6 lg:grid-cols-[24rem_minmax(0,1fr)]">
-          <LevelProgressCard
-            username="you"
-            fullName="You"
-            level={sampleSummary.currentLevel}
-            summary={sampleSummary}
-            variant="console-strip"
-            dataVariant="checkpoint-path"
-            showAmbientGrid={false}
-          />
-
-          <div className="grid gap-5 md:grid-cols-3">
-            {progressFeatures.map((feature) => {
-              const Icon = feature.icon;
-
-              return (
-                <article key={feature.label} className={`group rounded-[1.75rem] border p-5 transition-all duration-300 hover:-translate-y-1 ${mutedPanelClassName}`}>
-                  <div className={`mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${currentTheme.primary} text-white shadow-lg transition-transform duration-300 group-hover:rotate-3`}>
-                    <Icon className="h-6 w-6" aria-hidden="true" />
-                  </div>
-                  <h3 className={`font-ui-condensed text-xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
-                    {feature.label}
-                  </h3>
-                  <p className={`mt-3 text-sm leading-6 ${currentTheme.textMuted}`}>{feature.description}</p>
-                </article>
-              );
-            })}
+            <div className="absolute left-[8%] top-[18%]">
+              <AbstractNode label="Staging" icon={GitBranch} currentTheme={currentTheme} nodeSurfaceClassName={nodeSurfaceClassName} />
+            </div>
+            <div className="absolute right-[8%] top-[16%]">
+              <AbstractNode label="Levels" icon={Trophy} currentTheme={currentTheme} nodeSurfaceClassName={nodeSurfaceClassName} />
+            </div>
+            <div className="absolute left-[31%] top-[45%]">
+              <AbstractNode label="Poker" icon={Gauge} currentTheme={currentTheme} nodeSurfaceClassName={nodeSurfaceClassName} primary />
+            </div>
+            <div className="absolute right-[22%] bottom-[15%]">
+              <AbstractNode label="History" icon={BarChart3} currentTheme={currentTheme} nodeSurfaceClassName={nodeSurfaceClassName} />
+            </div>
+            <div className="absolute bottom-[18%] left-[10%]">
+              <AbstractNode label="Board" icon={Layers3} currentTheme={currentTheme} nodeSurfaceClassName={nodeSurfaceClassName} />
+            </div>
           </div>
         </div>
       </div>
-    </section>
+    </div>
   );
 }
 
-function WorkflowShowcase({
+function AbstractNode({
+  label,
+  icon: Icon,
+  currentTheme,
+  nodeSurfaceClassName,
+  primary = false,
+}: {
+  label: string;
+  icon: LucideIcon;
+  currentTheme: ThemeColors;
+  nodeSurfaceClassName: string;
+  primary?: boolean;
+}) {
+  return (
+    <div className="landing-node group flex flex-col items-center gap-2">
+      <span
+        className={[
+          "flex h-16 w-16 items-center justify-center rounded-2xl border shadow-lg transition-transform duration-300 group-hover:scale-105",
+          primary ? `border-transparent bg-gradient-to-br ${currentTheme.primary} text-white` : `${currentTheme.border} ${nodeSurfaceClassName} ${currentTheme.primaryText}`,
+        ].join(" ")}
+      >
+        <Icon aria-hidden="true" className="h-7 w-7" />
+      </span>
+      <span className={`font-ui-condensed text-sm font-semibold tracking-[0.01em] ${currentTheme.text}`}>{label}</span>
+    </div>
+  );
+}
+
+function WorkflowLine({
   currentTheme,
   isDarkMode,
 }: {
   currentTheme: ThemeColors;
   isDarkMode: boolean;
 }) {
-  const glassPanelClassName = getGlassPanelClassName(currentTheme, isDarkMode);
-  const mutedPanelClassName = getMutedPanelClassName(currentTheme, isDarkMode);
-
   return (
-    <section id="workflow" className="px-5 py-24 sm:px-8">
-      <div className="mx-auto max-w-[1450px]">
-        <SectionHeading
-          eyebrow="Workflow loop"
-          title="Staging, estimation, delivery, history."
-          description="The core Kanban loop stays recognizable: prepare work, estimate it together, move it through the board, then review what changed."
-          currentTheme={currentTheme}
-        />
+    <div className={`relative overflow-hidden rounded-[2rem] border p-5 ${getGlassPanelClassName(currentTheme, isDarkMode)}`}>
+      <div className={`absolute left-8 right-8 top-[4.25rem] hidden h-px bg-gradient-to-r ${currentTheme.primarySoftStrong} lg:block`} aria-hidden="true" />
+      <div className="relative grid gap-4 lg:grid-cols-5">
+        {workflowStages.map((stage, index) => {
+          const Icon = stage.icon;
 
-        <div className={`mt-12 overflow-hidden rounded-[2rem] border p-5 backdrop-blur-xl ${glassPanelClassName}`}>
-          <div className="grid gap-4 lg:grid-cols-4">
-            {workflowSteps.map((step, index) => {
-              const Icon = step.icon;
-
-              return (
-                <div key={step.label} className={`relative rounded-[1.5rem] border p-5 ${mutedPanelClassName}`}>
-                  {index < workflowSteps.length - 1 ? (
-                    <ChevronRight className={`absolute -right-3 top-1/2 hidden h-6 w-6 -translate-y-1/2 lg:block ${currentTheme.primaryText}`} aria-hidden="true" />
-                  ) : null}
-                  <div className="flex items-center justify-between gap-4">
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${currentTheme.primary} text-white`}>
-                      <Icon className="h-6 w-6" aria-hidden="true" />
-                    </div>
-                    <span className={`font-due-date text-sm ${currentTheme.textMuted}`}>0{index + 1}</span>
-                  </div>
-                  <h3 className={`mt-5 font-ui-condensed text-2xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
-                    {step.label}
-                  </h3>
-                  <p className={`mt-3 text-sm leading-6 ${currentTheme.textMuted}`}>{step.description}</p>
+          return (
+            <article key={stage.label} className="relative">
+              <div className={`h-full rounded-[1.5rem] border p-5 ${getQuietPanelClassName(currentTheme, isDarkMode)}`}>
+                <div className="flex items-center justify-between gap-3">
+                  <span className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${currentTheme.primary} text-white`}>
+                    <Icon aria-hidden="true" className="h-6 w-6" />
+                  </span>
+                  <span className={`font-due-date text-xs ${currentTheme.textMuted}`}>{String(index + 1).padStart(2, "0")}</span>
                 </div>
-              );
-            })}
-          </div>
-        </div>
+                <h3 className={`mt-5 font-ui-condensed text-xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
+                  {stage.label}
+                </h3>
+                <p className={`mt-3 text-sm leading-6 ${currentTheme.textMuted}`}>{stage.description}</p>
+              </div>
+            </article>
+          );
+        })}
       </div>
-    </section>
+    </div>
   );
 }
 
-function TeamShowcase({
+function FeatureBand({
+  eyebrow,
+  title,
+  description,
+  features,
   currentTheme,
   isDarkMode,
+  reverse = false,
 }: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  features: FeatureItem[];
   currentTheme: ThemeColors;
   isDarkMode: boolean;
+  reverse?: boolean;
 }) {
-  const glassPanelClassName = getGlassPanelClassName(currentTheme, isDarkMode);
-  const mutedPanelClassName = getMutedPanelClassName(currentTheme, isDarkMode);
-
   return (
-    <section id="rituals" className="px-5 py-24 sm:px-8">
-      <div className="mx-auto grid max-w-[1450px] gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
-        <div>
-          <p className={`font-ui-condensed text-sm font-semibold uppercase tracking-[0.16em] ${currentTheme.primaryText}`}>
-            Team rituals
-          </p>
-          <h2 className={`mt-3 font-ui-condensed text-3xl font-semibold tracking-[0.01em] ${currentTheme.text} md:text-5xl`}>
-            Planning poker uses the same language as the room.
-          </h2>
-          <p className={`mt-5 text-base leading-7 ${currentTheme.textSecondary}`}>
-            Estimate staged work with the same card deck and task context your team uses inside a live planning poker room.
-          </p>
+    <section className="px-5 py-24 sm:px-8">
+      <div className={`mx-auto grid max-w-[1450px] gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center ${reverse ? "lg:[&>*:first-child]:order-2" : ""}`}>
+        <SectionHeading
+          eyebrow={eyebrow}
+          title={title}
+          description={description}
+          currentTheme={currentTheme}
+          align="left"
+        />
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
-            {teamFeatures.map((feature) => {
+        <div className={`relative overflow-hidden rounded-[2rem] border p-5 ${getGlassPanelClassName(currentTheme, isDarkMode)}`}>
+          <div className={`absolute -right-16 top-0 h-52 w-52 rounded-full bg-gradient-to-br ${currentTheme.primarySoft} blur-3xl`} aria-hidden="true" />
+          <div className="relative grid gap-3">
+            {features.map((feature) => {
               const Icon = feature.icon;
 
               return (
-                <div key={feature.label} className="flex items-start gap-4">
-                  <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${currentTheme.primarySoftStrong} ${currentTheme.primaryText}`}>
-                    <Icon className="h-5 w-5" aria-hidden="true" />
-                  </div>
+                <article key={feature.title} className={`group flex items-start gap-4 rounded-[1.35rem] border p-4 transition-all duration-300 hover:-translate-y-1 ${getQuietPanelClassName(currentTheme, isDarkMode)}`}>
+                  <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${currentTheme.primarySoftStrong} ${currentTheme.primaryText}`}>
+                    <Icon aria-hidden="true" className="h-5 w-5 transition-transform duration-300 group-hover:rotate-6" />
+                  </span>
                   <div>
                     <h3 className={`font-ui-condensed text-lg font-semibold tracking-[0.01em] ${currentTheme.text}`}>
-                      {feature.label}
+                      {feature.title}
                     </h3>
                     <p className={`mt-1 text-sm leading-6 ${currentTheme.textMuted}`}>{feature.description}</p>
                   </div>
-                </div>
+                </article>
               );
             })}
-          </div>
-        </div>
-
-        <div className={`relative overflow-hidden rounded-[2rem] border p-5 backdrop-blur-xl ${glassPanelClassName}`} aria-hidden="true">
-          <div className={`absolute -right-16 top-0 h-52 w-52 rounded-full bg-gradient-to-br ${currentTheme.primarySoft} blur-3xl`} />
-          <div className="relative space-y-5">
-            <div className={`rounded-[1.75rem] border p-5 ${mutedPanelClassName}`}>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className={`font-ui-condensed text-sm font-semibold uppercase tracking-[0.14em] ${currentTheme.textMuted}`}>
-                    Planning poker
-                  </p>
-                  <h3 className={`mt-1 font-ui-condensed text-2xl font-semibold ${currentTheme.text}`}>
-                    Estimate onboarding flow
-                  </h3>
-                </div>
-                <span className={`font-due-date rounded-full bg-gradient-to-r px-3 py-1 text-xs text-white ${currentTheme.primary}`}>
-                  4/5 voted
-                </span>
-              </div>
-            </div>
-            <PlanningPokerVoteDeck
-              cardValues={[0, 1, 2, 3, 5, 8, 13]}
-              selectedValue={5}
-              isSubmitting={false}
-              disabled
-              onVote={() => undefined}
-            />
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function PersonalShowcase({
-  currentTheme,
-  isDarkMode,
-}: {
-  currentTheme: ThemeColors;
-  isDarkMode: boolean;
-}) {
-  const glassPanelClassName = getGlassPanelClassName(currentTheme, isDarkMode);
-  const mutedPanelClassName = getMutedPanelClassName(currentTheme, isDarkMode);
-
-  return (
-    <section id="workspace" className="px-5 py-24 sm:px-8">
-      <div className="mx-auto grid max-w-[1450px] gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-        <div className={`relative overflow-hidden rounded-[2rem] border p-5 backdrop-blur-xl ${glassPanelClassName}`} aria-hidden="true">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className={`rounded-[1.5rem] border p-5 ${mutedPanelClassName}`}>
-              <p className={`font-ui-condensed text-sm font-semibold uppercase tracking-[0.14em] ${currentTheme.textMuted}`}>
-                My Tasks
-              </p>
-              <div className="mt-5 space-y-3">
-                {previewTasks.map((task, index) => (
-                  <div key={task.id} className={`rounded-2xl border p-3 ${isDarkMode ? 'border-zinc-800 bg-zinc-900/62' : 'border-slate-200 bg-white/84'}`}>
-                    <div className="flex items-center justify-between gap-3">
-                      <p className={`truncate text-sm font-semibold ${currentTheme.text}`}>{task.title}</p>
-                      <span className={`font-due-date text-xs ${index === 0 ? currentTheme.primaryText : currentTheme.textMuted}`}>
-                        {index === 0 ? 'today' : `${index + 2}d`}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="origin-top scale-[0.9]">
-              <LevelLeaderboardPreview
-                board={sampleLeaderboard}
-                period="week"
-                onPeriodChange={() => undefined}
-                variant="crown-stack"
-                density="collapsed"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <p className={`font-ui-condensed text-sm font-semibold uppercase tracking-[0.16em] ${currentTheme.primaryText}`}>
-            Personal workspace
-          </p>
-          <h2 className={`mt-3 font-ui-condensed text-3xl font-semibold tracking-[0.01em] ${currentTheme.text} md:text-5xl`}>
-            Every teammate gets a focused workspace.
-          </h2>
-          <p className={`mt-5 text-base leading-7 ${currentTheme.textSecondary}`}>
-            Users can find assigned work, personalize theme feel, and see progress without hunting through the board.
-          </p>
-          <div className="mt-8 grid gap-3">
-            {personalFeatures.map((feature) => (
-              <div key={feature} className="flex items-center gap-3">
-                <CheckCircle2 className={`h-5 w-5 ${currentTheme.primaryText}`} aria-hidden="true" />
-                <span className={`text-sm font-semibold ${currentTheme.text}`}>{feature}</span>
-              </div>
-            ))}
           </div>
         </div>
       </div>
@@ -790,6 +425,9 @@ export function Landing() {
           @media (prefers-reduced-motion: no-preference) {
             .landing-float { animation: landing-float 7s cubic-bezier(0.16, 1, 0.3, 1) infinite alternate; }
             .landing-pulse { animation: landing-pulse 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite; }
+            .landing-flow-line { animation: landing-flow-line 3.2s cubic-bezier(0.16, 1, 0.3, 1) infinite; }
+            .landing-node { animation: landing-node 6s cubic-bezier(0.16, 1, 0.3, 1) infinite alternate; }
+            .landing-node:nth-child(2n) { animation-delay: 600ms; }
           }
 
           @keyframes landing-float {
@@ -800,6 +438,17 @@ export function Landing() {
           @keyframes landing-pulse {
             0%, 100% { transform: scale(1); opacity: 0.92; }
             50% { transform: scale(1.035); opacity: 1; }
+          }
+
+          @keyframes landing-flow-line {
+            0% { transform: translateX(-52%) translateY(-50%); opacity: 0.18; }
+            42% { opacity: 0.82; }
+            100% { transform: translateX(120%) translateY(-50%); opacity: 0.08; }
+          }
+
+          @keyframes landing-node {
+            from { transform: translate3d(0, 0, 0); }
+            to { transform: translate3d(0, -6px, 0); }
           }
         `}
       </style>
@@ -820,18 +469,13 @@ export function Landing() {
           <BanBanLogo size="lg" />
 
           <nav className="hidden items-center gap-6 lg:flex" aria-label="Landing page sections">
-            {[
-              ['Progress', '#progress'],
-              ['Workflow', '#workflow'],
-              ['Planning poker', '#rituals'],
-              ['Workspace', '#workspace'],
-            ].map(([label, href]) => (
+            {navItems.map((item) => (
               <a
-                key={label}
-                href={href}
+                key={item.href}
+                href={item.href}
                 className={`font-ui-condensed text-sm font-semibold tracking-[0.01em] ${currentTheme.textSecondary} transition-colors hover:${currentTheme.text}`}
               >
-                {label}
+                {item.label}
               </a>
             ))}
           </nav>
@@ -843,9 +487,9 @@ export function Landing() {
             >
               Log in
             </Link>
-            <ShineButton to="/register" currentTheme={currentTheme} className="h-10 px-4">
+            <LandingButton to="/register" currentTheme={currentTheme} className="h-10 px-4">
               Get started
-            </ShineButton>
+            </LandingButton>
           </div>
         </div>
       </header>
@@ -853,8 +497,8 @@ export function Landing() {
       <section className="relative z-10 px-5 pb-20 pt-16 sm:px-8 lg:pb-28 lg:pt-24">
         <div className="mx-auto grid max-w-[1850px] gap-12 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
           <div className="max-w-3xl">
-            <div className={`landing-pulse mb-7 inline-flex items-center gap-2 rounded-full border px-3 py-2 ${getMutedPanelClassName(currentTheme, isDarkMode)}`}>
-              <Flame className={`h-4 w-4 ${currentTheme.primaryText}`} aria-hidden="true" />
+            <div className={`landing-pulse mb-7 inline-flex items-center gap-2 rounded-full border px-3 py-2 ${getQuietPanelClassName(currentTheme, isDarkMode)}`}>
+              <Flame aria-hidden="true" className={`h-4 w-4 ${currentTheme.primaryText}`} />
               <span className={`font-ui-condensed text-sm font-semibold uppercase tracking-[0.14em] ${currentTheme.primaryText}`}>
                 Gamified Kanban workspace
               </span>
@@ -868,57 +512,99 @@ export function Landing() {
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <ShineButton to="/register" currentTheme={currentTheme} className="h-14 px-7 text-base">
+              <LandingButton to="/register" currentTheme={currentTheme} className="h-14 px-7 text-base">
                 Start leveling up
-              </ShineButton>
-              <ShineButton to="/login" currentTheme={currentTheme} variant="secondary" className="h-14 px-7 text-base">
+              </LandingButton>
+              <LandingButton to="/login" currentTheme={currentTheme} variant="secondary" className="h-14 px-7 text-base">
                 Log in
-              </ShineButton>
+              </LandingButton>
             </div>
           </div>
 
-          <HeroWorkspacePreview currentTheme={currentTheme} isDarkMode={isDarkMode} />
+          <AbstractProgressVisual currentTheme={currentTheme} isDarkMode={isDarkMode} />
         </div>
       </section>
 
-      <div className="px-5 sm:px-8">
+      <section id="progress" className="px-5 py-24 sm:px-8">
         <div className="mx-auto max-w-[1450px]">
-          <WorkspaceSummaryBand
-            title="One loop from staging to reward"
-            description="Stage work, estimate it, move it through the board, and let progress show up in XP, levels, milestones, and history."
-            icon={Sparkles}
-            stats={[
-              { label: 'Staged', value: 8, hint: 'tasks ready' },
-              { label: 'Estimated', value: '5 pts', hint: 'latest vote' },
-              { label: 'Weekly XP', value: '+840', hint: 'team momentum' },
-              { label: 'Level', value: 18, hint: 'profile state' },
-            ]}
+          <SectionHeading
+            eyebrow="Progress loop"
+            title="Gamification that stays close to work."
+            description="The visuals stay abstract and branded: progress paths, milestone nodes, and theme-accent motion around real BanBan concepts."
+            currentTheme={currentTheme}
           />
-        </div>
-      </div>
 
-      <ProgressShowcase currentTheme={currentTheme} isDarkMode={isDarkMode} />
-      <WorkflowShowcase currentTheme={currentTheme} isDarkMode={isDarkMode} />
-      <TeamShowcase currentTheme={currentTheme} isDarkMode={isDarkMode} />
-      <PersonalShowcase currentTheme={currentTheme} isDarkMode={isDarkMode} />
+          <div className="mt-12 grid gap-5 md:grid-cols-3">
+            {progressFeatures.map((feature) => {
+              const Icon = feature.icon;
+
+              return (
+                <article key={feature.title} className={`group rounded-[1.75rem] border p-6 transition-all duration-300 hover:-translate-y-1 ${getQuietPanelClassName(currentTheme, isDarkMode)}`}>
+                  <div className={`mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${currentTheme.primary} text-white shadow-lg transition-transform duration-300 group-hover:rotate-3`}>
+                    <Icon aria-hidden="true" className="h-6 w-6" />
+                  </div>
+                  <h3 className={`font-ui-condensed text-xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>
+                    {feature.title}
+                  </h3>
+                  <p className={`mt-3 text-sm leading-6 ${currentTheme.textMuted}`}>{feature.description}</p>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section id="workflow" className="px-5 py-24 sm:px-8">
+        <div className="mx-auto max-w-[1450px]">
+          <SectionHeading
+            eyebrow="Workflow loop"
+            title="Staging, estimation, delivery, history."
+            description="A team can prepare work, estimate it together, move it through Board or List views, and review progress after completion."
+            currentTheme={currentTheme}
+          />
+
+          <div className="mt-12">
+            <WorkflowLine currentTheme={currentTheme} isDarkMode={isDarkMode} />
+          </div>
+        </div>
+      </section>
+
+      <FeatureBand
+        eyebrow="Team rituals"
+        title="Planning poker stays part of the Kanban flow."
+        description="BanBan supports the recurring moments teams already have: estimating upcoming work, aligning on context, and keeping board access clear."
+        features={ritualFeatures}
+        currentTheme={currentTheme}
+        isDarkMode={isDarkMode}
+      />
+
+      <FeatureBand
+        eyebrow="Personal workspace"
+        title="Every teammate can find their own work."
+        description="My Tasks, profile progress, filters, and theme preferences keep the system useful for individuals, not just board owners."
+        features={workspaceFeatures}
+        currentTheme={currentTheme}
+        isDarkMode={isDarkMode}
+        reverse
+      />
 
       <section className="px-5 py-24 sm:px-8">
         <div className={`relative mx-auto max-w-[1450px] overflow-hidden rounded-[2.25rem] border p-8 text-center backdrop-blur-xl md:p-12 ${glassPanelClassName}`}>
           <div className={`absolute left-1/2 top-0 h-64 w-64 -translate-x-1/2 rounded-full bg-gradient-to-br ${currentTheme.primarySoftStrong} blur-3xl`} aria-hidden="true" />
           <div className="relative mx-auto max-w-3xl">
             <div className={`mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br ${currentTheme.primary} text-white shadow-xl`}>
-              <Zap className="h-8 w-8" aria-hidden="true" />
+              <Sparkles aria-hidden="true" className="h-8 w-8" />
             </div>
             <p className={`font-display-accent text-4xl font-bold leading-tight ${currentTheme.text} md:text-5xl`}>
-              Ready to make progress visible?
+              Make progress visible.
             </p>
             <p className={`mx-auto mt-5 max-w-2xl text-base leading-7 ${currentTheme.textSecondary}`}>
-              Start with one board. Stage tasks. Estimate as a team. Finish work and let the progress show up.
+              Start with a board, stage the next work, estimate as a team, and let completed work become momentum.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <ShineButton to="/register" currentTheme={currentTheme} className="h-14 px-7 text-base">
+              <LandingButton to="/register" currentTheme={currentTheme} className="h-14 px-7 text-base">
                 Create your account
-              </ShineButton>
+              </LandingButton>
               <Link
                 to="/login"
                 className={`inline-flex h-14 items-center justify-center rounded-xl px-7 text-base font-semibold ${currentTheme.textSecondary} transition-colors hover:${currentTheme.text} focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus}`}

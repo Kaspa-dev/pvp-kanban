@@ -26,7 +26,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useGamificationSummary } from "../contexts/GamificationSummaryContext";
 import { useTheme, getThemeColors } from "../contexts/ThemeContext";
 import { useUserPreferences } from "../contexts/UserPreferencesContext";
-import { BoardWorkspaceView, getCoachmarkFlowForView, useBoardCoachmarks } from "../hooks/useBoardCoachmarks";
+import { BoardCoachmarkView, BoardWorkspaceView, getCoachmarkFlowForView, useBoardCoachmarks } from "../hooks/useBoardCoachmarks";
 import {
   type GamificationSummary,
   getDefaultGamificationSummary,
@@ -266,7 +266,7 @@ export function Board() {
   const [isLabelsModalOpen, setIsLabelsModalOpen] = useState(false);
   const [isGlobalSettingsOpen, setIsGlobalSettingsOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Card | null>(null);
-  const [pendingReplay, setPendingReplay] = useState<{ flowId: ReturnType<typeof getCoachmarkFlowForView>; targetView: BoardWorkspaceView } | null>(null);
+  const [pendingReplay, setPendingReplay] = useState<{ flowId: ReturnType<typeof getCoachmarkFlowForView>; targetView: BoardCoachmarkView } | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; cardId: number | null; title: string }>({
     isOpen: false,
     cardId: null,
@@ -732,8 +732,8 @@ export function Board() {
   const doneTaskCount = workflowColumns.done.length;
 
   const currentBoardFlow = useMemo(
-    () => getCoachmarkFlowForView(activeWorkspaceView, workflowCards.length > 0),
-    [activeWorkspaceView, workflowCards.length],
+    () => getCoachmarkFlowForView(view, workflowCards.length > 0),
+    [view, workflowCards.length],
   );
   const boardWorkspaceWidthClassName = "mx-auto w-full max-w-[1850px]";
   const isCurrentViewDataRefreshing =
@@ -778,7 +778,7 @@ export function Board() {
   }, [isCurrentViewDataRefreshing, isRefreshIndicatorPinned]);
 
   const coachmarks = useBoardCoachmarks({
-    view: activeWorkspaceView,
+    view,
     hasWorkflowCards: workflowCards.length > 0,
     coachmarksEnabled: preferences.coachmarksEnabled,
     completedFlows: preferences.completedFlows,
@@ -787,7 +787,6 @@ export function Board() {
       isLoadingBoard ||
       isModalOpen ||
       isGlobalSettingsOpen ||
-      view === "boardSettings" ||
       editingTask !== null ||
       deleteDialog.isOpen ||
       isConcludeDoneDialogOpen,
@@ -1303,7 +1302,7 @@ export function Board() {
     }
   };
 
-  const replayFlowForView = (targetView: BoardWorkspaceView) => {
+  const replayFlowForView = (targetView: BoardCoachmarkView) => {
     const flowId = getCoachmarkFlowForView(targetView, workflowCards.length > 0);
     if (!flowId) {
       return;
@@ -1416,8 +1415,8 @@ export function Board() {
             onLogout={handleLogout}
             onProfileClick={() => navigate("/app/profile")}
             onReplayCurrentHints={
-              !isBoardSettingsView && preferences.coachmarksEnabled && currentBoardFlow
-                ? () => replayFlowForView(activeWorkspaceView)
+              preferences.coachmarksEnabled && currentBoardFlow
+                ? () => replayFlowForView(view)
                 : undefined
             }
             xpPulseAmount={navbarXpPulse?.amount}

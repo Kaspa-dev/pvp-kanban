@@ -9,6 +9,11 @@ export type CoachmarkFlowId =
   | "staging-active-sprint"
   | "backlog-overview"
   | "history-overview"
+  | "board-statistics-overview"
+  | "board-settings-overview"
+  | "my-tasks-overview"
+  | "profile-overview"
+  | "profile-milestones-overview"
   | "projects-empty-state"
   | "projects-board-list";
 
@@ -36,6 +41,11 @@ const ALLOWED_COACHMARK_FLOWS = new Set<CoachmarkFlowId>([
   "staging-active-sprint",
   "backlog-overview",
   "history-overview",
+  "board-statistics-overview",
+  "board-settings-overview",
+  "my-tasks-overview",
+  "profile-overview",
+  "profile-milestones-overview",
   "projects-empty-state",
   "projects-board-list",
 ]);

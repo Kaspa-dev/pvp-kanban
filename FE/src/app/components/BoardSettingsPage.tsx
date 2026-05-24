@@ -370,7 +370,7 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
       <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-8 px-8 py-6 lg:px-10 xl:px-12">
-            <header className="space-y-1">
+            <header className="space-y-1" data-coachmark="board-settings-header">
               <h1 className={`font-ui-condensed text-[2rem] font-semibold tracking-[0.01em] ${currentTheme.text}`}>
                 Board Settings
               </h1>
@@ -404,7 +404,7 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
               onValueChange={setOpenSettingsSections}
               className={`border-y ${currentTheme.border}`}
             >
-              <AccordionItem value="general" className={`border-b ${currentTheme.border}`}>
+              <AccordionItem value="general" className={`border-b ${currentTheme.border}`} data-coachmark="board-settings-identity">
                 <AccordionTrigger className={accordionTriggerClassName} indicator={accordionIndicator}>
                   <div className="flex min-w-0 flex-1 items-center gap-4 py-5">
                     <div className="min-w-0 space-y-1">
@@ -601,7 +601,7 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
                 </AccordionContent>
               </AccordionItem>
 
-              <AccordionItem value="column-limits" className={`border-b ${currentTheme.border}`}>
+              <AccordionItem value="column-limits" className={`border-b ${currentTheme.border}`} data-coachmark="board-settings-columns">
                 <AccordionTrigger className={accordionTriggerClassName} indicator={accordionIndicator}>
                   <div className="flex min-w-0 flex-1 items-center gap-4 py-5">
                     <div className="min-w-0 space-y-1">
@@ -713,7 +713,7 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
                 </AccordionContent>
               </AccordionItem>
 
-              <AccordionItem value="members" className="border-b-0">
+              <AccordionItem value="members" className="border-b-0" data-coachmark="board-settings-members">
                 <AccordionTrigger className={accordionTriggerClassName} indicator={accordionIndicator}>
                   <div className="flex min-w-0 flex-1 items-center gap-4 py-5">
                     <div className="min-w-0 space-y-1">
@@ -803,7 +803,7 @@ export function BoardSettingsPage({ board, onSave }: BoardSettingsPageProps) {
               </AccordionItem>
             </Accordion>
 
-            <div className="flex flex-col items-stretch justify-end gap-3 pt-1 sm:flex-row sm:items-center">
+            <div className="flex flex-col items-stretch justify-end gap-3 pt-1 sm:flex-row sm:items-center" data-coachmark="board-settings-actions">
               <button
                 type="button"
                 onClick={resetDraft}

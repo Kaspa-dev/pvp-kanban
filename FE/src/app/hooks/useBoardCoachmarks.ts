@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CoachmarkFlowId } from "../utils/userPreferences";
 
 export type BoardWorkspaceView = "board" | "list" | "staging" | "backlog" | "history" | "statistics";
+export type BoardCoachmarkView = BoardWorkspaceView | "boardSettings";
 type BoardCoachmarkFlowId =
   | "board-no-active-sprint"
   | "board-active-sprint"
@@ -10,17 +11,18 @@ type BoardCoachmarkFlowId =
   | "staging-planning"
   | "staging-active-sprint"
   | "backlog-overview"
-  | "history-overview";
+  | "history-overview"
+  | "board-statistics-overview"
+  | "board-settings-overview";
 
 export type CoachmarkTargetId =
+  | "board-header"
   | "board-sidebar-actions"
   | "toolbar-view-switcher"
-  | "board-empty-state-cta"
   | "board-columns-grid"
   | "list-header"
   | "list-filters"
   | "list-table"
-  | "list-empty-state-cta"
   | "staging-new-task"
   | "staging-overview"
   | "staging-list"
@@ -28,7 +30,17 @@ export type CoachmarkTargetId =
   | "backlog-filters"
   | "backlog-table"
   | "history-header"
-  | "history-list";
+  | "history-list"
+  | "statistics-header"
+  | "statistics-summary"
+  | "statistics-status-charts"
+  | "statistics-aging-watchlist"
+  | "statistics-conclusion-history"
+  | "board-settings-header"
+  | "board-settings-identity"
+  | "board-settings-columns"
+  | "board-settings-members"
+  | "board-settings-actions";
 
 export interface CoachmarkStep {
   targetId: CoachmarkTargetId;
@@ -37,7 +49,7 @@ export interface CoachmarkStep {
 }
 
 interface UseBoardCoachmarksOptions {
-  view: BoardWorkspaceView;
+  view: BoardCoachmarkView;
   hasWorkflowCards: boolean;
   coachmarksEnabled: boolean;
   completedFlows: CoachmarkFlowId[];
@@ -49,63 +61,63 @@ interface UseBoardCoachmarksOptions {
 const FLOW_STEPS: Record<BoardCoachmarkFlowId, CoachmarkStep[]> = {
   "board-no-active-sprint": [
     {
-      targetId: "board-sidebar-actions",
-      title: "Create Work And Manage Labels",
-      description: "The board sidebar keeps task creation, board labels, and quick workspace actions within reach while you work.",
+      targetId: "board-header",
+      title: "Board View",
+      description: "This tab is the live workflow surface where tasks move through the board columns.",
     },
     {
       targetId: "toolbar-view-switcher",
       title: "Switch Between Workspaces",
-      description: "Board, List, Staging, and History stay one click away so you can move between planning and active work quickly.",
+      description: "Use the workspace tabs to move between Board, List, Staging, Backlog, History, and Statistics without leaving this board.",
+    },
+    {
+      targetId: "board-sidebar-actions",
+      title: "Create Work And Manage Labels",
+      description: "The sidebar keeps task creation, board labels, leaderboard context, and board settings within reach.",
     },
     {
       targetId: "board-columns-grid",
-      title: "The Workflow Is Ready",
-      description: "These columns stay visible even before work starts, so you can see exactly where tasks will land once they leave Staging.",
-    },
-    {
-      targetId: "board-empty-state-cta",
-      title: "Pull Work Out Of Staging",
-      description: "No task has entered the workflow yet. Open Staging to create work or move a ready item into To Do.",
+      title: "Workflow Columns",
+      description: "The columns stay visible even before active work starts, so you can see exactly where staged tasks will land.",
     },
   ],
   "board-active-sprint": [
     {
+      targetId: "board-header",
+      title: "Board View",
+      description: "Use this tab when you want the clearest picture of active work moving through the workflow.",
+    },
+    {
       targetId: "board-sidebar-actions",
       title: "Create Work And Manage Labels",
-      description: "Use the sidebar to add new tasks, manage board labels, and keep key board actions close by.",
+      description: "Use the sidebar to add tasks, manage labels, check leaderboard context, or open board settings when you have access.",
     },
     {
       targetId: "toolbar-view-switcher",
       title: "Keep Your Place Across Views",
-      description: "Use these tabs to swap between the board, list, staging, backlog, and task history without losing context.",
+      description: "These tabs keep Board, List, Staging, Backlog, History, and Statistics one click away.",
     },
     {
       targetId: "board-columns-grid",
       title: "Move Tasks Through The Board",
-      description: "Drag tasks between To Do, In Progress, In Review, and Done as work advances.",
+      description: "Drag tasks between To Do, In Progress, In Review, and Done as work advances, then conclude Done work when it is ready for History.",
     },
   ],
   "list-no-active-sprint": [
     {
       targetId: "list-header",
       title: "List Is Ready When Work Starts",
-      description: "The list tab stays available even before active work begins, so you can understand the layout before tasks appear.",
+      description: "The list tab stays available before active work begins, so you can preview the active-task index layout.",
     },
     {
       targetId: "list-filters",
       title: "Filters Stay Ready Too",
-      description: "Search, quick filters, and labels stay in place so you can narrow the list as soon as tasks enter the workflow.",
+      description: "Search, quick filters, priority, task type, assignee, and labels are ready as soon as tasks enter the workflow.",
     },
     {
       targetId: "list-table",
       title: "The Table Will Fill Here",
-      description: "Once work leaves Staging, this table will show the full active task index in one place.",
-    },
-    {
-      targetId: "list-empty-state-cta",
-      title: "Fill The List From Staging",
-      description: "There are no active tasks yet. Open Staging and move a ready item into the workflow to populate this view.",
+      description: "Once work leaves Staging, this table shows active tasks with sortable metadata and task actions.",
     },
   ],
   "list-active-sprint": [
@@ -117,12 +129,12 @@ const FLOW_STEPS: Record<BoardCoachmarkFlowId, CoachmarkStep[]> = {
     {
       targetId: "list-filters",
       title: "Narrow The Active List",
-      description: "Search, quick filters, and labels help you focus on the exact tasks that need attention right now.",
+      description: "Search, quick filters, priority, task type, assignee, and labels help you find the exact tasks that need attention.",
     },
     {
       targetId: "list-table",
       title: "Review The Details",
-      description: "This table keeps priority, labels, assignee, and actions in one place for quick triage.",
+      description: "The table keeps priority, labels, assignee, due dates, status, story points, and actions in one place for quick triage.",
     },
   ],
   "staging-planning": [
@@ -134,7 +146,7 @@ const FLOW_STEPS: Record<BoardCoachmarkFlowId, CoachmarkStep[]> = {
     {
       targetId: "staging-overview",
       title: "Stage A Batch In Queue",
-      description: "This queue collects ready staging tasks so you can launch them into To Do together instead of one by one.",
+      description: "The queue collects ready staging tasks so you can launch them into To Do together and create planning poker sessions for unestimated work.",
     },
     {
       targetId: "staging-list",
@@ -146,12 +158,12 @@ const FLOW_STEPS: Record<BoardCoachmarkFlowId, CoachmarkStep[]> = {
     {
       targetId: "staging-overview",
       title: "Queue Up The Next Batch",
-      description: "Even while work is active on the board, the queue helps you prepare the next set of staging tasks to release together.",
+      description: "Even while work is active on the board, the queue prepares the next batch and keeps planning poker close to the work being estimated.",
     },
     {
       targetId: "toolbar-view-switcher",
       title: "Jump Back To Active Work",
-      description: "Board and List show the tasks already in motion, while Staging stays focused on what comes next.",
+      description: "Board and List show tasks already in motion, while Staging stays focused on what comes next.",
     },
     {
       targetId: "staging-new-task",
@@ -163,35 +175,89 @@ const FLOW_STEPS: Record<BoardCoachmarkFlowId, CoachmarkStep[]> = {
     {
       targetId: "backlog-header",
       title: "Keep Backlog Separate From Active Work",
-      description: "This tab is focused on tasks still in backlog, so waiting and queued work stay visible without mixing into the live workflow.",
+      description: "Backlog focuses on waiting and queued work without mixing it into the live board workflow.",
     },
     {
       targetId: "backlog-filters",
       title: "Refine What Is Ready",
-      description: "Use search, readiness, and label filters to narrow backlog work before you queue the next batch.",
+      description: "Use search, quick filters, queue state, priority, task type, assignee, and labels to narrow upcoming work.",
     },
     {
       targetId: "backlog-table",
       title: "See Queue Status Clearly",
-      description: "The backlog table keeps readiness, labels, assignee, and queue actions together so grooming stays quick.",
+      description: "The backlog table keeps readiness, labels, assignee, metadata, and queue actions together so grooming stays quick.",
     },
   ],
   "history-overview": [
     {
       targetId: "history-header",
       title: "Review Completed Work",
-      description: "History gives you a dedicated place to inspect finished tasks and understand what has already moved through the board.",
+      description: "History gives you a dedicated place to inspect concluded tasks and restore anything that needs another pass.",
     },
     {
       targetId: "history-list",
       title: "Browse The Completed Timeline",
-      description: "Completed tasks stay grouped here so you can revisit earlier work without disturbing the active workflow.",
+      description: "The concluded-task table keeps restored-task actions and completed work context away from active workflow views.",
+    },
+  ],
+  "board-statistics-overview": [
+    {
+      targetId: "statistics-header",
+      title: "Board Health",
+      description: "Statistics summarizes board health, aging work, priority mix, and concluded task movement.",
+    },
+    {
+      targetId: "statistics-summary",
+      title: "Top Metrics",
+      description: "These metrics show active board volume, backlog volume, and how long work has been sitting in its current status.",
+    },
+    {
+      targetId: "statistics-status-charts",
+      title: "Status And Readiness",
+      description: "The charts split active workflow tasks, backlog readiness, and priority distribution into quick visual checks.",
+    },
+    {
+      targetId: "statistics-aging-watchlist",
+      title: "Aging Watchlist",
+      description: "This panel surfaces tasks that have stayed in the same status long enough to deserve attention.",
+    },
+    {
+      targetId: "statistics-conclusion-history",
+      title: "Conclusion History",
+      description: "Use this trend to compare concluded work against remaining unconcluded work over the selected period.",
+    },
+  ],
+  "board-settings-overview": [
+    {
+      targetId: "board-settings-header",
+      title: "Board Settings",
+      description: "Settings lets board owners adjust identity, workflow limits, and team access from inside the workspace.",
+    },
+    {
+      targetId: "board-settings-identity",
+      title: "Board Identity",
+      description: "Update the board name, description, icon, and accent color that appear across navigation and task context.",
+    },
+    {
+      targetId: "board-settings-columns",
+      title: "Column Limits",
+      description: "Set soft and hard work-in-progress thresholds for each active workflow column.",
+    },
+    {
+      targetId: "board-settings-members",
+      title: "Team Access",
+      description: "Add collaborators, review the member count, and remove people who no longer need access.",
+    },
+    {
+      targetId: "board-settings-actions",
+      title: "Save Or Reset",
+      description: "Use the bottom actions to reset unsaved edits or save all valid board setting changes together.",
     },
   ],
 };
 
 export function getCoachmarkFlowForView(
-  view: BoardWorkspaceView,
+  view: BoardCoachmarkView,
   hasWorkflowCards: boolean,
 ): BoardCoachmarkFlowId | null {
   if (view === "board") {
@@ -212,6 +278,14 @@ export function getCoachmarkFlowForView(
 
   if (view === "history") {
     return "history-overview";
+  }
+
+  if (view === "statistics") {
+    return "board-statistics-overview";
+  }
+
+  if (view === "boardSettings") {
+    return "board-settings-overview";
   }
 
   return null;

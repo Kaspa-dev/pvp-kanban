@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Award, Compass, Trophy } from "lucide-react";
 import { useNavigate } from "react-router";
+import { CoachmarkOverlay } from "../components/CoachmarkOverlay";
 import { MilestoneSection } from "../components/profile/MilestoneSection";
 import { getMilestoneProgressFillClassName, getMilestoneProgressTrackClassName } from "../components/profile/milestoneProgressStyles";
 import { SettingsModal } from "../components/SettingsModal";
@@ -8,6 +9,8 @@ import { Skeleton } from "../components/ui/skeleton";
 import { Toolbar } from "../components/Toolbar";
 import { useAuth } from "../contexts/AuthContext";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
+import { useUserPreferences } from "../contexts/UserPreferencesContext";
+import { usePageCoachmarks } from "../hooks/usePageCoachmarks";
 import {
   fetchCurrentUserMilestones,
   getComingSoonMilestones,
@@ -21,6 +24,11 @@ import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
 export function ProfileMilestones() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const {
+    preferences,
+    hasFetched: hasFetchedPreferences,
+    markFlowCompleted,
+  } = useUserPreferences();
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
@@ -28,6 +36,17 @@ export function ProfileMilestones() {
   const [isLoadingMilestones, setIsLoadingMilestones] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const coachmarks = usePageCoachmarks({
+    flowId: "profile-milestones-overview",
+    coachmarksEnabled: preferences.coachmarksEnabled,
+    completedFlows: preferences.completedFlows,
+    hasFetchedPreferences,
+    isBlocked: isSettingsOpen || isLoadingMilestones,
+    onFlowCompleted: (flowId) => {
+      void markFlowCompleted(flowId);
+    },
+  });
 
   useEffect(() => {
     let isActive = true;
@@ -124,6 +143,7 @@ export function ProfileMilestones() {
         onOpenSettings={() => setIsSettingsOpen(true)}
         onLogout={handleLogout}
         onProfileClick={() => navigate("/app/profile")}
+        onReplayCurrentHints={preferences.coachmarksEnabled ? coachmarks.startFlow : undefined}
         userProfile={{
           username: user.username,
           fullName,
@@ -133,7 +153,7 @@ export function ProfileMilestones() {
 
       <main className="relative z-10 px-6 py-10">
         <div className="mx-auto flex w-full max-w-[1850px] flex-col gap-6">
-        <section className={`${workspaceSurface.elevatedPanelSurfaceClassName} relative overflow-hidden rounded-[2rem] px-6 py-7 shadow-[0_28px_90px_-48px_rgba(15,23,42,0.55)] lg:px-8 lg:py-8`}>
+        <section className={`${workspaceSurface.elevatedPanelSurfaceClassName} relative overflow-hidden rounded-[2rem] px-6 py-7 shadow-[0_28px_90px_-48px_rgba(15,23,42,0.55)] lg:px-8 lg:py-8`} data-coachmark="profile-milestones-header">
           <div className={`absolute -right-12 top-0 h-72 w-72 rounded-full bg-gradient-to-br ${currentTheme.primarySoftStrong} blur-3xl`} />
           <div className={`absolute -bottom-24 left-12 h-72 w-72 rounded-full bg-gradient-to-tr ${currentTheme.primarySoft} blur-3xl`} />
 
@@ -155,7 +175,7 @@ export function ProfileMilestones() {
               </button>
             </div>
 
-            <div className={`grid gap-7 border-t pt-6 ${currentTheme.border} xl:grid-cols-[0.78fr_1.22fr]`}>
+            <div className={`grid gap-7 border-t pt-6 ${currentTheme.border} xl:grid-cols-[0.78fr_1.22fr]`} data-coachmark="profile-milestones-summary">
               <div className={`rounded-[1.5rem] border px-5 py-5 ${currentTheme.border} ${currentTheme.bgSecondary}`}>
                 <div className="flex flex-wrap items-end justify-between gap-3">
                   <p className={`font-due-date text-4xl font-semibold leading-none ${currentTheme.text}`}>{completionPercent}%</p>
@@ -218,29 +238,31 @@ export function ProfileMilestones() {
           </section>
         ) : null}
 
-        {isLoadingMilestones ? (
-          <section className={`rounded-[2rem] border p-6 ${currentTheme.border} ${currentTheme.cardBg}`}>
-            <div className="grid gap-4 xl:grid-cols-2">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <div key={index} className={`rounded-[1.25rem] border p-5 ${currentTheme.border} ${currentTheme.bgSecondary}`}>
-                  <Skeleton className="h-4 w-24 rounded-lg" />
-                  <Skeleton className="mt-4 h-6 w-40 rounded-lg" />
-                  <Skeleton className="mt-3 h-4 w-full rounded-lg" />
-                  <Skeleton className="mt-3 h-4 w-3/4 rounded-lg" />
-                  <Skeleton className="mt-5 h-2.5 w-full rounded-full" />
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : groupedMilestones.length > 0 ? (
-          groupedMilestones.map(({ category, milestones }) => (
-            <MilestoneSection key={category} category={category} milestones={milestones} />
-          ))
-        ) : (
-          <section className={`rounded-[2rem] border p-8 text-center shadow-[0_24px_90px_-60px_rgba(15,23,42,0.6)] ${currentTheme.border} ${currentTheme.cardBg}`}>
-            <h2 className={`font-ui-condensed text-2xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>No milestones yet</h2>
-          </section>
-        )}
+        <div className="flex flex-col gap-6" data-coachmark="profile-milestones-list">
+          {isLoadingMilestones ? (
+            <section className={`rounded-[2rem] border p-6 ${currentTheme.border} ${currentTheme.cardBg}`}>
+              <div className="grid gap-4 xl:grid-cols-2">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className={`rounded-[1.25rem] border p-5 ${currentTheme.border} ${currentTheme.bgSecondary}`}>
+                    <Skeleton className="h-4 w-24 rounded-lg" />
+                    <Skeleton className="mt-4 h-6 w-40 rounded-lg" />
+                    <Skeleton className="mt-3 h-4 w-full rounded-lg" />
+                    <Skeleton className="mt-3 h-4 w-3/4 rounded-lg" />
+                    <Skeleton className="mt-5 h-2.5 w-full rounded-full" />
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : groupedMilestones.length > 0 ? (
+            groupedMilestones.map(({ category, milestones }) => (
+              <MilestoneSection key={category} category={category} milestones={milestones} />
+            ))
+          ) : (
+            <section className={`rounded-[2rem] border p-8 text-center shadow-[0_24px_90px_-60px_rgba(15,23,42,0.6)] ${currentTheme.border} ${currentTheme.cardBg}`}>
+              <h2 className={`font-ui-condensed text-2xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>No milestones yet</h2>
+            </section>
+          )}
+        </div>
         </div>
       </main>
 
@@ -249,6 +271,16 @@ export function ProfileMilestones() {
         onClose={() => setIsSettingsOpen(false)}
         onOpenProfile={() => navigate("/app/profile")}
         onOpenMyTasks={() => navigate("/app/my-tasks")}
+      />
+      <CoachmarkOverlay
+        isOpen={coachmarks.activeFlowId !== null}
+        step={coachmarks.activeStep}
+        targetRect={coachmarks.targetRect}
+        stepIndex={coachmarks.stepIndex}
+        totalSteps={coachmarks.totalSteps}
+        onBack={coachmarks.goToPreviousStep}
+        onNext={coachmarks.goToNextStep}
+        onClose={() => coachmarks.closeFlow(true)}
       />
     </div>
   );

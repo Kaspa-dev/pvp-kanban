@@ -285,6 +285,11 @@ export interface BoardStatisticsAgingTask {
   assignee: TaskAssignee | null;
 }
 
+export interface BoardStatisticsBoardTaskAgeSummary {
+  averageDaysInStatus: number;
+  highestDaysInStatus: number;
+}
+
 export interface BoardStatisticsArchiveTrendBucket {
   key: string;
   label: string;
@@ -308,6 +313,7 @@ export interface BoardStatistics {
   statusCounts: {
     items: BoardStatisticsStatusCount[];
   };
+  boardTaskAgeSummary: BoardStatisticsBoardTaskAgeSummary;
   agingTasks: BoardStatisticsAgingTask[];
   archiveTrend: BoardStatisticsArchiveTrend;
   priorityMix: BoardStatisticsPriorityMixItem[];

@@ -20,13 +20,9 @@ import { isApiError } from "../utils/auth";
 import {
   BoardStatistics,
   BoardStatisticsArchiveRange,
-  BoardStatisticsAgingTask,
-  BoardStatisticsStatusCount,
   getBoardStatistics,
 } from "../utils/cards";
 import { getPriorityColor } from "../utils/priorityColors";
-import { getWorkspaceSurfaceStyles } from "../utils/workspaceSurfaceStyles";
-import { AppAvatar } from "./AppAvatar";
 import { getInputLikeControlClassName } from "./inputLikeControlStyles";
 import { getPanelEyebrowClassName, getToolbarLabelClassName } from "./typographyStyles";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "./ui/chart";
@@ -84,46 +80,8 @@ function getTotalTaskCount(rows: Array<{ taskCount: number }>) {
   return rows.reduce((total, row) => total + row.taskCount, 0);
 }
 
-function getAgingToneMeta(dayCount: number, isDarkMode: boolean) {
-  if (dayCount >= 7) {
-    return {
-      label: "Stale",
-      className: isDarkMode
-        ? "border-red-500/25 bg-red-500/10 text-red-200"
-        : "border-red-200 bg-red-50 text-red-700",
-      meterClassName: "bg-red-500",
-    };
-  }
-
-  if (dayCount >= 3) {
-    return {
-      label: "Watch",
-      className: isDarkMode
-        ? "border-amber-400/25 bg-amber-400/10 text-amber-200"
-        : "border-amber-200 bg-amber-50 text-amber-700",
-      meterClassName: "bg-amber-400",
-    };
-  }
-
-  return {
-    label: "Fresh",
-    className: isDarkMode
-      ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-200"
-      : "border-emerald-200 bg-emerald-50 text-emerald-700",
-    meterClassName: "bg-emerald-500",
-  };
-}
-
-function getAgingMeterWidth(dayCount: number) {
-  return `${Math.min(100, Math.max(14, (dayCount / 14) * 100))}%`;
-}
-
-function getAgingSummary(tasks: BoardStatisticsAgingTask[]) {
-  return {
-    watchCount: tasks.filter((task) => task.daysInStatus >= 3 && task.daysInStatus < 7).length,
-    staleCount: tasks.filter((task) => task.daysInStatus >= 7).length,
-    oldestDays: tasks[0]?.daysInStatus ?? 0,
-  };
+function formatAgeMetric(dayCount: number) {
+  return `${Number.isInteger(dayCount) ? dayCount : dayCount.toFixed(1)}d`;
 }
 
 function StatisticsPanel({
@@ -133,6 +91,7 @@ function StatisticsPanel({
   action,
   className,
   tooltip,
+  dataCoachmark,
 }: {
   title: string;
   icon: typeof BarChart3;
@@ -140,13 +99,17 @@ function StatisticsPanel({
   action?: ReactNode;
   className?: string;
   tooltip?: string;
+  dataCoachmark?: string;
 }) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const subtleIconClassName = isDarkMode ? "text-zinc-500" : "text-gray-400";
 
   return (
-    <section className={cn("flex flex-col rounded-2xl border p-5 shadow-sm backdrop-blur-xl", currentTheme.cardBg, currentTheme.border, className)}>
+    <section
+      className={cn("flex flex-col rounded-2xl border p-5 shadow-sm backdrop-blur-xl", currentTheme.cardBg, currentTheme.border, className)}
+      data-coachmark={dataCoachmark}
+    >
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className={cn("inline-flex h-9 w-9 items-center justify-center rounded-xl", currentTheme.primaryBg, currentTheme.primaryText)}>
@@ -248,7 +211,6 @@ function ArchiveTrendTooltip({ active, payload, label }: TooltipProps<number, st
 export function BoardStatisticsView({ boardId, taskDataVersion }: BoardStatisticsViewProps) {
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
-  const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
   const chartAccent = THEME_CHART_ACCENTS[theme];
   const [archiveRange, setArchiveRange] = useState<BoardStatisticsArchiveRange>("30d");
   const [statistics, setStatistics] = useState<BoardStatistics | null>(null);
@@ -314,7 +276,15 @@ export function BoardStatisticsView({ boardId, taskDataVersion }: BoardStatistic
     () => (statistics?.agingTasks ?? []).filter((task) => task.daysInStatus > 0).slice(0, 5),
     [statistics],
   );
-  const agingSummary = getAgingSummary(agingWatchlist);
+
+  const topMetricItems = statistics
+    ? [
+        { label: "Tasks in board", value: boardStatusTotal, accent: true },
+        { label: "Tasks in backlog", value: backlogStatusTotal },
+        { label: "Average board task age", value: formatAgeMetric(statistics.boardTaskAgeSummary.averageDaysInStatus) },
+        { label: "Highest board task age", value: formatAgeMetric(statistics.boardTaskAgeSummary.highestDaysInStatus) },
+      ]
+    : [];
 
   const priorityRows = useMemo(
     () =>
@@ -338,7 +308,7 @@ export function BoardStatisticsView({ boardId, taskDataVersion }: BoardStatistic
         }
       >
         <div className="mx-auto flex w-full max-w-[1850px] flex-col gap-6">
-          <header className="flex flex-wrap items-end justify-between gap-4">
+          <header className="flex flex-wrap items-end justify-between gap-4" data-coachmark="statistics-header">
             <div>
               <h1 className={cn("font-ui-condensed text-[2rem] font-semibold tracking-[0.01em]", currentTheme.text)}>
                 Statistics
@@ -365,28 +335,26 @@ export function BoardStatisticsView({ boardId, taskDataVersion }: BoardStatistic
             </div>
           ) : statistics ? (
             <>
-              <div className="grid gap-5 md:grid-cols-3">
-                <div className={cn("rounded-2xl border px-5 py-4", workspaceSurface.panelSurfaceClassName)} style={workspaceSurface.panelSurfaceStyle}>
-                  <p className={getToolbarLabelClassName(currentTheme.textMuted)}>Current work</p>
-                  <p className={cn("mt-2 font-due-date text-3xl font-semibold tabular-nums", currentTheme.text)}>
-                    {getTotalTaskCount(statistics.statusCounts.items)}
-                  </p>
-                </div>
-                <div className={cn("rounded-2xl border px-5 py-4", workspaceSurface.panelSurfaceClassName)} style={workspaceSurface.panelSurfaceStyle}>
-                  <p className={getToolbarLabelClassName(currentTheme.textMuted)}>Oldest shown</p>
-                  <p className={cn("mt-2 font-due-date text-3xl font-semibold tabular-nums", currentTheme.text)}>
-                    {statistics.agingTasks[0]?.daysInStatus ?? 0}d
-                  </p>
-                </div>
-                <div className={cn("rounded-2xl border px-5 py-4", workspaceSurface.panelSurfaceClassName)} style={workspaceSurface.panelSurfaceStyle}>
-                  <p className={getToolbarLabelClassName(currentTheme.textMuted)}>Concluded</p>
-                  <p className={cn("mt-2 font-due-date text-3xl font-semibold tabular-nums", currentTheme.text)}>
-                    {archiveTotal}
-                  </p>
-                </div>
-              </div>
+              <dl className="flex flex-wrap items-center gap-x-7 gap-y-3" aria-label="Board statistics summary" data-coachmark="statistics-summary">
+                {topMetricItems.map((item, index) => (
+                  <div key={item.label} className="flex items-center gap-7">
+                    {index > 0 ? <span className={cn("hidden h-8 w-px sm:block", isDarkMode ? "bg-white/10" : "bg-black/10")} aria-hidden="true" /> : null}
+                    <div className="flex items-baseline gap-3">
+                      <dt className={getToolbarLabelClassName(currentTheme.textMuted)}>{item.label}</dt>
+                      <dd
+                        className={cn(
+                          "font-due-date text-xl font-semibold tabular-nums leading-none",
+                          item.accent ? currentTheme.primaryText : currentTheme.text,
+                        )}
+                      >
+                        {item.value}
+                      </dd>
+                    </div>
+                  </div>
+                ))}
+              </dl>
 
-              <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.82fr)_minmax(340px,0.78fr)]">
+              <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.82fr)_minmax(340px,0.78fr)]" data-coachmark="statistics-status-charts">
                 <StatisticsPanel
                   title="Board Tasks By Status"
                   icon={BarChart3}
@@ -485,76 +453,31 @@ export function BoardStatisticsView({ boardId, taskDataVersion }: BoardStatistic
                   title="Aging Watchlist"
                   icon={Clock3}
                   tooltip="Surfaces tasks that have stayed in the same status for at least one day, so stale work is easier to spot."
+                  dataCoachmark="statistics-aging-watchlist"
                 >
                   {agingWatchlist.length > 0 ? (
-                    <div className="grid gap-5">
-                      <div className="grid gap-3 sm:grid-cols-3">
-                        <div className={cn("rounded-xl border px-4 py-3", currentTheme.border, isDarkMode ? "bg-white/[0.03]" : "bg-white/70")}>
-                          <p className={getToolbarLabelClassName(currentTheme.textMuted)}>Oldest</p>
-                          <p className={cn("mt-1 font-due-date text-2xl font-semibold tabular-nums", currentTheme.text)}>
-                            {agingSummary.oldestDays}d
-                          </p>
-                        </div>
-                        <div className={cn("rounded-xl border px-4 py-3", currentTheme.border, isDarkMode ? "bg-white/[0.03]" : "bg-white/70")}>
-                          <p className={getToolbarLabelClassName(currentTheme.textMuted)}>Watch</p>
-                          <p className={cn("mt-1 font-due-date text-2xl font-semibold tabular-nums", currentTheme.text)}>
-                            {agingSummary.watchCount}
-                          </p>
-                        </div>
-                        <div className={cn("rounded-xl border px-4 py-3", currentTheme.border, isDarkMode ? "bg-white/[0.03]" : "bg-white/70")}>
-                          <p className={getToolbarLabelClassName(currentTheme.textMuted)}>Stale</p>
-                          <p className={cn("mt-1 font-due-date text-2xl font-semibold tabular-nums", currentTheme.text)}>
-                            {agingSummary.staleCount}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        {agingWatchlist.map((task) => {
-                          const agingTone = getAgingToneMeta(task.daysInStatus, isDarkMode);
-
-                          return (
-                          <div
-                            key={task.taskId}
-                            className={cn("rounded-xl border px-4 py-3", currentTheme.border, isDarkMode ? "bg-white/[0.03]" : "bg-white/80")}
-                          >
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="min-w-0">
-                                <p className={cn("truncate text-sm font-semibold", currentTheme.text)}>{task.title}</p>
-                                <div className="mt-1 flex flex-wrap items-center gap-2">
-                                  <span className={cn("text-xs", currentTheme.textMuted)}>{task.statusLabel}</span>
-                                  <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-semibold", agingTone.className)}>
-                                    {agingTone.label}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="flex shrink-0 items-center gap-2">
-                                {task.assignee ? (
-                                  <AppAvatar
-                                    username={task.assignee.username}
-                                    fullName={task.assignee.displayName}
-                                    size={26}
-                                    showTooltip
-                                    tooltip={task.assignee.displayName || task.assignee.username}
-                                    level={task.assignee.currentLevel}
-                                  />
-                                ) : null}
-                                <span className={cn("font-due-date text-sm font-semibold tabular-nums", currentTheme.primaryText)}>
-                                  {task.daysInStatus}d
-                                </span>
-                              </div>
-                            </div>
-                            <div className={cn("mt-3 h-1.5 overflow-hidden rounded-full", isDarkMode ? "bg-white/10" : "bg-slate-200/80")}>
-                              <div
-                                className={cn("h-full rounded-full", agingTone.meterClassName)}
-                                style={{ width: getAgingMeterWidth(task.daysInStatus) }}
-                              />
-                            </div>
+                    <ol className={cn("border-y", currentTheme.border)} aria-label="Five oldest tasks by time in current status">
+                      {agingWatchlist.map((task) => (
+                        <li
+                          key={task.taskId}
+                          className={cn(
+                            "flex items-center justify-between gap-4 border-t py-3 first:border-t-0",
+                            currentTheme.border,
+                          )}
+                        >
+                          <div className="min-w-0">
+                            <p className={cn("truncate text-sm font-semibold", currentTheme.text)}>{task.title}</p>
+                            <p className={cn("mt-1 truncate text-xs", currentTheme.textMuted)}>
+                              {task.statusLabel}
+                              {task.assignee ? ` / ${task.assignee.displayName || task.assignee.username}` : ""}
+                            </p>
                           </div>
-                          );
-                        })}
-                      </div>
-                    </div>
+                          <span className={cn("shrink-0 font-due-date text-sm font-semibold tabular-nums", currentTheme.primaryText)}>
+                            {task.daysInStatus}d
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
                   ) : (
                     <StatisticsEmptyState label="No aging tasks yet. Tasks appear here after at least one day in the same status." />
                   )}
@@ -564,6 +487,7 @@ export function BoardStatisticsView({ boardId, taskDataVersion }: BoardStatistic
                   title="Conclusion History"
                   icon={TimerReset}
                   tooltip="Shows concluded tasks over the selected period. These are tasks moved into History."
+                  dataCoachmark="statistics-conclusion-history"
                   action={
                     <div className="flex flex-wrap gap-2">
                       {ARCHIVE_RANGE_OPTIONS.map((option) => (

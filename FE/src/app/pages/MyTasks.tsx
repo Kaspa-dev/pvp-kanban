@@ -19,6 +19,7 @@ import {
 import { useNavigate } from "react-router";
 import { BoardLogo } from "../components/BoardLogo";
 import { BoardStatusBadge } from "../components/BoardStatusBadge";
+import { CoachmarkOverlay } from "../components/CoachmarkOverlay";
 import { CustomScrollArea } from "../components/CustomScrollArea";
 import { getInputLikeControlClassName, getNativeInputFieldClassName } from "../components/inputLikeControlStyles";
 import { SettingsModal } from "../components/SettingsModal";
@@ -33,6 +34,8 @@ import { WorkspacePaginationFooter } from "../components/WorkspacePaginationFoot
 import { getToolbarLabelClassName } from "../components/typographyStyles";
 import { useAuth } from "../contexts/AuthContext";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
+import { useUserPreferences } from "../contexts/UserPreferencesContext";
+import { usePageCoachmarks } from "../hooks/usePageCoachmarks";
 import {
   BoardTaskSortDirection,
   getMyTaskBoardOptions,
@@ -235,6 +238,11 @@ function TaskRowsSkeleton({ rowCount = TASKS_PER_PAGE }: { rowCount?: number }) 
 export function MyTasks() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const {
+    preferences,
+    hasFetched: hasFetchedPreferences,
+    markFlowCompleted,
+  } = useUserPreferences();
   const { theme, isDarkMode } = useTheme();
   const currentTheme = getThemeColors(theme, isDarkMode);
   const workspaceSurface = getWorkspaceSurfaceStyles(currentTheme, isDarkMode);
@@ -271,6 +279,23 @@ export function MyTasks() {
   const [loadError, setLoadError] = useState("");
   const [reloadVersion, setReloadVersion] = useState(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const coachmarks = usePageCoachmarks({
+    flowId: "my-tasks-overview",
+    coachmarksEnabled: preferences.coachmarksEnabled,
+    completedFlows: preferences.completedFlows,
+    hasFetchedPreferences,
+    isBlocked:
+      isSettingsOpen ||
+      isBoardFilterOpen ||
+      isPriorityFilterOpen ||
+      isTaskTypeFilterOpen ||
+      isLoading ||
+      isBoardOptionsLoading,
+    onFlowCompleted: (flowId) => {
+      void markFlowCompleted(flowId);
+    },
+  });
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -550,6 +575,7 @@ export function MyTasks() {
         onOpenSettings={() => setIsSettingsOpen(true)}
         onLogout={handleLogout}
         onProfileClick={() => navigate("/app/profile")}
+        onReplayCurrentHints={preferences.coachmarksEnabled ? coachmarks.startFlow : undefined}
         userProfile={{
           username: user.username,
           fullName: `${user.firstName} ${user.lastName}`.trim(),
@@ -560,13 +586,13 @@ export function MyTasks() {
       <main className="relative z-10 h-[calc(100vh-4.75rem)] w-full overflow-auto">
         <div className={`${currentTheme.bgSecondary} min-h-full`}>
           <div className="mx-auto flex w-full max-w-[1850px] flex-col px-8 py-6 lg:px-10 xl:px-12">
-            <div className="shrink-0">
+            <div className="shrink-0" data-coachmark="my-tasks-header">
               <h1 className={`font-ui-condensed text-[2rem] font-semibold tracking-[0.01em] ${currentTheme.text}`}>
                 My tasks
               </h1>
             </div>
 
-            <div className={`mt-6 border-t ${currentTheme.border} py-4`}>
+            <div className={`mt-6 border-t ${currentTheme.border} py-4`} data-coachmark="my-tasks-filters">
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-end">
                   <div className="flex w-full max-w-[48rem] min-w-0 flex-col gap-2 xl:flex-none">
@@ -923,7 +949,7 @@ export function MyTasks() {
               </div>
             ) : null}
 
-            <div className="mt-4">
+            <div className="mt-4" data-coachmark="my-tasks-table">
               <div className="py-2.5">
                 <span className={`text-sm font-semibold tracking-[0.01em] ${currentTheme.text}`}>
                   Assigned tasks
@@ -1141,22 +1167,24 @@ export function MyTasks() {
               </div>
             </div>
 
-            <WorkspacePaginationFooter
-              currentPage={taskPage.page}
-              totalPages={Math.max(taskPage.totalPages, 1)}
-              onPageChange={setCurrentPage}
-              disabled={disablePaginationFooter}
-              className={`mt-6 grid grid-cols-[1fr_auto_1fr] items-center gap-4 border-t ${currentTheme.border} pt-4`}
-              keycapClassName={`rounded-md border px-2 py-1 text-[10px] font-semibold ${currentTheme.border} ${currentTheme.textMuted}`}
-              mutedTextClassName={`text-xs ${currentTheme.textMuted}`}
-              pageActiveClassName={`pointer-events-none cursor-default border ${currentTheme.primaryBorder} ${currentTheme.accentPaginationActive} shadow-sm`}
-              pageInactiveClassName={`!border ${currentTheme.border} !bg-white dark:!bg-input/30 ${currentTheme.textSecondary} hover:${currentTheme.borderHover} hover:!bg-white dark:hover:!bg-input/30 hover:text-inherit hover:ring-1 hover:ring-black/5 dark:hover:ring-white/10`}
-              previousNextInactiveClassName={`!border ${currentTheme.border} !bg-white/75 dark:!bg-input/20 ${currentTheme.textSecondary} hover:${currentTheme.borderHover} hover:!bg-white/75 dark:hover:!bg-input/20 hover:text-inherit hover:ring-1 hover:ring-black/5 dark:hover:ring-white/10`}
-              previousNextDisabledClassName={`pointer-events-none !border-transparent !bg-transparent ${currentTheme.textMuted}`}
-              ellipsisClassName={currentTheme.textMuted}
-              summaryText={getResultsSummaryText(taskPage.page, taskPage.pageSize, taskPage.totalItems)}
-              summaryTextClassName={`text-xs ${currentTheme.textMuted}`}
-            />
+            <div data-coachmark="my-tasks-pagination">
+              <WorkspacePaginationFooter
+                currentPage={taskPage.page}
+                totalPages={Math.max(taskPage.totalPages, 1)}
+                onPageChange={setCurrentPage}
+                disabled={disablePaginationFooter}
+                className={`mt-6 grid grid-cols-[1fr_auto_1fr] items-center gap-4 border-t ${currentTheme.border} pt-4`}
+                keycapClassName={`rounded-md border px-2 py-1 text-[10px] font-semibold ${currentTheme.border} ${currentTheme.textMuted}`}
+                mutedTextClassName={`text-xs ${currentTheme.textMuted}`}
+                pageActiveClassName={`pointer-events-none cursor-default border ${currentTheme.primaryBorder} ${currentTheme.accentPaginationActive} shadow-sm`}
+                pageInactiveClassName={`!border ${currentTheme.border} !bg-white dark:!bg-input/30 ${currentTheme.textSecondary} hover:${currentTheme.borderHover} hover:!bg-white dark:hover:!bg-input/30 hover:text-inherit hover:ring-1 hover:ring-black/5 dark:hover:ring-white/10`}
+                previousNextInactiveClassName={`!border ${currentTheme.border} !bg-white/75 dark:!bg-input/20 ${currentTheme.textSecondary} hover:${currentTheme.borderHover} hover:!bg-white/75 dark:hover:!bg-input/20 hover:text-inherit hover:ring-1 hover:ring-black/5 dark:hover:ring-white/10`}
+                previousNextDisabledClassName={`pointer-events-none !border-transparent !bg-transparent ${currentTheme.textMuted}`}
+                ellipsisClassName={currentTheme.textMuted}
+                summaryText={getResultsSummaryText(taskPage.page, taskPage.pageSize, taskPage.totalItems)}
+                summaryTextClassName={`text-xs ${currentTheme.textMuted}`}
+              />
+            </div>
           </div>
         </div>
       </main>
@@ -1166,6 +1194,16 @@ export function MyTasks() {
         onClose={() => setIsSettingsOpen(false)}
         onOpenProfile={() => navigate("/app/profile")}
         onOpenMyTasks={() => navigate("/app/my-tasks")}
+      />
+      <CoachmarkOverlay
+        isOpen={coachmarks.activeFlowId !== null}
+        step={coachmarks.activeStep}
+        targetRect={coachmarks.targetRect}
+        stepIndex={coachmarks.stepIndex}
+        totalSteps={coachmarks.totalSteps}
+        onBack={coachmarks.goToPreviousStep}
+        onNext={coachmarks.goToNextStep}
+        onClose={() => coachmarks.closeFlow(true)}
       />
     </div>
   );

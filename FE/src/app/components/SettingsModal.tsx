@@ -1,9 +1,10 @@
-import { ClipboardList, User, X } from "lucide-react";
-import { useEffect } from "react";
+import type { LucideIcon } from "lucide-react";
+import { ChevronRight, ClipboardList, HelpCircle, User } from "lucide-react";
 import { getThemeColors, useTheme } from "../contexts/ThemeContext";
-import { CustomScrollArea } from "./CustomScrollArea";
+import { FormModalFrame } from "./FormModalFrame";
 import { PreferencesSettingsSections } from "./PreferencesSettingsSections";
-import { useLocalStorageBoolean } from "../hooks/useLocalStorageBoolean";
+import { getPrimaryModalActionButtonClassName } from "./modalActionButtonStyles";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -12,126 +13,154 @@ interface SettingsModalProps {
   onOpenMyTasks?: () => void;
 }
 
-export function SettingsModal({ isOpen, onClose, onOpenProfile, onOpenMyTasks }: SettingsModalProps) {
-  const { theme, isDarkMode } = useTheme();
-  const [gamificationEnabled, setGamificationEnabled] = useLocalStorageBoolean("settings.gamification", true);
-  const [notificationsEnabled, setNotificationsEnabled] = useLocalStorageBoolean("settings.notifications", true);
+type ThemeColors = ReturnType<typeof getThemeColors>;
 
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) {
-        onClose();
-      }
-    };
+interface AccountActionRowProps {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  onClick: () => void;
+  currentTheme: ThemeColors;
+  isDarkMode: boolean;
+}
 
-    if (isOpen) {
-      document.addEventListener("keydown", handleEscape);
-    }
-
-    return () => {
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
-  const currentTheme = getThemeColors(theme, isDarkMode);
+function AccountActionRow({
+  icon: Icon,
+  title,
+  description,
+  onClick,
+  currentTheme,
+  isDarkMode,
+}: AccountActionRowProps) {
+  const surfaceClassName = isDarkMode ? currentTheme.inputBg : "bg-gray-50";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center animate-in fade-in duration-200">
-      {/* Overlay */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
+    <button
+      type="button"
+      onClick={onClick}
+      className={`group flex w-full items-center justify-between gap-4 rounded-xl border-2 p-4 text-left transition-[border-color,box-shadow,color,background-color,transform] duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus} ${currentTheme.inputBorder} ${surfaceClassName} hover:${currentTheme.borderHover} hover:shadow-[0_14px_34px_-30px_rgba(15,23,42,0.45)]`}
+    >
+      <span className="flex min-w-0 items-center gap-3">
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${currentTheme.primary} shadow-md`}>
+          <Icon className="h-5 w-5 text-white" />
+        </span>
+        <span className="min-w-0">
+          <span className={`block font-semibold ${currentTheme.text}`}>{title}</span>
+          <span className={`mt-0.5 block text-xs ${currentTheme.textMuted}`}>{description}</span>
+        </span>
+      </span>
+      <ChevronRight className={`h-5 w-5 shrink-0 ${currentTheme.textMuted} transition-transform duration-300 group-hover:translate-x-0.5`} />
+    </button>
+  );
+}
 
-      {/* Modal */}
-      <div
-        className={`relative ${currentTheme.cardBg} rounded-3xl shadow-2xl w-full max-w-2xl mx-4 border-2 ${currentTheme.border} animate-in zoom-in-95 duration-200 overflow-hidden flex flex-col`}
-        style={{ height: "min(90vh, 48rem)" }}
-      >
-        <div className={`flex items-center justify-between border-b-2 ${currentTheme.border} px-8 py-6 shrink-0`}>
-          <h2 className={`font-ui-condensed text-2xl font-semibold tracking-[0.01em] ${currentTheme.text}`}>Settings</h2>
-          <button
-            onClick={onClose}
-            className={`${currentTheme.textMuted} hover:${currentTheme.textSecondary} transition-colors hover:${currentTheme.bgSecondary} rounded-full p-2`}
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+export function SettingsModal({ isOpen, onClose, onOpenProfile, onOpenMyTasks }: SettingsModalProps) {
+  const { theme, isDarkMode } = useTheme();
+  const currentTheme = getThemeColors(theme, isDarkMode);
+  const primaryActionButtonClassName = getPrimaryModalActionButtonClassName(currentTheme);
+  const sectionTitleClassName = `font-ui-condensed text-lg font-semibold tracking-[0.01em] ${currentTheme.text}`;
+  const sectionDescriptionClassName = `text-sm ${currentTheme.textMuted}`;
+  const helpIconButtonClassName = `inline-flex h-5 w-5 items-center justify-center rounded-full ${currentTheme.textMuted} transition-colors hover:${currentTheme.textSecondary} focus:outline-none focus:ring-2 focus:ring-offset-0 ${currentTheme.focus}`;
+  const sectionDividerClassName = isDarkMode
+    ? "h-px rounded-full bg-zinc-800"
+    : "h-px rounded-full bg-gray-200";
 
-        <div className="flex-1 min-h-0 overflow-hidden px-8 py-6">
-          <CustomScrollArea className="h-full min-h-0" viewportClassName="h-full min-h-0 pr-4">
-            <div className="space-y-6 px-1 py-1">
-              <PreferencesSettingsSections
-                gamificationEnabled={gamificationEnabled}
-                onGamificationChange={setGamificationEnabled}
-                notificationsEnabled={notificationsEnabled}
-                onNotificationsChange={setNotificationsEnabled}
-              />
+  const accountRows = [
+    onOpenProfile
+      ? {
+          icon: User,
+          title: "Profile",
+          description: "Review your account details, XP progress, and milestones.",
+          onClick: () => {
+            onOpenProfile();
+            onClose();
+          },
+        }
+      : null,
+    onOpenMyTasks
+      ? {
+          icon: ClipboardList,
+          title: "My Tasks",
+          description: "Review tasks assigned to you across boards.",
+          onClick: () => {
+            onOpenMyTasks();
+            onClose();
+          },
+        }
+      : null,
+  ].filter((row): row is NonNullable<typeof row> => row !== null);
 
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <User className={`w-5 h-5 ${currentTheme.primaryText}`} />
-                  <h3 className={`font-ui-condensed text-lg font-semibold tracking-[0.01em] ${currentTheme.text}`}>Account</h3>
-                </div>
-                <div className="space-y-3">
-                  <button
-                    onClick={() => {
-                      onOpenProfile?.();
-                      onClose();
-                    }}
-                    className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${currentTheme.border} hover:${currentTheme.borderHover} ${currentTheme.isDark ? currentTheme.bgSecondary : ''}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${currentTheme.primary} flex items-center justify-center shadow-md`}>
-                        <User className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="text-left">
-                        <p className={`font-semibold ${currentTheme.text}`}>Profile & Account Settings</p>
-                        <p className={`text-xs ${currentTheme.textMuted} mt-0.5`}>Manage your profile and preferences</p>
-                      </div>
-                    </div>
-                    <svg className={`w-5 h-5 ${currentTheme.textMuted}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
+  return (
+    <FormModalFrame
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Settings"
+      description="Adjust appearance, hints, and account shortcuts."
+      closeAriaLabel="Close settings"
+      maxWidthClassName="max-w-2xl"
+      height="min(52rem, calc(100dvh - 2rem))"
+      viewportClassName="h-full min-h-0 pr-4"
+      contentClassName="space-y-6 px-1 py-1"
+      footer={(
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={onClose}
+              className={`w-full ${primaryActionButtonClassName}`}
+            >
+              Done
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top" sideOffset={8}>Close settings</TooltipContent>
+        </Tooltip>
+      )}
+    >
+      <PreferencesSettingsSections />
 
-                  <button
-                    onClick={() => {
-                      onOpenMyTasks?.();
-                      onClose();
-                    }}
-                    className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${currentTheme.border} hover:${currentTheme.borderHover} ${currentTheme.isDark ? currentTheme.bgSecondary : ''}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${currentTheme.primary} flex items-center justify-center shadow-md`}>
-                        <ClipboardList className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="text-left">
-                        <p className={`font-semibold ${currentTheme.text}`}>My Tasks</p>
-                        <p className={`text-xs ${currentTheme.textMuted} mt-0.5`}>Review tasks assigned to you across boards</p>
-                      </div>
-                    </div>
-                    <svg className={`w-5 h-5 ${currentTheme.textMuted}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                </div>
+      {accountRows.length > 0 ? (
+        <>
+          <div className={`-mx-1 ${sectionDividerClassName}`} aria-hidden="true" />
+
+          <section className="space-y-4" aria-labelledby="global-settings-account-heading">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <User className={`h-4 w-4 ${currentTheme.primaryText}`} />
+                <h3 id="global-settings-account-heading" className={sectionTitleClassName}>
+                  Account
+                </h3>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" className={helpIconButtonClassName} aria-label="Account settings help">
+                      <HelpCircle className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={8}>
+                    Open account-level pages without losing your current theme and hint preferences.
+                  </TooltipContent>
+                </Tooltip>
               </div>
+              <p className={sectionDescriptionClassName}>
+                Jump to personal workspace pages from the current screen.
+              </p>
             </div>
-          </CustomScrollArea>
-        </div>
 
-        <div className={`px-8 py-6 border-t-2 ${currentTheme.border} ${currentTheme.cardBg} shrink-0`}>
-          <button
-            onClick={onClose}
-            className={`w-full px-5 py-3 bg-gradient-to-r ${currentTheme.primary} text-white font-semibold rounded-xl hover:scale-105 transition-all shadow-lg`}
-          >
-            Done
-          </button>
-        </div>
-      </div>
-    </div>
+            <div className="space-y-3">
+              {accountRows.map((row) => (
+                <AccountActionRow
+                  key={row.title}
+                  icon={row.icon}
+                  title={row.title}
+                  description={row.description}
+                  onClick={row.onClick}
+                  currentTheme={currentTheme}
+                  isDarkMode={isDarkMode}
+                />
+              ))}
+            </div>
+          </section>
+        </>
+      ) : null}
+    </FormModalFrame>
   );
 }
