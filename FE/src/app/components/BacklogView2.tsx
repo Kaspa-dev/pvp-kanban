@@ -9,7 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { PlanningPokerLaunchCard } from "./planning-poker/PlanningPokerLaunchCard";
 import type { PlanningPokerSession } from "../utils/planningPoker";
 import { WorkspaceSecondaryActionButton } from "./WorkspaceSecondaryActionButton";
-import { StagingTaskActionButton } from "./StagingTaskActionButton";
+import { UtilityIconButton } from "./UtilityIconButton";
 
 interface BacklogViewProps {
   boardId: number;
@@ -211,13 +211,15 @@ export function BacklogView2({
                         footerAction={
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <StagingTaskActionButton
+                              <UtilityIconButton
                                 type="button"
                                 onClick={() => onAddToQueue(card.id)}
                                 onMouseDown={(event) => event.stopPropagation()}
+                                aria-label="Add task to queue"
+                                className="h-8 w-auto px-2.5 text-xs font-semibold"
                               >
-                                Add to Queue
-                              </StagingTaskActionButton>
+                                <span className="font-ui-condensed leading-none tracking-[0.01em]">Add to Queue</span>
+                              </UtilityIconButton>
                             </TooltipTrigger>
                             <TooltipContent side="top" sideOffset={8}>Stage task in the queue batch</TooltipContent>
                           </Tooltip>
@@ -341,13 +343,15 @@ export function BacklogView2({
                         footerAction={
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <StagingTaskActionButton
+                              <UtilityIconButton
                                 type="button"
                                 onClick={() => onRemoveFromQueue(card.id)}
                                 onMouseDown={(event) => event.stopPropagation()}
+                                aria-label="Move task back to staging"
+                                className="h-8 w-auto px-2.5 text-xs font-semibold"
                               >
-                                Back to Staging
-                              </StagingTaskActionButton>
+                                <span className="font-ui-condensed leading-none tracking-[0.01em]">Back to Staging</span>
+                              </UtilityIconButton>
                             </TooltipTrigger>
                             <TooltipContent side="top" sideOffset={8}>Return task to staging</TooltipContent>
                           </Tooltip>

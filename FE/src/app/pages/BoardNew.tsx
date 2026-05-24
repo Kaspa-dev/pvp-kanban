@@ -19,7 +19,6 @@ import { BoardSettingsPage } from "../components/BoardSettingsPage";
 import { CoachmarkOverlay } from "../components/CoachmarkOverlay";
 import { PlanningPokerDeleteSessionDialog } from "../components/planning-poker/PlanningPokerDeleteSessionDialog";
 import { UtilityIconButton } from "../components/UtilityIconButton";
-import { StagingTaskActionButton } from "../components/StagingTaskActionButton";
 import { SidebarInset, SidebarProvider } from "../components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../components/ui/tooltip";
 import { useAuth } from "../contexts/AuthContext";
@@ -1529,8 +1528,8 @@ export function Board() {
               )}
 
               {view === "board" && (
-                <main className={`flex-1 min-h-0 overflow-hidden ${currentTheme.bgSecondary}`}>
-                  <div className={`${boardWorkspaceWidthClassName} flex h-full min-h-0 flex-col gap-6 px-8 py-6 lg:px-10 xl:px-12`}>
+                <main className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden ${currentTheme.bgSecondary}`}>
+                  <div className={`${boardWorkspaceWidthClassName} flex h-full min-h-[42rem] flex-col gap-6 px-8 py-6 lg:px-10 xl:px-12`}>
                     <div className="shrink-0" data-coachmark="board-header">
                       <h1 className={`font-ui-condensed text-[2rem] font-semibold tracking-[0.01em] ${currentTheme.text}`}>
                         Board
@@ -1542,39 +1541,51 @@ export function Board() {
 
                     <div className={`shrink-0 border-t ${currentTheme.border}`} />
 
-                    <div className="flex-1 min-h-0">
-                      <div className="grid h-full min-h-0 grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4" data-coachmark="board-columns-grid">
-                      <KanbanColumn boardId={numericBoardId} id="todo" title="To Do" count={workflowColumns.todo.length} softLimit={currentBoard.columnLimits.todo?.softLimit ?? null} hardLimit={currentBoard.columnLimits.todo?.hardLimit ?? null} cards={workflowColumns.todo} onCardDrop={handleCardDrop} onOpen={handleOpenTask} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
-                      <KanbanColumn boardId={numericBoardId} id="inProgress" title="In Progress" count={workflowColumns.inProgress.length} softLimit={currentBoard.columnLimits.inProgress?.softLimit ?? null} hardLimit={currentBoard.columnLimits.inProgress?.hardLimit ?? null} cards={workflowColumns.inProgress} onCardDrop={handleCardDrop} onOpen={handleOpenTask} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
-                      <KanbanColumn boardId={numericBoardId} id="inReview" title="In Review" count={workflowColumns.inReview.length} softLimit={currentBoard.columnLimits.inReview?.softLimit ?? null} hardLimit={currentBoard.columnLimits.inReview?.hardLimit ?? null} cards={workflowColumns.inReview} onCardDrop={handleCardDrop} onOpen={handleOpenTask} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
-                        <KanbanColumn
-                          boardId={numericBoardId}
-                          id="done"
-                          title="Done"
-                          count={workflowColumns.done.length}
-                          softLimit={currentBoard.columnLimits.done?.softLimit ?? null}
-                          hardLimit={currentBoard.columnLimits.done?.hardLimit ?? null}
-                          cards={workflowColumns.done}
-                          onCardDrop={handleCardDrop}
-                          onOpen={handleOpenTask}
-                          onAssigneeChange={handleAssigneeChange}
-                          onDelete={handleDeleteRequest}
-                          onEdit={handleEditTask}
-                          onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)}
-                          onConclude={(cardId) => void handleConcludeTask(cardId)}
-                          availableAssignees={availableAssignees}
-                          labels={labels}
-                          headerAction={
-                            <StagingTaskActionButton
-                              type="button"
-                              disabled={doneTaskCount === 0}
-                              onClick={() => setIsConcludeDoneDialogOpen(true)}
-                              className={doneTaskCount === 0 ? "cursor-not-allowed opacity-50" : ""}
-                            >
-                              Conclude all
-                            </StagingTaskActionButton>
-                          }
-                        />
+                    <div className="flex min-h-0 flex-1 overflow-hidden">
+                      <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden pb-2" data-coachmark="board-columns-grid">
+                        <div className="grid h-full min-h-0 min-w-[72rem] grid-cols-4 gap-6">
+                          <KanbanColumn boardId={numericBoardId} id="todo" title="To Do" count={workflowColumns.todo.length} softLimit={currentBoard.columnLimits.todo?.softLimit ?? null} hardLimit={currentBoard.columnLimits.todo?.hardLimit ?? null} cards={workflowColumns.todo} onCardDrop={handleCardDrop} onOpen={handleOpenTask} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                          <KanbanColumn boardId={numericBoardId} id="inProgress" title="In Progress" count={workflowColumns.inProgress.length} softLimit={currentBoard.columnLimits.inProgress?.softLimit ?? null} hardLimit={currentBoard.columnLimits.inProgress?.hardLimit ?? null} cards={workflowColumns.inProgress} onCardDrop={handleCardDrop} onOpen={handleOpenTask} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                          <KanbanColumn boardId={numericBoardId} id="inReview" title="In Review" count={workflowColumns.inReview.length} softLimit={currentBoard.columnLimits.inReview?.softLimit ?? null} hardLimit={currentBoard.columnLimits.inReview?.hardLimit ?? null} cards={workflowColumns.inReview} onCardDrop={handleCardDrop} onOpen={handleOpenTask} onAssigneeChange={handleAssigneeChange} onDelete={handleDeleteRequest} onEdit={handleEditTask} onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)} availableAssignees={availableAssignees} labels={labels} />
+                          <KanbanColumn
+                            boardId={numericBoardId}
+                            id="done"
+                            title="Done"
+                            count={workflowColumns.done.length}
+                            softLimit={currentBoard.columnLimits.done?.softLimit ?? null}
+                            hardLimit={currentBoard.columnLimits.done?.hardLimit ?? null}
+                            cards={workflowColumns.done}
+                            onCardDrop={handleCardDrop}
+                            onOpen={handleOpenTask}
+                            onAssigneeChange={handleAssigneeChange}
+                            onDelete={handleDeleteRequest}
+                            onEdit={handleEditTask}
+                            onMoveToBacklog={(cardId) => void handleMoveToBacklog(cardId)}
+                            onConclude={(cardId) => void handleConcludeTask(cardId)}
+                            availableAssignees={availableAssignees}
+                            labels={labels}
+                            headerAction={
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <UtilityIconButton
+                                    type="button"
+                                    size="sm"
+                                    disabled={doneTaskCount === 0}
+                                    onClick={() => setIsConcludeDoneDialogOpen(true)}
+                                    aria-label="Conclude all done tasks"
+                                    className="h-8 w-auto gap-1.5 px-2.5 text-xs font-semibold"
+                                  >
+                                    <Archive className="h-3.5 w-3.5" />
+                                    <span className="font-ui-condensed leading-none tracking-[0.01em]">Conclude all</span>
+                                  </UtilityIconButton>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" sideOffset={8}>
+                                  Conclude all done tasks
+                                </TooltipContent>
+                              </Tooltip>
+                            }
+                          />
+                        </div>
                       </div>
                     </div>
 

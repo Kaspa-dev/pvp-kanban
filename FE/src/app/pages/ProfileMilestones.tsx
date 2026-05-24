@@ -153,12 +153,12 @@ export function ProfileMilestones() {
 
       <main className="relative z-10 px-6 py-10">
         <div className="mx-auto flex w-full max-w-[1850px] flex-col gap-6">
-        <section className={`${workspaceSurface.elevatedPanelSurfaceClassName} relative overflow-hidden rounded-[2rem] px-6 py-7 shadow-[0_28px_90px_-48px_rgba(15,23,42,0.55)] lg:px-8 lg:py-8`} data-coachmark="profile-milestones-header">
+        <section className={`${workspaceSurface.elevatedPanelSurfaceClassName} relative overflow-hidden rounded-[2rem] px-6 py-7 shadow-[0_28px_90px_-48px_rgba(15,23,42,0.55)] lg:px-8 lg:py-8`}>
           <div className={`absolute -right-12 top-0 h-72 w-72 rounded-full bg-gradient-to-br ${currentTheme.primarySoftStrong} blur-3xl`} />
           <div className={`absolute -bottom-24 left-12 h-72 w-72 rounded-full bg-gradient-to-tr ${currentTheme.primarySoft} blur-3xl`} />
 
           <div className="relative z-10 flex flex-col gap-7">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between" data-coachmark="profile-milestones-header">
               <div>
                 <h1 className={`font-ui-condensed text-4xl font-semibold tracking-[0.01em] ${currentTheme.text} lg:text-5xl`}>
                   Milestones

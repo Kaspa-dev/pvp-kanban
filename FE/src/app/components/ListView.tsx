@@ -59,7 +59,7 @@ import { WorkspaceClearButton, WorkspaceFilterChip } from "./WorkspaceFilterChip
 import { WorkspacePaginationFooter } from "./WorkspacePaginationFooter";
 import { getWorkspaceControlSurfaceClassName } from "../utils/workspaceSurfaceStyles";
 import { getToolbarLabelClassName } from "./typographyStyles";
-import { StagingTaskActionButton } from "./StagingTaskActionButton";
+import { UtilityIconButton } from "./UtilityIconButton";
 
 type SortState = {
   key: BoardTaskSortKey | null;
@@ -1312,12 +1312,14 @@ export function ListView({
                                   {isBacklogMode && onAddToQueue && !card.isQueued && (
                                     <Tooltip>
                                       <TooltipTrigger asChild>
-                                        <StagingTaskActionButton
+                                        <UtilityIconButton
                                           type="button"
                                           onClick={() => void runRowAction(card.id, () => onAddToQueue(card.id))}
+                                          aria-label="Add task to queue"
+                                          className="h-8 w-auto px-2.5 text-xs font-semibold"
                                         >
-                                          Add to Queue
-                                        </StagingTaskActionButton>
+                                          <span className="font-ui-condensed leading-none tracking-[0.01em]">Add to Queue</span>
+                                        </UtilityIconButton>
                                       </TooltipTrigger>
                                       <TooltipContent side="top" sideOffset={8}>Stage task in the queue batch</TooltipContent>
                                     </Tooltip>
@@ -1325,12 +1327,14 @@ export function ListView({
                                   {isBacklogMode && onRemoveFromQueue && card.isQueued && (
                                     <Tooltip>
                                       <TooltipTrigger asChild>
-                                        <StagingTaskActionButton
+                                        <UtilityIconButton
                                           type="button"
                                           onClick={() => void runRowAction(card.id, () => onRemoveFromQueue(card.id))}
+                                          aria-label="Move task back to staging"
+                                          className="h-8 w-auto px-2.5 text-xs font-semibold"
                                         >
-                                          Back to Staging
-                                        </StagingTaskActionButton>
+                                          <span className="font-ui-condensed leading-none tracking-[0.01em]">Back to Staging</span>
+                                        </UtilityIconButton>
                                       </TooltipTrigger>
                                       <TooltipContent side="top" sideOffset={8}>Return task to staging</TooltipContent>
                                     </Tooltip>

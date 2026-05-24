@@ -363,8 +363,8 @@ export function Profile() {
             <div className={`absolute -bottom-24 left-12 h-72 w-72 rounded-full bg-gradient-to-tr ${currentTheme.primarySoft} blur-3xl`} />
 
             <div className="relative flex min-w-0 flex-col gap-7">
-              <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between" data-coachmark="profile-identity">
-                <div className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-center">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-center" data-coachmark="profile-identity">
                   <AppAvatar
                     username={user.username}
                     size={104}

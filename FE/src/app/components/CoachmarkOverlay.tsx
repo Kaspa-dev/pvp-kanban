@@ -32,43 +32,71 @@ function getDesktopCardStyle(targetRect: DOMRect | null): CSSProperties {
   const gap = 20;
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
+  const margin = 24;
   const fallback = {
-    left: Math.max(24, Math.min((viewportWidth - cardWidth) / 2, viewportWidth - cardWidth - 24)),
-    top: Math.max(24, Math.min((viewportHeight - cardHeight) / 2, viewportHeight - cardHeight - 24)),
+    left: Math.max(margin, Math.min((viewportWidth - cardWidth) / 2, viewportWidth - cardWidth - margin)),
+    top: Math.max(margin, Math.min((viewportHeight - cardHeight) / 2, viewportHeight - cardHeight - margin)),
   };
 
   if (!targetRect) {
     return fallback;
   }
 
+  const clampCardPosition = (left: number, top: number) => ({
+    left: Math.max(margin, Math.min(left, viewportWidth - cardWidth - margin)),
+    top: Math.max(margin, Math.min(top, viewportHeight - cardHeight - margin)),
+  });
+
+  const getOverlapArea = (left: number, top: number) => {
+    const overlapWidth = Math.max(0, Math.min(left + cardWidth, targetRect.right) - Math.max(left, targetRect.left));
+    const overlapHeight = Math.max(0, Math.min(top + cardHeight, targetRect.bottom) - Math.max(top, targetRect.top));
+    return overlapWidth * overlapHeight;
+  };
+
   const candidates = [
     {
       left: targetRect.right + gap,
       top: targetRect.top + Math.max(0, (targetRect.height - cardHeight) / 2),
-      fits: targetRect.right + gap + cardWidth <= viewportWidth - 24,
+      fits: targetRect.right + gap + cardWidth <= viewportWidth - margin,
     },
     {
       left: targetRect.left - gap - cardWidth,
       top: targetRect.top + Math.max(0, (targetRect.height - cardHeight) / 2),
-      fits: targetRect.left - gap - cardWidth >= 24,
+      fits: targetRect.left - gap - cardWidth >= margin,
     },
     {
       left: targetRect.left + Math.max(0, (targetRect.width - cardWidth) / 2),
       top: targetRect.bottom + gap,
-      fits: targetRect.bottom + gap + cardHeight <= viewportHeight - 24,
+      fits: targetRect.bottom + gap + cardHeight <= viewportHeight - margin,
     },
     {
       left: targetRect.left + Math.max(0, (targetRect.width - cardWidth) / 2),
       top: targetRect.top - gap - cardHeight,
-      fits: targetRect.top - gap - cardHeight >= 24,
+      fits: targetRect.top - gap - cardHeight >= margin,
     },
   ];
 
-  const selectedCandidate = candidates.find((candidate) => candidate.fits) ?? candidates[0];
+  const selectedCandidate = candidates.find((candidate) => candidate.fits);
+  if (selectedCandidate) {
+    return {
+      ...clampCardPosition(selectedCandidate.left, selectedCandidate.top),
+      width: cardWidth,
+    };
+  }
+
+  const bestCandidate = candidates
+    .map((candidate) => {
+      const clamped = clampCardPosition(candidate.left, candidate.top);
+      return {
+        ...clamped,
+        overlapArea: getOverlapArea(clamped.left, clamped.top),
+      };
+    })
+    .sort((a, b) => a.overlapArea - b.overlapArea)[0];
 
   return {
-    left: Math.max(24, Math.min(selectedCandidate.left, viewportWidth - cardWidth - 24)),
-    top: Math.max(24, Math.min(selectedCandidate.top, viewportHeight - cardHeight - 24)),
+    left: bestCandidate?.left ?? fallback.left,
+    top: bestCandidate?.top ?? fallback.top,
     width: cardWidth,
   };
 }

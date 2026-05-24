@@ -104,8 +104,32 @@ const PAGE_FLOW_STEPS: Record<PageCoachmarkFlowId, PageCoachmarkStep[]> = {
   ],
 };
 
+const TARGET_TOP_GUTTER = 96;
+const TARGET_BOTTOM_GUTTER = 32;
+
 function getCoachmarkElement(targetId: PageCoachmarkTargetId): HTMLElement | null {
   return document.querySelector<HTMLElement>(`[data-coachmark="${targetId}"]`);
+}
+
+function scrollCoachmarkTargetIntoView(element: HTMLElement, behavior: ScrollBehavior) {
+  const rect = element.getBoundingClientRect();
+  const viewportHeight = window.innerHeight;
+  const comfortableBottom = viewportHeight - TARGET_BOTTOM_GUTTER;
+
+  if (rect.top < TARGET_TOP_GUTTER || rect.height > comfortableBottom - TARGET_TOP_GUTTER) {
+    window.scrollBy({
+      top: rect.top - TARGET_TOP_GUTTER,
+      behavior,
+    });
+    return;
+  }
+
+  if (rect.bottom > comfortableBottom) {
+    window.scrollBy({
+      top: rect.bottom - comfortableBottom,
+      behavior,
+    });
+  }
 }
 
 export function usePageCoachmarks({
@@ -140,11 +164,7 @@ export function usePageCoachmarks({
       return;
     }
 
-    element.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-      inline: "center",
-    });
+    scrollCoachmarkTargetIntoView(element, "smooth");
 
     requestAnimationFrame(() => {
       setTargetRect(element.getBoundingClientRect());
@@ -212,11 +232,7 @@ export function usePageCoachmarks({
         return;
       }
 
-      element.scrollIntoView({
-        behavior: attempts === 0 ? "auto" : "smooth",
-        block: "center",
-        inline: "center",
-      });
+      scrollCoachmarkTargetIntoView(element, attempts === 0 ? "auto" : "smooth");
 
       requestAnimationFrame(() => {
         if (!cancelled) {

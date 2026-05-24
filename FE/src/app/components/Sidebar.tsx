@@ -134,71 +134,73 @@ export function Sidebar({
             </div>
           </SidebarHeader>
 
-          <SidebarContent className={`flex min-h-0 flex-col gap-0 overflow-x-hidden overflow-y-auto ${isCollapsed ? "px-1.5 py-2.5" : "px-2.5 py-3"}`}>
-            <SidebarGroup className={`min-h-0 p-0 ${isCollapsed ? "items-center" : ""}`}>
-              <SidebarGroupContent className={`w-full ${isCollapsed ? "flex flex-col items-center gap-2" : "space-y-2"}`}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={() => {
-                        closeMobileSidebar();
-                        onCreateTask();
-                      }}
-                      className={`${primaryActionButtonClassName} ${isCollapsed ? "h-10 w-10 self-center px-0" : "h-10 w-full gap-2 px-3 text-sm leading-none"}`}
-                      type="button"
-                    >
-                      <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_15%,rgba(255,255,255,0.24)_50%,transparent_85%)] opacity-0 transition-opacity duration-300 group-hover/create-task:opacity-100" />
-                      <span className="relative z-10 inline-flex items-center gap-2 leading-none">
-                        <Plus className="h-4.5 w-4.5 will-change-transform transition-transform duration-200 group-hover/create-task:rotate-90 group-hover/create-task:scale-110" />
-                        {!isCollapsed && <span className="font-ui-condensed leading-none tracking-[0.01em]">Create Task</span>}
-                      </span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" sideOffset={10}>Create a new task in staging</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={() => {
-                        closeMobileSidebar();
-                        onOpenLabels();
-                      }}
-                      className={`${labelsActionButtonClassName} ${isCollapsed ? "h-10 w-10 self-center px-0" : "h-10 w-full gap-2 px-3 text-sm leading-none"}`}
-                      type="button"
-                    >
-                      <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_15%,rgba(255,255,255,0.24)_50%,transparent_85%)] opacity-0 transition-opacity duration-300 group-hover/board-labels:opacity-100" />
-                      <span className={`relative z-10 inline-flex min-w-0 items-center gap-2 ${isCollapsed ? "" : "w-full justify-between"}`}>
-                        <span className="inline-flex min-w-0 items-center gap-2 leading-none">
-                          <Tag className="h-4.5 w-4.5 shrink-0 will-change-transform transition-transform duration-200 group-hover/board-labels:rotate-6 group-hover/board-labels:scale-110" />
-                          {!isCollapsed && <span className="font-ui-condensed truncate leading-none tracking-[0.01em]">Labels</span>}
+          <SidebarContent className={`min-h-0 overscroll-contain overflow-x-hidden overflow-y-auto group-data-[collapsible=icon]:overflow-x-hidden group-data-[collapsible=icon]:overflow-y-auto ${isCollapsed ? "px-1.5 py-2.5" : "px-2.5 py-3"}`}>
+            <div className="flex min-h-full min-w-0 flex-col justify-between gap-4">
+              <SidebarGroup className={`min-h-0 shrink-0 p-0 ${isCollapsed ? "items-center" : ""}`}>
+                <SidebarGroupContent className={`w-full ${isCollapsed ? "flex flex-col items-center gap-2" : "space-y-2"}`}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => {
+                          closeMobileSidebar();
+                          onCreateTask();
+                        }}
+                        className={`${primaryActionButtonClassName} ${isCollapsed ? "h-10 w-10 self-center px-0" : "h-10 w-full gap-2 px-3 text-sm leading-none"}`}
+                        type="button"
+                      >
+                        <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_15%,rgba(255,255,255,0.24)_50%,transparent_85%)] opacity-0 transition-opacity duration-300 group-hover/create-task:opacity-100" />
+                        <span className="relative z-10 inline-flex items-center gap-2 leading-none">
+                          <Plus className="h-4.5 w-4.5 will-change-transform transition-transform duration-200 group-hover/create-task:rotate-90 group-hover/create-task:scale-110" />
+                          {!isCollapsed && <span className="font-ui-condensed leading-none tracking-[0.01em]">Create Task</span>}
                         </span>
-                        {!isCollapsed && (
-                          <span className="font-due-date shrink-0 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/82">
-                            {labelCount}/{MAX_BOARD_LABELS}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" sideOffset={10}>Create a new task in staging</TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => {
+                          closeMobileSidebar();
+                          onOpenLabels();
+                        }}
+                        className={`${labelsActionButtonClassName} ${isCollapsed ? "h-10 w-10 self-center px-0" : "h-10 w-full gap-2 px-3 text-sm leading-none"}`}
+                        type="button"
+                      >
+                        <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_15%,rgba(255,255,255,0.24)_50%,transparent_85%)] opacity-0 transition-opacity duration-300 group-hover/board-labels:opacity-100" />
+                        <span className={`relative z-10 inline-flex min-w-0 items-center gap-2 ${isCollapsed ? "" : "w-full justify-between"}`}>
+                          <span className="inline-flex min-w-0 items-center gap-2 leading-none">
+                            <Tag className="h-4.5 w-4.5 shrink-0 will-change-transform transition-transform duration-200 group-hover/board-labels:rotate-6 group-hover/board-labels:scale-110" />
+                            {!isCollapsed && <span className="font-ui-condensed truncate leading-none tracking-[0.01em]">Labels</span>}
                           </span>
-                        )}
-                      </span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" sideOffset={10}>
-                    Create and review board labels
-                  </TooltipContent>
-                </Tooltip>
-              </SidebarGroupContent>
-            </SidebarGroup>
-            <div
-              className={`mt-auto flex min-h-0 justify-center pt-4 ${isCollapsed ? "" : "w-full [&>aside]:min-h-0 [&>aside]:w-full"}`}
-              aria-label="Board level leaderboard"
-            >
-              <LevelLeaderboardPreview
-                board={leaderboardBoard}
-                period={LEADERBOARD_PERIODS.includes(leaderboardPeriod) ? leaderboardPeriod : "week"}
-                onPeriodChange={setLeaderboardPeriod}
-                variant="crown-stack-gen-2"
-                density={isCollapsed ? "collapsed" : "expanded"}
-                previewState={leaderboardPreviewState}
-              />
+                          {!isCollapsed && (
+                            <span className="font-due-date shrink-0 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/82">
+                              {labelCount}/{MAX_BOARD_LABELS}
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" sideOffset={10}>
+                      Create and review board labels
+                    </TooltipContent>
+                  </Tooltip>
+                </SidebarGroupContent>
+              </SidebarGroup>
+              <div
+                className={`flex min-h-0 shrink-0 justify-center ${isCollapsed ? "" : "w-full [&>aside]:min-h-0 [&>aside]:w-full [&>aside]:max-w-full"}`}
+                aria-label="Board level leaderboard"
+              >
+                <LevelLeaderboardPreview
+                  board={leaderboardBoard}
+                  period={LEADERBOARD_PERIODS.includes(leaderboardPeriod) ? leaderboardPeriod : "week"}
+                  onPeriodChange={setLeaderboardPeriod}
+                  variant="crown-stack-gen-2"
+                  density={isCollapsed ? "collapsed" : "expanded"}
+                  previewState={leaderboardPreviewState}
+                />
+              </div>
             </div>
           </SidebarContent>
 

@@ -289,10 +289,10 @@ export function KanbanColumn({
   }, [isOver]);
 
   return (
-    <div className={`w-full min-h-0 lg:h-full ${isBlockedDropFeedbackVisible ? "kanban-column-limit-shake" : ""}`}>
+    <div className={`h-full min-h-0 w-full min-w-0 ${isBlockedDropFeedbackVisible ? "kanban-column-limit-shake" : ""}`}>
       <div
         ref={drop}
-        className={`${columnSurfaceClassName} rounded-2xl border-2 transition-all flex min-h-[34rem] flex-col shadow-sm lg:h-full lg:min-h-0 ${
+        className={`${columnSurfaceClassName} flex h-full min-h-0 flex-col rounded-2xl border-2 shadow-sm transition-all ${
           isDropPreviewActive ? `${currentTheme.primaryBorder} ring-4 ${currentTheme.ring} scale-[1.01]` : limitBorderClassName
         } ${isBlockedDropFeedbackVisible ? "kanban-column-limit-pulse" : ""}`}
       >
