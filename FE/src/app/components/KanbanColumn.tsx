@@ -293,7 +293,7 @@ export function KanbanColumn({
       <div
         ref={drop}
         className={`${columnSurfaceClassName} flex h-full min-h-0 flex-col rounded-2xl border-2 shadow-sm transition-all ${
-          isDropPreviewActive ? `${currentTheme.primaryBorder} ring-4 ${currentTheme.ring} scale-[1.01]` : limitBorderClassName
+          isDropPreviewActive ? `${currentTheme.primaryBorder} ring-4 ring-inset ${currentTheme.ring}` : limitBorderClassName
         } ${isBlockedDropFeedbackVisible ? "kanban-column-limit-pulse" : ""}`}
       >
         {/* Column Header */}
